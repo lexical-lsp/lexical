@@ -4,12 +4,12 @@ defmodule Lexical.Server.Application do
   @moduledoc false
 
   alias Lexical.Provider
-  alias Lexical.Transport
+  alias Lexical.Server.JsonRpc.Backend, as: JsonRpcBackend
+  alias Lexical.Server.Transport
   use Application
 
   @impl true
   def start(_type, _args) do
-    # on_start()
     add_jsonrpc_backend()
 
     children = [
@@ -18,28 +18,23 @@ defmodule Lexical.Server.Application do
       {DynamicSupervisor, name: Lexical.Server.Project.Supervisor.dynamic_supervisor_name()},
       Provider.Queue.Supervisor.child_spec(),
       Provider.Queue.child_spec(),
-      {Lexical.Server.IOServer, [:standard_io, &Lexical.Server.protocol_message/1]}
+      {Transport.StdIO, [:standard_io, &Lexical.Server.protocol_message/1]}
     ]
 
     opts = [strategy: :one_for_one, name: Lexical.Server.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
-  defp on_start do
-    # Transport.StdIO.setup()
-    # Transport.StdIO.listen()
-  end
-
   defp add_jsonrpc_backend() do
-    Application.put_env(:logger, :backends, [Lexical.JsonRpc.Backend])
+    Application.put_env(:logger, :backends, [JsonRpcBackend])
 
-    Application.put_env(:logger, Lexical.JsonRpc.Backend,
+    Application.put_env(:logger, JsonRpcBackend,
       level: :debug,
       format: "$message",
       metadata: []
     )
 
-    {:ok, _} = Logger.add_backend(Lexical.JsonRpc.Backend)
+    {:ok, _} = Logger.add_backend(JsonRpcBackend)
     :ok = Logger.remove_backend(:console, flush: true)
   end
 end

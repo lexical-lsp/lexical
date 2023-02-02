@@ -2,7 +2,7 @@ defmodule Lexical.BuildTest do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.Messages
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.SourceFile
   alias Mix.Task.Compiler.Diagnostic
 

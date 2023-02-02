@@ -1,13 +1,10 @@
-defmodule Lexical.Transport do
-  alias Lexical.Server.IOServer
+defmodule Lexical.Server.Transport do
+  alias Lexical.Server.Transport.StdIO
 
-  def log(level \\ :error, message)
+  defdelegate log(level, message), to: StdIO
+  defdelegate write(messaeg), to: StdIO
 
-  def log(level, message) do
-    IOServer.log(level, message)
-  end
-
-  def write(message) do
-    IOServer.write(message)
+  def error(message) do
+    StdIO.log(:error, message)
   end
 end

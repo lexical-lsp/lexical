@@ -1,4 +1,4 @@
-defmodule Lexical.JsonRpc.Backend do
+defmodule Lexical.Server.JsonRpc.Backend do
   @moduledoc ~S"""
   A logger backend that logs messages by sending them via LSP ‘window/logMessage’.
 
@@ -136,7 +136,7 @@ defmodule Lexical.JsonRpc.Backend do
 
     level
     |> elixir_log_level_to_lsp()
-    |> Lexical.Transport.log(output)
+    |> Lexical.Server.Transport.log(output)
 
     state
   end

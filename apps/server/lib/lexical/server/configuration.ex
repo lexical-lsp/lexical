@@ -1,6 +1,5 @@
 defmodule Lexical.Server.Configuration do
   alias Lexical.Dialyzer
-  alias Lexical.LanguageServer
   alias Lexical.Project
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
@@ -49,20 +48,9 @@ defmodule Lexical.Server.Configuration do
   end
 
   defp apply_config_change(%__MODULE__{} = old_config, %{} = settings) do
-    with {:ok, new_config} <- maybe_set_mix_env(old_config, settings),
-         {:ok, new_config} <- maybe_set_env_vars(new_config, settings),
-         {:ok, new_config} <- maybe_set_mix_target(new_config, settings),
-         {:ok, new_config} <- maybe_set_project_directory(new_config, settings),
+    with {:ok, new_config} <- maybe_set_env_vars(old_config, settings),
          {:ok, new_config} <- maybe_enable_dialyzer(new_config, settings) do
       maybe_add_watched_extensions(new_config, settings)
-    end
-  end
-
-  defp maybe_set_mix_env(%__MODULE__{} = old_config, settings) do
-    new_env = Map.get(settings, "mixEnv")
-
-    with {:ok, new_project} <- Project.change_mix_env(old_config.project, new_env) do
-      {:ok, %__MODULE__{old_config | project: new_project}}
     end
   end
 
@@ -70,22 +58,6 @@ defmodule Lexical.Server.Configuration do
     env_vars = Map.get(settings, "envVariables")
 
     with {:ok, new_project} <- Project.set_env_vars(old_config.project, env_vars) do
-      {:ok, %__MODULE__{old_config | project: new_project}}
-    end
-  end
-
-  defp maybe_set_mix_target(%__MODULE__{} = old_config, settings) do
-    mix_target = Map.get(settings, "mixTarget")
-
-    with {:ok, new_project} <- Project.change_mix_target(old_config.project, mix_target) do
-      {:ok, %__MODULE__{old_config | project: new_project}}
-    end
-  end
-
-  defp maybe_set_project_directory(%__MODULE__{} = old_config, settings) do
-    project_dir = Map.get(settings, "projectDir")
-
-    with {:ok, new_project} <- Project.change_project_directory(old_config.project, project_dir) do
       {:ok, %__MODULE__{old_config | project: new_project}}
     end
   end

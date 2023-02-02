@@ -5,7 +5,7 @@ defmodule Lexical.Provider.Queue do
     alias Lexical.Protocol.Requests
     alias Lexical.Provider.Handlers
     alias Lexical.Provider.Queue
-    alias Lexical.Transport
+    alias Lexical.Server.Transport
     require Logger
 
     defstruct tasks_by_id: %{}, pids_to_ids: %{}

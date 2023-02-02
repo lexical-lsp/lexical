@@ -128,7 +128,7 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.Project
   alias Lexical.Server.Project.Dispatch
   alias Lexical.SourceFile
-  alias Lexical.RemoteControl.Messages
+  alias Lexical.RemoteControl.Api.Messages
   alias Mix.Task.Compiler
 
   import Messages
@@ -192,7 +192,7 @@ defmodule Lexical.Server.Project.Diagnostics do
           diagnostics: diagnostic_list
         )
 
-      Lexical.Transport.write(notification)
+      Lexical.Server.Transport.write(notification)
     end)
   end
 

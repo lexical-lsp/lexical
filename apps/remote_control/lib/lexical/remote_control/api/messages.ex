@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Messages do
+defmodule Lexical.RemoteControl.Api.Messages do
   import Record
   defrecord :project_compiled, project: nil, status: :successful, diagnostics: [], elapsed_ms: 0
 

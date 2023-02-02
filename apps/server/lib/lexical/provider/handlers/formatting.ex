@@ -3,7 +3,7 @@ defmodule Lexical.Provider.Handlers.Formatting do
   alias Lexical.CodeMod.Format
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
-  alias Lexical.Transport
+
   require Logger
 
   def handle(%Requests.Formatting{} = request, %Env{} = env) do

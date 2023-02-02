@@ -31,7 +31,6 @@ defmodule Lexical.Server.Project.Dispatch do
     end
 
     def registered?(%__MODULE__{} = state, message_type, pid) do
-      c = 32
       pid in registrations(state, message_type)
     end
 

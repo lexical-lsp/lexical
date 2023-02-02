@@ -1,7 +1,8 @@
 defmodule Lexical.Protocol.JsonRpc do
   alias Lexical.Protocol.Requests
-  alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Notifications
+
+  @crlf "\r\n"
 
   def decode(message_string) do
     with {:ok, json_map} <- Jason.decode(message_string) do
@@ -9,11 +10,27 @@ defmodule Lexical.Protocol.JsonRpc do
     end
   end
 
-  def encode(message) do
-    Jason.encode(message)
+  def encode(%_proto_module{} = proto_struct) do
+    with {:ok, encoded} <- Jason.encode(proto_struct) do
+      encode(encoded)
+    end
   end
 
-  defp do_decode(%{"method" => method, "id" => id} = request) do
+  def encode(payload) when is_binary(payload) or is_list(payload) do
+    content_length = IO.iodata_length(payload)
+
+    json_rpc = [
+      "Content-Length: ",
+      to_string(content_length),
+      @crlf,
+      @crlf,
+      payload
+    ]
+
+    {:ok, json_rpc}
+  end
+
+  defp do_decode(%{"method" => method, "id" => _id} = request) do
     Requests.decode(method, request)
   end
 

@@ -2,7 +2,7 @@ defmodule Lexical.RemoteControl.Build do
   alias Lexical.RemoteControl.Build
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Messages
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.SourceFile
 
   require Logger

@@ -1,6 +1,4 @@
 defmodule Lexical.Server.State do
-  alias Lexical.Transport
-
   alias Lexical.Protocol.Notifications.{
     DidChange,
     DidChangeConfiguration,
@@ -15,6 +13,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Requests.Initialize
   alias Lexical.Protocol.Types.TextDocument
   alias Lexical.Server.Configuration
+  alias Lexical.Server.Transport
   alias Lexical.SourceFile
 
   import Logger
@@ -24,7 +23,7 @@ defmodule Lexical.Server.State do
   defstruct configuration: nil, initialized?: false
 
   @supported_code_actions [
-    CodeAction.Kind.quick_fix()
+    :quick_fix
   ]
 
   def new do
@@ -133,7 +132,7 @@ defmodule Lexical.Server.State do
   end
 
   def apply(%__MODULE__{} = state, msg) do
-    Transport.log("Applying unknown #{inspect(msg)}")
+    Logger.error("Ignoring unhandled message: #{inspect(msg)}")
     {:ok, state}
   end
 
@@ -145,7 +144,7 @@ defmodule Lexical.Server.State do
 
     server_capabilities =
       Types.ServerCapabilities.new(
-        code_action_provider: true,
+        code_action_provider: code_action_options,
         document_formatting_provider: true,
         text_document_sync: sync_options
       )

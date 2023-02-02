@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.CompileTracer do
   alias Lexical.RemoteControl
 
-  import RemoteControl.Messages
+  import RemoteControl.Api.Messages
 
   def trace({:on_module, _, _}, env) do
     functions = env.module.__info__(:functions)
