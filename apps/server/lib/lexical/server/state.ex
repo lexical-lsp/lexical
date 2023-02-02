@@ -4,7 +4,8 @@ defmodule Lexical.Server.State do
     DidChangeConfiguration,
     DidClose,
     DidOpen,
-    DidSave
+    DidSave,
+    Initialized
   }
 
   alias Lexical.Protocol.Responses
@@ -129,6 +130,11 @@ defmodule Lexical.Server.State do
         warn("Save failed for uri #{uri} error was #{inspect(error)}")
         error
     end
+  end
+
+  def apply(%__MODULE__{} = state, %Initialized{}) do
+    Logger.info("Lexical Initialized")
+    {:ok, %__MODULE__{state | initialized?: true}}
   end
 
   def apply(%__MODULE__{} = state, msg) do

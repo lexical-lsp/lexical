@@ -9,6 +9,15 @@ defmodule Lexical.Server do
 
   use GenServer
 
+  @server_specific_messages [
+    Notifications.DidChange,
+    Notifications.DidChangeConfiguration,
+    Notifications.DidOpen,
+    Notifications.DidClose,
+    Notifications.DidSave,
+    Notifications.Initialized
+  ]
+
   @spec response_complete(Requests.request(), Responses.response()) :: :ok
   def response_complete(request, response) do
     GenServer.call(__MODULE__, {:response_complete, request, response})
@@ -78,13 +87,7 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%message_module{} = message, %State{} = state)
-      when message_module in [
-             Notifications.DidChange,
-             Notifications.DidChangeConfiguration,
-             Notifications.DidOpen,
-             Notifications.DidClose,
-             Notifications.DidSave
-           ] do
+      when message_module in @server_specific_messages do
     case apply_to_state(state, message) do
       {:ok, _} = success ->
         success
