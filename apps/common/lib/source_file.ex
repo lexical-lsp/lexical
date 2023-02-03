@@ -1,9 +1,13 @@
 defmodule Lexical.SourceFile do
   alias Lexical.SourceFile.Conversions
   alias Lexical.SourceFile.Document
+  alias Lexical.SourceFile.Line
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
+
   import Lexical.SourceFile.Line
+
+  alias __MODULE__.Path, as: SourceFilePath
 
   defstruct [:uri, :path, :version, dirty?: false, document: nil]
 
@@ -18,7 +22,7 @@ defmodule Lexical.SourceFile do
   @type version :: pos_integer()
   @type change_application_error :: {:error, {:invalid_range, map()}}
   # public
-  @spec new(URI.t(), String.t(), pos_integer()) :: t
+
   def new(uri, text, version) do
     uri = Conversions.ensure_uri(uri)
 
@@ -26,7 +30,7 @@ defmodule Lexical.SourceFile do
       uri: uri,
       version: version,
       document: Document.new(text),
-      path: __MODULE__.Path.from_uri(uri)
+      path: SourceFilePath.from_uri(uri)
     }
   end
 
@@ -61,7 +65,7 @@ defmodule Lexical.SourceFile do
     end
   end
 
-  @spec apply_content_changes(t, pos_integer(), [map | ContentChangeEvent.t()]) ::
+  @spec apply_content_changes(t, pos_integer(), [map]) ::
           {:ok, t} | change_application_error()
   def apply_content_changes(%__MODULE__{version: current_version}, new_version, _)
       when new_version <= current_version do
@@ -116,10 +120,10 @@ defmodule Lexical.SourceFile do
 
     new_lines_iodata =
       cond do
-        start_line > line_count(source) ->
+        start_line >= line_count(source) - source.document.starting_index ->
           append_to_end(source, new_text)
 
-        start_line <= 0 ->
+        start_line < 0 ->
           prepend_to_beginning(source, new_text)
 
         true ->
@@ -134,27 +138,52 @@ defmodule Lexical.SourceFile do
     {:ok, %__MODULE__{source | document: new_document}}
   end
 
-  defp apply_change(%__MODULE__{} = source, %{range: %Range{}, text: _} = change) do
-    apply_change(source, change.range, change.text)
-  end
+  # defp apply_change(%__MODULE__{} = source, %ContentChangeEvent{range: nil} = change) do
+  #   new_state =
+  #     source.uri
+  #     |> new(change.text, source.version)
+  #     |> increment_version()
 
-  defp apply_change(%__MODULE__{} = source, %{text: _text} = change) do
-    new_state =
-      source.uri
-      |> new(change.text, source.version)
-      |> increment_version()
+  #   {:ok, new_state}
+  # end
 
-    {:ok, new_state}
-  end
+  # defp apply_change(%__MODULE__{} = source, %ContentChangeEvent{} = change) do
+  #   with {:ok, ex_range} <- Conversions.to_elixir(change.range, source) do
+  #     apply_change(source, ex_range, change.text)
+  #   else
+  #     _ -> {:error, {:invalid_range, change.range}}
+  #   end
+  # end
 
-  defp apply_change(%__MODULE__{}, %{"range" => invalid_range}) do
-    {:error, {:invalid_range, invalid_range}}
+  defp apply_change(%__MODULE__{} = source, %{range: nil, text: new_text}) do
+    {:ok, %__MODULE__{source | document: Document.new(new_text)}}
   end
 
   defp apply_change(
          %__MODULE__{} = source,
-         %{"text" => new_text}
-       ) do
+         %{
+           range:
+             %{
+               start: %{line: start_line, character: start_char},
+               end: %{line: end_line, character: end_char}
+             } = range,
+           text: new_text
+         }
+       )
+       when start_line >= 0 and start_char >= 0 and end_line >= 0 and end_char >= 0 do
+    with {:ok, ex_range} <- Conversions.to_elixir(range, source) do
+      apply_change(source, ex_range, new_text)
+    else
+      _ ->
+        {:error, {:invalid_range, range}}
+    end
+  end
+
+  defp apply_change(%__MODULE__{}, %{range: invalid_range}) do
+    {:error, {:invalid_range, invalid_range}}
+  end
+
+  defp apply_change(%__MODULE__{} = source, %{text: new_text}) do
     {:ok, %__MODULE__{source | document: Document.new(new_text)}}
   end
 
@@ -227,13 +256,7 @@ defmodule Lexical.SourceFile do
     Document.to_iodata(source.document)
   end
 
-  defp increment_version(%__MODULE__{} = source) do
-    version =
-      case source.version do
-        v when is_integer(v) -> v + 1
-        _ -> 1
-      end
-
-    %__MODULE__{source | version: version}
-  end
+  # defp increment_version(%__MODULE__{} = source) do
+  #   %__MODULE__{source | version: source.version + 1}
+  # end
 end

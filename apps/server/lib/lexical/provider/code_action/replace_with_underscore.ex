@@ -2,6 +2,7 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
   @moduledoc """
   A code action that prefixes unused variables with an underscore
   """
+  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.CodeMod
   alias Lexical.CodeMod.Ast
   alias Lexical.Protocol.Requests.CodeAction
@@ -27,7 +28,7 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
   end
 
   defp build_code_action(%SourceFile{} = source_file, one_based_line, variable_name) do
-    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, one_based_line),
+    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, one_based_line - 1),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, text_edits} <-
            CodeMod.ReplaceWithUnderscore.text_edits(line_text, line_ast, variable_name) do
@@ -36,6 +37,8 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
           :error
 
         [_ | _] ->
+          text_edits = Enum.map(text_edits, &adjust_line_number(&1, one_based_line - 1))
+
           reply =
             CodeActionResult.new(
               title: "Rename to _#{variable_name}",
@@ -68,5 +71,11 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
 
   defp extract_line(%Diagnostic{} = diagnostic) do
     {:ok, diagnostic.range.start.line}
+  end
+
+  defp adjust_line_number(%TextEdit{} = text_edit, zero_based_line) do
+    text_edit
+    |> put_in([:range, :start, :line], zero_based_line)
+    |> put_in([:range, :end, :line], zero_based_line)
   end
 end

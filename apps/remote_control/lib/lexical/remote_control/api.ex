@@ -11,7 +11,13 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def formatter_for_file(%Project{} = project, path) do
-    {formatter, _} = RemoteControl.call(project, Mix.Tasks.Format, :formatter_for_file, [path])
-    formatter
+    {formatter, options} =
+      RemoteControl.call(project, Mix.Tasks.Format, :formatter_for_file, [path])
+
+    {:ok, formatter, options}
+  end
+
+  def formatter_options_for_file(%Project{} = project, path) do
+    RemoteControl.call(project, Mix.Tasks.Format, :formatter_opts_for_file, [path])
   end
 end

@@ -1,33 +1,34 @@
 defmodule Lexical.CodeMod.Format do
   alias Lexical.CodeMod.Diff
+  alias Lexical.Project
+  alias Lexical.Protocol.Types.TextEdit
+  alias Lexical.RemoteControl
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Conversions
-  alias Lexical.Protocol.Types.TextEdit
 
   require Logger
   @type formatter_function :: (String.t() -> any) | nil
 
-  @spec text_edits(SourceFile.t(), String.t() | nil) :: {:ok, [TextEdit.t()]} | {:error, any}
-  def text_edits(%SourceFile{} = document, project_path_or_uri) do
-    with {:ok, unformatted, formatted} <- do_format(document, project_path_or_uri) do
+  @spec text_edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
+  def text_edits(%Project{} = project, %SourceFile{} = document) do
+    with {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
       {:ok, edits}
     end
   end
 
-  @spec format(SourceFile.t(), String.t() | nil) :: {:ok, String.t()} | {:error, any}
-  def format(%SourceFile{} = document, project_path_or_uri) do
-    with {:ok, _, formatted_code} <- do_format(document, project_path_or_uri) do
+  @spec format(SourceFile.t()) :: {:ok, String.t()} | {:error, any}
+  def format(%SourceFile{} = document) do
+    with {:ok, _, formatted_code} <- do_format(document) do
       {:ok, formatted_code}
     end
   end
 
-  defp do_format(%SourceFile{} = document, project_path_or_uri)
-       when is_binary(project_path_or_uri) do
-    project_path = Conversions.ensure_path(project_path_or_uri)
+  defp do_format(%Project{} = project, %SourceFile{} = document) do
+    project_path = Project.project_path(project)
 
     with :ok <- check_current_directory(document, project_path),
-         {:ok, formatter, options} <- formatter_for(document.path),
+         {:ok, formatter, options} <- formatter_for(project, document.path),
          :ok <-
            check_inputs_apply(document, project_path, Keyword.get(options, :inputs)) do
       document
@@ -36,7 +37,7 @@ defmodule Lexical.CodeMod.Format do
     end
   end
 
-  defp do_format(%SourceFile{} = document, _) do
+  defp do_format(%SourceFile{} = document) do
     formatter = build_formatter([])
 
     document
@@ -44,33 +45,20 @@ defmodule Lexical.CodeMod.Format do
     |> formatter.()
   end
 
-  @spec formatter_for(String.t()) :: {:ok, formatter_function, keyword()} | :error
-  defp formatter_for(uri_or_path) do
+  @spec formatter_for(Project.t(), String.t()) ::
+          {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
+  defp formatter_for(%Project{} = project, uri_or_path) do
     path = Conversions.ensure_path(uri_or_path)
 
-    try do
-      true = Code.ensure_loaded?(Mix.Tasks.Format)
-
-      if function_exported?(Mix.Tasks.Format, :formatter_for_file, 1) do
-        {formatter_function, options} = Mix.Tasks.Format.formatter_for_file(path)
-
+    case RemoteControl.Api.formatter_for_file(project, path) do
+      {:ok, formatter_function, options} ->
         wrapped_formatter_function = wrap_with_try_catch(formatter_function)
-
         {:ok, wrapped_formatter_function, options}
-      else
-        options = Mix.Tasks.Format.formatter_opts_for_file(path)
+
+      _ ->
+        options = RemoteControl.Api.formatter_options_for_file(project, path)
         formatter = build_formatter(options)
-        {:ok, formatter, Mix.Tasks.Format.formatter_opts_for_file(path)}
-      end
-    rescue
-      e ->
-        message = Exception.message(e)
-
-        Logger.warn(
-          "Unable to get formatter options for #{path}: #{inspect(e.__struct__)} #{message}"
-        )
-
-        {:error, :no_formatter_available}
+        {:ok, formatter, options}
     end
   end
 

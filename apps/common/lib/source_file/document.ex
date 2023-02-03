@@ -3,11 +3,14 @@ defmodule Lexical.SourceFile.Document do
   alias Lexical.SourceFile.Line
 
   import Line
-  defstruct lines: nil, starting_index: 1
+
+  @default_starting_index 0
+
+  defstruct lines: nil, starting_index: @default_starting_index
 
   @type t :: %__MODULE__{}
 
-  def new(text, starting_index \\ 1) do
+  def new(text, starting_index \\ @default_starting_index) do
     lines =
       text
       |> LineParser.parse(starting_index)

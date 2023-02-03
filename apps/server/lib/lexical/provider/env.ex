@@ -8,26 +8,21 @@ defmodule Lexical.Provider.Env do
   alias Lexical.Project
   alias Lexical.Server.Configuration
 
-  defstruct [:root_uri, :root_path, :project_uri, :project_path]
+  defstruct [:project]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          project: Project.t()
+        }
 
   def new do
     %__MODULE__{}
   end
 
   def from_configuration(%Configuration{} = config) do
-    %__MODULE__{
-      root_uri: config.project.root_uri,
-      root_path: Project.root_path(config.project),
-      project_uri: config.project.root_uri,
-      project_path: Project.project_path(config.project)
-    }
+    %__MODULE__{project: config.project}
   end
 
   def project_name(%__MODULE__{} = env) do
-    env.project_path
-    |> Path.split()
-    |> List.last()
+    Project.name(env.project)
   end
 end

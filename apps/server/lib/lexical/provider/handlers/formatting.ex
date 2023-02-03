@@ -1,4 +1,5 @@
 defmodule Lexical.Provider.Handlers.Formatting do
+  alias Lexical.Project
   alias Lexical.Provider.Env
   alias Lexical.CodeMod.Format
   alias Lexical.Protocol.Requests
@@ -8,10 +9,8 @@ defmodule Lexical.Provider.Handlers.Formatting do
 
   def handle(%Requests.Formatting{} = request, %Env{} = env) do
     document = request.source_file
-    Logger.info("project path #{inspect(env)}")
-    Logger.info("doc path #{document.uri}")
 
-    with {:ok, text_edits} <- Format.text_edits(document, env.project_uri) do
+    with {:ok, text_edits} <- Format.text_edits(env.project, document) do
       response = Responses.Formatting.new(request.id, text_edits)
       Logger.info("Response #{inspect(response)}")
       {:reply, response}
