@@ -1,4 +1,6 @@
 defmodule Lexical.Server.State do
+  alias Lexical.RemoteControl.Api
+
   alias Lexical.Protocol.Notifications.{
     DidChange,
     DidChangeConfiguration,
@@ -17,9 +19,8 @@ defmodule Lexical.Server.State do
   alias Lexical.Server.Transport
   alias Lexical.SourceFile
 
-  import Logger
-
   require CodeAction.Kind
+  require Logger
 
   defstruct configuration: nil, initialized?: false
 
@@ -36,7 +37,7 @@ defmodule Lexical.Server.State do
       }) do
     config = Configuration.new(event.root_uri, event.capabilities)
     new_state = %__MODULE__{state | configuration: config, initialized?: true}
-    info("Starting project at uri #{config.project.root_uri}")
+    Logger.info("Starting project at uri #{config.project.root_uri}")
 
     Lexical.Server.Project.Supervisor.start(config.project)
 
@@ -82,12 +83,17 @@ defmodule Lexical.Server.State do
     uri = event.text_document.uri
     version = event.text_document.version
 
-    case SourceFile.Store.update(
+    case SourceFile.Store.get_and_update(
            uri,
            &SourceFile.apply_content_changes(&1, version, event.content_changes)
          ) do
-      :ok -> {:ok, state}
-      error -> error
+      {:ok, updated_source_file} ->
+        Api.compile_source_file(state.configuration.project, updated_source_file)
+
+        {:ok, state}
+
+      error ->
+        error
     end
   end
 
@@ -97,11 +103,11 @@ defmodule Lexical.Server.State do
 
     case SourceFile.Store.open(uri, text, version) do
       :ok ->
-        info("opened #{uri}")
+        Logger.info("opened #{uri}")
         {:ok, state}
 
       error ->
-        error("Could not open #{text_document.uri} #{inspect(error)}")
+        Logger.error("Could not open #{text_document.uri} #{inspect(error)}")
         error
     end
   end
@@ -114,7 +120,7 @@ defmodule Lexical.Server.State do
         {:ok, state}
 
       error ->
-        warn("Received textDocument/didClose for a file that wasn't open. URI was #{uri}")
+        Logger.warn("Received textDocument/didClose for a file that wasn't open. URI was #{uri}")
         error
     end
   end
@@ -124,10 +130,12 @@ defmodule Lexical.Server.State do
 
     case SourceFile.Store.save(uri) do
       :ok ->
+        Logger.info("Starting compile")
+        Api.schedule_compile(state.configuration.project, false)
         {:ok, state}
 
       error ->
-        warn("Save failed for uri #{uri} error was #{inspect(error)}")
+        Logger.error("Save failed for uri #{uri} error was #{inspect(error)}")
         error
     end
   end
@@ -143,7 +151,8 @@ defmodule Lexical.Server.State do
   end
 
   def initialize_result(event_id) do
-    sync_options = TextDocument.Sync.Options.new(open_close: true, change: :incremental)
+    sync_options =
+      TextDocument.Sync.Options.new(open_close: true, change: :incremental, save: true)
 
     code_action_options =
       CodeAction.Options.new(code_action_kinds: @supported_code_actions, resolve_provider: false)

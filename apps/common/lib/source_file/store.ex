@@ -190,7 +190,7 @@ defmodule Lexical.SourceFile.Store do
     GenServer.call(__MODULE__, {:close, uri})
   end
 
-  @spec get_and_update(uri(), updater()) :: {SourceFile.t(), State.t()}
+  @spec get_and_update(uri(), updater()) :: {:ok, SourceFile.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
     GenServer.call(__MODULE__, {:get_and_update, uri, update_fn})
   end

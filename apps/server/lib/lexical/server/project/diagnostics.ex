@@ -132,6 +132,7 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Mix.Task.Compiler
 
   import Messages
+  require Logger
   use GenServer
 
   def start_link(%Project{} = project) do
@@ -149,25 +150,27 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [project_compiled(), file_compiled()])
+    Dispatch.register(project, [project_compiled(), file_compiled(), file_compile_requested()])
     state = State.new(project)
     {:ok, state}
   end
 
   @impl GenServer
-  def handle_info(project_compiled(diagnostics: diagnostics), %State{} = state) do
-    uris =
-      Enum.map(diagnostics, fn
-        %Mix.Error{} ->
-          state.project.mix_exs_uri
-
-        %Compiler.Diagnostic{file: file} ->
-          SourceFile.Path.to_uri(file)
-      end)
-
-    state = Enum.reduce(uris, state, &State.clear(&2, &1))
+  def handle_info(
+        project_compiled(diagnostics: diagnostics, elapsed_ms: elapsed_ms),
+        %State{} = state
+      ) do
+    time_string = Lexical.Text.format_seconds(elapsed_ms, unit: :millisecond)
+    Logger.info("Project compiled! in #{time_string}")
+    state = State.clear_all(state)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1))
     publish_diagnostics(state)
+    {:noreply, state}
+  end
+
+  def handle_info(file_compile_requested(uri: uri), %State{} = state) do
+    Logger.info("File #{uri} will be compiled")
+
     {:noreply, state}
   end
 
@@ -176,10 +179,11 @@ defmodule Lexical.Server.Project.Diagnostics do
         file_compiled(diagnostics: diagnostics, source_file: %SourceFile{} = source_file),
         %State{} = state
       ) do
+    Logger.info("File #{source_file.uri} compiled, diags: #{inspect(diagnostics)}")
     state = State.clear(state, source_file.uri)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1, source_file))
     publish_diagnostics(state)
-    {:ok, state}
+    {:noreply, state}
   end
 
   # Private

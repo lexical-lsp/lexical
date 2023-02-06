@@ -72,6 +72,7 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
+    RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
     {elapsed_us, result} = :timer.tc(fn -> safe_compile(source_file) end)
     elapsed_ms = to_ms(elapsed_us)
 

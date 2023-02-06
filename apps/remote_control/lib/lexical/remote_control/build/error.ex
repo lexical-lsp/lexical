@@ -42,6 +42,10 @@ defmodule Lexical.RemoteControl.Build.Error do
     nil
   end
 
+  defp do_message_to_diagnostic("warning: redefining module" <> _) do
+    nil
+  end
+
   defp do_message_to_diagnostic(message) do
     [message, location] = String.split(message, "\n")
 
