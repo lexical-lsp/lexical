@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Build do
 
     message =
       case result do
-        :ok ->
+        {:ok, []} ->
           file_compiled(
             status: :success,
             project: project,
@@ -179,22 +179,17 @@ defmodule Lexical.RemoteControl.Build do
       end
 
       compile_fun = fn ->
-        {result, _ignored_io} =
-          capture_io(fn ->
-            Mix.Task.run("compile", opts)
-          end)
-
-        result
+        capture_io(:stderr, fn -> Mix.Task.run("compile", opts) end)
       end
 
       case compile_fun.() do
-        {:error, _} = error ->
+        {_output, {:error, _} = error} ->
           error
 
-        {_, []} ->
-          :ok
+        {_output, {_status, []}} ->
+          {:ok, []}
 
-        {status, [_ | _] = diagnostics} when status in [:ok, :noop] ->
+        {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
           {:ok, diagnostics}
       end
     rescue
@@ -203,21 +198,23 @@ defmodule Lexical.RemoteControl.Build do
     end
   end
 
-  defp safe_compile(%SourceFile{} = source_file) do
-    try do
-      capture_io(:stderr, fn ->
-        source_file
-        |> SourceFile.to_string()
-        |> Code.compile_string(source_file.path)
-      end)
-    rescue
-      e ->
-        {:error, [Build.Error.error_to_diagnostic(e)]}
-    else
-      {_, ""} ->
-        :ok
+  def safe_compile(%SourceFile{} = source_file) do
+    compile = fn ->
+      source_file
+      |> SourceFile.to_string()
+      |> Code.eval_string([], file: source_file.path)
+    end
 
-      {_, captured_warnings} ->
+    case capture_io(:stderr, compile) do
+      {captured_messages, {type, e}} when type in [:error, :exception] ->
+        diagnostics = Build.Error.message_to_diagnostic(captured_messages)
+        error = Build.Error.error_to_diagnostic(e)
+        {:error, [error | diagnostics]}
+
+      {"", _} ->
+        {:ok, []}
+
+      {captured_warnings, _} ->
         diagnostics = Build.Error.message_to_diagnostic(captured_warnings)
         {:ok, diagnostics}
     end

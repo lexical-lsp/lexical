@@ -1,5 +1,4 @@
 defmodule Lexical.Provider.Handlers.Formatting do
-  alias Lexical.Project
   alias Lexical.Provider.Env
   alias Lexical.CodeMod.Format
   alias Lexical.Protocol.Requests

@@ -70,20 +70,34 @@ defmodule Lexical.Protocol.Notifications do
 
   defmodule LogMessage do
     use Proto
+    require Types.Message.Type
 
     defnotification("window/logMessage", :shared,
       message: string(),
       type: Types.Message.Type
     )
+
+    for type <- [:error, :warning, :info, :log] do
+      def unquote(type)(message) do
+        new(message: message, type: Types.Message.Type.unquote(type)())
+      end
+    end
   end
 
   defmodule ShowMessage do
     use Proto
+    require Types.Message.Type
 
     defnotification("window/showMessage", :shared,
       message: string(),
       type: Types.Message.Type
     )
+
+    for type <- [:error, :warning, :info, :log] do
+      def unquote(type)(message) do
+        new(message: message, type: Types.Message.Type.unquote(type)())
+      end
+    end
   end
 
   use Proto, decoders: :notifications

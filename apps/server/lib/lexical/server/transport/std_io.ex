@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Transport.StdIO do
+  alias Lexical.Protocol.Notifications.LogMessage
   alias Lexical.Protocol.JsonRpc
 
   def start_link(device, callback) do
@@ -39,9 +40,10 @@ defmodule Lexical.Server.Transport.StdIO do
 
   def log(level, message, opts \\ [])
 
-  def log(level, message, opts) when level in [:error, :warning] do
-    log_message = format_message(message, opts)
-    write(:standard_error, log_message)
+  def log(level, message, opts) when level in [:error, :warning, :info, :log] do
+    formatted_message = format_message(message, opts)
+    log_message = apply(LogMessage, level, [formatted_message])
+    write(:standard_io, log_message)
     message
   end
 

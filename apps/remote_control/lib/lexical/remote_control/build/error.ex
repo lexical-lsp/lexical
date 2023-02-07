@@ -5,7 +5,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     %Diagnostic{
       message: syntax_error.description,
       position: lsp_position(syntax_error.line, syntax_error.column),
-      compiler_name: "elixirc",
+      compiler_name: "Elixir",
       file: syntax_error.file,
       severity: :error
     }
@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     %Diagnostic{
       message: token_error.description,
       position: lsp_position(token_error.line, token_error.column),
-      compiler_name: "elixirc",
+      compiler_name: "Elixir",
       file: token_error.file,
       severity: :error
     }
@@ -25,9 +25,19 @@ defmodule Lexical.RemoteControl.Build.Error do
     %Diagnostic{
       message: compile_error.description,
       position: lsp_position(compile_error.line, 0),
-      compiler_name: "elixirc",
+      compiler_name: "Elixir",
       file: compile_error.file,
       severity: :error
+    }
+  end
+
+  def error_to_diagnostic(%FunctionClauseError{} = function_clause) do
+    %Diagnostic{
+      message: Exception.message(function_clause),
+      position: lsp_position(0, 0),
+      file: nil,
+      severity: :error,
+      compiler_name: "Elixir"
     }
   end
 
@@ -42,7 +52,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     nil
   end
 
-  defp do_message_to_diagnostic("warning: redefining module" <> _) do
+  defp do_message_to_diagnostic("redefining module" <> _) do
     nil
   end
 
@@ -54,7 +64,7 @@ defmodule Lexical.RemoteControl.Build.Error do
         {file, line, column, mfa} = location
 
         %Diagnostic{
-          compiler_name: "elixirc",
+          compiler_name: "Elixir",
           details: mfa,
           message: message,
           file: file,
@@ -89,8 +99,7 @@ defmodule Lexical.RemoteControl.Build.Error do
         location = {file, line, column, {module, function, arity}}
         {:ok, location}
 
-      m ->
-        IO.inspect(m, label: "no match")
+      _ ->
         :error
     end
   end

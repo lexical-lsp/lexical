@@ -7,23 +7,15 @@ defmodule Lexical.RemoteControl do
 
   alias Lexical.Project
 
-  @allow_list [
-    # The paths with the slash match in a release
-    "/elixir-",
-    "/erlang/",
-    "/mix-",
-    "common",
-    "compiler",
-    "hex",
-    "iex",
-    "kernel",
-    "logger-",
-    "mix",
-    "protocol",
-    "remote_control",
-    "sasl",
-    "syntax-tools"
+  @allowed_apps ~w(mix logger common path_glob remote_control elixir_sense)a
+  @system_globs [
+    "/**/erlang/**/ebin",
+    "/**/elixir*/ebin",
+    "/**/hex*/ebin"
   ]
+
+  @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+  @allow_globs Enum.concat(@system_globs, @app_globs)
 
   @localhost_ip {0, 0, 0, 0}
   @localhost_string '127.0.0.1'
@@ -44,16 +36,14 @@ defmodule Lexical.RemoteControl do
         "-noshell"
       ])
 
+    apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
+
     with {:ok, node} <- :slave.start_link('127.0.0.1', node_name, erl_args),
-         :ok <- :rpc.call(node, :code, :add_paths, [code_paths()]),
+         :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
          :ok <- :rpc.call(node, __MODULE__, :set_project, [project]),
          :ok <- :rpc.call(node, __MODULE__, :set_project_listener_pid, [project_listener]),
          :ok <- :rpc.call(node, File, :cd, [Project.root_path(project)]),
-         {:ok, _} <- :rpc.call(node, Application, :ensure_all_started, [:elixir]),
-         {:ok, _} <- :rpc.call(node, Application, :ensure_all_started, [:logger]),
-         {:ok, _} <- :rpc.call(node, Application, :ensure_all_started, [:mix]),
-         {:ok, _} <- :rpc.call(node, Application, :ensure_all_started, [:remote_control]),
-         {:ok, _} <- :rpc.call(node, Application, :ensure_all_started, [:runtime_tools]) do
+         :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node}
     end
   end
@@ -138,14 +128,21 @@ defmodule Lexical.RemoteControl do
     end)
   end
 
-  def code_paths do
+  def ensure_apps_started(node, app_names) do
+    Enum.reduce_while(app_names, :ok, fn app_name, _ ->
+      case :rpc.call(node, :application, :ensure_all_started, [app_name]) do
+        {:ok, _} -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  def glob_paths do
     for entry <- :code.get_path(),
         entry_string = List.to_string(entry),
-        Enum.any?(@allow_list, &String.contains?(entry_string, &1)) do
+        Enum.any?(@allow_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
       entry
     end
-
-    :code.get_path()
   end
 
   defp erl_args(arg_list) do

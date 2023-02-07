@@ -10,6 +10,8 @@ defmodule Lexical.Server.Project.Diagnostics do
 
     defstruct [:project, :diagnostics_by_uri]
 
+    require Logger
+
     def new(%Project{} = project) do
       %__MODULE__{project: project, diagnostics_by_uri: %{}}
     end
@@ -76,6 +78,11 @@ defmodule Lexical.Server.Project.Diagnostics do
       end
     end
 
+    def add(%__MODULE__{} = state, other) do
+      Logger.error("Invalid diagnostic: #{inspect(other)}")
+      state
+    end
+
     defp to_protocol(%Compiler.Diagnostic{} = diagnostic, %SourceFile{} = source_file) do
       %Diagnostic{
         message: diagnostic.message,
@@ -105,21 +112,21 @@ defmodule Lexical.Server.Project.Diagnostics do
       }
     end
 
-    defp position_to_range(_, line) when is_integer(line) do
-      Range.new(
-        start: Position.new(line: max(line - 1, 0), character: 0),
-        end: Position.new(line: line, character: 0)
-      )
-    end
-
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
       with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
            {:ok, character} <- CodeUnit.to_utf16(line_text, column) do
         Range.new(
           start: Position.new(line: line_number, character: character),
-          end: Position.new(line: line_number, character: character)
+          end: Position.new(line: line_number + 1, character: 0)
         )
       end
+    end
+
+    defp position_to_range(_source_file, line) when is_integer(line) do
+      Range.new(
+        start: Position.new(line: max(line - 1, 0), character: 0),
+        end: Position.new(line: max(line, 0), character: 0)
+      )
     end
   end
 
@@ -176,10 +183,15 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   @impl GenServer
   def handle_info(
-        file_compiled(diagnostics: diagnostics, source_file: %SourceFile{} = source_file),
+        file_compiled(
+          diagnostics: diagnostics,
+          source_file: %SourceFile{} = source_file,
+          elapsed_ms: elapsed_ms
+        ),
         %State{} = state
       ) do
-    Logger.info("File #{source_file.uri} compiled, diags: #{inspect(diagnostics)}")
+    time_string = Lexical.Text.format_seconds(elapsed_ms, unit: :millisecond)
+    Logger.info("File #{source_file.uri} compiled, in #{time_string}")
     state = State.clear(state, source_file.uri)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1, source_file))
     publish_diagnostics(state)

@@ -11,5 +11,5 @@ defmodule Lexical.RemoteControl.Api.Messages do
     diagnostics: [],
     elapsed_ms: 0
 
-  defrecord :module_updated, name: nil, functions: [], macros: []
+  defrecord :module_updated, name: nil, functions: [], macros: [], struct: nil
 end

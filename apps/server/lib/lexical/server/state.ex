@@ -87,9 +87,8 @@ defmodule Lexical.Server.State do
            uri,
            &SourceFile.apply_content_changes(&1, version, event.content_changes)
          ) do
-      {:ok, updated_source_file} ->
-        Api.compile_source_file(state.configuration.project, updated_source_file)
-
+      {:ok, updated_source} ->
+        Api.compile_source_file(state.configuration.project, updated_source)
         {:ok, state}
 
       error ->
