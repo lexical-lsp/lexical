@@ -17,8 +17,8 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
     diagnostics = get_in(code_action, [:context, :diagnostics]) || []
 
     Enum.flat_map(diagnostics, fn %Diagnostic{} = diagnostic ->
-      with {:ok, variable_name, one_based_line} <- extract_variable_and_line(diagnostic),
-           {:ok, reply} <- build_code_action(source_file, one_based_line, variable_name) do
+      with {:ok, variable_name, line_number} <- extract_variable_and_line(diagnostic),
+           {:ok, reply} <- build_code_action(source_file, line_number, variable_name) do
         [reply]
       else
         _ ->
@@ -27,8 +27,8 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
     end)
   end
 
-  defp build_code_action(%SourceFile{} = source_file, one_based_line, variable_name) do
-    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, one_based_line - 1),
+  defp build_code_action(%SourceFile{} = source_file, line_number, variable_name) do
+    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, text_edits} <-
            CodeMod.ReplaceWithUnderscore.text_edits(line_text, line_ast, variable_name) do
@@ -37,7 +37,7 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
           :error
 
         [_ | _] ->
-          text_edits = Enum.map(text_edits, &adjust_line_number(&1, one_based_line - 1))
+          text_edits = Enum.map(text_edits, &adjust_line_number(&1, line_number))
 
           reply =
             CodeActionResult.new(
@@ -73,9 +73,9 @@ defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
     {:ok, diagnostic.range.start.line}
   end
 
-  defp adjust_line_number(%TextEdit{} = text_edit, zero_based_line) do
+  defp adjust_line_number(%TextEdit{} = text_edit, line_number) do
     text_edit
-    |> put_in([:range, :start, :line], zero_based_line)
-    |> put_in([:range, :end, :line], zero_based_line)
+    |> put_in([:range, :start, :line], line_number)
+    |> put_in([:range, :end, :line], line_number)
   end
 end
