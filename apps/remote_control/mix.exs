@@ -27,7 +27,8 @@ defmodule Lexical.RemoteControl.MixProject do
       {:common, in_umbrella: true},
       {:jason, "~> 1.4", optional: true},
       {:path_glob, "~> 0.2", optional: true},
-      {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git", runtime: false}
+      {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git", runtime: false},
+      {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false}
     ]
   end
 end

@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl do
   """
 
   alias Lexical.Project
+  alias Lexical.RemoteControl
 
   @allowed_apps ~w(mix logger common path_glob remote_control elixir_sense)a
   @system_globs [
@@ -23,13 +24,12 @@ defmodule Lexical.RemoteControl do
   def start_link(%Project{} = project, project_listener) do
     entropy = :rand.uniform(65536)
 
-    ensure_started(entropy)
+    start_net_kernel(entropy)
 
     node_name = String.to_charlist("#{Project.name(project)}")
 
     erl_args =
       erl_args([
-        "-loader inet",
         "-hosts 127.0.0.1",
         "-setcookie #{Node.get_cookie()}",
         "-sbwt none",
@@ -40,6 +40,7 @@ defmodule Lexical.RemoteControl do
 
     with {:ok, node} <- :slave.start_link('127.0.0.1', node_name, erl_args),
          :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
+         :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project]),
          :ok <- :rpc.call(node, __MODULE__, :set_project, [project]),
          :ok <- :rpc.call(node, __MODULE__, :set_project_listener_pid, [project_listener]),
          :ok <- :rpc.call(node, File, :cd, [Project.root_path(project)]),
@@ -92,27 +93,8 @@ defmodule Lexical.RemoteControl do
     :"#{Project.name(project)}@127.0.0.1"
   end
 
-  defp ensure_started(entropy) do
-    # boot server startup
-    start_boot_server = fn ->
-      # voodoo flag to generate a "started" atom flag
-      once("boot_server:started", fn ->
-        {:ok, _} = :erl_boot_server.start([@localhost_ip, {127, 0, 0, 1}])
-      end)
-
-      :ok
-    end
-
-    # only ever handle the :erl_boot_server on the initial startup
-    case :net_kernel.start([:"manager-#{entropy}@127.0.0.1"]) do
-      # handle nodes that have already been started elsewhere
-      {:error, {{:already_started, _}, _}} -> start_boot_server.()
-      {:error, {:already_started, _}} -> start_boot_server.()
-      # handle the node being started
-      {:ok, _} -> start_boot_server.()
-      # pass anything else
-      anything -> anything
-    end
+  defp start_net_kernel(entropy) do
+    :net_kernel.start([:"manager-#{entropy}@127.0.0.1"])
   end
 
   defp once(flag, func) do

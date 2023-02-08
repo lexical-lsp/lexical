@@ -18,8 +18,6 @@ defmodule Lexical.Protocol.Conversions do
 
   import Line
 
-  @elixir_ls_index_base 1
-
   def to_elixir(
         %LSRange{} = ls_range,
         %SourceFile{} = source
@@ -44,7 +42,7 @@ defmodule Lexical.Protocol.Conversions do
     # by starting with an empty document and appending to the beginning of it, with a start range of
     # {0, 0} and and end range of {1, 0} (replace the first line)
     document_line_number = min(position.line, document_size)
-    elixir_line_number = document_line_number + @elixir_ls_index_base
+    elixir_line_number = document_line_number + document.starting_index
     ls_character = position.character
 
     cond do
@@ -96,7 +94,7 @@ defmodule Lexical.Protocol.Conversions do
     with {:ok, line} <- Document.fetch_line(document, position.line),
          {:ok, lsp_character} <- extract_lsp_character(position, line) do
       ls_pos =
-        LSPosition.new(character: lsp_character, line: position.line - @elixir_ls_index_base)
+        LSPosition.new(character: lsp_character, line: position.line - document.starting_index)
 
       {:ok, ls_pos}
     end

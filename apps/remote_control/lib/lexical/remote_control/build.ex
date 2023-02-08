@@ -33,10 +33,7 @@ defmodule Lexical.RemoteControl.Build do
   def init([]) do
     project = RemoteControl.get_project()
 
-    with :ok <- set_compiler_options(),
-         {:ok, _mix_module} <- load_mix_exs(project),
-         {:ok, deps} <- project_deps(),
-         :ok <- :code.add_pathsz(deps) do
+    with :ok <- set_compiler_options() do
       {:ok, project}
     end
   end
@@ -127,36 +124,6 @@ defmodule Lexical.RemoteControl.Build do
 
   defp parser_options do
     [columns: true, token_metadata: true]
-  end
-
-  defp find_mix_exs(%Project{} = project) do
-    with path when is_binary(path) <- Project.mix_exs_path(project),
-         true <- File.exists?(path) do
-      {:ok, path}
-    else
-      _ ->
-        {:error, :no_mix_exs}
-    end
-  end
-
-  defp load_mix_exs(%Project{} = project) do
-    with {:ok, mix_exs_path} <- find_mix_exs(project),
-         {:ok, [project_module], _} <- Kernel.ParallelCompiler.compile([mix_exs_path]) do
-      {:ok, project_module}
-    end
-  end
-
-  def project_deps do
-    build_root = Path.join(Mix.Project.build_path(), "lib")
-
-    deps_paths =
-      for dep_dir <- File.ls!(build_root),
-          ebin_path = Path.join([build_root, dep_dir, "ebin"]),
-          File.exists?(ebin_path) do
-        String.to_charlist(ebin_path)
-      end
-
-    {:ok, deps_paths}
   end
 
   def safe_compile_project(force?) do
