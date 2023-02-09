@@ -25,4 +25,10 @@ defmodule Lexical.Protocol.Responses do
 
     defresponse optional(list_of(Types.CodeAction))
   end
+
+  defmodule Completion do
+    use Proto
+
+    defresponse optional(list_of(one_of([list_of(Types.Completion.Item), Types.Completion.List])))
+  end
 end

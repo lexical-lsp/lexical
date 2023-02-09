@@ -16,8 +16,7 @@ defmodule Lexical.Server.Project.Supervisor do
   def init(%Project{} = project) do
     children = [
       {Dispatch, project},
-      {Diagnostics, project},
-      {Index, project}
+      {Diagnostics, project}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

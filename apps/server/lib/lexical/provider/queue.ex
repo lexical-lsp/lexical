@@ -15,7 +15,8 @@ defmodule Lexical.Provider.Queue do
     @requests_to_handler %{
       Requests.FindReferences => Handlers.FindReferences,
       Requests.Formatting => Handlers.Formatting,
-      Requests.CodeAction => Handlers.CodeAction
+      Requests.CodeAction => Handlers.CodeAction,
+      Requests.Completion => Handlers.Completion
     }
 
     def new do

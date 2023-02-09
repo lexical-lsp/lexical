@@ -13,6 +13,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.CodeAction
+  alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Requests.Initialize
   alias Lexical.Protocol.Types.TextDocument
   alias Lexical.Server.Configuration
@@ -156,9 +157,12 @@ defmodule Lexical.Server.State do
     code_action_options =
       CodeAction.Options.new(code_action_kinds: @supported_code_actions, resolve_provider: false)
 
+    completion_options = Completion.Options.new(trigger_characters: @trigger_characters)
+
     server_capabilities =
       Types.ServerCapabilities.new(
         code_action_provider: code_action_options,
+        completion_provider: completion_options,
         document_formatting_provider: true,
         text_document_sync: sync_options
       )

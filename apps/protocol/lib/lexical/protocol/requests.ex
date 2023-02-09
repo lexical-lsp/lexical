@@ -44,6 +44,15 @@ defmodule Lexical.Protocol.Requests do
       text_document: Types.TextDocument.Identifier
   end
 
+  defmodule Completion do
+    use Proto
+
+    defrequest "textDocument/completion", :exclusive,
+      text_document: Types.TextDocument.Identifier,
+      position: Types.Position,
+      context: Types.Completion.Context
+  end
+
   # Server -> Client requests
 
   defmodule RegisterCapability do

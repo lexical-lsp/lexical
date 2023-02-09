@@ -26,19 +26,22 @@ defmodule Lexical.MixProject do
         ],
         include_executables_for: [:unix],
         include_erts: false,
-        cookie: "lexical"
+        cookie: "lexical",
+        strip_beams: false
       ],
       remote_control: [
         applications: [remote_control: :permanent],
         include_erts: false,
-        include_executables_for: []
+        include_executables_for: [],
+        strip_beams: false
       ]
     ]
   end
 
   defp aliases do
     [
-      test: "test --no-start"
+      test: "test --no-start",
+      compile: "compile --docs --debug-info"
     ]
   end
 end

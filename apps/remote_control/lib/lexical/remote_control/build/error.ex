@@ -57,23 +57,27 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   defp do_message_to_diagnostic(message) do
-    [message, location] = String.split(message, "\n")
+    if String.contains?(message, "redefining module") do
+      nil
+    else
+      [message, location] = String.split(message, "\n")
 
-    case parse_location(location) do
-      {:ok, location} ->
-        {file, line, column, mfa} = location
+      case parse_location(location) do
+        {:ok, location} ->
+          {file, line, column, mfa} = location
 
-        %Diagnostic{
-          compiler_name: "Elixir",
-          details: mfa,
-          message: message,
-          file: file,
-          position: lsp_position(line, column),
-          severity: :warning
-        }
+          %Diagnostic{
+            compiler_name: "Elixir",
+            details: mfa,
+            message: message,
+            file: file,
+            position: lsp_position(line, column),
+            severity: :warning
+          }
 
-      _ ->
-        nil
+        _ ->
+          nil
+      end
     end
   end
 

@@ -1,4 +1,7 @@
 defmodule Lexical.RemoteControl.Completion do
+  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.SourceFile.Position
+
   @bitstring_modifiers [
     %{kind: :variable, name: "big"},
     %{kind: :variable, name: "binary"},
@@ -15,6 +18,15 @@ defmodule Lexical.RemoteControl.Completion do
     %{kind: :variable, name: "utf16"},
     %{kind: :variable, name: "utf32"}
   ]
+
+  def elixir_sense_expand(source, %Position{} = position) do
+    # Add one to both the line and character, because elixir sense
+    # has one-based lines, and the character needs to be after the context,
+    # rather than in between.
+    source
+    |> ElixirSense.suggestions(position.line + 1, position.character + 1)
+    |> Enum.map(&Result.from_elixir_sense/1)
+  end
 
   @doc """
   The expansion logic.
