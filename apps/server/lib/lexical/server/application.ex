@@ -4,14 +4,12 @@ defmodule Lexical.Server.Application do
   @moduledoc false
 
   alias Lexical.Provider
-  alias Lexical.Server.JsonRpc.Backend, as: JsonRpcBackend
+
   alias Lexical.Server.Transport
   use Application
 
   @impl true
   def start(_type, _args) do
-    add_jsonrpc_backend()
-
     children = [
       Lexical.SourceFile.Store,
       Lexical.Server,
@@ -23,18 +21,5 @@ defmodule Lexical.Server.Application do
 
     opts = [strategy: :one_for_one, name: Lexical.Server.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  defp add_jsonrpc_backend() do
-    Application.put_env(:logger, :backends, [JsonRpcBackend])
-
-    Application.put_env(:logger, JsonRpcBackend,
-      level: :debug,
-      format: "$message",
-      metadata: []
-    )
-
-    {:ok, _} = Logger.add_backend(JsonRpcBackend)
-    :ok = Logger.remove_backend(:console, flush: true)
   end
 end

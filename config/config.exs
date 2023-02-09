@@ -8,6 +8,7 @@
 # configurations or dependencies per app, it is best to
 # move said applications out of the umbrella.
 import Config
+alias Lexical.Server.JsonRpc.Backend, as: JsonRpcBackend
 
 # Sample configuration:
 #
@@ -16,3 +17,12 @@ import Config
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 #
+
+config :logger, backends: [JsonRpcBackend]
+
+config :logger, JsonRpcBackend,
+  level: :debug,
+  format: "$message",
+  metadata: []
+
+import_config("#{Mix.env()}.exs")
