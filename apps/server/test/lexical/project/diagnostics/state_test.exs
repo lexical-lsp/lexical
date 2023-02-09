@@ -1,15 +1,18 @@
 defmodule Lexical.Project.Diagnostics.StateTest do
   alias Lexical.Project
   alias Lexical.Protocol.Types.Diagnostic
+  alias Lexical.Protocol.Types.Range
   alias Lexical.SourceFile
   alias Lexical.Server.Project.Diagnostics.State
   alias Mix.Task.Compiler
 
   import Lexical.Test.Fixtures
+
   use Lexical.Test.CodeMod.Case
 
   setup do
     {:ok, _} = start_supervised(Lexical.SourceFile.Store)
+
     project = project()
     state = State.new(project)
     {:ok, project: project(), state: state}
@@ -78,7 +81,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       end
       ]
       source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {2, 5})
+      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {1, 5})
 
       state = State.add(state, diagnostic, source_file)
 
@@ -86,14 +89,15 @@ defmodule Lexical.Project.Diagnostics.StateTest do
                State.get(state, SourceFile.Path.to_uri(diagnostic.file))
 
       assert proto_diagnostic.message == "Hoo boy, this is a mess"
-      range = proto_diagnostic.range
+
+      %Range{} = range = proto_diagnostic.range
 
       # Starting at 0 and going to character 0 on the next line highlights the entire line
-      assert range.start.line == 2
+      assert range.start.line == 1
       assert range.start.character == 5
 
       assert range.end.line == 2
-      assert range.end.character == 5
+      assert range.end.character == 0
     end
 
     test "converts a position that is a line and a column handling emojis", %{state: state} do
@@ -106,7 +110,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       ]
 
       source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {3, 9})
+      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {2, 9})
 
       state = State.add(state, diagnostic, source_file)
 
@@ -117,11 +121,11 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       range = proto_diagnostic.range
 
       # Starting at 0 and going to character 0 on the next line highlights the entire line
-      assert range.start.line == 3
+      assert range.start.line == 2
       assert range.start.character == 7
 
       assert range.end.line == 3
-      assert range.end.character == 7
+      assert range.end.character == 0
     end
   end
 end

@@ -133,6 +133,10 @@ defmodule Lexical.Project do
     {:ok, old_project}
   end
 
+  defp find_mix_exs_path(nil) do
+    System.get_env("MIX_EXS")
+  end
+
   defp find_mix_exs_path(project_directory) do
     case System.get_env("MIX_EXS") do
       nil ->

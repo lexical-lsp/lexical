@@ -2,8 +2,9 @@ defmodule Lexical.Test.Fixtures do
   alias Lexical.Project
 
   def project do
-    [File.cwd!(), "test", "fixtures", "project"]
+    [Path.dirname(__ENV__.file), "..", "fixtures", "project"]
     |> Path.join()
+    |> Path.expand()
     |> Lexical.SourceFile.Path.to_uri()
     |> Project.new()
   end
