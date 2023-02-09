@@ -14,8 +14,9 @@ defmodule Lexical.RemoteControl.Bootstrap do
     with {:ok, _} <- Application.ensure_all_started(:elixir),
          {:ok, _} <- Application.ensure_all_started(:mix),
          :ok <- File.cd(project_root),
-         {:ok, mix_project} <- load_mix_exs(project) do
-      load_project_build_paths(mix_project)
+         {:ok, mix_project} <- load_mix_exs(project),
+         load_project_build_paths(mix_project) do
+      Mix.start()
     end
   end
 
@@ -25,6 +26,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
     |> Path.wildcard()
     |> Enum.map(&String.to_charlist/1)
     |> :code.add_pathsz()
+
+    :ok
   end
 
   defp find_mix_exs(%Project{} = project) do
