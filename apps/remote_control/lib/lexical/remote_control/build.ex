@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Build do
+  alias Lexical.RemoteControl.CompileTracer
   alias Lexical.RemoteControl.Build
   alias Lexical.Project
   alias Lexical.RemoteControl
@@ -167,9 +168,22 @@ defmodule Lexical.RemoteControl.Build do
 
   def safe_compile(%SourceFile{} = source_file) do
     compile = fn ->
-      source_file
-      |> SourceFile.to_string()
-      |> Code.eval_string([], file: source_file.path)
+      result =
+        source_file
+        |> SourceFile.to_string()
+        |> Code.eval_string([], file: source_file.path)
+
+      case result do
+        {{:module, module_name, _, _}, _} ->
+          module_name
+          |> CompileTracer.extract_module_updated()
+          |> RemoteControl.notify_listener()
+
+        _ ->
+          :ok
+      end
+
+      result
     end
 
     case capture_io(:stderr, compile) do

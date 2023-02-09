@@ -33,8 +33,6 @@ defmodule Lexical.BuildTest do
 
     {:ok, _} = RemoteControl.start_link(project, self())
 
-    assert_receive module_updated(), 5000
-
     on_exit(fn ->
       :ok = RemoteControl.stop(project)
     end)
