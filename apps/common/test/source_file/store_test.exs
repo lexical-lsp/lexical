@@ -1,7 +1,6 @@
 defmodule Lexical.SourceFile.StoreTest do
   alias Lexical.SourceFile
   use ExUnit.Case
-  use Patch
 
   setup do
     {:ok, _} = start_supervised(SourceFile.Store)
@@ -139,11 +138,13 @@ defmodule Lexical.SourceFile.StoreTest do
     end
     """
 
-    patch(File, :read, fn _uri ->
-      {:ok, contents}
+    :ok = File.write("/tmp/file.ex", contents)
+
+    on_exit(fn ->
+      File.rm!("/tmp/file.ex")
     end)
 
-    {:ok, contents: contents, uri: "file:///file.ex"}
+    {:ok, contents: contents, uri: "file:///tmp/file.ex"}
   end
 
   describe "a temp document" do

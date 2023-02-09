@@ -5,7 +5,6 @@ defmodule Lexical.SourceFileTest do
 
   use ExUnit.Case
   use ExUnitProperties
-  use Patch
 
   import Lexical.SourceFile, except: [to_string: 1]
 
