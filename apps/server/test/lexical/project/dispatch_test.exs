@@ -14,7 +14,7 @@ defmodule Lexical.Project.DispatchTest do
   end
 
   def with_dispatch_started(%{project: project}) do
-    patch(RemoteControl, :start_link, :ok)
+    patch(RemoteControl, :start_link, {:ok, :node})
     patch(RemoteControl.Api, :schedule_compile, :ok)
     patch(RemoteControl.Api, :list_modules, [])
     {:ok, dispatch} = start_supervised({Dispatch, project})
