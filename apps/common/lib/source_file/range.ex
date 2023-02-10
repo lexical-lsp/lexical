@@ -7,3 +7,11 @@ defmodule Lexical.SourceFile.Range do
     %__MODULE__{start: start_pos, end: end_pos}
   end
 end
+
+defimpl Lexical.Ranged.Native, for: Lexical.SourceFile.Range do
+  alias Lexical.SourceFile.Range
+
+  def from_lsp(%Range{} = range, _) do
+    {:ok, range}
+  end
+end

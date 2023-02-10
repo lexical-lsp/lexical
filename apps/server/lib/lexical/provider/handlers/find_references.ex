@@ -4,8 +4,8 @@
 #   alias Lexical.Protocol.Requests.FindReferences
 #   alias Lexical.Protocol.Responses
 #   alias Lexical.Protocol.Types.Location
+#   alias Lexical.Ranged
 #   alias Lexical.SourceFile
-#   alias Lexical.SourceFile.Conversions
 
 #   require Logger
 
@@ -40,9 +40,9 @@
 
 #   defp build_reference(%{range: _, uri: _} = elixir_sense_reference, current_source_file) do
 #     with {:ok, source_file} <- get_source_file(elixir_sense_reference, current_source_file),
-#          {:ok, elixir_range} <- Conversions.to_elixir(elixir_sense_reference, source_file),
-#          {:ok, ls_range} <- Conversions.to_lsp(elixir_range, source_file) do
-#       uri = Conversions.ensure_uri(source_file.uri)
+#          {:ok, elixir_range} <- Ranged.Native.from_lsp(elixir_sense_reference, source_file),
+#          {:ok, ls_range} <- Ranged.Lsp.from_native(elixir_range, source_file) do
+#       uri = SourceFile.Path.ensure_uri(source_file.uri)
 #       {:ok, Location.new(uri: uri, range: ls_range)}
 #     end
 #   end

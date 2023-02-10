@@ -114,14 +114,14 @@ defmodule Lexical.SourceFileTest do
       high = map_size(line_offsets)
 
       if high == 0 do
-        %{line: 0, character: offset}
+        Position.new(line: 0, character: offset)
       else
         low = find_low_high(low, high, offset, line_offsets)
 
         # low is the least x for which the line offset is larger than the current offset
         # or array.length if no line offset is larger than the current offset
         line = low - 1
-        %{line: line, character: offset - line_offsets[line]}
+        Position.new(line: line, character: offset - line_offsets[line])
       end
     end
 
@@ -131,8 +131,8 @@ defmodule Lexical.SourceFileTest do
       |> min(high)
     end
 
-    def position_create(l, c) do
-      %{line: l, character: c}
+    def new_position(l, c) do
+      Position.new(line: l, character: c)
     end
 
     def position_after_substring(text, sub_text) do
@@ -148,19 +148,19 @@ defmodule Lexical.SourceFileTest do
         |> String.to_charlist()
         |> length()
 
-      %{
+      Range.new(
         start: position_at(source, index),
         end: position_at(source, index + substring_len)
-      }
+      )
     end
 
     def range_after_substring(source_text, sub_text) do
       pos = position_after_substring(source_text, sub_text)
-      %{start: pos, end: pos}
+      Range.new(start: pos, end: pos)
     end
 
-    def range_create(sl, sc, el, ec) do
-      %{start: position_create(sl, sc), end: position_create(el, ec)}
+    def new_range(sl, sc, el, ec) do
+      Range.new(start: new_position(sl, sc), end: new_position(el, ec))
     end
 
     def run_changes(original, changes, opts \\ []) do
@@ -207,7 +207,7 @@ defmodule Lexical.SourceFileTest do
                run_changes("", [
                  %{
                    text: "document",
-                   range: range_create(0, 0, 1, 0)
+                   range: new_range(0, 0, 1, 0)
                  }
                ])
 
@@ -404,15 +404,15 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "defg",
-                   range: range_create(0, 12, 0, 12)
+                   range: new_range(0, 12, 0, 12)
                  },
                  %{
                    text: "hello, test case!!!",
-                   range: range_create(1, 15, 1, 28)
+                   range: new_range(1, 15, 1, 28)
                  },
                  %{
                    text: "hij",
-                   range: range_create(0, 16, 0, 16)
+                   range: new_range(0, 16, 0, 16)
                  }
                ])
 
@@ -426,7 +426,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: " some extra content",
-                   range: range_create(1, 3, 1, 3)
+                   range: new_range(1, 3, 1, 3)
                  }
                ])
 
@@ -440,7 +440,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: " some extra\ncontent",
-                   range: range_create(1, 3, 1, 3)
+                   range: new_range(1, 3, 1, 3)
                  }
                ])
 
@@ -454,7 +454,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "",
-                   range: range_create(1, 0, 1, 3)
+                   range: new_range(1, 0, 1, 3)
                  }
                ])
 
@@ -468,7 +468,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "",
-                   range: range_create(0, 5, 1, 3)
+                   range: new_range(0, 5, 1, 3)
                  }
                ])
 
@@ -482,7 +482,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "z",
-                   range: range_create(1, 2, 1, 3)
+                   range: new_range(1, 2, 1, 3)
                  }
                ])
 
@@ -496,7 +496,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "foobar",
-                   range: range_create(1, 0, 1, 3)
+                   range: new_range(1, 0, 1, 3)
                  }
                ])
 
@@ -510,7 +510,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "z",
-                   range: range_create(1, 2, 1, 3)
+                   range: new_range(1, 2, 1, 3)
                  }
                ])
 
@@ -524,7 +524,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "z\r\nz\rz",
-                   range: range_create(1, 2, 1, 3)
+                   range: new_range(1, 2, 1, 3)
                  }
                ])
 
@@ -538,7 +538,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "z",
-                   range: range_create(1, 7, 1, 8)
+                   range: new_range(1, 7, 1, 8)
                  }
                ])
 
@@ -552,7 +552,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "z🏳️‍🌈z",
-                   range: range_create(1, 2, 1, 3)
+                   range: new_range(1, 2, 1, 3)
                  }
                ])
 
@@ -592,7 +592,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{text: "", range: range_create(2, 0, 2, 19)}
+                 %{text: "", range: new_range(2, 0, 2, 19)}
                ])
 
       {:ok, line} = fetch_text_at(source, 2)
@@ -610,8 +610,8 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{text: "    {\"🎸\",   \"ok\"}", range: range_create(2, 0, 2, 0)},
-                 %{text: "", range: range_create(2, 11, 2, 13)}
+                 %{text: "    {\"🎸\",   \"ok\"}", range: new_range(2, 0, 2, 0)},
+                 %{text: "", range: new_range(2, 11, 2, 13)}
                ])
 
       {:ok, line} = fetch_text_at(source, 2)
@@ -621,26 +621,26 @@ defmodule Lexical.SourceFileTest do
 
     test "invalid update range - before the document starts -> before the document starts" do
       orig = "foo\nbar"
-      invalid_range = range_create(-2, 0, -1, 3)
+      invalid_range = new_range(-2, 0, -1, 3)
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [
                  %{
                    text: "abc123",
-                   range: range_create(-2, 0, -1, 3)
+                   range: new_range(-2, 0, -1, 3)
                  }
                ])
     end
 
     test "invalid update range - before the document starts -> the middle of document" do
       orig = "foo\nbar"
-      invalid_range = range_create(-1, 0, 0, 3)
+      invalid_range = new_range(-1, 0, 0, 3)
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [
                  %{
                    text: "foobar",
-                   range: range_create(-1, 0, 0, 3)
+                   range: new_range(-1, 0, 0, 3)
                  }
                ])
     end
@@ -652,7 +652,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "foobar",
-                   range: range_create(1, 0, 1, 10)
+                   range: new_range(1, 0, 1, 10)
                  }
                ])
 
@@ -666,7 +666,7 @@ defmodule Lexical.SourceFileTest do
                run_changes(orig, [
                  %{
                    text: "abc123",
-                   range: range_create(3, 0, 6, 10)
+                   range: new_range(3, 0, 6, 10)
                  }
                ])
 
@@ -675,7 +675,7 @@ defmodule Lexical.SourceFileTest do
 
     test "invalid update range - before the document starts -> after the document ends" do
       orig = "foo\nbar"
-      invalid_range = range_create(-1, 1, 2, 10000)
+      invalid_range = new_range(-1, 1, 2, 10000)
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [

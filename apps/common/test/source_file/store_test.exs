@@ -1,5 +1,7 @@
 defmodule Lexical.SourceFile.StoreTest do
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Position
+  alias Lexical.SourceFile.Range
   use ExUnit.Case
 
   setup do
@@ -23,7 +25,7 @@ defmodule Lexical.SourceFile.StoreTest do
   defp build_position(opts) do
     line = Keyword.get(opts, :line)
     character = Keyword.get(opts, :character)
-    %{line: line, character: character}
+    Position.new(line, character)
   end
 
   defp build_range(nil) do
@@ -41,7 +43,7 @@ defmodule Lexical.SourceFile.StoreTest do
       |> Keyword.get(:end)
       |> build_position()
 
-    %{start: start_pos, end: end_pos}
+    Range.new(start_pos, end_pos)
   end
 
   defp build_change(opts) do

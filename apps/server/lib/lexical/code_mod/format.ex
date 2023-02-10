@@ -4,7 +4,6 @@ defmodule Lexical.CodeMod.Format do
   alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl
   alias Lexical.SourceFile
-  alias Lexical.SourceFile.Conversions
 
   require Logger
   @type formatter_function :: (String.t() -> any) | nil
@@ -48,7 +47,7 @@ defmodule Lexical.CodeMod.Format do
   @spec formatter_for(Project.t(), String.t()) ::
           {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
   defp formatter_for(%Project{} = project, uri_or_path) do
-    path = Conversions.ensure_path(uri_or_path)
+    path = SourceFile.Path.ensure_path(uri_or_path)
 
     case RemoteControl.Api.formatter_for_file(project, path) do
       {:ok, formatter_function, options} ->

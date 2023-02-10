@@ -1,7 +1,6 @@
 defmodule Lexical.SourceFile.Store do
   defmodule State do
     alias Lexical.SourceFile
-    alias Lexical.SourceFile.Conversions
     alias Lexical.SourceFile.Store
     require Logger
 
@@ -82,8 +81,8 @@ defmodule Lexical.SourceFile.Store do
     end
 
     def open_temporarily(%__MODULE__{} = store, path_or_uri, timeout) do
-      uri = Conversions.ensure_uri(path_or_uri)
-      path = Conversions.ensure_path(path_or_uri)
+      uri = SourceFile.Path.ensure_uri(path_or_uri)
+      path = SourceFile.Path.ensure_path(path_or_uri)
 
       with {:ok, contents} <- File.read(path) do
         source_file = SourceFile.new(uri, contents, 0)
@@ -150,7 +149,6 @@ defmodule Lexical.SourceFile.Store do
 
   alias Lexical.ProcessCache
   alias Lexical.SourceFile
-  alias Lexical.SourceFile.Conversions
 
   @type t :: %State{}
 

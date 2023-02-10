@@ -33,6 +33,8 @@ defmodule Lexical.Server.State do
     %__MODULE__{}
   end
 
+  @trigger_characters [".", "@", "&", "%", "^", ":", "!", "-", "~"]
+
   def initialize(%__MODULE__{initialized?: false} = state, %Initialize{
         lsp: %Initialize.LSP{} = event
       }) do

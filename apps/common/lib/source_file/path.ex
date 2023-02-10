@@ -1,6 +1,14 @@
 defmodule Lexical.SourceFile.Path do
   @file_scheme "file"
 
+  def ensure_uri("file://" <> _ = uri), do: uri
+
+  def ensure_uri(path), do: to_uri(path)
+
+  def ensure_path("file://" <> _ = uri), do: from_uri(uri)
+
+  def ensure_path(path), do: path
+
   @doc """
   Returns path from URI in a way that handles windows file:///c%3A/... URLs correctly
   """
@@ -39,6 +47,10 @@ defmodule Lexical.SourceFile.Path do
 
   def absolute_from_uri(uri) do
     uri |> from_uri |> Path.absname()
+  end
+
+  def to_uri("file://" <> _path = uri) do
+    uri
   end
 
   def to_uri(path) do

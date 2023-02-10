@@ -18,11 +18,13 @@ alias Lexical.Server.JsonRpc.Backend, as: JsonRpcBackend
 #       metadata: [:user_id]
 #
 
-config :logger, backends: [JsonRpcBackend]
+if Code.ensure_loaded?(JsonRpcBackend) do
+  config :logger, backends: [JsonRpcBackend]
 
-config :logger, JsonRpcBackend,
-  level: :debug,
-  format: "$message",
-  metadata: []
+  config :logger, JsonRpcBackend,
+    level: :debug,
+    format: "$message",
+    metadata: []
+end
 
 import_config("#{Mix.env()}.exs")

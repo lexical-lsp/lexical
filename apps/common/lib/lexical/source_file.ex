@@ -1,5 +1,5 @@
 defmodule Lexical.SourceFile do
-  alias Lexical.SourceFile.Conversions
+  alias Lexical.Ranged
   alias Lexical.SourceFile.Document
   alias Lexical.SourceFile.Line
   alias Lexical.SourceFile.Position
@@ -23,8 +23,8 @@ defmodule Lexical.SourceFile do
   @type change_application_error :: {:error, {:invalid_range, map()}}
   # public
 
-  def new(uri, text, version) do
-    uri = Conversions.ensure_uri(uri)
+  def new(maybe_uri, text, version) do
+    uri = SourceFilePath.ensure_uri(maybe_uri)
 
     %__MODULE__{
       uri: uri,
@@ -138,23 +138,6 @@ defmodule Lexical.SourceFile do
     {:ok, %__MODULE__{source | document: new_document}}
   end
 
-  # defp apply_change(%__MODULE__{} = source, %ContentChangeEvent{range: nil} = change) do
-  #   new_state =
-  #     source.uri
-  #     |> new(change.text, source.version)
-  #     |> increment_version()
-
-  #   {:ok, new_state}
-  # end
-
-  # defp apply_change(%__MODULE__{} = source, %ContentChangeEvent{} = change) do
-  #   with {:ok, ex_range} <- Conversions.to_elixir(change.range, source) do
-  #     apply_change(source, ex_range, change.text)
-  #   else
-  #     _ -> {:error, {:invalid_range, change.range}}
-  #   end
-  # end
-
   defp apply_change(%__MODULE__{} = source, %{range: nil, text: new_text}) do
     {:ok, %__MODULE__{source | document: Document.new(new_text)}}
   end
@@ -171,7 +154,7 @@ defmodule Lexical.SourceFile do
          }
        )
        when start_line >= 0 and start_char >= 0 and end_line >= 0 and end_char >= 0 do
-    with {:ok, ex_range} <- Conversions.to_elixir(range, source) do
+    with {:ok, ex_range} <- Ranged.Native.from_lsp(range, source) do
       apply_change(source, ex_range, new_text)
     else
       _ ->

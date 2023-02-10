@@ -1,6 +1,6 @@
 defmodule Lexical.Protocol.Proto.Convert do
   alias Lexical.Protocol.Types
-  alias Lexical.Protocol.Conversions
+  alias Lexical.Ranged
   alias Lexical.SourceFile
 
   def to_elixir(%{lsp: lsp_request} = request) do
@@ -50,11 +50,11 @@ defmodule Lexical.Protocol.Proto.Convert do
   end
 
   defp convert(%Types.Range{} = range, %SourceFile{} = source_file) do
-    Conversions.to_elixir(range, source_file)
+    Ranged.Native.from_lsp(range, source_file)
   end
 
-  defp convert(%Types.Position{} = pos, %SourceFile{} = source_file) do
-    Conversions.to_elixir(pos, source_file)
+  defp convert(%Types.Position{} = position, %SourceFile{} = source_file) do
+    Ranged.Native.from_lsp(position, source_file)
   end
 
   defp convert(%_struct{} = request, %SourceFile{} = source_file) do
