@@ -10,6 +10,10 @@ defmodule Lexical.CodeIntelligence.Completion do
   require InsertTextFormat
   require Logger
 
+  @lexical_deps Enum.map([:lexical | Mix.Project.deps_apps()], &Atom.to_string/1)
+
+  @lexical_dep_modules Enum.map(@lexical_deps, &Macro.camelize/1)
+
   def trigger_characters do
     [".", "@", "&", "%", "^", ":", "!", "-", "~"]
   end
@@ -35,15 +39,38 @@ defmodule Lexical.CodeIntelligence.Completion do
     project
     |> RemoteControl.Api.complete(document, position)
     |> tap(&Logger.info("Got #{inspect(Enum.take(&1, 10))}"))
-    |> to_completion_items(position)
+    |> to_completion_items(project, position)
     |> tap(&Logger.info("Emitting #{inspect(Enum.take(&1, 10))}"))
   end
 
-  defp to_completion_items(local_completions, %Position{} = position) do
+  defp to_completion_items(local_completions, %Project{} = project, %Position{} = position) do
     for result <- local_completions,
+        displayable?(project, result),
         item = to_completion_item(result, position),
         match?(%Completion.Item{}, item) do
       item
+    end
+  end
+
+  defp displayable?(%Project{} = project, result) do
+    # Don't exclude a dependency if we're working on that project!
+    if Project.name(project) in @lexical_deps do
+      true
+    else
+      suggested_module =
+        case result do
+          %_{full_name: full_name} -> full_name
+          %_{origin: origin} -> origin
+          _ -> ""
+        end
+
+      Enum.reduce_while(@lexical_dep_modules, true, fn module, _ ->
+        if String.starts_with?(suggested_module, module) do
+          {:halt, false}
+        else
+          {:cont, true}
+        end
+      end)
     end
   end
 

@@ -16,7 +16,23 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     {:ok, project: project}
   end
 
-  def complete(project, text, {line, column}, context \\ nil) do
+  def cursor_position(text) do
+    text
+    |> String.graphemes()
+    |> Enum.reduce_while({0, 0}, fn
+      "|", line_and_column ->
+        {:halt, line_and_column}
+
+      "\n", {line, _} ->
+        {:cont, {line + 1, 0}}
+
+      _, {line, column} ->
+        {:cont, {line, column + 1}}
+    end)
+  end
+
+  def complete(project, text, context \\ nil) do
+    {line, column} = cursor_position(text)
     root_path = Project.root_path(project)
     file_path = Path.join([root_path, "lib", "file.ex"])
     document = SourceFile.new("file://#{file_path}", text, 0)
@@ -40,11 +56,45 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     end
   end
 
+  describe "excluding modules" do
+    test "lexical modules are removed", %{project: project} do
+      assert [] = complete(project, "Lexica|l")
+    end
+
+    test "Lexical submodules are removed", %{project: project} do
+      assert [] = complete(project, "Lexical.RemoteContro|l")
+    end
+
+    test "Lexical functions are removed", %{project: project} do
+      assert [] = complete(project, "Lexical.RemoteControl.|")
+    end
+
+    test "Dependency modules are removed", %{project: project} do
+      assert [] = complete(project, "ElixirSense|")
+    end
+
+    test "Dependency functions are removed", %{project: project} do
+      assert [] = complete(project, "Jason.encod|")
+    end
+
+    test "Dependency protocols are removed", %{project: project} do
+      assert [] = complete(project, "Jason.Encode|")
+    end
+
+    test "Dependency structs are removed", %{project: project} do
+      assert [] = complete(project, "Jason.Fragment|")
+    end
+
+    test "Dependency exceptions are removed", %{project: project} do
+      assert [] = complete(project, "Jason.DecodeErro|")
+    end
+  end
+
   describe "single completions" do
     test "def only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("def", {0, 2})
+               |> complete("def|")
                |> fetch_completion("def ")
 
       assert %CompletionItem{} = completion
@@ -53,7 +103,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "def", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("def", {0, 2})
+               |> complete("def|")
                |> fetch_completion("def ")
 
       assert completion.label == "def (Define a function)"
@@ -64,7 +114,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defp only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defp", {0, 2})
+               |> complete("defp|")
                |> fetch_completion("defp ")
 
       assert %CompletionItem{} = completion
@@ -73,7 +123,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defp", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defp", {0, 2})
+               |> complete("defp|")
                |> fetch_completion("defp ")
 
       assert completion.label == "defp (Define a private function)"
@@ -84,7 +134,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmacro only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmacro", {0, 8})
+               |> complete("defmacro|")
                |> fetch_completion("defmacro ")
 
       assert %CompletionItem{} = completion
@@ -93,7 +143,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmacro", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmacro", {0, 8})
+               |> complete("defmacro|")
                |> fetch_completion("defmacro ")
 
       assert completion.label == "defmacro (Define a macro)"
@@ -104,7 +154,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmacrop only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmacrop", {0, 8})
+               |> complete("defmacrop|")
                |> fetch_completion("defmacrop ")
 
       assert %CompletionItem{} = completion
@@ -113,7 +163,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmacrop", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmacrop", {0, 8})
+               |> complete("defmacrop|")
                |> fetch_completion("defmacrop ")
 
       assert completion.label == "defmacrop (Define a private macro)"
@@ -124,7 +174,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmodule only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmodule", {0, 9})
+               |> complete("defmodule|")
                |> fetch_completion("defmodule ")
 
       assert %CompletionItem{} = completion
@@ -133,7 +183,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defmodule", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defmodule", {0, 9})
+               |> complete("defmodule|")
                |> fetch_completion("defmodule ")
 
       assert completion.label == "defmodule (Define a module)"
@@ -149,7 +199,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defprotocol only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defprotocol", {0, 9})
+               |> complete("defprotocol|")
                |> fetch_completion("defprotocol ")
 
       assert %CompletionItem{} = completion
@@ -158,7 +208,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defprotocol", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defprotocol", {0, 9})
+               |> complete("defprotocol|")
                |> fetch_completion("defprotocol ")
 
       assert completion.label == "defprotocol (Define a protocol)"
@@ -174,7 +224,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defimpl only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defimpl", {0, 7})
+               |> complete("defimpl|")
                |> fetch_completion("defimpl ")
 
       assert %CompletionItem{} = completion
@@ -183,7 +233,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "defimpl returns a snippet", %{project: project} do
       assert {:ok, completion} =
                project
-               |> complete("defimpl", {0, 7})
+               |> complete("defimpl|")
                |> fetch_completion("defimpl ")
 
       assert completion.label == "defimpl (Define a protocol implementation)"
