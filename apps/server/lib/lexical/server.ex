@@ -40,8 +40,6 @@ defmodule Lexical.Server do
   end
 
   def handle_cast({:protocol_message, message}, %State{} = state) do
-    info("received #{message.__struct__} proto message")
-
     new_state =
       with {:ok, new_state} <- handle_message(message, state) do
         new_state
@@ -56,7 +54,6 @@ defmodule Lexical.Server do
 
   def handle_cast(other, %State{} = state) do
     info("got other: #{inspect(other)}")
-
     {:noreply, state}
   end
 

@@ -1,8 +1,8 @@
 defmodule Lexical.Provider.Queue do
   defmodule State do
-    alias Lexical.Provider.Env
     alias Lexical
     alias Lexical.Protocol.Requests
+    alias Lexical.Provider.Env
     alias Lexical.Provider.Handlers
     alias Lexical.Provider.Queue
     alias Lexical.Server.Transport
@@ -12,30 +12,13 @@ defmodule Lexical.Provider.Queue do
 
     @type t :: %__MODULE__{}
 
-    @requests_to_handler %{
-      Requests.FindReferences => Handlers.FindReferences,
-      Requests.Formatting => Handlers.Formatting,
-      Requests.CodeAction => Handlers.CodeAction,
-      Requests.Completion => Handlers.Completion
-    }
-
     def new do
       %__MODULE__{}
     end
 
-    defp handler_for(%request_module{}) do
-      case Map.fetch(@requests_to_handler, request_module) do
-        {:ok, _} = success ->
-          success
-
-        :error ->
-          {:error, {:unhandled, request_module}}
-      end
-    end
-
     @spec add(t, Requests.request(), Env.t()) :: {:ok, t} | :error
     def add(%__MODULE__{} = state, request, env) do
-      with {:ok, handler_module} <- handler_for(request),
+      with {:ok, handler_module} <- Handlers.for_request(request),
            {:ok, req} <- request.__struct__.to_elixir(request) do
         task = %Task{} = as_task(request, fn -> handler_module.handle(req, env) end)
 

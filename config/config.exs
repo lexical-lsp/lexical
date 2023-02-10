@@ -1,30 +1,28 @@
-# This file is responsible for configuring your umbrella
-# and **all applications** and their dependencies with the
-# help of the Config module.
-#
-# Note that all applications in your umbrella share the
-# same configuration and dependencies, which is why they
-# all use the same configuration file. If you want different
-# configurations or dependencies per app, it is best to
-# move said applications out of the umbrella.
 import Config
 alias Lexical.Server.JsonRpc.Backend, as: JsonRpcBackend
 
-# Sample configuration:
-#
-#     config :logger, :console,
-#       level: :info,
-#       format: "$date $time [$level] $metadata$message\n",
-#       metadata: [:user_id]
-#
+cond do
+  Code.ensure_loaded?(LoggerFileBackend) ->
+    config :logger,
+      backends: [{LoggerFileBackend, :general_log}]
 
-if Code.ensure_loaded?(JsonRpcBackend) do
-  config :logger, backends: [JsonRpcBackend]
+    config :logger, :general_log,
+      path: "/Users/steve/Projects/lexical/lsp.log",
+      handle_sasl_reports: true,
+      handle_otp_reports: true,
+      level: :debug
 
-  config :logger, JsonRpcBackend,
-    level: :debug,
-    format: "$message",
-    metadata: []
+  Code.ensure_loaded?(JsonRpcBackend) ->
+    config :logger,
+      backends: [JsonRpcBackend]
+
+    config :logger, JsonRpcBackend,
+      level: :debug,
+      format: "$message",
+      metadata: []
+
+  true ->
+    :ok
 end
 
 import_config("#{Mix.env()}.exs")

@@ -23,9 +23,17 @@ defmodule Lexical.RemoteControl.Completion do
     # Add one to both the line and character, because elixir sense
     # has one-based lines, and the character needs to be after the context,
     # rather than in between.
-    source
-    |> ElixirSense.suggestions(position.line + 1, position.character + 1)
-    |> Enum.map(&Result.from_elixir_sense/1)
+    line = position.line + 1
+    character = position.character + 1
+    hint = ElixirSense.Core.Source.prefix(source, line, character)
+
+    if String.trim(hint) == "" do
+      []
+    else
+      source
+      |> ElixirSense.suggestions(line, character)
+      |> Enum.map(&Result.from_elixir_sense/1)
+    end
   end
 
   @doc """
@@ -702,7 +710,7 @@ defmodule Lexical.RemoteControl.Completion do
     # end
   end
 
-  defp variables_from_binding(hint) do
+  defp variables_from_binding(_hint) do
     []
     # with {evaluator, server} <- IEx.Broker.evaluator() do
     #   IEx.Evaluator.variables_from_binding(evaluator, server, hint)
@@ -711,7 +719,7 @@ defmodule Lexical.RemoteControl.Completion do
     # end
   end
 
-  defp value_from_binding([var | path]) do
+  defp value_from_binding([_var | _path]) do
     []
     # with {evaluator, server} <- IEx.Broker.evaluator() do
     #   IEx.Evaluator.value_from_binding(evaluator, server, var, path)

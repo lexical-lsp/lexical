@@ -1,8 +1,7 @@
 defmodule Lexical.CodeIntelligence.Completion do
-  alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
-
+  alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.SourceFile
@@ -10,6 +9,10 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   require InsertTextFormat
   require Logger
+
+  def trigger_characters do
+    [".", "@", "&", "%", "^", ":", "!", "-", "~"]
+  end
 
   @spec complete(Project.t(), SourceFile.t(), Position.t(), Completion.Context.t()) :: [
           Completion.Item
@@ -20,6 +23,15 @@ defmodule Lexical.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = _context
       ) do
+    {:ok, source} = SourceFile.fetch_text_at(document, position.line)
+
+    Logger.info("Complete at #{inspect(position)} source: '#{source}'")
+
+    document
+    |> SourceFile.to_string()
+    |> ElixirSense.Core.Source.prefix(position.line + 1, position.character + 1)
+    |> tap(fn subject -> Logger.info("hint: #{inspect(subject)}") end)
+
     project
     |> RemoteControl.Api.complete(document, position)
     |> tap(&Logger.info("Got #{inspect(Enum.take(&1, 10))}"))
@@ -40,12 +52,7 @@ defmodule Lexical.CodeIntelligence.Completion do
     arg_detail = Enum.join(function.argument_names, ",")
     detail = "#{function.origin}.#{label}(#{arg_detail})"
 
-    arg_snippet =
-      function.argument_names
-      |> Enum.with_index()
-      |> Enum.map_join(", ", fn {arg_name, index} -> "${#{index + 1}:#{arg_name}}" end)
-
-    insert_text = "#{function.name}(#{arg_snippet})"
+    insert_text = "#{function.name}($0)"
 
     Completion.Item.new(
       detail: detail,

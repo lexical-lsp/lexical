@@ -1,4 +1,5 @@
 defmodule Lexical.Server.State do
+  alias Lexical.CodeIntelligence
   alias Lexical.RemoteControl.Api
 
   alias Lexical.Protocol.Notifications.{
@@ -33,8 +34,6 @@ defmodule Lexical.Server.State do
     %__MODULE__{}
   end
 
-  @trigger_characters [".", "@", "&", "%", "^", ":", "!", "-", "~"]
-
   def initialize(%__MODULE__{initialized?: false} = state, %Initialize{
         lsp: %Initialize.LSP{} = event
       }) do
@@ -55,10 +54,8 @@ defmodule Lexical.Server.State do
     {:error, :already_initialized}
   end
 
-  def default_configuration(%__MODULE__{configuration: config} = state) do
-    with {:ok, config} <- Configuration.default(config) do
-      {:ok, %__MODULE__{state | configuration: config}}
-    end
+  def default_configuration(%__MODULE__{configuration: config}) do
+    Configuration.default(config)
   end
 
   def apply(%__MODULE__{initialized?: false}, request) do
@@ -132,7 +129,6 @@ defmodule Lexical.Server.State do
 
     case SourceFile.Store.save(uri) do
       :ok ->
-        Logger.info("Starting compile")
         Api.schedule_compile(state.configuration.project, false)
         {:ok, state}
 
@@ -159,7 +155,8 @@ defmodule Lexical.Server.State do
     code_action_options =
       CodeAction.Options.new(code_action_kinds: @supported_code_actions, resolve_provider: false)
 
-    completion_options = Completion.Options.new(trigger_characters: @trigger_characters)
+    completion_options =
+      Completion.Options.new(trigger_characters: CodeIntelligence.Completion.trigger_characters())
 
     server_capabilities =
       Types.ServerCapabilities.new(

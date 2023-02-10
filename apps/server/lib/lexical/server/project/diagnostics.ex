@@ -163,35 +163,23 @@ defmodule Lexical.Server.Project.Diagnostics do
   end
 
   @impl GenServer
-  def handle_info(
-        project_compiled(diagnostics: diagnostics, elapsed_ms: elapsed_ms),
-        %State{} = state
-      ) do
-    time_string = Lexical.Text.format_seconds(elapsed_ms, unit: :millisecond)
-    Logger.info("Project compiled! in #{time_string}")
+  def handle_info(project_compiled(diagnostics: diagnostics), %State{} = state) do
     state = State.clear_all(state)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1))
     publish_diagnostics(state)
     {:noreply, state}
   end
 
-  def handle_info(file_compile_requested(uri: uri), %State{} = state) do
-    Logger.info("File #{uri} will be compiled")
-
+  def handle_info(file_compile_requested(), %State{} = state) do
     {:noreply, state}
   end
 
   @impl GenServer
   def handle_info(
-        file_compiled(
-          diagnostics: diagnostics,
-          source_file: %SourceFile{} = source_file,
-          elapsed_ms: elapsed_ms
-        ),
+        file_compiled(diagnostics: diagnostics, source_file: %SourceFile{} = source_file),
         %State{} = state
       ) do
-    time_string = Lexical.Text.format_seconds(elapsed_ms, unit: :millisecond)
-    Logger.info("File #{source_file.uri} compiled, in #{time_string}")
+    Logger.info("Got #{length(diagnostics)} for #{source_file.path}")
     state = State.clear(state, source_file.uri)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1, source_file))
     publish_diagnostics(state)
