@@ -27,20 +27,9 @@ defmodule Lexical.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = _context
       ) do
-    {:ok, source} = SourceFile.fetch_text_at(document, position.line)
-
-    Logger.info("Complete at #{inspect(position)} source: '#{source}'")
-
-    document
-    |> SourceFile.to_string()
-    |> ElixirSense.Core.Source.prefix(position.line + 1, position.character + 1)
-    |> tap(fn subject -> Logger.info("hint: #{inspect(subject)}") end)
-
     project
     |> RemoteControl.Api.complete(document, position)
-    |> tap(&Logger.info("Got #{inspect(Enum.take(&1, 10))}"))
     |> to_completion_items(project, position)
-    |> tap(&Logger.info("Emitting #{inspect(Enum.take(&1, 10))}"))
   end
 
   defp to_completion_items(local_completions, %Project{} = project, %Position{} = position) do
@@ -95,6 +84,17 @@ defmodule Lexical.CodeIntelligence.Completion do
       label: label,
       sort_text: sort_text,
       tags: tags
+    )
+  end
+
+  defp to_completion_item(%Result.StructField{name: "__struct__"}, %Position{}) do
+    :skip
+  end
+
+  defp to_completion_item(%Result.StructField{} = struct_field, %Position{}) do
+    Completion.Item.new(
+      label: struct_field.name,
+      kind: :field
     )
   end
 
@@ -267,5 +267,7 @@ defmodule Lexical.CodeIntelligence.Completion do
     Completion.Item.new(label: label, kind: :function, detail: macro.spec, sort_text: sort_text)
   end
 
-  defp to_completion_item(_, _), do: :skip
+  defp to_completion_item(_skip, _) do
+    :skip
+  end
 end

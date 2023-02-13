@@ -35,6 +35,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
 
   def complete(project, text, context \\ nil) do
     {line, column} = cursor_position(text)
+    [text, _] = String.split(text, "|")
     root_path = Project.root_path(project)
     file_path = Path.join([root_path, "lib", "file.ex"])
     document = SourceFile.new("file://#{file_path}", text, 0)
@@ -50,7 +51,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     Completion.complete(project, document, position, context)
   end
 
-  def fetch_completion(completions, label_prefix) do
+  def fetch_completion(completions, label_prefix) when is_binary(label_prefix) do
     case Enum.filter(completions, &String.starts_with?(&1.label, label_prefix)) do
       [] -> {:error, :not_found}
       [found] -> {:ok, found}
@@ -58,7 +59,25 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     end
   end
 
-  describe "excluding modules" do
+  def fetch_completion(completions, opts) when is_list(opts) do
+    matcher = fn completion ->
+      Enum.reduce_while(opts, false, fn {key, value}, _ ->
+        if Map.get(completion, key) == value do
+          {:cont, true}
+        else
+          {:halt, false}
+        end
+      end)
+    end
+
+    case Enum.filter(completions, matcher) do
+      [] -> {:error, :not_found}
+      [found] -> {:ok, found}
+      found when is_list(found) -> {:ok, found}
+    end
+  end
+
+  describe "excluding modules from lexical dependencies" do
     test "lexical modules are removed", %{project: project} do
       assert [] = complete(project, "Lexica|l")
     end
@@ -291,6 +310,35 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> fetch_completion("__dunder_macro__")
 
       assert completion.sort_text == "dunder_macro/0"
+    end
+  end
+
+  describe "structs" do
+    test "should complete after %", %{project: project} do
+      assert {:ok, [_, _] = account_and_user} =
+               project
+               |> complete("%Project.Structs.|")
+               |> fetch_completion(kind: :struct)
+
+      assert Enum.find(account_and_user, &(&1.label == "Account"))
+      assert Enum.find(account_and_user, &(&1.label == "User"))
+    end
+
+    test "it should complete struct fields", %{project: project} do
+      assert fields =
+               project
+               |> complete("""
+               alias Project.Structs.User
+                 def my_function(%User{} = u) do
+                   u.|
+                 end
+               end
+               """)
+
+      assert length(fields) == 3
+      assert Enum.find(fields, &(&1.label == "first_name"))
+      assert Enum.find(fields, &(&1.label == "last_name"))
+      assert Enum.find(fields, &(&1.label == "email_address"))
     end
   end
 end

@@ -59,6 +59,14 @@ defmodule Lexical.RemoteControl.Completion.Result do
     end
   end
 
+  defmodule StructField do
+    defstruct [:call?, :name, :origin]
+
+    def new(%{} = elixir_sense_map) do
+      struct(__MODULE__, elixir_sense_map)
+    end
+  end
+
   defmodule ModuleAttribute do
     defstruct [:name]
 
@@ -133,5 +141,9 @@ defmodule Lexical.RemoteControl.Completion.Result do
 
   def from_elixir_sense(%{type: :variable} = elixir_sense_map) do
     Variable.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(%{type: :field, subtype: :struct_field} = elixir_sense_map) do
+    StructField.new(elixir_sense_map)
   end
 end
