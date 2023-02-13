@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Completion.Result do
   defmodule Function do
-    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec]
+    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
       __MODULE__
@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Macro do
-    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec]
+    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
       __MODULE__

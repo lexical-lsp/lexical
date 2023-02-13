@@ -7,12 +7,14 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
   alias Lexical.SourceFile
 
   use ExUnit.Case
-
   import Lexical.Test.Fixtures
+  import RemoteControl.Api.Messages
 
   setup_all do
     project = project()
     {:ok, _} = RemoteControl.start_link(project, self())
+    RemoteControl.Api.schedule_compile(project, true)
+    assert_receive project_compiled(), 5000
     {:ok, project: project}
   end
 
@@ -88,6 +90,10 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     test "Dependency exceptions are removed", %{project: project} do
       assert [] = complete(project, "Jason.DecodeErro|")
     end
+  end
+
+  test "ensure completion works for project", %{project: project} do
+    refute [] == complete(project, "Project.|")
   end
 
   describe "single completions" do
@@ -244,6 +250,47 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                $0
              end
              """
+    end
+
+    test "deprecated functions are marked", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("Enum.filter_map|")
+               |> fetch_completion("filter_map")
+
+      assert [:deprecated] = completion.tags
+    end
+
+    test "__using__ is hidden", %{project: project} do
+      assert [] == complete(project, "Project.__using__|")
+    end
+
+    test "__before_compile__ is hidden", %{project: project} do
+      assert [] == complete(project, "Project.__before_compile__|")
+    end
+
+    test "__after_compile__ is hidden", %{project: project} do
+      assert [] == complete(project, "Project.__after_compile__|")
+    end
+  end
+
+  describe "sort_text" do
+    test "dunder functions have the dunder removed in their sort_text", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("Enum.|")
+               |> fetch_completion("__info__")
+
+      assert completion.sort_text == "info/1"
+    end
+
+    test "dunder macros have the dunder removed in their sort_text", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("Project.__dunder_macro__|")
+               |> fetch_completion("__dunder_macro__")
+
+      assert completion.sort_text == "dunder_macro/0"
     end
   end
 end

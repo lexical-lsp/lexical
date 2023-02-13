@@ -80,13 +80,21 @@ defmodule Lexical.CodeIntelligence.Completion do
     detail = "#{function.origin}.#{label}(#{arg_detail})"
 
     insert_text = "#{function.name}($0)"
+    sort_text = String.replace(label, "__", "")
+
+    tags =
+      if Map.get(function.metadata, :deprecated) do
+        [:deprecated]
+      end
 
     Completion.Item.new(
       detail: detail,
       insert_text: insert_text,
       insert_text_format: :snippet,
       kind: :function,
-      label: label
+      label: label,
+      sort_text: sort_text,
+      tags: tags
     )
   end
 
@@ -120,6 +128,11 @@ defmodule Lexical.CodeIntelligence.Completion do
       kind: :struct,
       label: struct.name
     )
+  end
+
+  defp to_completion_item(%Result.Macro{name: name}, %Position{})
+       when name in ["__before_compile__", "__using__", "__after_compile__"] do
+    :skip
   end
 
   defp to_completion_item(%Result.Macro{name: "def", arity: 2} = macro, %Position{}) do
@@ -250,8 +263,8 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   defp to_completion_item(%Result.Macro{} = macro, %Position{}) do
     label = "#{macro.name}/#{macro.arity}"
-
-    Completion.Item.new(label: label, kind: :function, detail: macro.spec)
+    sort_text = String.replace(label, "__", "")
+    Completion.Item.new(label: label, kind: :function, detail: macro.spec, sort_text: sort_text)
   end
 
   defp to_completion_item(_, _), do: :skip

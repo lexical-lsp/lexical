@@ -1,18 +1,13 @@
 defmodule Project do
-  @moduledoc """
-  Documentation for `Project`.
-  """
+  defmacro __before_compile__(_bytecode) do
+  end
 
-  @doc """
-  Hello world.
+  defmacro __after_compile__(_env, _bytecode) do
+  end
 
-  ## Examples
+  defmacro __using__(_opts) do
+  end
 
-      iex> Project.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  defmacro __dunder_macro__() do
   end
 end
