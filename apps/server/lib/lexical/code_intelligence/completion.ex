@@ -15,6 +15,8 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   @lexical_dep_modules Enum.map(@lexical_deps, &Macro.camelize/1)
 
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception)
+
   def trigger_characters do
     [".", "@", "&", "%", "^", ":", "!", "-", "~"]
   end
@@ -175,11 +177,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 10)
     )
   end
 
@@ -193,11 +196,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 9)
     )
   end
 
@@ -211,11 +215,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 7)
     )
   end
 
@@ -229,11 +234,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 6)
     )
   end
 
@@ -247,11 +253,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 5)
     )
   end
 
@@ -265,11 +272,12 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
     )
   end
 
@@ -283,15 +291,85 @@ defmodule Lexical.CodeIntelligence.Completion do
     """
 
     Completion.Item.new(
-      label: label,
-      kind: :class,
+      detail: macro.spec,
       insert_text: snippet,
       insert_text_format: :snippet,
-      detail: macro.spec
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
     )
   end
 
-  defp to_completion_item(%Result.Macro{} = macro) do
+  defp to_completion_item(%Result.Macro{name: "defdelegate", arity: 2} = macro) do
+    label = "#{macro.name} (Define a delegate function)"
+
+    snippet = """
+    defdelegate ${1:call}, to: ${2:module} $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "defguard", arity: 1} = macro) do
+    label = "#{macro.name} (Define a guard macro)"
+
+    snippet = """
+    defguard ${1:call} $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "defguardp", arity: 1} = macro) do
+    label = "#{macro.name} (Define a private guard macro)"
+
+    snippet = """
+    defguardp ${1:call} $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "defexception", arity: 1} = macro) do
+    label = "#{macro.name} (Define an exception)"
+
+    snippet = """
+    defexception [${1:fields}] $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: name} = macro)
+       when name not in @snippet_macros do
     label = "#{macro.name}/#{macro.arity}"
     sort_text = String.replace(label, "__", "")
     Completion.Item.new(label: label, kind: :function, detail: macro.spec, sort_text: sort_text)
@@ -299,5 +377,16 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   defp to_completion_item(_) do
     :skip
+  end
+
+  defp boost(text, amount \\ 5)
+
+  defp boost(text, amount) when amount in 0..10 do
+    boost_char = ?* - amount
+    IO.iodata_to_binary([boost_char, text])
+  end
+
+  defp boost(text, _) do
+    boost(text, 0)
   end
 end

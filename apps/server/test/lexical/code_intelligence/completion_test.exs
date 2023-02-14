@@ -283,6 +283,62 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
              """
     end
 
+    test "defdelegate returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defdelegate|")
+               |> fetch_completion("defdelegate")
+
+      assert completion.label == "defdelegate (Define a delegate function)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             defdelegate ${1:call}, to: ${2:module} $0
+             """
+    end
+
+    test "defguard returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defguard|")
+               |> fetch_completion("defguard ")
+
+      assert completion.label == "defguard (Define a guard macro)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             defguard ${1:call} $0
+             """
+    end
+
+    test "defguardp returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defguardp|")
+               |> fetch_completion("defguardp")
+
+      assert completion.label == "defguardp (Define a private guard macro)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             defguardp ${1:call} $0
+             """
+    end
+
+    test "defexception returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defexception|")
+               |> fetch_completion("defexception")
+
+      assert completion.label == "defexception (Define an exception)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             defexception [${1:fields}] $0
+             """
+    end
+
     test "deprecated functions are marked", %{project: project} do
       assert {:ok, completion} =
                project
