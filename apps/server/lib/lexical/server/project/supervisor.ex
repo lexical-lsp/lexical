@@ -2,7 +2,8 @@ defmodule Lexical.Server.Project.Supervisor do
   alias Lexical.Project
   alias Lexical.Server.Project.Diagnostics
   alias Lexical.Server.Project.Dispatch
-  alias Lexical.Server.Project.Index
+  alias Lexical.Server.Project.Intelligence
+
   use Supervisor
 
   def dynamic_supervisor_name do
@@ -16,7 +17,8 @@ defmodule Lexical.Server.Project.Supervisor do
   def init(%Project{} = project) do
     children = [
       {Dispatch, project},
-      {Diagnostics, project}
+      {Diagnostics, project},
+      {Intelligence, project}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

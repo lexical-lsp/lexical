@@ -10,4 +10,7 @@ defmodule Project do
 
   defmacro __dunder_macro__() do
   end
+
+  defmodule Submodule do
+  end
 end

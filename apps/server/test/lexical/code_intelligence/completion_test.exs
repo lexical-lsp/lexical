@@ -1,9 +1,11 @@
 defmodule Lexical.CodeIntelligence.CompletionTest do
+  alias Lexical.Server.Project.Dispatch
   alias Lexical.CodeIntelligence.Completion
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
   alias Lexical.RemoteControl
+  alias Lexical.Server
   alias Lexical.SourceFile
 
   use ExUnit.Case
@@ -12,7 +14,14 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
 
   setup_all do
     project = project()
-    {:ok, _} = RemoteControl.start_link(project, self())
+
+    {:ok, _} =
+      start_supervised(
+        {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}
+      )
+
+    {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+    Dispatch.register(project, [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
     {:ok, project: project}
@@ -33,7 +42,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     end)
   end
 
-  def complete(project, text, context \\ nil) do
+  def complete(project, text, trigger_character \\ nil) do
     {line, column} = cursor_position(text)
     [text, _] = String.split(text, "|")
     root_path = Project.root_path(project)
@@ -42,10 +51,13 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     position = %SourceFile.Position{line: line, character: column}
 
     context =
-      if is_nil(context) do
-        CompletionContext.new(trigger_kind: :trigger_character)
+      if is_binary(trigger_character) do
+        CompletionContext.new(
+          trigger_kind: :trigger_character,
+          trigger_character: trigger_character
+        )
       else
-        context
+        CompletionContext.new(trigger_kind: :trigger_character)
       end
 
     Completion.complete(project, document, position, context)
@@ -320,6 +332,18 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("%Project.Structs.|")
                |> fetch_completion(kind: :struct)
 
+      assert Enum.find(account_and_user, &(&1.label == "Account"))
+      assert Enum.find(account_and_user, &(&1.label == "User"))
+    end
+
+    test "when using %, only parents of a struct are returned", %{project: project} do
+      assert [completion] = complete(project, "%Project.|", "%")
+      assert completion.label == "Structs"
+      assert completion.kind == :module
+    end
+
+    test "when using %, only struct modules of are returned", %{project: project} do
+      assert [_, _] = account_and_user = complete(project, "%Project.Structs.|", "%")
       assert Enum.find(account_and_user, &(&1.label == "Account"))
       assert Enum.find(account_and_user, &(&1.label == "User"))
     end

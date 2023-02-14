@@ -16,4 +16,7 @@ defmodule Project.Structs do
             user: User.t()
           }
   end
+
+  defmodule NotAStruct do
+  end
 end

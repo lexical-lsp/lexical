@@ -12,6 +12,16 @@ defmodule Lexical.Text do
     end
   end
 
+  def module_name(module_name) when is_atom(module_name) do
+    module_name
+    |> Module.split()
+    |> Enum.join(".")
+  end
+
+  def module_name(module_name) when is_binary(module_name) do
+    module_name
+  end
+
   defp to_milliseconds(micros, :microsecond) do
     round(micros / 1000)
   end
