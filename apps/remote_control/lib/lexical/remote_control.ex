@@ -18,8 +18,7 @@ defmodule Lexical.RemoteControl do
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
   @allow_globs Enum.concat(@system_globs, @app_globs)
 
-  @localhost_ip {0, 0, 0, 0}
-  @localhost_string '127.0.0.1'
+  @localhost_string "127.0.0.1"
 
   def start_link(%Project{} = project, project_listener) do
     entropy = :rand.uniform(65536)
@@ -30,7 +29,7 @@ defmodule Lexical.RemoteControl do
 
     erl_args =
       erl_args([
-        "-hosts 127.0.0.1",
+        "-hosts #{@localhost_string}",
         "-setcookie #{Node.get_cookie()}",
         "-sbwt none",
         "-noshell"
@@ -38,7 +37,8 @@ defmodule Lexical.RemoteControl do
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
 
-    with {:ok, node} <- :slave.start_link('127.0.0.1', node_name, erl_args),
+    with {:ok, node} <-
+           :slave.start_link(String.to_charlist(@localhost_string), node_name, erl_args),
          :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
          :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project]),
          :ok <- :rpc.call(node, __MODULE__, :set_project, [project]),
@@ -95,19 +95,6 @@ defmodule Lexical.RemoteControl do
 
   defp start_net_kernel(entropy) do
     :net_kernel.start([:"manager-#{entropy}@127.0.0.1"])
-  end
-
-  defp once(flag, func) do
-    with_lock(flag, fn ->
-      case :persistent_term.get(flag, :missing) do
-        :missing ->
-          :persistent_term.put(flag, :present)
-          func.()
-
-        _ ->
-          :ok
-      end
-    end)
   end
 
   def ensure_apps_started(node, app_names) do
