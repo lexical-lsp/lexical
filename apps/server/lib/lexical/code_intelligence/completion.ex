@@ -167,6 +167,25 @@ defmodule Lexical.CodeIntelligence.Completion do
     :skip
   end
 
+  defp to_completion_item(%Result.Macro{name: "defmodule"} = macro) do
+    label = "defmodule (Define a module)"
+
+    snippet = """
+    defmodule ${1:module name} do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 10)
+    )
+  end
+
   defp to_completion_item(%Result.Macro{name: "def", arity: 2} = macro) do
     label = "#{macro.name} (Define a function)"
 
@@ -182,7 +201,7 @@ defmodule Lexical.CodeIntelligence.Completion do
       insert_text_format: :snippet,
       kind: :class,
       label: label,
-      sort_text: boost(label, 10)
+      sort_text: boost(label, 9)
     )
   end
 
@@ -201,7 +220,7 @@ defmodule Lexical.CodeIntelligence.Completion do
       insert_text_format: :snippet,
       kind: :class,
       label: label,
-      sort_text: boost(label, 9)
+      sort_text: boost(label, 8)
     )
   end
 
@@ -240,25 +259,6 @@ defmodule Lexical.CodeIntelligence.Completion do
       kind: :class,
       label: label,
       sort_text: boost(label, 6)
-    )
-  end
-
-  defp to_completion_item(%Result.Macro{name: "defmodule"} = macro) do
-    label = "defmodule (Define a module)"
-
-    snippet = """
-    defmodule ${1:module name} do
-      $0
-    end
-    """
-
-    Completion.Item.new(
-      detail: macro.spec,
-      insert_text: snippet,
-      insert_text_format: :snippet,
-      kind: :class,
-      label: label,
-      sort_text: boost(label, 5)
     )
   end
 
