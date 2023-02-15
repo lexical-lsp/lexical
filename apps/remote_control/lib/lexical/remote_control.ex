@@ -8,15 +8,9 @@ defmodule Lexical.RemoteControl do
   alias Lexical.Project
   alias Lexical.RemoteControl
 
-  @allowed_apps ~w(mix logger common path_glob remote_control elixir_sense)a
-  @system_globs [
-    "/**/erlang/**/ebin",
-    "/**/elixir*/ebin",
-    "/**/hex*/ebin"
-  ]
+  @allowed_apps ~w(common path_glob remote_control elixir_sense)a
 
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
-  @allow_globs Enum.concat(@system_globs, @app_globs)
 
   @localhost_string "127.0.0.1"
 
@@ -26,12 +20,14 @@ defmodule Lexical.RemoteControl do
     start_net_kernel(entropy)
 
     node_name = String.to_charlist("#{Project.name(project)}")
+    {:ok, paths} = system_paths(project)
 
     erl_args =
       erl_args([
         "-hosts #{@localhost_string}",
         "-setcookie #{Node.get_cookie()}",
         "-sbwt none",
+        "-path #{paths}",
         "-noshell"
       ])
 
@@ -109,7 +105,8 @@ defmodule Lexical.RemoteControl do
   def glob_paths do
     for entry <- :code.get_path(),
         entry_string = List.to_string(entry),
-        Enum.any?(@allow_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
+        entry_string != ".",
+        Enum.any?(@app_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
       entry
     end
   end
@@ -118,5 +115,38 @@ defmodule Lexical.RemoteControl do
     arg_list
     |> Enum.join(" ")
     |> String.to_charlist()
+  end
+
+  def system_paths(%Project{} = project) do
+    old_cwd = File.cwd!()
+    root_path = Project.root_path(project)
+
+    result =
+      with :ok <- File.cd(root_path),
+           {:ok, elixir} <- elixir_executable(),
+           {:ok, paths} <- elixir_code_paths(elixir) do
+        {:ok, format_paths(paths)}
+      end
+
+    File.cd(old_cwd)
+    result
+  end
+
+  defp elixir_executable do
+    case System.find_executable("elixir") do
+      nil -> {:error, :no_elixir}
+      executable -> {:ok, executable}
+    end
+  end
+
+  def format_paths(paths_as_charlists) do
+    Enum.map_join(paths_as_charlists, " ", &Path.expand/1)
+  end
+
+  defp elixir_code_paths(elixir_executable) do
+    with {output, 0} <- System.cmd(elixir_executable, ~w[--eval IO.inspect(:code.get_path())]),
+         {evaluated, _} <- Code.eval_string(output) do
+      {:ok, evaluated}
+    end
   end
 end

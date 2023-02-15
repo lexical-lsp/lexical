@@ -11,23 +11,14 @@ defmodule Lexical.RemoteControl.Bootstrap do
   def init(%Project{} = project) do
     project_root = Project.root_path(project)
 
-    with {:ok, _} <- Application.ensure_all_started(:elixir),
+    with :ok <- File.cd(project_root),
+         {:ok, _} <- Application.ensure_all_started(:elixir),
          {:ok, _} <- Application.ensure_all_started(:mix),
-         :ok <- File.cd(project_root),
-         {:ok, mix_project} <- load_mix_exs(project),
-         load_project_build_paths(mix_project) do
-      Mix.start()
+         :ok <- Mix.start(),
+         {:ok, _mix_project} <- load_mix_exs(project),
+         _ <- Mix.Task.run("loadconfig") do
+      :ok
     end
-  end
-
-  defp load_project_build_paths(_mix_module) do
-    [Mix.Project.build_path(), "lib", "**", "ebin"]
-    |> Path.join()
-    |> Path.wildcard()
-    |> Enum.map(&String.to_charlist/1)
-    |> :code.add_pathsz()
-
-    :ok
   end
 
   defp find_mix_exs(%Project{} = project) do
