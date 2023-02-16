@@ -90,6 +90,7 @@ def foo do
 Enum.f
 """
 
-project = Lexical.Project.new("file://#{File.cwd!()}/../eakins/")
-
+lexical = Lexical.Project.new("file://#{File.cwd!()}/")
+eakins = Lexical.Project.new("file://#{File.cwd!()}/../eakins/")
+sonato = Lexical.Project.new("file://#{File.cwd!()}/../spike/")
 import Helpers
