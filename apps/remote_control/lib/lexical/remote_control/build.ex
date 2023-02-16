@@ -1,9 +1,9 @@
 defmodule Lexical.RemoteControl.Build do
-  alias Lexical.RemoteControl.CompileTracer
-  alias Lexical.RemoteControl.Build
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CompileTracer
   alias Lexical.SourceFile
 
   require Logger
@@ -137,33 +137,37 @@ defmodule Lexical.RemoteControl.Build do
         opts
       end
 
-    try do
-      Mix.Task.clear()
-      Mix.Task.run("local.hex", ["--force"])
-      Mix.Task.run("local.rebar", ["--force"])
+    RemoteControl.in_mix_project(fn _ ->
+      try do
+        Mix.Task.clear()
+        Mix.Task.run("local.hex", ["--force"])
+        Mix.Task.run("local.rebar", ["--force"])
+        Mix.Task.run("deps.get")
+        Mix.Task.run("deps.safe_compile")
 
-      if force? do
-        Mix.Task.run("clean")
+        if force? do
+          Mix.Task.run("clean")
+        end
+
+        compile_fun = fn ->
+          capture_io(:stderr, fn -> Mix.Task.run("compile", opts) end)
+        end
+
+        case compile_fun.() do
+          {_output, {:error, _} = error} ->
+            error
+
+          {_output, {_status, []}} ->
+            {:ok, []}
+
+          {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
+            {:ok, diagnostics}
+        end
+      rescue
+        e ->
+          {:error, e}
       end
-
-      compile_fun = fn ->
-        capture_io(:stderr, fn -> Mix.Task.run("compile", opts) end)
-      end
-
-      case compile_fun.() do
-        {_output, {:error, _} = error} ->
-          error
-
-        {_output, {_status, []}} ->
-          {:ok, []}
-
-        {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
-          {:ok, diagnostics}
-      end
-    rescue
-      e ->
-        {:error, e}
-    end
+    end)
   end
 
   def safe_compile(%SourceFile{} = source_file) do

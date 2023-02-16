@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl do
   context of the remote VM.
   """
 
+  alias Lexical.RemoteControl.Workspace
   alias Lexical.Project
   alias Lexical.RemoteControl
 
@@ -12,7 +13,7 @@ defmodule Lexical.RemoteControl do
 
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
 
-  @localhost_string "127.0.0.1"
+  @localhost_charlist '127.0.0.1'
 
   def start_link(%Project{} = project, project_listener) do
     entropy = :rand.uniform(65536)
@@ -24,7 +25,7 @@ defmodule Lexical.RemoteControl do
 
     erl_args =
       erl_args([
-        "-hosts #{@localhost_string}",
+        "-hosts #{@localhost_charlist}",
         "-setcookie #{Node.get_cookie()}",
         "-sbwt none",
         "-path #{paths}",
@@ -33,16 +34,26 @@ defmodule Lexical.RemoteControl do
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
 
-    with {:ok, node} <-
-           :slave.start_link(String.to_charlist(@localhost_string), node_name, erl_args),
+    with {:ok, node} <- :slave.start_link(@localhost_charlist, node_name, erl_args),
          :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
-         :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project]),
-         :ok <- :rpc.call(node, __MODULE__, :set_project, [project]),
-         :ok <- :rpc.call(node, __MODULE__, :set_project_listener_pid, [project_listener]),
-         :ok <- :rpc.call(node, File, :cd, [Project.root_path(project)]),
+         :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project, project_listener]),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node}
     end
+  end
+
+  def in_mix_project(fun) when is_function(fun) do
+    in_mix_project(get_project(), fun)
+  end
+
+  def in_mix_project(%Project{} = project, fun) do
+    build_path = Workspace.build_directory(project)
+    project_root = Project.root_path(project)
+
+    project
+    |> Project.name()
+    |> String.to_atom()
+    |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
   end
 
   def with_lock(lock_type, func) do

@@ -67,8 +67,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:project_metadata)
 
       Build.schedule_compile(project, true)
-      assert_receive module_updated(name: name, functions: functions), 5000
-      assert name == ProjectMetadata
+      assert_receive module_updated(name: ProjectMetadata, functions: functions), 5000
+
       assert {:zero_arity, 0} in functions
       assert {:one_arity, 1} in functions
       assert {:two_arity, 2} in functions
