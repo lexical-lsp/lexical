@@ -1,10 +1,11 @@
 defmodule Lexical.CodeIntelligence.Completion do
-  alias Lexical.Server.Project.Intelligence
+  alias Lexical.CodeIntelligence.Completion.Env
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.Server.Project.Intelligence
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
 
@@ -30,9 +31,8 @@ defmodule Lexical.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = context
       ) do
-    project
-    |> RemoteControl.Api.complete(document, position)
-    |> to_completion_items(project, context)
+    {:ok, env} = Env.new(document, position, context)
+    completions(project, env)
   end
 
   defp to_completion_items(
@@ -46,6 +46,29 @@ defmodule Lexical.CodeIntelligence.Completion do
         item = to_completion_item(result),
         match?(%Completion.Item{}, item) do
       item
+    end
+  end
+
+  defp completions(%Project{} = project, %Env{} = env) do
+    cond do
+      String.ends_with?(env.prefix, "do") and Env.empty?(env.suffix) ->
+        insert_text = "do\n$0\nend"
+
+        [
+          Completion.Item.new(
+            label: "do/end",
+            insert_text_format: :snippet,
+            insert_text: insert_text
+          )
+        ]
+
+      String.length(Env.last_word(env)) == 1 ->
+        []
+
+      true ->
+        project
+        |> RemoteControl.Api.complete(env.document, env.position)
+        |> to_completion_items(project, env.context)
     end
   end
 
@@ -167,25 +190,6 @@ defmodule Lexical.CodeIntelligence.Completion do
     :skip
   end
 
-  defp to_completion_item(%Result.Macro{name: "defmodule"} = macro) do
-    label = "defmodule (Define a module)"
-
-    snippet = """
-    defmodule ${1:module name} do
-      $0
-    end
-    """
-
-    Completion.Item.new(
-      detail: macro.spec,
-      insert_text: snippet,
-      insert_text_format: :snippet,
-      kind: :class,
-      label: label,
-      sort_text: boost(label, 10)
-    )
-  end
-
   defp to_completion_item(%Result.Macro{name: "def", arity: 2} = macro) do
     label = "#{macro.name} (Define a function)"
 
@@ -201,7 +205,7 @@ defmodule Lexical.CodeIntelligence.Completion do
       insert_text_format: :snippet,
       kind: :class,
       label: label,
-      sort_text: boost(label, 9)
+      sort_text: boost(label, 10)
     )
   end
 
@@ -210,6 +214,25 @@ defmodule Lexical.CodeIntelligence.Completion do
 
     snippet = """
     defp ${1:name}($2) do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label, 9)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "defmodule"} = macro) do
+    label = "defmodule (Define a module)"
+
+    snippet = """
+    defmodule ${1:module name} do
       $0
     end
     """
@@ -356,6 +379,223 @@ defmodule Lexical.CodeIntelligence.Completion do
 
     snippet = """
     defexception [${1:fields}] $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "alias", arity: 2} = macro) do
+    label = "#{macro.name} (alias a module's name)"
+
+    snippet = "alias $0"
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "require" <> _, arity: 2} = macro) do
+    label = "#{macro.name} (require a module's macros)"
+
+    snippet = "require $0"
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "quote" <> _, arity: 2} = macro) do
+    label = "#{macro.name} (quote block)"
+
+    snippet = """
+    quote ${1:options} do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "receive" <> _, arity: 1} = macro) do
+    label = "#{macro.name} (receive block)"
+
+    snippet = """
+    receive do
+      ${1:message shape} -> $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "try" <> _, arity: 1} = macro) do
+    label = "#{macro.name} (try / catch / rescue block)"
+
+    snippet = """
+    try do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "with" <> _, arity: 1} = macro) do
+    label = "with block"
+
+    snippet = """
+    with ${1:match} do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "case", arity: 2} = macro) do
+    label = "#{macro.name} (Case statement)"
+
+    snippet = """
+    case ${1:test} do
+      ${2:match} -> $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "if", arity: 2} = macro) do
+    label = "#{macro.name} (If statement)"
+
+    snippet = """
+    if ${1:test} do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "import", arity: 2} = macro) do
+    label = "#{macro.name} (import a module's functions)"
+
+    snippet = "import $0"
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "unless", arity: 2} = macro) do
+    label = "#{macro.name} (Unless statement)"
+
+    snippet = """
+    unless ${1:test} do
+      $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "cond"} = macro) do
+    label = "#{macro.name} (Cond statement)"
+
+    snippet = """
+    cond do
+      ${1:test} ->
+        $0
+    end
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "for"} = macro) do
+    label = "#{macro.name} (comprehension)"
+
+    snippet = """
+    for ${1:match} <- ${2:enumerable} do
+      $0
+    end
     """
 
     Completion.Item.new(

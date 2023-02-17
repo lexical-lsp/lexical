@@ -127,7 +127,19 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     refute [] == complete(project, "Project.|")
   end
 
-  describe "single completions" do
+  describe "ignoring things" do
+    test "single character contexts have no completions", %{project: project} do
+      assert [] = complete(project, "def my_thing() d|")
+    end
+  end
+
+  describe "Kernel* macros" do
+    test "do/end only has a single completion", %{project: project} do
+      assert assert [completion] = complete(project, "def my_thing do|")
+      assert completion.insert_text == "do\n$0\nend"
+      assert completion.label == "do/end"
+    end
+
     test "def only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
@@ -336,6 +348,184 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
 
       assert completion.insert_text == ~S"""
              defexception [${1:fields}] $0
+             """
+    end
+
+    test "alias returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("alias|")
+               |> fetch_completion("alias ")
+
+      assert completion.label == "alias (alias a module's name)"
+      assert completion.insert_text_format == :snippet
+      assert completion.insert_text == "alias $0"
+    end
+
+    test "import returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("import|")
+               |> fetch_completion("import")
+
+      assert completion.label == "import (import a module's functions)"
+      assert completion.insert_text_format == :snippet
+      assert completion.insert_text == "import $0"
+    end
+
+    test "require returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("require|")
+               |> fetch_completion("require")
+
+      assert completion.label == "require (require a module's macros)"
+      assert completion.insert_text_format == :snippet
+      assert completion.insert_text == "require $0"
+    end
+
+    test "quote returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("quote|")
+               |> fetch_completion("quote")
+
+      assert completion.label == "quote (quote block)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             quote ${1:options} do
+               $0
+             end
+             """
+    end
+
+    test "receive returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("receive|")
+               |> fetch_completion("receive")
+
+      assert completion.label == "receive (receive block)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             receive do
+               ${1:message shape} -> $0
+             end
+             """
+    end
+
+    test "try returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("try|")
+               |> fetch_completion("try")
+
+      assert completion.label == "try (try / catch / rescue block)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             try do
+               $0
+             end
+             """
+    end
+
+    test "with returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("with|")
+               |> fetch_completion("with")
+
+      assert completion.label == "with block"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             with ${1:match} do
+               $0
+             end
+             """
+    end
+
+    test "if returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("if|")
+               |> fetch_completion("if")
+
+      assert completion.label == "if (If statement)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             if ${1:test} do
+               $0
+             end
+             """
+    end
+
+    test "unless returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("unless|")
+               |> fetch_completion("unless")
+
+      assert completion.label == "unless (Unless statement)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             unless ${1:test} do
+               $0
+             end
+             """
+    end
+
+    test "case returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("case|")
+               |> fetch_completion("case")
+
+      assert completion.label == "case (Case statement)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             case ${1:test} do
+               ${2:match} -> $0
+             end
+             """
+    end
+
+    test "cond returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("cond|")
+               |> fetch_completion("cond")
+
+      assert completion.label == "cond (Cond statement)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             cond do
+               ${1:test} ->
+                 $0
+             end
+             """
+    end
+
+    test "for returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("for|")
+               |> fetch_completion("for")
+
+      assert completion.label == "for (comprehension)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             for ${1:match} <- ${2:enumerable} do
+               $0
+             end
              """
     end
 
