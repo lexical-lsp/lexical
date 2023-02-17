@@ -1,6 +1,7 @@
 defmodule Lexical.Provider.Queue do
   defmodule State do
     alias Lexical
+    alias Lexical.Protocol.Proto.LspTypes.ResponseError
     alias Lexical.Protocol.Requests
     alias Lexical.Provider.Env
     alias Lexical.Provider.Handlers
@@ -109,10 +110,14 @@ defmodule Lexical.Provider.Queue do
             exception_string = Exception.format(:error, e, __STACKTRACE__)
             Logger.error(exception_string)
 
-            Transport.write(%{
-              id: request.id,
-              error: exception_string
-            })
+            error =
+              ResponseError.new(
+                id: request.id,
+                message: exception_string,
+                code: :internal_error
+              )
+
+            Transport.write(error)
 
             {:request_complete, request}
         end
