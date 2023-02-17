@@ -24,6 +24,9 @@ defmodule Lexical.Project do
           # env_variables: %{String.t() => String.t()}
         }
   @type error_with_message :: {:error, message}
+
+  @workspace_directory_name ".lexical"
+
   # Public
   @spec new(Lexical.uri()) :: t
   def new(root_uri) do
@@ -70,6 +73,34 @@ defmodule Lexical.Project do
           {:ok, t} | error_with_message() | restart_notification()
   def change_environment_variables(%__MODULE__{} = project, environment_variables) do
     set_env_vars(project, environment_variables)
+  end
+
+  def workspace_path(%__MODULE__{} = project) do
+    project
+    |> root_path()
+    |> Path.join(@workspace_directory_name)
+  end
+
+  def build_path(%__MODULE__{} = project) do
+    project
+    |> workspace_path()
+    |> Path.join("build")
+  end
+
+  def ensure_workspace_exists(%__MODULE__{} = project) do
+    workspace_path = workspace_path(project)
+
+    cond do
+      File.exists?(workspace_path) and File.dir?(workspace_path) ->
+        :ok
+
+      File.exists?(workspace_path) ->
+        :ok = File.rm(workspace_path)
+        :ok = File.mkdir_p(workspace_path)
+
+      true ->
+        :ok = File.mkdir(workspace_path)
+    end
   end
 
   # private

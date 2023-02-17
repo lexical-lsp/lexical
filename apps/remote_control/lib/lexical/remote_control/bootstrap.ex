@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl.Bootstrap do
   the project's code paths, which are then added to the code paths from the language server. At this
   point, it's safe to start the project, as we should have all the code present to compile the system.
   """
-  alias Lexical.RemoteControl.Workspace
   alias Lexical.RemoteControl
   alias Lexical.Project
 
@@ -20,7 +19,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:mix),
          {:ok, _} <- Application.ensure_all_started(:logger),
          :ok <- Mix.start() do
-      Workspace.ensure_exists(project)
+      Project.ensure_workspace_exists(project)
     end
   end
 

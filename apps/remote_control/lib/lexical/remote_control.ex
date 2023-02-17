@@ -5,7 +5,6 @@ defmodule Lexical.RemoteControl do
   context of the remote VM.
   """
 
-  alias Lexical.RemoteControl.Workspace
   alias Lexical.Project
   alias Lexical.RemoteControl
 
@@ -47,7 +46,7 @@ defmodule Lexical.RemoteControl do
   end
 
   def in_mix_project(%Project{} = project, fun) do
-    build_path = Workspace.build_directory(project)
+    build_path = Project.build_path(project)
     project_root = Project.root_path(project)
 
     project
