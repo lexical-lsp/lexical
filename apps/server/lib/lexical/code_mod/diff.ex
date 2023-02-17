@@ -70,7 +70,7 @@ defmodule Lexical.CodeMod.Diff do
 
   defp apply_diff(:ins, {line, code_unit} = position, change, {current_line, prev_lines}) do
     current_line = [edit(change, line, code_unit, line, code_unit) | current_line]
-    advance(change, position, {current_line, prev_lines})
+    {position, {current_line, prev_lines}}
   end
 
   defp advance(<<>>, position, edits) do
