@@ -22,21 +22,4 @@ defmodule Lexical.RemoteControl.Bootstrap do
       Project.ensure_workspace_exists(project)
     end
   end
-
-  defp find_mix_exs(%Project{} = project) do
-    with path when is_binary(path) <- Project.mix_exs_path(project),
-         true <- File.exists?(path) do
-      {:ok, path}
-    else
-      _ ->
-        {:error, :no_mix_exs}
-    end
-  end
-
-  def load_mix_exs(%Project{} = project) do
-    with {:ok, mix_exs_path} <- find_mix_exs(project),
-         {:ok, [project_module], _} <- Kernel.ParallelCompiler.compile([mix_exs_path]) do
-      {:ok, project_module}
-    end
-  end
 end

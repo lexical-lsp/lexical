@@ -146,14 +146,42 @@ defmodule Lexical.BuildTest do
     end
 
     test "handles compile errors", %{project: project} do
-      source = ~S[doesnt_exist()]
+      source = ~S[
+        doesnt_exist()
+      ]
       compile_source_file(project, source)
 
       assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
-      assert diagnostic.position == {0, 0}
+      assert diagnostic.position == {1, 0}
+    end
+
+    test "handles function clause errors", %{project: project} do
+      source = ~S[
+        f = fn 1 -> :correct end
+        f.(3)
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+      assert %Diagnostic{} = diagnostic
+      assert diagnostic.severity == :error
+      assert diagnostic.message =~ "no function clause matching"
+      assert diagnostic.position == 1
+    end
+
+    test "handles compile errors with suggestions", %{project: project} do
+      source = ~S[
+
+        IO.ins
+      ]
+      compile_source_file(project, "my_test.ex", source)
+
+      assert_receive file_compiled(status: :error, diagnostics: [diagnostic]), 500
+      assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
+      assert diagnostic.position == 2
     end
 
     test "reports unused variables", %{project: project} do

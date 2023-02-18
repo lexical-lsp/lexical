@@ -173,9 +173,15 @@ defmodule Lexical.RemoteControl.Build do
   def safe_compile(%SourceFile{} = source_file) do
     compile = fn ->
       result =
-        source_file
-        |> SourceFile.to_string()
-        |> Code.eval_string([], file: source_file.path)
+        try do
+          source_file
+          |> SourceFile.to_string()
+          |> Code.eval_string([], file: source_file.path)
+        rescue
+          exception ->
+            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+            {:exception, filled_exception, stack}
+        end
 
       case result do
         {{:module, module_name, _, _}, _} ->
@@ -191,9 +197,9 @@ defmodule Lexical.RemoteControl.Build do
     end
 
     case capture_io(:stderr, compile) do
-      {captured_messages, {type, e}} when type in [:error, :exception] ->
+      {captured_messages, {type, exception, stack}} when type in [:error, :exception] ->
         diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        error = Build.Error.error_to_diagnostic(e)
+        error = Build.Error.error_to_diagnostic(exception, stack)
         {:error, [error | diagnostics]}
 
       {"", _} ->
