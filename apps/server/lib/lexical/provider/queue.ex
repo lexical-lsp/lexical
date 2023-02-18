@@ -110,12 +110,16 @@ defmodule Lexical.Provider.Queue do
             exception_string = Exception.format(:error, e, __STACKTRACE__)
             Logger.error(exception_string)
 
-            error =
+            response_error =
               ResponseError.new(
-                id: request.id,
                 message: exception_string,
                 code: :internal_error
               )
+
+            error = %{
+              id: request.id,
+              error: response_error
+            }
 
             Transport.write(error)
 

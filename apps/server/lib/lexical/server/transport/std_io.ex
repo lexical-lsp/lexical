@@ -18,7 +18,7 @@ defmodule Lexical.Server.Transport.StdIO do
 
   def write(io_device \\ :stdio, payload)
 
-  def write(io_device, %_{} = payload) do
+  def write(io_device, %{} = payload) do
     with {:ok, encoded} <- Jason.encode(payload) do
       write(io_device, encoded)
     end
