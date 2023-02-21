@@ -551,6 +551,66 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
     end
   end
 
+  describe "Kernel.SpecialForms dunder completions" do
+    test "__MODULE__ is suggested", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("__|")
+               |> fetch_completion("__MODULE__")
+
+      assert completion.label == "__MODULE__"
+      assert completion.kind == :constant
+    end
+
+    test "__DIR__ is suggested", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("__|")
+               |> fetch_completion("__DIR__")
+
+      assert completion.label == "__DIR__"
+      assert completion.kind == :constant
+    end
+
+    test "__ENV__ is suggested", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("__|")
+               |> fetch_completion("__ENV__")
+
+      assert completion.label == "__ENV__"
+      assert completion.kind == :constant
+    end
+
+    test "__CALLER__ is suggested", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("__|")
+               |> fetch_completion("__CALLER__")
+
+      assert completion.label == "__CALLER__"
+      assert completion.kind == :constant
+    end
+
+    test "__STACKTRACE__ is suggested", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("__|")
+               |> fetch_completion("__STACKTRACE__")
+
+      assert completion.label == "__STACKTRACE__"
+      assert completion.kind == :constant
+    end
+
+    test "__aliases__ is hidden", %{project: project} do
+      assert [] = complete(project, "__aliases|")
+    end
+
+    test "__block__ is hidden", %{project: project} do
+      assert [] = complete(project, "__block|")
+    end
+  end
+
   describe "sort_text" do
     test "dunder functions have the dunder removed in their sort_text", %{project: project} do
       assert {:ok, completion} =
@@ -609,6 +669,19 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
       assert Enum.find(fields, &(&1.label == "first_name"))
       assert Enum.find(fields, &(&1.label == "last_name"))
       assert Enum.find(fields, &(&1.label == "email_address"))
+    end
+
+    @tag :skip
+    test "it should complete module structs", %{project: project} do
+      completion = """
+      defmodule NewStruct do
+        defstruct [:name, :value]
+
+        def my_function(%|)
+      """
+
+      assert [completion] = complete(project, completion)
+      assert completion.label == "%__MODULE__"
     end
   end
 end

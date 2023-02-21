@@ -608,6 +608,23 @@ defmodule Lexical.CodeIntelligence.Completion do
     )
   end
 
+  defp to_completion_item(%Result.Macro{name: dunder_form} = macro)
+       when dunder_form in ~w(__CALLER__ __DIR__ __ENV__ __MODULE__ __STACKTRACE__) do
+    label = dunder_form
+
+    Completion.Item.new(
+      detail: macro.spec,
+      kind: :constant,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: dunder_form})
+       when dunder_form in ~w(__aliases__ __block__) do
+    :skip
+  end
+
   defp to_completion_item(%Result.Macro{name: name} = macro)
        when name not in @snippet_macros do
     label = "#{macro.name}/#{macro.arity}"
