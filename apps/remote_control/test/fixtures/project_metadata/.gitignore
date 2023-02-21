@@ -24,3 +24,5 @@ project_metadata-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+.lexical
