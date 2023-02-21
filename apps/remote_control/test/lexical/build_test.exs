@@ -155,7 +155,7 @@ defmodule Lexical.BuildTest do
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
-      assert diagnostic.position == {1, 0}
+      assert diagnostic.position == 1
     end
 
     test "handles function clause errors", %{project: project} do
@@ -254,7 +254,7 @@ defmodule Lexical.BuildTest do
 
       assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
       assert diagnostic.severity == :error
-      assert diagnostic.position == {3, 0}
+      assert diagnostic.position == 3
       assert diagnostic.message =~ ~S[undefined function unknown_fn/0]
       assert diagnostic.details == nil
     end
