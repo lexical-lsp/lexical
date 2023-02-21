@@ -179,7 +179,6 @@ defmodule Lexical.Server.Project.Diagnostics do
         file_compiled(diagnostics: diagnostics, source_file: %SourceFile{} = source_file),
         %State{} = state
       ) do
-    Logger.info("Got #{length(diagnostics)} for #{source_file.path}")
     state = State.clear(state, source_file.uri)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1, source_file))
     publish_diagnostics(state)
