@@ -4,8 +4,11 @@ defmodule Lexical.Text do
     millis = to_milliseconds(time, units)
 
     cond do
-      millis > 1000 ->
+      millis >= 1000 ->
         "#{Float.round(millis / 1000, 1)} seconds"
+
+      millis >= 1.0 ->
+        "#{trunc(millis)} ms"
 
       true ->
         "#{millis} ms"
@@ -13,9 +16,16 @@ defmodule Lexical.Text do
   end
 
   def module_name(module_name) when is_atom(module_name) do
-    module_name
-    |> Module.split()
-    |> Enum.join(".")
+    string_name = Atom.to_string(module_name)
+
+    if String.contains?(string_name, ".") do
+      module_name
+      |> Module.split()
+      |> Enum.join(".")
+    else
+      # erlang module_name
+      ":#{string_name}"
+    end
   end
 
   def module_name(module_name) when is_binary(module_name) do
@@ -23,7 +33,7 @@ defmodule Lexical.Text do
   end
 
   defp to_milliseconds(micros, :microsecond) do
-    round(micros / 1000)
+    micros / 1000
   end
 
   defp to_milliseconds(millis, :millisecond) do
