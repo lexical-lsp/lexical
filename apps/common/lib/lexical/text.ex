@@ -1,5 +1,5 @@
-defmodule Lexical.Text do
-  def format_seconds(time, opts \\ []) do
+defmodule Lexical.Format do
+  def seconds(time, opts \\ []) do
     units = Keyword.get(opts, :unit, :microsecond)
     millis = to_milliseconds(time, units)
 
@@ -15,7 +15,7 @@ defmodule Lexical.Text do
     end
   end
 
-  def module_name(module_name) when is_atom(module_name) do
+  def module(module_name) when is_atom(module_name) do
     string_name = Atom.to_string(module_name)
 
     if String.contains?(string_name, ".") do

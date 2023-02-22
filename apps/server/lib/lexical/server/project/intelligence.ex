@@ -1,6 +1,6 @@
 defmodule Lexical.Server.Project.Intelligence do
   defmodule State do
-    alias Lexical.Text
+    alias Lexical.Format
     alias Lexical.Project
 
     defstruct project: nil, struct_modules: MapSet.new()
@@ -10,13 +10,13 @@ defmodule Lexical.Server.Project.Intelligence do
     end
 
     def delete_struct_module(%__MODULE__{} = state, module_name) do
-      string_name = Text.module_name(module_name)
+      string_name = Format.module(module_name)
 
       %__MODULE__{state | struct_modules: MapSet.delete(state.struct_modules, string_name)}
     end
 
     def add_struct_module(%__MODULE__{} = state, module_name) do
-      string_name = Text.module_name(module_name)
+      string_name = Format.module(module_name)
 
       %__MODULE__{state | struct_modules: MapSet.put(state.struct_modules, string_name)}
     end
