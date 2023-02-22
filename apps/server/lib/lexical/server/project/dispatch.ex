@@ -95,7 +95,7 @@ defmodule Lexical.Server.Project.Dispatch do
 
   @impl GenServer
   def handle_continue(:trigger_build, %State{} = state) do
-    RemoteControl.Api.schedule_compile(state.project, false)
+    RemoteControl.Api.schedule_compile(state.project, true)
     {:noreply, state}
   end
 

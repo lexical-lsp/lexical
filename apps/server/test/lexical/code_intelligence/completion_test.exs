@@ -295,6 +295,18 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
              """
     end
 
+    test "defoverridable returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defoverridable|")
+               |> fetch_completion("defoverridable ")
+
+      assert completion.label == "defoverridable (Mark a function as overridable)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == "defoverridable ${1:keyword or behaviour} $0"
+    end
+
     test "defdelegate returns a snippet", %{project: project} do
       assert {:ok, completion} =
                project
@@ -348,6 +360,20 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
 
       assert completion.insert_text == ~S"""
              defexception [${1:fields}] $0
+             """
+    end
+
+    test "defstruct returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defstruct|")
+               |> fetch_completion("defstruct")
+
+      assert completion.label == "defstruct (Define a struct)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == ~S"""
+             defstruct [${1:fields}] $0
              """
     end
 

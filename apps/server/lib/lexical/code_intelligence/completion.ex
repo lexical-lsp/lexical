@@ -323,6 +323,21 @@ defmodule Lexical.CodeIntelligence.Completion do
     )
   end
 
+  defp to_completion_item(%Result.Macro{name: "defoverridable"} = macro) do
+    label = "#{macro.name} (Mark a function as overridable)"
+
+    snippet = "defoverridable ${1:keyword or behaviour} $0"
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
   defp to_completion_item(%Result.Macro{name: "defdelegate", arity: 2} = macro) do
     label = "#{macro.name} (Define a delegate function)"
 
@@ -379,6 +394,23 @@ defmodule Lexical.CodeIntelligence.Completion do
 
     snippet = """
     defexception [${1:fields}] $0
+    """
+
+    Completion.Item.new(
+      detail: macro.spec,
+      insert_text: snippet,
+      insert_text_format: :snippet,
+      kind: :class,
+      label: label,
+      sort_text: boost(label)
+    )
+  end
+
+  defp to_completion_item(%Result.Macro{name: "defstruct", arity: 1} = macro) do
+    label = "#{macro.name} (Define a struct)"
+
+    snippet = """
+    defstruct [${1:fields}] $0
     """
 
     Completion.Item.new(

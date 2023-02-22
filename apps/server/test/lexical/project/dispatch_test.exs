@@ -69,7 +69,7 @@ defmodule Lexical.Project.DispatchTest do
     end
 
     test "schedules a compile", %{project: project} do
-      assert_called RemoteControl.Api.schedule_compile(^project, false)
+      assert_called RemoteControl.Api.schedule_compile(^project, true)
     end
 
     test "allows processes to register for a message", %{project: project, dispatch: dispatch} do
