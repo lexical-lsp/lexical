@@ -130,12 +130,13 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
   end
 
+  alias Lexical.Format
+  alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Protocol.Types.Diagnostic
-  alias Lexical.Project
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
   alias Lexical.SourceFile
-  alias Lexical.RemoteControl.Api.Messages
   alias Mix.Task.Compiler
 
   import Messages
@@ -163,7 +164,13 @@ defmodule Lexical.Server.Project.Diagnostics do
   end
 
   @impl GenServer
-  def handle_info(project_compiled(diagnostics: diagnostics), %State{} = state) do
+  def handle_info(
+        project_compiled(diagnostics: diagnostics, elapsed_ms: elapsed_ms),
+        %State{} = state
+      ) do
+    project_name = Project.name(state.project)
+    Logger.info("Compiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
+
     state = State.clear_all(state)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1))
     publish_diagnostics(state)
