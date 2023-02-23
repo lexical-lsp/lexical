@@ -74,6 +74,12 @@ defmodule Lexical.Server.Project.Dispatch do
     |> GenServer.call({:registered?, pid})
   end
 
+  def broadcast(%Project{} = project, message) do
+    project
+    |> name()
+    |> send(message)
+  end
+
   # GenServer callbacks
 
   def start_link(%Project{} = project) do

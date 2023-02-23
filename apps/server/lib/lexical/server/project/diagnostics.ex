@@ -24,8 +24,24 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: Map.put(state.diagnostics_by_uri, source_uri, [])}
     end
 
-    def clear_all(%__MODULE__{} = state) do
-      cleared = Map.new(state.diagnostics_by_uri, fn {k, _} -> {k, []} end)
+    @doc """
+    Only clear diagnostics if they've been synced to disk
+    It's possible that the diagnostic presented by typing is still correct, and the file
+    that exists on the disk is actually an older copy of the file in memory.
+    """
+    def clear_all_flushed(%__MODULE__{} = state) do
+      cleared =
+        Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
+          with true <- SourceFile.Store.open?(uri),
+               {:ok, %SourceFile{} = source_file} <- SourceFile.Store.fetch(uri),
+               true <- source_file.dirty? do
+            {uri, []}
+          else
+            _ ->
+              {uri, diagnostics}
+          end
+        end)
+
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
@@ -45,6 +61,11 @@ defmodule Lexical.Server.Project.Diagnostics do
         )
 
       %{state | diagnostics_by_uri: file_diagnostics}
+    end
+
+    def add(%__MODULE__{} = state, not_a_diagnostic, %SourceFile{} = source_file) do
+      Logger.error("Invalid diagnostic #{inspect(not_a_diagnostic)} in #{source_file.path}")
+      state
     end
 
     def add(%__MODULE__{} = state, %Mix.Error{} = error) do
@@ -169,9 +190,9 @@ defmodule Lexical.Server.Project.Diagnostics do
         %State{} = state
       ) do
     project_name = Project.name(state.project)
-    Logger.info("Compiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
+    Logger.info("Comqpiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
 
-    state = State.clear_all(state)
+    state = State.clear_all_flushed(state)
     state = Enum.reduce(diagnostics, state, &State.add(&2, &1))
     publish_diagnostics(state)
     {:noreply, state}
