@@ -3,27 +3,18 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   require Logger
 
-  def error_to_diagnostic(%SyntaxError{} = syntax_error, _stack) do
-    %Diagnostic{
-      message: syntax_error.description,
-      position: lsp_position(syntax_error.line, syntax_error.column),
+  # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
+  def parse_error_to_diagnostic(context, message_info, token) do
+    %Mix.Task.Compiler.Diagnostic{
+      file: nil,
+      severity: :error,
+      position: context_to_position(context),
       compiler_name: "Elixir",
-      file: syntax_error.file,
-      severity: :error
+      message: message_info <> token
     }
   end
 
-  def error_to_diagnostic(%TokenMissingError{} = token_error, _stack) do
-    %Diagnostic{
-      message: token_error.description,
-      position: lsp_position(token_error.line, token_error.column),
-      compiler_name: "Elixir",
-      file: token_error.file,
-      severity: :error
-    }
-  end
-
-  def error_to_diagnostic(%CompileError{} = compile_error, _stack) do
+  def error_to_diagnostic(%CompileError{} = compile_error, _stack, _quoted_ast) do
     %Diagnostic{
       message: compile_error.description,
       position: lsp_position(compile_error.line),
@@ -33,7 +24,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
-  def error_to_diagnostic(%FunctionClauseError{} = function_clause, stack) do
+  def error_to_diagnostic(%FunctionClauseError{} = function_clause, stack, _quoted_ast) do
     %Diagnostic{
       message: Exception.message(function_clause),
       position: stack_to_position(stack),
@@ -43,10 +34,14 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
-  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack) do
+  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
+    [{module, function, arguments, _} | _] = stack
+    arity = length(arguments)
+    mfa = {module, function, arity}
+
     %Diagnostic{
       message: Exception.message(undefined_function),
-      position: stack_to_position(stack),
+      position: mfa_to_position(mfa, quoted_ast),
       file: stack_to_file(stack),
       severity: :error,
       compiler_name: "Elixir"
@@ -89,15 +84,43 @@ defmodule Lexical.RemoteControl.Build.Error do
     |> String.trim()
   end
 
-  defp stack_to_position(stacktrace) do
-    case Enum.find(stacktrace, fn trace_element -> elem(trace_element, 0) == :elixir_eval end) do
-      {:elixir_eval, _, _, position_kw} ->
-        line = Keyword.get(position_kw, :line)
-        lsp_position(line)
+  defp mfa_to_position({module, function, arity}, quoted_ast) do
+    # Because elixir's Code module has less than stellr line reporting, I think the best we can
+    # do here is to get the error from the stack trace
 
-      _ ->
-        lsp_position(0)
+    module_path =
+      module
+      |> Module.split()
+      |> Enum.map(&String.to_atom/1)
+
+    traverser = fn
+      {{:., _, [{:__aliases__, _, ^module_path}, ^function]}, context, arguments} = ast, _
+      when length(arguments) == arity ->
+        {ast, context}
+
+      ast, nil ->
+        {ast, nil}
+
+      ast, found ->
+        {ast, found}
     end
+
+    {_, context} = Macro.traverse(quoted_ast, nil, traverser, fn ast, acc -> {ast, acc} end)
+
+    cond do
+      Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
+        lsp_position(context[:line], context[:column])
+
+      Keyword.has_key?(context, :line) ->
+        lsp_position(context[:line])
+
+      true ->
+        nil
+    end
+  end
+
+  defp stack_to_position([{_module, _function, _arity, context} | _] = _stack) do
+    context_to_position(context)
   end
 
   defp stack_to_file(stacktrace) do
@@ -106,6 +129,19 @@ defmodule Lexical.RemoteControl.Build.Error do
         Keyword.get(position_kw, :file)
 
       _ ->
+        nil
+    end
+  end
+
+  defp context_to_position(context) do
+    cond do
+      Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
+        lsp_position(context[:line], context[:column])
+
+      Keyword.has_key?(context, :line) ->
+        lsp_position(context[:line])
+
+      true ->
         nil
     end
   end

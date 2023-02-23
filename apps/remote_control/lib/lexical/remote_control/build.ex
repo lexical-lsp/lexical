@@ -127,7 +127,7 @@ defmodule Lexical.RemoteControl.Build do
     [columns: true, token_metadata: true]
   end
 
-  def safe_compile_project(force?) do
+  defp safe_compile_project(force?) do
     opts =
       ~w(--return-errors --ignore-module-conflict --all-warnings --docs --debug-info --no-protocol-consolidation)
 
@@ -171,48 +171,90 @@ defmodule Lexical.RemoteControl.Build do
     end)
   end
 
-  def safe_compile(%SourceFile{} = source_file) do
+  defp safe_compile(%SourceFile{} = source_file) do
+    source_string = SourceFile.to_string(source_file)
+    parser_options = [file: source_file.path] ++ parser_options()
+
     compile = fn ->
-      result =
+      with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
         try do
-          source_file
-          |> SourceFile.to_string()
-          |> Code.eval_string([], file: source_file.path)
+          Code.compile_quoted(quoted_ast, source_file.path)
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            {:exception, filled_exception, stack}
+            {:exception, filled_exception, stack, quoted_ast}
         end
-
-      case result do
-        {{:module, module_name, _, _}, _} ->
-          module_name
-          |> CompileTracer.extract_module_updated()
-          |> RemoteControl.notify_listener()
-
-        _ ->
-          :ok
       end
-
-      result
     end
 
     case capture_io(:stderr, compile) do
-      {captured_messages, {type, exception, stack}} when type in [:error, :exception] ->
+      {captured_messages, {:error, {meta, message_info, token}}} ->
+        error = Build.Error.parse_error_to_diagnostic(meta, message_info, token)
         diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        error = Build.Error.error_to_diagnostic(exception, stack)
-        {:error, [error | diagnostics]}
+        diagnostics = ensure_file([error | diagnostics], source_file)
 
-      {"", _} ->
+        {:error, diagnostics}
+
+      {captured_messages, {:exception, exception, stack, quoted_ast}} ->
+        error = Build.Error.error_to_diagnostic(exception, stack, quoted_ast)
+        diagnostics = Build.Error.message_to_diagnostic(captured_messages)
+        diagnostics = ensure_file([error | diagnostics], source_file)
+
+        {:error, diagnostics}
+
+      {"", modules} ->
+        maybe_purge(modules)
         {:ok, []}
 
-      {captured_warnings, _} ->
-        diagnostics = Build.Error.message_to_diagnostic(captured_warnings)
+      {captured_warnings, modules} ->
+        maybe_purge(modules)
+
+        diagnostics =
+          captured_warnings
+          |> Build.Error.message_to_diagnostic()
+          |> ensure_file(source_file)
+
         {:ok, diagnostics}
     end
   end
 
+  defp ensure_file(diagnostics, %SourceFile{} = source_file) do
+    Enum.map(diagnostics, &Map.put(&1, :file, source_file.path))
+  end
+
   defp to_ms(microseconds) do
     microseconds / 1000
+  end
+
+  defp maybe_purge(module_list) do
+    # When using code snippets to define a module, as the user types the module name,
+    # multiple modules are created, as each character is typed. For example, if the
+    # snippet's module name is Mod the following modules would be created; [M, Mo, Mod].
+    # To prevent this, we'll purge any modules during incremental file compilation that
+    # define no functions, macros, structs, or types.
+
+    Enum.each(module_list, fn {module_name, bytecode} ->
+      case CompileTracer.extract_module_updated(module_name) do
+        module_updated(functions: [], macros: [], struct: nil) ->
+          unless has_types?(bytecode) do
+            :code.purge(module_name)
+            :code.delete(module_name)
+          end
+
+        _ ->
+          :ok
+      end
+    end)
+  end
+
+  defp has_types?(bytecode) do
+    case :beam_lib.chunks(bytecode, [:abstract_code]) do
+      {:ok, {_mod_name, terms}} ->
+        {:raw_abstract_v1, code} = Keyword.get(terms, :abstract_code)
+        Enum.any?(code, &match?({:attribute, _, :type, _}, &1))
+
+      _ ->
+        false
+    end
   end
 end

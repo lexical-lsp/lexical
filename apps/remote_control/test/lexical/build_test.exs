@@ -43,6 +43,7 @@ defmodule Lexical.BuildTest do
   def with_empty_module(%{project: project}) do
     module = ~S[
       defmodule UnderTest do
+        def test?, do: true
       end
     ]
     compile_source_file(project, module)
@@ -180,8 +181,10 @@ defmodule Lexical.BuildTest do
       compile_source_file(project, "my_test.ex", source)
 
       assert_receive file_compiled(status: :error, diagnostics: [diagnostic]), 500
+      assert diagnostic.severity == :error
+      assert diagnostic.file =~ "my_test.ex"
       assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
-      assert diagnostic.position == 2
+      assert diagnostic.position == {2, 11}
     end
 
     test "reports unused variables", %{project: project} do
@@ -259,6 +262,21 @@ defmodule Lexical.BuildTest do
       assert diagnostic.details == nil
     end
 
+    test "reports multiple errors", %{project: project} do
+      source = ~S[
+        defmodule WithFiveErrors do
+          def error(unused_1, unused_2) do
+            unknown_fn()
+            unused_3 = other_unknown()
+          end
+        end
+      ]
+
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :error, diagnostics: diagnostics)
+      assert length(diagnostics) == 5
+    end
+
     test "adding a new module notifies the listener", %{project: project} do
       source = ~S[
       defmodule NewModule do
@@ -267,6 +285,24 @@ defmodule Lexical.BuildTest do
 
       compile_source_file(project, source)
       assert_receive module_updated(name: NewModule, functions: [])
+    end
+
+    test "adding multiple modules notifies the listener for each module", %{project: project} do
+      source = ~S[
+        defmodule FirstModule do
+        end
+
+        defmodule SecondModule do
+        end
+
+        defmodule ThirdModule do
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive module_updated(name: FirstModule), 500
+      assert_receive module_updated(name: SecondModule), 500
+      assert_receive module_updated(name: ThirdModule), 500
     end
 
     test "adding a function notifies the listener", %{project: project} do
@@ -374,6 +410,64 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, changed)
       assert_receive module_updated(name: ArityChange, macros: [arity: 2])
+    end
+  end
+
+  describe "module sanitization" do
+    setup [:with_metadata_project]
+
+    test "adding an empty module doesn't add it to the project's code", %{project: project} do
+      source = ~S[
+        defmodule EmptyModule do
+        end
+      ]
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :success), 5000
+      refute RemoteControl.call(project, Code, :ensure_loaded?, [EmptyModule])
+    end
+
+    test "a module that defines a function is kept", %{project: project} do
+      source = ~S[
+        defmodule WithAFunction do
+          def has_function?, do: true
+        end
+      ]
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :success), 5000
+      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAFunction])
+    end
+
+    test "a module that defines a macro is kept", %{project: project} do
+      source = ~S[
+        defmodule WithAMacro do
+          defmacro has_macro?, do: true
+        end
+      ]
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :success), 5000
+      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAMacro])
+    end
+
+    test "a module that defines a struct is kept", %{project: project} do
+      source = ~S[
+        defmodule WithAStruct do
+          defstruct name: nil, value: nil
+        end
+      ]
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :success), 5000
+      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAStruct])
+    end
+
+    test "a module with typespecs is kept", %{project: project} do
+      source = ~S[
+        defmodule WithAType do
+          @type mod_type :: integer
+        end
+      ]
+      compile_source_file(project, source)
+      assert_receive file_compiled(status: :success), 5000
+      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAType])
     end
   end
 end
