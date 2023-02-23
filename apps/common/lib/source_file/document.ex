@@ -62,6 +62,18 @@ defmodule Lexical.SourceFile.Document do
   end
 end
 
+defimpl Inspect, for: Lexical.SourceFile.Document do
+  alias Lexical.SourceFile.Document
+  alias Lexical.SourceFile.Line
+
+  import Line
+
+  def inspect(document, _opts) do
+    {:ok, line(text: text)} = Document.fetch_line(document, 0)
+    "%Document<'#{text}' (#{Document.size(document)}... lines)>"
+  end
+end
+
 defimpl Enumerable, for: Lexical.SourceFile.Document do
   alias Lexical.SourceFile.Document
 

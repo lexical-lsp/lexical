@@ -9,6 +9,8 @@ defmodule Lexical.SourceFile do
 
   alias __MODULE__.Path, as: SourceFilePath
 
+  @derive {Inspect, only: [:path, :version, :dirty?, :document]}
+
   defstruct [:uri, :path, :version, dirty?: false, document: nil]
 
   @type t :: %__MODULE__{
