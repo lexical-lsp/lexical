@@ -9,6 +9,16 @@ defmodule Lexical.RemoteControl.Completion.Result do
     end
   end
 
+  defmodule Callback do
+    defstruct [:argument_names, :arity, :metadata, :name, :origin, :spec, :summary, :type]
+
+    def new(%{} = elixir_sense_map) do
+      __MODULE__
+      |> struct(elixir_sense_map)
+      |> Map.put(:argument_names, Map.get(elixir_sense_map, :args_list))
+    end
+  end
+
   defmodule Macro do
     defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
@@ -145,5 +155,9 @@ defmodule Lexical.RemoteControl.Completion.Result do
 
   def from_elixir_sense(%{type: :field, subtype: :struct_field} = elixir_sense_map) do
     StructField.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(%{type: :callback} = elixir_sense_map) do
+    Callback.new(elixir_sense_map)
   end
 end
