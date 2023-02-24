@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       severity: :error,
       position: context_to_position(context),
       compiler_name: "Elixir",
-      message: message_info <> token
+      message: message_info_to_binary(message_info, token)
     }
   end
 
@@ -220,5 +220,13 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   defp position(line, column) do
     {line, column}
+  end
+
+  defp message_info_to_binary(message_info, token) when is_binary(message_info) do
+    message_info <> token
+  end
+
+  defp message_info_to_binary({header, footer}, token) do
+    header <> token <> footer
   end
 end

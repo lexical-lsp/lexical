@@ -16,9 +16,12 @@ defmodule Lexical.BuildTest do
   end
 
   def compile_source_file(%Project{} = project, filename \\ "file.ex", source_code) do
+    sequence = System.unique_integer([:monotonic, :positive])
+
     uri =
       project
       |> Project.root_path()
+      |> Path.join(to_string(sequence))
       |> Path.join(filename)
       |> SourceFile.Path.to_uri()
 
@@ -53,6 +56,11 @@ defmodule Lexical.BuildTest do
 
   def with_metadata_project(_) do
     {:ok, project} = with_project(:project_metadata)
+    {:ok, project: project}
+  end
+
+  def with_parse_errors_project(_) do
+    {:ok, project} = with_project(:parse_errors)
     {:ok, project: project}
   end
 
@@ -105,6 +113,19 @@ defmodule Lexical.BuildTest do
 
       assert_receive project_compiled(status: :error), 5000
       assert_receive project_diagnostics(diagnostics: [%Diagnostic{}])
+    end
+  end
+
+  describe "compilng a project with parse errors" do
+    setup :with_parse_errors_project
+
+    test "stuff", %{project: project} do
+      Build.schedule_compile(project, true)
+
+      assert_receive project_compiled(status: :error), 5000
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+
+      assert diagnostic.message =~ "SyntaxError"
     end
   end
 

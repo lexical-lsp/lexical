@@ -2,10 +2,12 @@ defmodule Lexical.Server.CodeMod.FormatTest do
   alias Lexical.Project
   alias Lexical.CodeMod.Format
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case
   use Patch
+  import Messages
 
   def apply_code_mod(text, _ast, opts) do
     project = Keyword.get(opts, :project)
@@ -48,8 +50,6 @@ defmodule Lexical.Server.CodeMod.FormatTest do
   end
 
   def with_forwarded_listener(_) do
-    test_pid = self()
-    patch(RemoteControl, :notify_listener, fn msg -> send(test_pid, {:forwarded, msg}) end)
     :ok
   end
 
@@ -74,7 +74,7 @@ defmodule Lexical.Server.CodeMod.FormatTest do
     test "it will fail to format a file not in the project", %{project: project} do
       assert {:error, reason} = modify(unformatted(), file_path: "/tmp/foo.ex", project: project)
       assert reason =~ "Cannot format file /tmp/foo.ex"
-      assert reason =~ "It is not in a subdirectory"
+      assert reason =~ "It is not in the project at"
     end
 
     test "it should provide an error for a syntax error", %{project: project} do
@@ -125,7 +125,9 @@ defmodule Lexical.Server.CodeMod.FormatTest do
         def foo(a, ) do
       end
       ] |> modify(project: project)
-      assert_receive {:forwarded, msg}
+
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert diagnostic.message =~ "syntax error"
     end
   end
 end

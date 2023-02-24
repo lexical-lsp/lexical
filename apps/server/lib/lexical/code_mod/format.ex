@@ -10,7 +10,8 @@ defmodule Lexical.CodeMod.Format do
 
   @spec text_edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
   def text_edits(%Project{} = project, %SourceFile{} = document) do
-    with {:ok, unformatted, formatted} <- do_format(project, document) do
+    with :ok <- RemoteControl.Api.compile_source_file(project, document),
+         {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
       {:ok, edits}
     end
@@ -81,15 +82,15 @@ defmodule Lexical.CodeMod.Format do
   end
 
   defp check_current_directory(%SourceFile{} = document, project_path) do
-    cwd = File.cwd!()
-
-    if subdirectory?(document.path, parent: project_path) or
-         subdirectory?(document.path, parent: cwd) do
+    if subdirectory?(document.path, parent: project_path) do
       :ok
     else
       message =
-        "Cannot format file from current directory " <>
-          "(Currently in #{Path.relative_to(cwd, project_path)})"
+        """
+        Cannot format file #{document.path}.
+        It is not in the project at #{project_path}
+        """
+        |> String.trim()
 
       {:error, message}
     end

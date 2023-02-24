@@ -1,11 +1,14 @@
 defmodule Lexical.Test.CodeMod.Case do
-  alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent
+  alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent,
+    as: RangedContentChangeEvent
+
   alias Lexical.SourceFile
 
   use ExUnit.CaseTemplate
 
   using do
     quote do
+      import Lexical.Test.Fixtures
       import unquote(__MODULE__), only: [sigil_q: 2]
 
       def apply_code_mod(_, _, _) do
@@ -47,7 +50,7 @@ defmodule Lexical.Test.CodeMod.Case do
 
     converted_edits =
       Enum.map(text_edits, fn edit ->
-        ContentChangeEvent.new(text: edit.new_text, range: edit.range)
+        RangedContentChangeEvent.new(text: edit.new_text, range: edit.range)
       end)
 
     {:ok, edited_source_file} = SourceFile.apply_content_changes(source_file, 1, converted_edits)
