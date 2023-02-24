@@ -17,7 +17,7 @@ defmodule Lexical.RemoteControl.Build.Error do
   def error_to_diagnostic(%CompileError{} = compile_error, _stack, _quoted_ast) do
     %Diagnostic{
       message: compile_error.description,
-      position: lsp_position(compile_error.line),
+      position: position(compile_error.line),
       compiler_name: "Elixir",
       file: compile_error.file,
       severity: :error
@@ -109,10 +109,10 @@ defmodule Lexical.RemoteControl.Build.Error do
 
     cond do
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
-        lsp_position(context[:line], context[:column])
+        position(context[:line], context[:column])
 
       Keyword.has_key?(context, :line) ->
-        lsp_position(context[:line])
+        position(context[:line])
 
       true ->
         nil
@@ -136,10 +136,10 @@ defmodule Lexical.RemoteControl.Build.Error do
   defp context_to_position(context) do
     cond do
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
-        lsp_position(context[:line], context[:column])
+        position(context[:line], context[:column])
 
       Keyword.has_key?(context, :line) ->
-        lsp_position(context[:line])
+        position(context[:line])
 
       true ->
         nil
@@ -164,7 +164,7 @@ defmodule Lexical.RemoteControl.Build.Error do
         details: mfa,
         message: message,
         file: file,
-        position: lsp_position(line, column),
+        position: position(line, column),
         severity: :warning
       }
     end
@@ -211,11 +211,11 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp lsp_position(line) do
-    max(0, line - 1)
+  defp position(line) do
+    line
   end
 
-  defp lsp_position(line, column) do
-    {max(0, line - 1), max(0, column - 1)}
+  defp position(line, column) do
+    {line, column}
   end
 end

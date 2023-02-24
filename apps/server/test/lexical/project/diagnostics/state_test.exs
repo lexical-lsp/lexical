@@ -28,11 +28,24 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     |> SourceFile.new(contents, 0)
   end
 
+  defp compiler_position({line, column}) do
+    {compiler_position(line), compiler_position(column)}
+  end
+
+  defp compiler_position(line) do
+    line + 1
+  end
+
   def compiler_diagnostic(opts \\ []) do
+    position =
+      opts
+      |> Keyword.get(:position, 4)
+      |> compiler_position()
+
     %Compiler.Diagnostic{
       message: Keyword.get(opts, :message, "This file is broken"),
       file: Keyword.get(opts, :file, existing_file_path()),
-      position: Keyword.get(opts, :position, 4),
+      position: position,
       severity: Keyword.get(opts, :severity, :error),
       compiler_name: "Elixir"
     }

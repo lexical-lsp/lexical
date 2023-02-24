@@ -134,6 +134,9 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
+      line_number = max(line_number - 1, 0)
+      column = max(column - 1, 0)
+
       with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
            {:ok, character} <- CodeUnit.to_utf16(line_text, column) do
         Range.new(

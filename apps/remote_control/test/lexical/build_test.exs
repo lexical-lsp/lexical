@@ -132,7 +132,7 @@ defmodule Lexical.BuildTest do
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[syntax error before: ',']
-      assert diagnostic.position == {3, 14}
+      assert diagnostic.position == {4, 15}
     end
 
     test "handles missing token errors", %{project: project} do
@@ -143,7 +143,7 @@ defmodule Lexical.BuildTest do
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[missing terminator: }]
-      assert diagnostic.position == {0, 8}
+      assert diagnostic.position == {1, 9}
     end
 
     test "handles compile errors", %{project: project} do
@@ -156,7 +156,7 @@ defmodule Lexical.BuildTest do
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
-      assert diagnostic.position == 1
+      assert diagnostic.position == 2
     end
 
     test "handles function clause errors", %{project: project} do
@@ -170,7 +170,7 @@ defmodule Lexical.BuildTest do
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ "no function clause matching"
-      assert diagnostic.position == 1
+      assert diagnostic.position == 2
     end
 
     test "handles compile errors with suggestions", %{project: project} do
@@ -184,7 +184,7 @@ defmodule Lexical.BuildTest do
       assert diagnostic.severity == :error
       assert diagnostic.file =~ "my_test.ex"
       assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
-      assert diagnostic.position == {2, 11}
+      assert diagnostic.position == {3, 12}
     end
 
     test "reports unused variables", %{project: project} do
@@ -200,7 +200,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
 
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {3, 0}
+      assert diagnostic.position == {4, 0}
       assert diagnostic.message =~ ~S[warning: variable "unused" is unused]
       assert diagnostic.details == {WithWarnings, :error, 0}
     end
@@ -221,7 +221,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
 
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {3, 0}
+      assert diagnostic.position == {4, 0}
 
       assert diagnostic.message =~
                ~S[warning: variable "calc" does not exist and is being expanded to "calc()"]
@@ -240,7 +240,7 @@ defmodule Lexical.BuildTest do
 
       assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {2, 0}
+      assert diagnostic.position == {3, 0}
       assert diagnostic.message =~ ~S[warning: function unused/0 is unused]
       assert diagnostic.details == nil
     end
@@ -257,7 +257,7 @@ defmodule Lexical.BuildTest do
 
       assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
       assert diagnostic.severity == :error
-      assert diagnostic.position == 3
+      assert diagnostic.position == 4
       assert diagnostic.message =~ ~S[undefined function unknown_fn/0]
       assert diagnostic.details == nil
     end
