@@ -45,42 +45,39 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
-    def add(
-          %__MODULE__{} = state,
-          %Compiler.Diagnostic{} = diagnostic,
-          %SourceFile{} = source_file
-        ) do
-      lsp_diagnostic = to_protocol(diagnostic, source_file)
+    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic, source_file_uri) do
+      with {:ok, lsp_diagnostic} <- to_protocol(diagnostic, source_file_uri) do
+        file_diagnostics =
+          Map.update(
+            state.diagnostics_by_uri,
+            source_file_uri,
+            [lsp_diagnostic],
+            &[lsp_diagnostic | &1]
+          )
 
-      file_diagnostics =
-        Map.update(
-          state.diagnostics_by_uri,
-          source_file.uri,
-          [lsp_diagnostic],
-          &[lsp_diagnostic | &1]
-        )
-
-      %{state | diagnostics_by_uri: file_diagnostics}
+        {:ok, %{state | diagnostics_by_uri: file_diagnostics}}
+      end
     end
 
     def add(%__MODULE__{} = state, not_a_diagnostic, %SourceFile{} = source_file) do
       Logger.error("Invalid diagnostic #{inspect(not_a_diagnostic)} in #{source_file.path}")
-      state
+      {:ok, state}
     end
 
     def add(%__MODULE__{} = state, %Mix.Error{} = error) do
       project_uri = state.project.mix_exs_uri
-      lsp_diagnostic = to_protocol(error, project_uri)
 
-      file_diagnostics =
-        Map.update(
-          state.diagnostics_by_uri,
-          project_uri,
-          [lsp_diagnostic],
-          &[lsp_diagnostic | &1]
-        )
+      with {:ok, lsp_diagnostic} <- to_protocol(error, project_uri) do
+        file_diagnostics =
+          Map.update(
+            state.diagnostics_by_uri,
+            project_uri,
+            [lsp_diagnostic],
+            &[lsp_diagnostic | &1]
+          )
 
-      %{state | diagnostics_by_uri: file_diagnostics}
+        {:ok, %{state | diagnostics_by_uri: file_diagnostics}}
+      end
     end
 
     def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
@@ -92,16 +89,13 @@ defmodule Lexical.Server.Project.Diagnostics do
             [lsp_diagnostic | diagnostics]
           end)
 
-        %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
-      else
-        _ ->
-          state
+        {:ok, %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}}
       end
     end
 
     def add(%__MODULE__{} = state, other) do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
-      state
+      {:ok, state}
     end
 
     defp to_protocol(%Compiler.Diagnostic{} = diagnostic, %SourceFile{} = source_file) do
@@ -161,6 +155,7 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
   alias Lexical.SourceFile
+  alias Lexical.Server.Transport
   alias Mix.Task.Compiler
 
   import Messages
@@ -182,37 +177,62 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [project_compiled(), file_compiled(), file_compile_requested()])
+    Dispatch.register(project, [project_compiled(), file_diagnostics(), project_diagnostics()])
+
     state = State.new(project)
     {:ok, state}
   end
 
   @impl GenServer
-  def handle_info(
-        project_compiled(diagnostics: diagnostics, elapsed_ms: elapsed_ms),
-        %State{} = state
-      ) do
-    project_name = Project.name(state.project)
-    Logger.info("Comqpiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
-
+  def handle_info(project_diagnostics(diagnostics: diagnostics), %State{} = state) do
     state = State.clear_all_flushed(state)
-    state = Enum.reduce(diagnostics, state, &State.add(&2, &1))
+
+    state =
+      Enum.reduce(diagnostics, state, fn diagnostic, state ->
+        case State.add(state, diagnostic) do
+          {:ok, new_state} ->
+            new_state
+
+          {:error, reason} ->
+            report_diagnostic_error(diagnostic, reason)
+            state
+        end
+      end)
+
     publish_diagnostics(state)
+
     {:noreply, state}
   end
 
-  def handle_info(file_compile_requested(), %State{} = state) do
+  @impl GenServer
+  def handle_info(file_diagnostics(uri: uri, diagnostics: diagnostics), %State{} = state) do
+    state = State.clear(state, uri)
+
+    state =
+      Enum.reduce(diagnostics, state, fn diagnostic, state ->
+        case State.add(state, diagnostic, uri) do
+          {:ok, new_state} ->
+            new_state
+
+          {:error, reason} ->
+            report_diagnostic_error(diagnostic, reason)
+            state
+        end
+      end)
+
+    publish_diagnostics(state)
+
     {:noreply, state}
   end
 
   @impl GenServer
   def handle_info(
-        file_compiled(diagnostics: diagnostics, source_file: %SourceFile{} = source_file),
+        project_compiled(elapsed_ms: elapsed_ms),
         %State{} = state
       ) do
-    state = State.clear(state, source_file.uri)
-    state = Enum.reduce(diagnostics, state, &State.add(&2, &1, source_file))
-    publish_diagnostics(state)
+    project_name = Project.name(state.project)
+    Logger.info("Compiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
+
     {:noreply, state}
   end
 
@@ -226,11 +246,15 @@ defmodule Lexical.Server.Project.Diagnostics do
           diagnostics: diagnostic_list
         )
 
-      Lexical.Server.Transport.write(notification)
+      Transport.write(notification)
     end)
   end
 
   defp name(%Project{} = project) do
     :"#{Project.name(project)}::diagnostics"
+  end
+
+  defp report_diagnostic_error(diagnostic, reason) do
+    Logger.error("Could not add diagnostic #{inspect(diagnostic)} because #{inspect(reason)}")
   end
 end

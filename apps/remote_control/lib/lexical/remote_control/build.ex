@@ -43,67 +43,73 @@ defmodule Lexical.RemoteControl.Build do
     {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
     elapsed_ms = to_ms(elapsed_us)
 
-    message =
+    {compile_message, diagnostics} =
       case result do
         :ok ->
-          project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+          {message, []}
 
         {:ok, diagnostics} ->
-          project_compiled(
-            status: :success,
-            project: project,
-            elapsed_ms: elapsed_ms,
-            diagnostics: List.wrap(diagnostics)
-          )
+          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+
+          {message, List.wrap(diagnostics)}
 
         {:error, diagnostics} ->
-          project_compiled(
-            status: :error,
-            project: project,
-            elapsed_ms: elapsed_ms,
-            diagnostics: List.wrap(diagnostics)
-          )
+          message = project_compiled(status: :error, project: project, elapsed_ms: elapsed_ms)
+
+          {message, List.wrap(diagnostics)}
       end
 
-    RemoteControl.notify_listener(message)
+    diagnostics_message = project_diagnostics(project: project, diagnostics: diagnostics)
+
+    RemoteControl.notify_listener(compile_message)
+    RemoteControl.notify_listener(diagnostics_message)
     {:noreply, project}
   end
 
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
     RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
+
     {elapsed_us, result} = :timer.tc(fn -> safe_compile(source_file) end)
+
     elapsed_ms = to_ms(elapsed_us)
 
-    message =
+    {compile_message, diagnostics} =
       case result do
-        {:ok, []} ->
-          file_compiled(
-            status: :success,
-            project: project,
-            source_file: source_file,
-            elapsed_ms: elapsed_ms
-          )
-
         {:ok, diagnostics} ->
-          file_compiled(
-            status: :success,
-            project: project,
-            source_file: source_file,
-            elapsed_ms: elapsed_ms,
-            diagnostics: List.wrap(diagnostics)
-          )
+          message =
+            file_compiled(
+              status: :success,
+              project: project,
+              uri: source_file.uri,
+              elapsed_ms: elapsed_ms
+            )
+
+          {message, diagnostics}
 
         {:error, diagnostics} ->
-          file_compiled(
-            status: :error,
-            project: project,
-            source_file: source_file,
-            elapsed_ms: elapsed_ms,
-            diagnostics: List.wrap(diagnostics)
-          )
+          message =
+            file_compiled(
+              status: :error,
+              project: project,
+              uri: source_file.uri,
+              elapsed_ms: elapsed_ms
+            )
+
+          {message, diagnostics}
       end
 
-    RemoteControl.notify_listener(message)
+    :logger.info("Emitting #{inspect(diagnostics)}")
+
+    diagnostics =
+      file_diagnostics(
+        project: project,
+        uri: source_file.uri,
+        diagnostics: List.wrap(diagnostics)
+      )
+
+    RemoteControl.notify_listener(compile_message)
+    RemoteControl.notify_listener(diagnostics)
 
     {:noreply, project}
   end

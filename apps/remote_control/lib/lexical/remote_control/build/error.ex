@@ -167,6 +167,9 @@ defmodule Lexical.RemoteControl.Build.Error do
         position: position(line, column),
         severity: :warning
       }
+    else
+      _ ->
+        nil
     end
   end
 

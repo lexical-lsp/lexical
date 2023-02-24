@@ -81,7 +81,9 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:umbrella)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success, diagnostics: []), 5000
+      assert_receive project_compiled(status: :success), 5000
+      assert_receive project_diagnostics(diagnostics: [])
+
       assert_receive module_updated(name: Umbrella.First, functions: functions)
 
       assert {:arity_0, 0} in functions
@@ -101,8 +103,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_errors)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error, diagnostics: diagnostics), 5000
-      assert [%Diagnostic{}] = diagnostics
+      assert_receive project_compiled(status: :error), 5000
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{}])
     end
   end
 
@@ -111,7 +113,9 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_warnings)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error, diagnostics: diagnostics), 5000
+      assert_receive project_compiled(status: :error), 5000
+      assert_receive project_diagnostics(diagnostics: diagnostics)
+
       assert [%Diagnostic{}, %Diagnostic{}] = diagnostics
     end
   end
@@ -128,7 +132,10 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[syntax error before: ',']
@@ -139,7 +146,9 @@ defmodule Lexical.BuildTest do
       source = ~S[%{foo: 3]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[missing terminator: }]
@@ -152,7 +161,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
@@ -166,7 +177,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
       assert diagnostic.message =~ "no function clause matching"
@@ -180,7 +193,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, "my_test.ex", source)
 
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic]), 500
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
       assert diagnostic.severity == :error
       assert diagnostic.file =~ "my_test.ex"
       assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
@@ -197,7 +211,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive file_compiled(status: :success)
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
 
       assert diagnostic.severity == :warning
       assert diagnostic.position == {4, 0}
@@ -218,7 +233,9 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
+
+      assert_receive file_compiled(status: :success)
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
 
       assert diagnostic.severity == :warning
       assert diagnostic.position == {4, 0}
@@ -238,7 +255,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :success, diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive file_compiled(status: :success)
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+
       assert diagnostic.severity == :warning
       assert diagnostic.position == {3, 0}
       assert diagnostic.message =~ ~S[warning: function unused/0 is unused]
@@ -255,7 +274,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error, diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [diagnostic])
+
       assert diagnostic.severity == :error
       assert diagnostic.position == 4
       assert diagnostic.message =~ ~S[undefined function unknown_fn/0]
@@ -273,7 +294,10 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :error, diagnostics: diagnostics)
+
+      assert_receive file_compiled(status: :error)
+      assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 5000
+
       assert length(diagnostics) == 5
     end
 

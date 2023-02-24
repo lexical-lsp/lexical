@@ -24,7 +24,7 @@ defmodule Lexical.Project.DiagnosticsTest do
 
   def diagnostic(file_path) do
     %Compiler.Diagnostic{
-      file: file_path,
+      file: SourceFile.Path.ensure_path(file_path),
       severity: :error,
       message: "stuff broke",
       position: 1,
@@ -57,15 +57,15 @@ defmodule Lexical.Project.DiagnosticsTest do
       source_file: source_file,
       uri: uri
     } do
-      file_compiled_message =
-        file_compiled(diagnostics: [diagnostic(uri)], source_file: source_file)
+      file_diagnostics_message =
+        file_diagnostics(diagnostics: [diagnostic(uri)], uri: source_file.uri)
 
-      Project.Dispatch.broadcast(project, file_compiled_message)
+      Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{} = publish_diagnostics}, 500
 
       [previous_diagnostic] = publish_diagnostics.lsp.diagnostics
 
-      Project.Dispatch.broadcast(project, project_compiled(diagnostics: [], elapsed_ms: 500))
+      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
       assert_receive {:transport, new_diagnostics}
 
       assert new_diagnostics.lsp.diagnostics == [previous_diagnostic]
@@ -76,15 +76,15 @@ defmodule Lexical.Project.DiagnosticsTest do
       source_file: source_file,
       uri: uri
     } do
-      file_compiled_message =
-        file_compiled(diagnostics: [diagnostic(uri)], source_file: source_file)
+      file_diagnostics_message =
+        file_diagnostics(diagnostics: [diagnostic(uri)], uri: source_file.uri)
 
-      Project.Dispatch.broadcast(project, file_compiled_message)
+      Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}
 
       SourceFile.Store.get_and_update(uri, &SourceFile.mark_clean/1)
 
-      Project.Dispatch.broadcast(project, project_compiled(diagnostics: [], elapsed_ms: 500))
+      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
@@ -94,14 +94,14 @@ defmodule Lexical.Project.DiagnosticsTest do
       source_file: source_file,
       uri: uri
     } do
-      file_compiled_message =
-        file_compiled(diagnostics: [diagnostic(uri)], source_file: source_file)
+      file_diagnostics_message =
+        file_diagnostics(diagnostics: [diagnostic(uri)], uri: source_file.uri)
 
-      Project.Dispatch.broadcast(project, file_compiled_message)
+      Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}, 500
 
       SourceFile.Store.close(uri)
-      Project.Dispatch.broadcast(project, project_compiled(diagnostics: [], elapsed_ms: 500))
+      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
