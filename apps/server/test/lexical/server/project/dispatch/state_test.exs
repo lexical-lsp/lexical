@@ -1,4 +1,4 @@
-defmodule Lexical.Project.Dispatch.StateTest do
+defmodule Lexical.Server.Project.Dispatch.StateTest do
   use ExUnit.Case
 
   alias Lexical.Project

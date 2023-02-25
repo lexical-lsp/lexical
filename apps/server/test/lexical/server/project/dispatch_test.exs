@@ -1,4 +1,4 @@
-defmodule Lexical.Project.DispatchTest do
+defmodule Lexical.Server.Project.DispatchTest do
   alias Lexical.Project
   alias Lexical.Server.Project.Dispatch
   alias Lexical.RemoteControl

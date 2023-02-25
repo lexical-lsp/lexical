@@ -1,4 +1,4 @@
-defmodule Lexical.Project.DiagnosticsTest do
+defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project
