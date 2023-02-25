@@ -147,6 +147,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> fetch_completion("def ")
 
       assert %CompletionItem{} = completion
+      assert completion.detail
     end
 
     test "def", %{project: project} do
@@ -155,6 +156,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("def|")
                |> fetch_completion("def ")
 
+      assert completion.detail
       assert completion.label == "def (Define a function)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "def ${1:name}($2) do\n  $0\nend\n"
@@ -175,6 +177,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defp|")
                |> fetch_completion("defp ")
 
+      assert completion.detail
       assert completion.label == "defp (Define a private function)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "defp ${1:name}($2) do\n  $0\nend\n"
@@ -187,6 +190,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> fetch_completion("defmacro ")
 
       assert %CompletionItem{} = completion
+      assert completion.detail
     end
 
     test "defmacro", %{project: project} do
@@ -195,6 +199,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defmacro|")
                |> fetch_completion("defmacro ")
 
+      assert completion.detail
       assert completion.label == "defmacro (Define a macro)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "defmacro ${1:name}($2) do\n  $0\nend\n"
@@ -207,6 +212,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> fetch_completion("defmacrop ")
 
       assert %CompletionItem{} = completion
+      assert completion.detail
     end
 
     test "defmacrop", %{project: project} do
@@ -215,6 +221,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defmacrop|")
                |> fetch_completion("defmacrop ")
 
+      assert completion.detail
       assert completion.label == "defmacrop (Define a private macro)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "defmacrop ${1:name}($2) do\n  $0\nend\n"
@@ -226,6 +233,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defmodule|")
                |> fetch_completion("defmodule ")
 
+      assert completion.detail
       assert %CompletionItem{} = completion
     end
 
@@ -235,6 +243,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defmodule|")
                |> fetch_completion("defmodule ")
 
+      assert completion.detail
       assert completion.label == "defmodule (Define a module)"
       assert completion.insert_text_format == :snippet
 
@@ -252,6 +261,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> fetch_completion("defprotocol ")
 
       assert %CompletionItem{} = completion
+      assert completion.detail
     end
 
     test "defprotocol", %{project: project} do
@@ -260,6 +270,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defprotocol|")
                |> fetch_completion("defprotocol ")
 
+      assert completion.detail
       assert completion.label == "defprotocol (Define a protocol)"
       assert completion.insert_text_format == :snippet
 
@@ -285,6 +296,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defimpl|")
                |> fetch_completion("defimpl ")
 
+      assert completion.detail
       assert completion.label == "defimpl (Define a protocol implementation)"
       assert completion.insert_text_format == :snippet
 
@@ -301,6 +313,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defoverridable|")
                |> fetch_completion("defoverridable ")
 
+      assert completion.detail
       assert completion.label == "defoverridable (Mark a function as overridable)"
       assert completion.insert_text_format == :snippet
 
@@ -313,6 +326,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defdelegate|")
                |> fetch_completion("defdelegate")
 
+      assert completion.detail
       assert completion.label == "defdelegate (Define a delegate function)"
       assert completion.insert_text_format == :snippet
 
@@ -327,6 +341,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defguard|")
                |> fetch_completion("defguard ")
 
+      assert completion.detail
       assert completion.label == "defguard (Define a guard macro)"
       assert completion.insert_text_format == :snippet
 
@@ -341,6 +356,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defguardp|")
                |> fetch_completion("defguardp")
 
+      assert completion.detail
       assert completion.label == "defguardp (Define a private guard macro)"
       assert completion.insert_text_format == :snippet
 
@@ -355,6 +371,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defexception|")
                |> fetch_completion("defexception")
 
+      assert completion.detail
       assert completion.label == "defexception (Define an exception)"
       assert completion.insert_text_format == :snippet
 
@@ -369,6 +386,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("defstruct|")
                |> fetch_completion("defstruct")
 
+      assert completion.detail
       assert completion.label == "defstruct (Define a struct)"
       assert completion.insert_text_format == :snippet
 
@@ -383,6 +401,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("alias|")
                |> fetch_completion("alias ")
 
+      assert completion.detail
       assert completion.label == "alias (alias a module's name)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "alias $0"
@@ -394,6 +413,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("import|")
                |> fetch_completion("import")
 
+      assert completion.detail
       assert completion.label == "import (import a module's functions)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "import $0"
@@ -405,6 +425,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("require|")
                |> fetch_completion("require")
 
+      assert completion.detail
       assert completion.label == "require (require a module's macros)"
       assert completion.insert_text_format == :snippet
       assert completion.insert_text == "require $0"
@@ -416,6 +437,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("quote|")
                |> fetch_completion("quote")
 
+      assert completion.detail
       assert completion.label == "quote (quote block)"
       assert completion.insert_text_format == :snippet
 
@@ -432,6 +454,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("receive|")
                |> fetch_completion("receive")
 
+      assert completion.detail
       assert completion.label == "receive (receive block)"
       assert completion.insert_text_format == :snippet
 
@@ -448,6 +471,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("try|")
                |> fetch_completion("try")
 
+      assert completion.detail
       assert completion.label == "try (try / catch / rescue block)"
       assert completion.insert_text_format == :snippet
 
@@ -464,6 +488,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("with|")
                |> fetch_completion("with")
 
+      assert completion.detail
       assert completion.label == "with block"
       assert completion.insert_text_format == :snippet
 
@@ -480,6 +505,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("if|")
                |> fetch_completion("if")
 
+      assert completion.detail
       assert completion.label == "if (If statement)"
       assert completion.insert_text_format == :snippet
 
@@ -496,6 +522,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("unless|")
                |> fetch_completion("unless")
 
+      assert completion.detail
       assert completion.label == "unless (Unless statement)"
       assert completion.insert_text_format == :snippet
 
@@ -512,6 +539,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("case|")
                |> fetch_completion("case")
 
+      assert completion.detail
       assert completion.label == "case (Case statement)"
       assert completion.insert_text_format == :snippet
 
@@ -528,6 +556,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("cond|")
                |> fetch_completion("cond")
 
+      assert completion.detail
       assert completion.label == "cond (Cond statement)"
       assert completion.insert_text_format == :snippet
 
@@ -545,6 +574,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("for|")
                |> fetch_completion("for")
 
+      assert completion.detail
       assert completion.label == "for (comprehension)"
       assert completion.insert_text_format == :snippet
 
@@ -561,6 +591,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("Enum.filter_map|")
                |> fetch_completion("filter_map")
 
+      assert completion.detail
       assert [:deprecated] = completion.tags
     end
 
@@ -584,6 +615,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("__|")
                |> fetch_completion("__MODULE__")
 
+      assert completion.detail
       assert completion.label == "__MODULE__"
       assert completion.kind == :constant
     end
@@ -594,6 +626,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("__|")
                |> fetch_completion("__DIR__")
 
+      assert completion.detail
       assert completion.label == "__DIR__"
       assert completion.kind == :constant
     end
@@ -604,6 +637,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("__|")
                |> fetch_completion("__ENV__")
 
+      assert completion.detail
       assert completion.label == "__ENV__"
       assert completion.kind == :constant
     end
@@ -614,6 +648,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("__|")
                |> fetch_completion("__CALLER__")
 
+      assert completion.detail
       assert completion.label == "__CALLER__"
       assert completion.kind == :constant
     end
@@ -624,6 +659,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
                |> complete("__|")
                |> fetch_completion("__STACKTRACE__")
 
+      assert completion.detail
       assert completion.label == "__STACKTRACE__"
       assert completion.kind == :constant
     end
@@ -672,6 +708,7 @@ defmodule Lexical.CodeIntelligence.CompletionTest do
       assert [completion] = complete(project, "%Project.|", "%")
       assert completion.label == "Structs"
       assert completion.kind == :module
+      assert completion.detail
     end
 
     test "when using %, only struct modules of are returned", %{project: project} do

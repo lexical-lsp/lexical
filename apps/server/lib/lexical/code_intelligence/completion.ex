@@ -148,6 +148,7 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   defp to_completion_item(%Result.StructField{} = struct_field) do
     Completion.Item.new(
+      detail: struct_field.name,
       label: struct_field.name,
       kind: :field
     )
@@ -163,9 +164,10 @@ defmodule Lexical.CodeIntelligence.Completion do
 
   defp to_completion_item(%Result.ModuleAttribute{} = attribute) do
     Completion.Item.new(
+      detail: "module attribute",
       kind: :constant,
       label: attribute.name,
-      insert_text: String.slice(attribute.name, 1..-1)
+      insert_text: attribute.name
     )
   end
 
@@ -661,7 +663,13 @@ defmodule Lexical.CodeIntelligence.Completion do
        when name not in @snippet_macros do
     label = "#{macro.name}/#{macro.arity}"
     sort_text = String.replace(label, "__", "")
-    Completion.Item.new(label: label, kind: :function, detail: macro.spec, sort_text: sort_text)
+
+    Completion.Item.new(
+      detail: macro.spec,
+      kind: :function,
+      sort_text: sort_text,
+      label: label
+    )
   end
 
   defp to_completion_item(_) do
