@@ -4,14 +4,23 @@ defmodule Lexical.RemoteControl.Build.Error do
   require Logger
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
-  def parse_error_to_diagnostic(context, message_info, token) do
-    %Mix.Task.Compiler.Diagnostic{
+  def parse_error_to_diagnostics(context, {_error, detail} = message_info, token) do
+    detail_diagnostics = detail_diagnostics(detail)
+    error = message_info_to_binary(message_info, token)
+    error_diagnostics = parse_error_to_diagnostics(context, error, token)
+    error_diagnostics ++ detail_diagnostics
+  end
+
+  def parse_error_to_diagnostics(context, message_info, token) do
+    diagnostic = %Diagnostic{
       file: nil,
       severity: :error,
       position: context_to_position(context),
       compiler_name: "Elixir",
       message: message_info_to_binary(message_info, token)
     }
+
+    [diagnostic]
   end
 
   def error_to_diagnostic(%CompileError{} = compile_error, _stack, _quoted_ast) do
@@ -228,5 +237,28 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   defp message_info_to_binary({header, footer}, token) do
     header <> token <> footer
+  end
+
+  @detail_location_re ~r/at line (\d+)/
+  defp detail_diagnostics(detail) do
+    case Regex.scan(@detail_location_re, detail) do
+      [[matched, line_number]] ->
+        line_number = String.to_integer(line_number)
+        message = String.replace(detail, matched, "here")
+
+        [
+          %Diagnostic{
+            file: nil,
+            severity: :error,
+            position: line_number,
+            compiler_name: "Elixir",
+            message: message
+          }
+        ]
+
+      other ->
+        IO.inspect(other)
+        []
+    end
   end
 end

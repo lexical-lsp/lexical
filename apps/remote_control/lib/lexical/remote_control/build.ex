@@ -195,9 +195,9 @@ defmodule Lexical.RemoteControl.Build do
 
     case capture_io(:stderr, compile) do
       {captured_messages, {:error, {meta, message_info, token}}} ->
-        error = Build.Error.parse_error_to_diagnostic(meta, message_info, token)
+        errors = Build.Error.parse_error_to_diagnostics(meta, message_info, token)
         diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        diagnostics = ensure_file([error | diagnostics], source_file)
+        diagnostics = ensure_file(errors ++ diagnostics, source_file)
 
         {:error, diagnostics}
 

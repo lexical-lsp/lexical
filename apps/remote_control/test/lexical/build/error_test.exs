@@ -7,12 +7,21 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   end
 
   def parse_error({:error, {a, b, c}}) do
-    Error.parse_error_to_diagnostic(a, b, c)
+    Error.parse_error_to_diagnostics(a, b, c)
   end
 
   describe "handling parse errors" do
-    test "should be nice" do
-      error =
+    test "handles token missing errors" do
+      assert [diagnostic] =
+               ~s[%{foo: 3]
+               |> to_quoted()
+               |> parse_error()
+
+      assert diagnostic.message =~ ~s[missing terminator: } (for "{" starting at line 1)]
+    end
+
+    test "returns both the error and the detail when provided" do
+      errors =
         ~S[
         def handle_info(file_diagnostics(uri: uri, diagnostics: diagnostics), %State{} = state) do
         state = State.clear(state, uri)
@@ -32,8 +41,12 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> to_quoted()
         |> parse_error()
 
+      assert [error, detail] = errors
       assert error.message =~ "unexpected reserved word: end"
-      assert error.message =~ "The \"(\" at line 4 is missing terminator \")"
+      assert error.position == {15, 9}
+
+      assert detail.message =~ ~S[The "(" here is missing terminator ")"]
+      assert detail.position == 4
     end
   end
 end
