@@ -1,6 +1,6 @@
-defmodule Lexical.Provider.Handlers.Formatting do
-  alias Lexical.Provider.Env
-  alias Lexical.CodeMod.Format
+defmodule Lexical.Server.Provider.Handlers.Formatting do
+  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.CodeMod.Format
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
 

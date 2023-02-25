@@ -1,6 +1,6 @@
-defmodule Lexical.Provider.Handlers do
+defmodule Lexical.Server.Provider.Handlers do
   alias Lexical.Protocol.Requests
-  alias Lexical.Provider.Handlers
+  alias Lexical.Server.Provider.Handlers
 
   def for_request(%_{} = request) do
     case request do

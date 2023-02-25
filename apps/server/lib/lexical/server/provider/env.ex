@@ -1,4 +1,4 @@
-defmodule Lexical.Provider.Env do
+defmodule Lexical.Server.Provider.Env do
   @moduledoc """
   An environment passed to provider handlers.
   This represents the current state of the project, and should include additional

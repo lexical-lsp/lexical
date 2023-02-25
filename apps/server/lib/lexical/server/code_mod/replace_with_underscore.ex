@@ -1,7 +1,7 @@
-defmodule Lexical.CodeMod.ReplaceWithUnderscore do
+defmodule Lexical.Server.CodeMod.ReplaceWithUnderscore do
   alias Lexical.Protocol.Types.TextEdit
-  alias Lexical.CodeMod.Ast
-  alias Lexical.CodeMod.Diff
+  alias Lexical.Server.CodeMod.Ast
+  alias Lexical.Server.CodeMod.Diff
 
   @spec text_edits(String.t(), Ast.t(), String.t() | atom) :: {:ok, [TextEdit.t()]} | :error
   def text_edits(original_text, ast, variable_name) do

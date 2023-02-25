@@ -1,5 +1,5 @@
-defmodule Lexical.CodeMod.ReplaceWithUnderscoreTest do
-  alias Lexical.CodeMod.ReplaceWithUnderscore
+defmodule Lexical.Server.CodeMod.ReplaceWithUnderscoreTest do
+  alias Lexical.Server.CodeMod.ReplaceWithUnderscore
 
   use Lexical.Test.CodeMod.Case
 

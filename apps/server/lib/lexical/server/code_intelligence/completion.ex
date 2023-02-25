@@ -1,5 +1,5 @@
-defmodule Lexical.CodeIntelligence.Completion do
-  alias Lexical.CodeIntelligence.Completion.Env
+defmodule Lexical.Server.CodeIntelligence.Completion do
+  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat

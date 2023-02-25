@@ -1,9 +1,9 @@
-defmodule Lexical.Provider.Handlers.CodeAction do
-  alias Lexical.Provider.CodeAction.ReplaceWithUnderscore
-  alias Lexical.Provider.Env
+defmodule Lexical.Server.Provider.Handlers.CodeAction do
+  alias Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore
+  alias Lexical.Server.Provider.Env
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
-  alias Lexical.Provider.CodeAction.ReplaceWithUnderscore
+  alias Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore
 
   require Logger
 

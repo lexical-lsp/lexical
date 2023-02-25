@@ -1,4 +1,4 @@
-# defmodule Lexical.Provider.Handlers.FindReferences do
+# defmodule Lexical.Server.Provider.Handlers.FindReferences do
 #   alias Lexical.Build
 #   alias Lexical.Tracer
 #   alias Lexical.Protocol.Requests.FindReferences

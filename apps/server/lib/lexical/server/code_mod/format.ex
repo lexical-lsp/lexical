@@ -1,5 +1,5 @@
-defmodule Lexical.CodeMod.Format do
-  alias Lexical.CodeMod.Diff
+defmodule Lexical.Server.CodeMod.Format do
+  alias Lexical.Server.CodeMod.Diff
   alias Lexical.Project
   alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl

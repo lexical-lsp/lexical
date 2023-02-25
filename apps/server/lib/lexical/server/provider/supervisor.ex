@@ -1,4 +1,4 @@
-defmodule Lexical.Provider.Queue.Supervisor do
+defmodule Lexical.Server.Provider.Queue.Supervisor do
   def name do
     __MODULE__
   end

@@ -1,14 +1,14 @@
-defmodule Lexical.Provider.CodeAction.ReplaceWithUnderscore do
+defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   @moduledoc """
   A code action that prefixes unused variables with an underscore
   """
-  alias Lexical.Protocol.Types.TextEdit
-  alias Lexical.CodeMod
-  alias Lexical.CodeMod.Ast
   alias Lexical.Protocol.Requests.CodeAction
   alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
   alias Lexical.Protocol.Types.Diagnostic
+  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.Protocol.Types.Workspace
+  alias Lexical.Server.CodeMod
+  alias Lexical.Server.CodeMod.Ast
   alias Lexical.SourceFile
 
   @spec apply(CodeAction.t()) :: [CodeActionReply.t()]

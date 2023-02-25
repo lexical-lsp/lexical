@@ -1,4 +1,4 @@
-defmodule Lexical.CodeIntelligence.Completion.Env do
+defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Protocol.Types.Completion
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile

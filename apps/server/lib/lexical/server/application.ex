@@ -3,8 +3,7 @@ defmodule Lexical.Server.Application do
   # for more information on OTP Applications
   @moduledoc false
 
-  alias Lexical.Provider
-
+  alias Lexical.Server.Provider
   alias Lexical.Server.Transport
   use Application
 

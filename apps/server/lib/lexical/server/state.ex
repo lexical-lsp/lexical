@@ -1,7 +1,4 @@
 defmodule Lexical.Server.State do
-  alias Lexical.CodeIntelligence
-  alias Lexical.RemoteControl.Api
-
   alias Lexical.Protocol.Notifications.{
     DidChange,
     DidChangeConfiguration,
@@ -11,12 +8,14 @@ defmodule Lexical.Server.State do
     Initialized
   }
 
+  alias Lexical.Protocol.Requests.Initialize
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.CodeAction
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.Protocol.Requests.Initialize
   alias Lexical.Protocol.Types.TextDocument
+  alias Lexical.RemoteControl.Api
+  alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
   alias Lexical.Server.Transport
   alias Lexical.SourceFile

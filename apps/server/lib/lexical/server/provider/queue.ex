@@ -1,11 +1,11 @@
-defmodule Lexical.Provider.Queue do
+defmodule Lexical.Server.Provider.Queue do
   defmodule State do
     alias Lexical
     alias Lexical.Protocol.Proto.LspTypes.ResponseError
     alias Lexical.Protocol.Requests
-    alias Lexical.Provider.Env
-    alias Lexical.Provider.Handlers
-    alias Lexical.Provider.Queue
+    alias Lexical.Server.Provider.Env
+    alias Lexical.Server.Provider.Handlers
+    alias Lexical.Server.Provider.Queue
     alias Lexical.Server.Transport
     require Logger
 
@@ -131,7 +131,7 @@ defmodule Lexical.Provider.Queue do
     end
   end
 
-  alias Lexical.Provider.Env
+  alias Lexical.Server.Provider.Env
   alias Lexical.Server.Configuration
   alias Lexical.Protocol.Requests
 

@@ -1,5 +1,4 @@
 defmodule Lexical.Server.Configuration do
-  alias Lexical.Dialyzer
   alias Lexical.Project
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
@@ -8,6 +7,7 @@ defmodule Lexical.Server.Configuration do
   alias Lexical.Protocol.Requests.RegisterCapability
   alias Lexical.Protocol.Types.ClientCapabilities
   alias Lexical.Server.Configuration.Support
+  alias Lexical.Server.Dialyzer
 
   defstruct project: nil,
             support: nil,

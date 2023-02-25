@@ -1,5 +1,5 @@
 defmodule Lexical.Server do
-  alias Lexical.Provider
+  alias Lexical.Server.Provider
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses

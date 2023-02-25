@@ -25,7 +25,7 @@ defmodule Lexical.Test.CodeMod.Case do
       end
 
       defp maybe_convert_to_ast(code, options) do
-        alias Lexical.CodeMod.Ast
+        alias Lexical.Server.CodeMod.Ast
 
         if Keyword.get(options, :convert_to_ast, true) do
           Ast.from(code)

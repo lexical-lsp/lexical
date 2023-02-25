@@ -1,6 +1,6 @@
-defmodule Lexical.CodeIntelligence.CompletionTest do
+defmodule Lexical.Server.CodeIntelligence.CompletionTest do
   alias Lexical.Server.Project.Dispatch
-  alias Lexical.CodeIntelligence.Completion
+  alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
