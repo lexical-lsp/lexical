@@ -81,6 +81,14 @@ defmodule Lexical.Project do
     |> Path.join(@workspace_directory_name)
   end
 
+  def workspace_path(%__MODULE__{} = project, relative_path) when is_binary(relative_path) do
+    workspace_path(project, [relative_path])
+  end
+
+  def workspace_path(%__MODULE__{} = project, relative_path) when is_list(relative_path) do
+    Path.join([workspace_path(project) | relative_path])
+  end
+
   def build_path(%__MODULE__{} = project) do
     project
     |> workspace_path()

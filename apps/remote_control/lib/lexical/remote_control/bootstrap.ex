@@ -19,7 +19,28 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:mix),
          {:ok, _} <- Application.ensure_all_started(:logger),
          :ok <- Mix.start() do
+      start_logger(project)
       Project.ensure_workspace_exists(project)
     end
+  end
+
+  defp start_logger(%Project{} = project) do
+    log_file_name =
+      project
+      |> Project.workspace_path("project.log")
+      |> String.to_charlist()
+
+    handler_name = :"#{Project.name(project)}_handler"
+
+    config = %{
+      config: %{
+        file: log_file_name,
+        max_no_bytes: 1_000_000,
+        max_no_files: 1
+      },
+      level: :info
+    }
+
+    :logger.add_handler(handler_name, :logger_std_h, config)
   end
 end
