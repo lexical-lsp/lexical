@@ -42,16 +42,26 @@ defmodule Lexical.CodeUnit do
     do_utf8_offset(binary, character_position, 0)
   end
 
+  @doc """
+  Converts a utf16 position into a corresponding utf8 position
+  """
   @spec to_utf8(String.t(), utf16_code_unit()) :: {:ok, utf8_code_unit()} | error
   def to_utf8(binary, utf16_unit) do
     do_to_utf8(binary, utf16_unit, 0)
   end
 
+  @doc """
+  Converts a utf8 position into a corresponding utf16 position
+  """
   @spec to_utf16(String.t(), utf8_code_unit()) :: {:ok, utf16_code_unit()} | error
   def to_utf16(binary, utf16_unit) do
     do_to_utf16(binary, utf16_unit, 0)
   end
 
+  @doc """
+  Counts the number of utf16 code units in the binary
+  """
+  @spec count(:utf16, binary) :: non_neg_integer
   def count(:utf16, binary) do
     do_count_utf16(binary, 0)
   end
@@ -60,15 +70,15 @@ defmodule Lexical.CodeUnit do
 
   # UTF-16
 
-  def do_count_utf16(<<>>, count) do
+  defp do_count_utf16(<<>>, count) do
     count
   end
 
-  def do_count_utf16(<<c, rest::binary>>, count) when c < 128 do
+  defp do_count_utf16(<<c, rest::binary>>, count) when c < 128 do
     do_count_utf16(rest, count + 1)
   end
 
-  def do_count_utf16(<<c::utf8, rest::binary>>, count) do
+  defp do_count_utf16(<<c::utf8, rest::binary>>, count) do
     increment =
       <<c::utf16>>
       |> byte_size()

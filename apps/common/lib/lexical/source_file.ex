@@ -1,4 +1,11 @@
 defmodule Lexical.SourceFile do
+  @moduledoc """
+  A representation of a LSP text document
+
+  A source file is the fundamental data structure of the Lexical language server.
+  All language server documents are represented and backed by source files, which
+  provide functionality for fetching lines, applying changes, and tracking versions.
+  """
   alias Lexical.Ranged
   alias Lexical.SourceFile.Document
   alias Lexical.SourceFile.Line
@@ -23,8 +30,14 @@ defmodule Lexical.SourceFile do
 
   @type version :: pos_integer()
   @type change_application_error :: {:error, {:invalid_range, map()}}
+
   # public
 
+  @doc """
+  Creates a new source fie from a uri or path, the source code
+  as a binary and the vewrsion.
+  """
+  @spec new(Lexical.path() | Lexical.uri(), String.t(), pos_integer) :: t
   def new(maybe_uri, text, version) do
     uri = SourceFilePath.ensure_uri(maybe_uri)
 
@@ -36,21 +49,36 @@ defmodule Lexical.SourceFile do
     }
   end
 
+  @doc """
+  Returns the number of lines in the document
+  """
   @spec size(t) :: non_neg_integer()
   def size(%__MODULE__{} = source) do
     Document.size(source.document)
   end
 
+  @doc """
+  Marks the source file as dirty
+  """
   @spec mark_dirty(t) :: t
   def mark_dirty(%__MODULE__{} = source) do
     %__MODULE__{source | dirty?: true}
   end
+
+  @doc """
+  Marks the source file as clean
+  """
 
   @spec mark_clean(t) :: t
   def mark_clean(%__MODULE__{} = source) do
     %__MODULE__{source | dirty?: false}
   end
 
+  @doc """
+  Fetches the text at the given line
+
+  Returns {:ok, text} if the line exists, and :error if it doesn't
+  """
   @spec fetch_text_at(t, version()) :: {:ok, String.t()} | :error
   def fetch_text_at(%__MODULE{} = source, line_number) do
     case fetch_line_at(source, line_number) do

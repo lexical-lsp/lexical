@@ -231,7 +231,7 @@ defmodule Lexical.Server.Project.Diagnostics do
         %State{} = state
       ) do
     project_name = Project.name(state.project)
-    Logger.info("Compiled #{project_name} in #{Format.seconds(elapsed_ms, unit: :millisecond)}")
+    Logger.info("Compiled #{project_name} in #{Format.time(elapsed_ms, unit: :millisecond)}")
 
     {:noreply, state}
   end

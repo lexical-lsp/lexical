@@ -1,4 +1,7 @@
 defmodule Lexical.SourceFile.Document do
+  @moduledoc """
+  A hyper-optimized, line-based backing store for text documents
+  """
   alias Lexical.SourceFile.LineParser
   alias Lexical.SourceFile.Line
 

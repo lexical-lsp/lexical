@@ -1,5 +1,34 @@
 defmodule Lexical.Format do
-  def seconds(time, opts \\ []) do
+  @moduledoc """
+  A collection of formatting functions
+  """
+
+  @type unit :: :millisecond | :second
+  @type time_opt :: {:unit, unit}
+  @type time_opts :: [time_opt]
+
+  @doc """
+  Formats an elapsed time to either seconds or milliseconds
+
+  Examples:
+
+  ```
+  Format.seconds(500, unit: :millisecond)
+  "0.5 seconds"
+  ```
+
+  ```
+  Format.format(1500, unit: :millisecond)
+  "1.4 seconds"
+  ```
+
+  ```
+  Format.format(1500)
+  "15 ms"
+  ```
+  """
+  @spec time(time :: non_neg_integer(), opts :: time_opts) :: String.t()
+  def time(time, opts \\ []) do
     units = Keyword.get(opts, :unit, :microsecond)
     millis = to_milliseconds(time, units)
 
@@ -15,6 +44,26 @@ defmodule Lexical.Format do
     end
   end
 
+  @doc """
+  Formats a name of a module
+  Both elixir and erlang modules will format like they appear in elixir source code.
+
+  ```
+   Format.format(MyModule)
+   "MyModule"
+   ```
+
+   ```
+  Format.module(Somewhat.Nested.Module)
+  "Somewhat.Nested.Module"
+  ```
+
+  ```
+  Format.format(:erlang_module)
+  ":erlang_module"
+  ```
+  """
+  @spec module(atom()) :: String.t()
   def module(module_name) when is_atom(module_name) do
     string_name = Atom.to_string(module_name)
 
@@ -26,10 +75,6 @@ defmodule Lexical.Format do
       # erlang module_name
       ":#{string_name}"
     end
-  end
-
-  def module_name(module_name) when is_binary(module_name) do
-    module_name
   end
 
   defp to_milliseconds(micros, :microsecond) do

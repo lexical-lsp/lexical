@@ -35,6 +35,10 @@ defmodule Lexical.Project do
     |> maybe_set_mix_exs_uri()
   end
 
+  @doc """
+  Retrieves the name of the project
+  """
+  @spec name(t) :: String.t()
   def name(%__MODULE__{} = project) do
     project
     |> root_path()
@@ -42,6 +46,19 @@ defmodule Lexical.Project do
     |> List.last()
   end
 
+  @doc """
+  Retrieves the name of the project as an atom
+  """
+  @spec atom_name(t) :: atom
+  def atom_name(%__MODULE__{} = project) do
+    project
+    |> name()
+    |> String.to_atom()
+  end
+
+  @doc """
+  Returns the full path of the project's root directory
+  """
   @spec root_path(t) :: Path.t() | nil
   def root_path(%__MODULE__{root_uri: nil}) do
     nil
@@ -60,6 +77,9 @@ defmodule Lexical.Project do
     SourceFile.Path.from_uri(project.root_uri)
   end
 
+  @doc """
+  Returns the full path to the project's mix.exs file
+  """
   @spec mix_exs_path(t) :: Path.t() | nil
   def mix_exs_path(%__MODULE__{mix_exs_uri: nil}) do
     nil
@@ -75,12 +95,23 @@ defmodule Lexical.Project do
     set_env_vars(project, environment_variables)
   end
 
+  @doc """
+  Returns the full path to the project's lexical workspace directory
+
+  Lexical maintains a workspace directory in project it konws about, and places various
+  artifacts there. This function returns the full path to that directory
+  """
+  @spec workspace_path(t) :: String.t()
   def workspace_path(%__MODULE__{} = project) do
     project
     |> root_path()
     |> Path.join(@workspace_directory_name)
   end
 
+  @doc """
+  Returns the full path to a file in lexical's workspace directory
+  """
+  @spec workspace_path(t, String.t() | [String.t()]) :: String.t()
   def workspace_path(%__MODULE__{} = project, relative_path) when is_binary(relative_path) do
     workspace_path(project, [relative_path])
   end
@@ -89,12 +120,18 @@ defmodule Lexical.Project do
     Path.join([workspace_path(project) | relative_path])
   end
 
+  @doc """
+  Returns the full path to the directory where lexical puts build artifacts
+  """
   def build_path(%__MODULE__{} = project) do
     project
     |> workspace_path()
     |> Path.join("build")
   end
 
+  @doc """
+  Creates lexical's workspace directory if it doesn't already exist
+  """
   def ensure_workspace_exists(%__MODULE__{} = project) do
     workspace_path = workspace_path(project)
 

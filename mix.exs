@@ -8,12 +8,27 @@ defmodule Lexical.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases(),
-      aliases: aliases()
+      aliases: aliases(),
+      docs: docs(),
+      name: "Lexical"
     ]
   end
 
   defp deps do
-    []
+    [{:ex_doc, "~> 0.29.1", only: :dev, runtime: false}]
+  end
+
+  defp docs do
+    [
+      main: "Lexical",
+      extras: ["README.md"],
+      filter_modules: fn mod_name, _ ->
+        case Module.split(mod_name) do
+          ["Lexical", "Protocol" | _] -> false
+          _ -> true
+        end
+      end
+    ]
   end
 
   defp releases do
@@ -40,8 +55,9 @@ defmodule Lexical.MixProject do
 
   defp aliases do
     [
-      test: "test --no-start",
-      compile: "compile --docs --debug-info"
+      compile: "compile --docs --debug-info",
+      docs: "docs --html",
+      test: "test --no-start"
     ]
   end
 end
