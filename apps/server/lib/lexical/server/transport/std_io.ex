@@ -1,6 +1,9 @@
 defmodule Lexical.Server.Transport.StdIO do
   alias Lexical.Protocol.Notifications.LogMessage
+
   alias Lexical.Protocol.JsonRpc
+
+  @behaviour Lexical.Server.Transport
 
   def start_link(device, callback) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [{callback, device}])

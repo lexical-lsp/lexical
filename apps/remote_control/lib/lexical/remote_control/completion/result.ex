@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Completion.Result do
   defmodule Function do
+    @moduledoc false
     defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
@@ -10,6 +11,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Callback do
+    @moduledoc false
     defstruct [:argument_names, :arity, :metadata, :name, :origin, :spec, :summary, :type]
 
     def new(%{} = elixir_sense_map) do
@@ -20,6 +22,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Macro do
+    @moduledoc false
     defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
@@ -30,6 +33,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Module do
+    @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
 
     def new(%{} = elixir_sense_map) do
@@ -38,6 +42,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Exception do
+    @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
 
     def new(%{} = elixir_sense_map) do
@@ -46,6 +51,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Behaviour do
+    @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
 
     def new(%{} = elixir_sense_map) do
@@ -54,6 +60,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Protocol do
+    @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
 
     def new(%{} = elixir_sense_map) do
@@ -62,6 +69,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Struct do
+    @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
 
     def new(%{} = elixir_sense_map) do
@@ -70,6 +78,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule StructField do
+    @moduledoc false
     defstruct [:call?, :name, :origin]
 
     def new(%{} = elixir_sense_map) do
@@ -78,6 +87,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule ModuleAttribute do
+    @moduledoc false
     defstruct [:name]
 
     def new(%{} = elixir_sense_map) do
@@ -86,6 +96,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Typespec do
+    @moduledoc false
     defstruct [:args_list, :airty, :doc, :metadata, :name, :signature, :spec]
 
     def new(%{} = elixir_sense_map) do
@@ -94,6 +105,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Variable do
+    @moduledoc false
     defstruct [:name]
 
     def new(%{} = elixir_sense_map) do
@@ -102,6 +114,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
   end
 
   defmodule Snippet do
+    @moduledoc false
     defstruct [:detail, :documentation, :filter_text, :kind, :label, :priority, :snippet]
 
     def new(%{} = elixir_sense_map) do

@@ -15,19 +15,33 @@ defmodule Lexical.MixProject do
   end
 
   defp deps do
-    [{:ex_doc, "~> 0.29.1", only: :dev, runtime: false}]
+    [
+      {:ex_doc, "~> 0.29.1", only: :dev, runtime: false}
+    ]
   end
 
   defp docs do
     [
       main: "Lexical",
-      extras: ["README.md"],
+      deps: [jason: "https://hexdocs.pm/jason/Jason.html"],
+      extras: ~w(README.md pages/architecture.md),
       filter_modules: fn mod_name, _ ->
         case Module.split(mod_name) do
+          ["Lexical", "Protocol", "Requests" | _] -> true
+          ["Lexical", "Protocol", "Notifications" | _] -> true
+          ["Lexical", "Protocol", "Responses" | _] -> true
           ["Lexical", "Protocol" | _] -> false
           _ -> true
         end
-      end
+      end,
+      groups_for_modules: [
+        Core: ~r/Lexical.^(RemoteControl|Protocol|Server)/,
+        "Remote Control": ~r/Lexical.RemoteControl/,
+        "Protocol Requests": ~r/Lexical.Protocol.Requests/,
+        "Protocol Notifications": ~r/Lexical.Protocol.Notifications/,
+        "Protocol Responses": ~r/Lexical.Protocol.Responses/,
+        Server: ~r/Lexical.Server/
+      ]
     ]
   end
 
