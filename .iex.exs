@@ -8,7 +8,7 @@ alias Lexical.SourceFile.Position
 
 defmodule Helpers do
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.CodeIntelligence
+  alias Lexical.Server.CodeIntelligence
   alias Lexical.SourceFile.Position
 
   def observer do
