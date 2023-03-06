@@ -2,5 +2,5 @@
 defmodule Lexical.Protocol.Types.Completion.Item.LabelDetails do
   alias Lexical.Protocol.Proto
   use Proto
-  deftype(description: optional(string()), detail: optional(string()))
+  deftype description: optional(string()), detail: optional(string())
 end

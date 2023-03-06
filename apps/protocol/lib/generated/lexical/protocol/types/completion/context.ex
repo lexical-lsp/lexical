@@ -3,5 +3,5 @@ defmodule Lexical.Protocol.Types.Completion.Context do
   alias Lexical.Protocol.Proto
   alias Lexical.Protocol.Types
   use Proto
-  deftype(trigger_character: optional(string()), trigger_kind: Types.Completion.Trigger.Kind)
+  deftype trigger_character: optional(string()), trigger_kind: Types.Completion.Trigger.Kind
 end

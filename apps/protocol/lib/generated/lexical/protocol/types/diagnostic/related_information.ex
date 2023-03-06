@@ -3,5 +3,5 @@ defmodule Lexical.Protocol.Types.Diagnostic.RelatedInformation do
   alias Lexical.Protocol.Proto
   alias Lexical.Protocol.Types
   use Proto
-  deftype(location: Types.Location, message: string())
+  deftype location: Types.Location, message: string()
 end

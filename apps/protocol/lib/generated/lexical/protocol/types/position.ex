@@ -2,5 +2,5 @@
 defmodule Lexical.Protocol.Types.Position do
   alias Lexical.Protocol.Proto
   use Proto
-  deftype(character: integer(), line: integer())
+  deftype character: integer(), line: integer()
 end
