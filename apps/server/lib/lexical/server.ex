@@ -1,10 +1,9 @@
 defmodule Lexical.Server do
-  alias Lexical.Server.Provider
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
+  alias Lexical.Server.Provider
   alias Lexical.Server.State
-
   import Logger
 
   use GenServer
@@ -12,8 +11,8 @@ defmodule Lexical.Server do
   @server_specific_messages [
     Notifications.DidChange,
     Notifications.DidChangeConfiguration,
-    Notifications.DidOpen,
     Notifications.DidClose,
+    Notifications.DidOpen,
     Notifications.DidSave,
     Notifications.Initialized
   ]

@@ -99,23 +99,25 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     defp to_protocol(%Compiler.Diagnostic{} = diagnostic, %SourceFile{} = source_file) do
-      %Diagnostic{
+      proto_diagnostic = %Diagnostic{
         message: diagnostic.message,
         range: position_to_range(source_file, diagnostic.position),
         severity: diagnostic.severity,
         source: "Elixir"
       }
+
+      {:ok, proto_diagnostic}
     end
 
     defp to_protocol(%Compiler.Diagnostic{} = diagnostic, source_uri)
          when is_binary(source_uri) do
       with {:ok, source_file} <- SourceFile.Store.open_temporary(source_uri) do
-        {:ok, to_protocol(diagnostic, source_file)}
+        to_protocol(diagnostic, source_file)
       end
     end
 
     defp to_protocol(%Mix.Error{} = diagnostic, _) do
-      %Diagnostic{
+      proto_diagnoatic = %Diagnostic{
         message: diagnostic.message,
         range:
           Range.new(
@@ -125,6 +127,8 @@ defmodule Lexical.Server.Project.Diagnostics do
         severity: :error,
         source: "Mix"
       }
+
+      {:ok, proto_diagnoatic}
     end
 
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
@@ -154,8 +158,8 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.Protocol.Types.Diagnostic
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
-  alias Lexical.SourceFile
   alias Lexical.Server.Transport
+  alias Lexical.SourceFile
   alias Mix.Task.Compiler
 
   import Messages
