@@ -147,9 +147,15 @@ defmodule Lexical.RemoteControl.Build do
     RemoteControl.in_mix_project(fn _ ->
       try do
         Mix.Task.clear()
-        Mix.Task.run("local.hex", ["--force"])
-        Mix.Task.run("local.rebar", ["--force"])
-        Mix.Task.run("deps.get")
+
+        if connected_to_internet?() do
+          Mix.Task.run("local.hex", ~w(--force --if-missing))
+          Mix.Task.run("local.rebar", ~w(--force --if-missing))
+          Mix.Task.run("deps.get")
+        else
+          Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
+        end
+
         Mix.Task.run("deps.safe_compile")
 
         if force? do
@@ -261,6 +267,17 @@ defmodule Lexical.RemoteControl.Build do
 
       _ ->
         false
+    end
+  end
+
+  defp connected_to_internet? do
+    # While there's no perfect way to check if a computer is connected to the internet,
+    # it seems reasonable to gate pulling dependenices on a resolution check for hex.pm.
+    # Yes, it's entirely possible that the DNS server is local, and that the entry is in cache,
+    # but that's an edge case, and the build will just time out anyways.
+    case :inet_res.getbyname('hex.pm', :a, 250) do
+      {:ok, _} -> true
+      _ -> false
     end
   end
 end
