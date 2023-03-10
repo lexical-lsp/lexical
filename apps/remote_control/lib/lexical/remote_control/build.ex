@@ -122,8 +122,7 @@ defmodule Lexical.RemoteControl.Build do
   defp set_compiler_options do
     Code.compiler_options(
       parser_options: parser_options(),
-      tracers: [RemoteControl.CompileTracer],
-      warnings_as_errors: true
+      tracers: [RemoteControl.CompileTracer]
     )
 
     :ok
