@@ -134,7 +134,7 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_warnings)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 5000
+      assert_receive project_compiled(status: :success), 5000
       assert_receive project_diagnostics(diagnostics: diagnostics)
 
       assert [%Diagnostic{}, %Diagnostic{}] = diagnostics
