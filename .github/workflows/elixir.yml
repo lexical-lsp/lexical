@@ -71,7 +71,7 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
 
-      - name: Compiles without warnings
+      - name: Compile
         run: mix compile
 
       # Step: Check that the checked in code has already been formatted.
