@@ -141,6 +141,12 @@ defmodule Lexical.Server.Project.Diagnostics do
           start: Position.new(line: line_number, character: character),
           end: Position.new(line: line_number + 1, character: 0)
         )
+      else
+        _ ->
+          Range.new(
+            start: Position.new(line: 0, character: 0),
+            end: Position.new(line: 1, character: 0)
+          )
       end
     end
 
