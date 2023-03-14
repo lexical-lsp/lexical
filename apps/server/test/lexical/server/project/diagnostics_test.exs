@@ -2,6 +2,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project
+  alias Lexical.Server.Project.Diagnostics.State
   alias Lexical.Server.Transport
   alias Lexical.SourceFile
   alias Mix.Task.Compiler
@@ -45,11 +46,32 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     :ok
   end
 
-  def with_an_open_source_file(%{project: project}) do
+  def with_an_open_source_file(%{project: project}, opts \\ []) do
+    default_text = "defmodule Foo"
     uri = file_uri(project, "lib/project.ex")
-    :ok = SourceFile.Store.open(uri, "defmodule Foo", 0)
+    :ok = SourceFile.Store.open(uri, opts[:text] || default_text, 0)
     {:ok, source_file} = SourceFile.Store.fetch(uri)
     {:ok, source_file: source_file, uri: uri}
+  end
+
+  describe "adding diagnostics to state" do
+    test "it adds a diagnostic to the last line if they're out of bounds", %{project: project} do
+      with_an_open_source_file(%{project: project}, text: "defmodule Dummy do\n  .\nend\n")
+      # only 3 lines in the file, but elixir compiler gives us a line number of 4
+      diagnostic =
+        diagnostic("lib/project.ex",
+          position: {4, 1},
+          message: "missing terminator: end (for \"do\" starting at line 1)"
+        )
+
+      {:ok, state} = project |> State.new() |> State.add(diagnostic)
+
+      uri = Path.join(project.root_uri, "lib/project.ex")
+
+      [%{range: diagnostic_range}] = state.diagnostics_by_uri[uri]
+      assert diagnostic_range.start.line == 2
+      assert diagnostic_range.end.line == 3
+    end
   end
 
   describe "clearing diagnostics on compile" do

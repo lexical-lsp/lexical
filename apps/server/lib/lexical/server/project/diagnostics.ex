@@ -100,6 +100,8 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     defp to_protocol(%Compiler.Diagnostic{} = diagnostic, %SourceFile{} = source_file) do
+      Logger.error("Diagnostic: #{inspect(diagnostic)}")
+
       proto_diagnostic = %Diagnostic{
         message: diagnostic.message,
         range: position_to_range(source_file, diagnostic.position),
