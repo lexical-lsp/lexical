@@ -80,7 +80,7 @@ defmodule Lexical.SourceFile do
   Returns {:ok, text} if the line exists, and :error if it doesn't
   """
   @spec fetch_text_at(t, version()) :: {:ok, String.t()} | :error
-  def fetch_text_at(%__MODULE{} = source, line_number) do
+  def fetch_text_at(%__MODULE__{} = source, line_number) do
     case fetch_line_at(source, line_number) do
       {:ok, line(text: text)} -> {:ok, text}
       _ -> :error
