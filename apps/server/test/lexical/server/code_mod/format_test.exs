@@ -78,18 +78,20 @@ defmodule Lexical.Server.CodeMod.FormatTest do
     end
 
     test "it should provide an error for a syntax error", %{project: project} do
-      assert {:error, %SyntaxError{}} = ~q[
+      assert {:error, %ErlangError{original: original}} = ~q[
       def foo(a, ) do
         true
       end
       ] |> modify(project: project)
+      assert {_, %SyntaxError{}, _} = original
     end
 
     test "it should provide an error for a missing token", %{project: project} do
-      assert {:error, %TokenMissingError{}} = ~q[
+      assert {:error, %ErlangError{original: original}} = ~q[
       defmodule TokenMissing do
        :bad
       ] |> modify(project: project)
+      assert {_, %TokenMissingError{}, _} = original
     end
 
     test "it correctly handles unicode", %{project: project} do
