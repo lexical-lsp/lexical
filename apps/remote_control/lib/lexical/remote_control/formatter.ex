@@ -7,6 +7,12 @@ defmodule Lexical.RemoteControl.Formatter do
     end)
   end
 
+  def format(fun, code) do
+    RemoteControl.in_mix_project(fn _ ->
+      fun.(code)
+    end)
+  end
+
   def opts_for_file(path) do
     RemoteControl.in_mix_project(fn _ ->
       Mix.Tasks.Format.formatter_opts_for_file(path)

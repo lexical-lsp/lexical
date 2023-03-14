@@ -23,6 +23,10 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl.Formatter, :opts_for_file, [path])
   end
 
+  def format(%Project{} = project, func, code) do
+    RemoteControl.call(project, RemoteControl.Formatter, :format, [func, code])
+  end
+
   def complete(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
     source_string = SourceFile.to_string(source_file)
     complete(project, source_string, position)

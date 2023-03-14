@@ -17,13 +17,6 @@ defmodule Lexical.Server.CodeMod.Format do
     end
   end
 
-  @spec format(SourceFile.t()) :: {:ok, String.t()} | {:error, any}
-  def format(%SourceFile{} = document) do
-    with {:ok, _, formatted_code} <- do_format(document) do
-      {:ok, formatted_code}
-    end
-  end
-
   defp do_format(%Project{} = project, %SourceFile{} = document) do
     project_path = Project.project_path(project)
 
@@ -37,14 +30,6 @@ defmodule Lexical.Server.CodeMod.Format do
     end
   end
 
-  defp do_format(%SourceFile{} = document) do
-    formatter = build_formatter([])
-
-    document
-    |> SourceFile.to_string()
-    |> formatter.()
-  end
-
   @spec formatter_for(Project.t(), String.t()) ::
           {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
   defp formatter_for(%Project{} = project, uri_or_path) do
@@ -52,28 +37,29 @@ defmodule Lexical.Server.CodeMod.Format do
 
     case RemoteControl.Api.formatter_for_file(project, path) do
       {:ok, formatter_function, options} ->
-        wrapped_formatter_function = wrap_with_try_catch(formatter_function)
+        wrapped_formatter_function = wrap_with_try_catch(project, formatter_function)
         {:ok, wrapped_formatter_function, options}
 
       _ ->
         options = RemoteControl.Api.formatter_options_for_file(project, path)
-        formatter = build_formatter(options)
+        formatter = build_formatter(project, options)
         {:ok, formatter, options}
     end
   end
 
-  defp build_formatter(opts) do
-    fn code ->
+  defp build_formatter(project, opts) do
+    formatter_fn = fn code ->
       formatted_iodata = Code.format_string!(code, opts)
       IO.iodata_to_binary([formatted_iodata, ?\n])
     end
-    |> wrap_with_try_catch()
+
+    wrap_with_try_catch(project, formatter_fn)
   end
 
-  defp wrap_with_try_catch(formatter_fn) do
+  defp wrap_with_try_catch(project, formatter_fn) do
     fn code ->
       try do
-        {:ok, code, formatter_fn.(code)}
+        {:ok, code, RemoteControl.Api.format(project, formatter_fn, code)}
       rescue
         e ->
           {:error, e}
