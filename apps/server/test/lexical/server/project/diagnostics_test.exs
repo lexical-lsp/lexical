@@ -2,7 +2,6 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project
-  alias Lexical.Server.Project.Diagnostics.State
   alias Lexical.Server.Transport
   alias Lexical.SourceFile
   alias Mix.Task.Compiler
@@ -54,9 +53,18 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     {:ok, source_file: source_file, uri: uri}
   end
 
+  defp open_source_file(project, contents) do
+    uri = Path.join(project.root_uri, "lib/project.ex")
+    :ok = SourceFile.Store.open(uri, contents, 0)
+    {:ok, source_file} = SourceFile.Store.fetch(uri)
+    source_file
+  end
+
   describe "adding diagnostics to state" do
+    setup [:with_patched_tranport]
+
     test "it adds a diagnostic to the last line if they're out of bounds", %{project: project} do
-      with_an_open_source_file(%{project: project}, text: "defmodule Dummy do\n  .\nend\n")
+      source_file = open_source_file(project, "defmodule Dummy do\n  .\nend\n")
       # only 3 lines in the file, but elixir compiler gives us a line number of 4
       diagnostic =
         diagnostic("lib/project.ex",
@@ -64,13 +72,15 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
           message: "missing terminator: end (for \"do\" starting at line 1)"
         )
 
-      {:ok, state} = project |> State.new() |> State.add(diagnostic)
+      file_diagnostics_message =
+        file_diagnostics(diagnostics: [diagnostic], uri: source_file.uri)
 
-      uri = Path.join(project.root_uri, "lib/project.ex")
+      Project.Dispatch.broadcast(project, file_diagnostics_message)
+      assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
-      [%{range: diagnostic_range}] = state.diagnostics_by_uri[uri]
-      assert diagnostic_range.start.line == 2
-      assert diagnostic_range.end.line == 3
+      range = diagnostic.range
+      assert range.start.line == 2
+      assert range.end.line == 3
     end
   end
 
