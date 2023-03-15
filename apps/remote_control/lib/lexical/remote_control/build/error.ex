@@ -57,6 +57,20 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
+  def error_to_diagnostic(%Mix.Error{} = error, stack, quoted_ast) do
+    [{module, function, arguments, _} | _] = stack
+
+    mfa = {module, function, arguments}
+
+    %Diagnostic{
+      message: Exception.message(error),
+      position: mfa_to_position(mfa, quoted_ast),
+      file: stack_to_file(stack),
+      severity: error,
+      compiler_name: "Elixir"
+    }
+  end
+
   def message_to_diagnostic(message_string) do
     message_string
     |> extract_individual_messages()
