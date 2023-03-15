@@ -15,6 +15,7 @@ defmodule Lexical.RemoteControl do
   @localhost_charlist '127.0.0.1'
 
   def start_link(%Project{} = project, project_listener) do
+    :ok = ensure_epmd_started()
     entropy = :rand.uniform(65536)
 
     start_net_kernel(entropy)
@@ -157,6 +158,16 @@ defmodule Lexical.RemoteControl do
     with {output, 0} <- System.cmd(elixir_executable, ~w[--eval IO.inspect(:code.get_path())]),
          {evaluated, _} <- Code.eval_string(output) do
       {:ok, evaluated}
+    end
+  end
+
+  defp ensure_epmd_started do
+    case System.cmd("epmd", ~w(-daemon)) do
+      {"", 0} ->
+        :ok
+
+      _ ->
+        {:error, :epmd_failed}
     end
   end
 end
