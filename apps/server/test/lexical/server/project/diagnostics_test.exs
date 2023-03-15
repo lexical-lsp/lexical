@@ -45,16 +45,14 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     :ok
   end
 
-  def with_an_open_source_file(%{project: project}, opts \\ []) do
-    default_text = "defmodule Foo"
-    uri = file_uri(project, "lib/project.ex")
-    :ok = SourceFile.Store.open(uri, opts[:text] || default_text, 0)
-    {:ok, source_file} = SourceFile.Store.fetch(uri)
-    {:ok, source_file: source_file, uri: uri}
+  def with_an_open_source_file(%{project: project}) do
+    default_contents = "defmodule Foo"
+    source_file = open_source_file(project, default_contents)
+    {:ok, source_file: source_file, uri: source_file.uri}
   end
 
   defp open_source_file(project, contents) do
-    uri = Path.join(project.root_uri, "lib/project.ex")
+    uri = file_uri(project, "lib/project.ex")
     :ok = SourceFile.Store.open(uri, contents, 0)
     {:ok, source_file} = SourceFile.Store.fetch(uri)
     source_file
@@ -72,8 +70,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
           message: "missing terminator: end (for \"do\" starting at line 1)"
         )
 
-      file_diagnostics_message =
-        file_diagnostics(diagnostics: [diagnostic], uri: source_file.uri)
+      file_diagnostics_message = file_diagnostics(diagnostics: [diagnostic], uri: source_file.uri)
 
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
