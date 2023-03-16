@@ -135,8 +135,14 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   defp safe_compile_project(force?) do
-    opts =
-      ~w(--return-errors --ignore-module-conflict --all-warnings --docs --debug-info --no-protocol-consolidation)
+    opts = ~w(
+        --return-errors
+        --ignore-module-conflict
+        --all-warnings
+        --docs
+        --debug-info
+        --no-protocol-consolidation
+    )
 
     opts =
       if force? do
