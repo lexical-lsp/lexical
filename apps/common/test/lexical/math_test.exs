@@ -18,61 +18,14 @@ defmodule Lexical.MathTest do
     end
   end
 
-  property "clamp works with all integers by simpler property" do
+  property "clamp works with all integers" do
     check all(
-            value <- integer(),
-            low = value - 1,
-            high = value + 1
+            ints <- uniq_list_of(integer(), length: 3),
+            [low, mid, high] = Enum.sort(ints)
           ) do
-      assert Math.clamp(value, low, high) == value
-    end
-
-    check all(
-            low <- integer(),
-            value = low - 1,
-            high = value + 1
-          ) do
-      assert Math.clamp(value, low, high) == low
-    end
-
-    check all(
-            high <- integer(),
-            low = high - 1,
-            value = low - 1
-          ) do
-      assert Math.clamp(value, low, high) == low
-    end
-  end
-
-  property "clamp works with all positive_integers" do
-    check all(
-            low <- positive_integer(),
-            value <- integer(0..low),
-            high_range = (low + 1)..(low + 1_000_000),
-            high <-
-              integer(high_range)
-          ) do
-      assert Math.clamp(value, low, high) == low
-    end
-
-    check all(
-            value <- positive_integer(),
-            low <- integer(0..value),
-            high_range = (value + 1)..(value + 1_000_000),
-            high <-
-              integer(high_range)
-          ) do
-      assert Math.clamp(value, low, high) == value
-    end
-
-    check all(
-            high <- positive_integer(),
-            low <- integer(0..high),
-            value_range = (high + 1)..(high + 1_000_000),
-            value <-
-              integer(value_range)
-          ) do
-      assert Math.clamp(value, low, high) == high
+      assert Math.clamp(mid, low, high) == mid
+      assert Math.clamp(low, mid, high) == mid
+      assert Math.clamp(high, low, mid) == mid
     end
   end
 end
