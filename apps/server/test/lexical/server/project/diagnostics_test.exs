@@ -22,14 +22,17 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     {:ok, project: project}
   end
 
-  def diagnostic(file_path) do
-    %Compiler.Diagnostic{
+  def diagnostic(file_path, opts \\ []) do
+    defaults = [
       file: SourceFile.Path.ensure_path(file_path),
       severity: :error,
       message: "stuff broke",
       position: 1,
       compiler_name: "Elixir"
-    }
+    ]
+
+    values = Keyword.merge(defaults, opts)
+    struct(Compiler.Diagnostic, values)
   end
 
   def with_patched_tranport(_) do
@@ -104,6 +107,22 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
+    end
+
+    test "it converts a file's diagnostics to the first line if they're out of bounds", %{
+      project: project,
+      uri: uri
+    } do
+      file_diagnostics = diagnostic(uri, position: {100, 2})
+      file_diagnostics_message = file_diagnostics(diagnostics: [file_diagnostics], uri: uri)
+
+      Project.Dispatch.broadcast(project, file_diagnostics_message)
+      assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
+
+      range = diagnostic.range
+
+      assert range.start.line == 0
+      assert range.end.line == 1
     end
   end
 end

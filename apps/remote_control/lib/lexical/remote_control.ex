@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl do
 
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Build
 
   @allowed_apps ~w(common path_glob remote_control elixir_sense)a
 
@@ -15,6 +16,7 @@ defmodule Lexical.RemoteControl do
   @localhost_charlist '127.0.0.1'
 
   def start_link(%Project{} = project, project_listener) do
+    :ok = ensure_epmd_started()
     entropy = :rand.uniform(65536)
 
     start_net_kernel(entropy)
@@ -46,13 +48,18 @@ defmodule Lexical.RemoteControl do
   end
 
   def in_mix_project(%Project{} = project, fun) do
-    build_path = Project.build_path(project)
-    project_root = Project.root_path(project)
+    # Locking on the build make sure we don't get a conflict on the mix.exs being
+    # already defined
 
-    project
-    |> Project.name()
-    |> String.to_atom()
-    |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
+    Build.with_lock(fn ->
+      build_path = Project.build_path(project)
+      project_root = Project.root_path(project)
+
+      project
+      |> Project.name()
+      |> String.to_atom()
+      |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
+    end)
   end
 
   def with_lock(lock_type, func) do
@@ -157,6 +164,16 @@ defmodule Lexical.RemoteControl do
     with {output, 0} <- System.cmd(elixir_executable, ~w[--eval IO.inspect(:code.get_path())]),
          {evaluated, _} <- Code.eval_string(output) do
       {:ok, evaluated}
+    end
+  end
+
+  defp ensure_epmd_started do
+    case System.cmd("epmd", ~w(-daemon)) do
+      {"", 0} ->
+        :ok
+
+      _ ->
+        {:error, :epmd_failed}
     end
   end
 end

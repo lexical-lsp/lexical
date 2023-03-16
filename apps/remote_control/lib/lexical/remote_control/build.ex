@@ -40,31 +40,33 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   def handle_cast({:compile, force?}, %Project{} = project) do
-    {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
-    elapsed_ms = to_ms(elapsed_us)
+    with_lock(fn ->
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
+      elapsed_ms = to_ms(elapsed_us)
 
-    {compile_message, diagnostics} =
-      case result do
-        :ok ->
-          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
-          {message, []}
+      {compile_message, diagnostics} =
+        case result do
+          :ok ->
+            message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+            {message, []}
 
-        {:ok, diagnostics} ->
-          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+          {:ok, diagnostics} ->
+            message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
 
-          {message, List.wrap(diagnostics)}
+            {message, List.wrap(diagnostics)}
 
-        {:error, diagnostics} ->
-          message = project_compiled(status: :error, project: project, elapsed_ms: elapsed_ms)
+          {:error, diagnostics} ->
+            message = project_compiled(status: :error, project: project, elapsed_ms: elapsed_ms)
 
-          {message, List.wrap(diagnostics)}
-      end
+            {message, List.wrap(diagnostics)}
+        end
 
-    diagnostics_message = project_diagnostics(project: project, diagnostics: diagnostics)
+      diagnostics_message = project_diagnostics(project: project, diagnostics: diagnostics)
 
-    RemoteControl.notify_listener(compile_message)
-    RemoteControl.notify_listener(diagnostics_message)
-    {:noreply, project}
+      RemoteControl.notify_listener(compile_message)
+      RemoteControl.notify_listener(diagnostics_message)
+      {:noreply, project}
+    end)
   end
 
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
@@ -122,8 +124,7 @@ defmodule Lexical.RemoteControl.Build do
   defp set_compiler_options do
     Code.compiler_options(
       parser_options: parser_options(),
-      tracers: [RemoteControl.CompileTracer],
-      warnings_as_errors: true
+      tracers: [RemoteControl.CompileTracer]
     )
 
     :ok
