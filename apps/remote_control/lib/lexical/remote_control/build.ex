@@ -70,50 +70,52 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
-    RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
+    with_lock(fn ->
+      RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
 
-    {elapsed_us, result} = :timer.tc(fn -> safe_compile(source_file) end)
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile(source_file) end)
 
-    elapsed_ms = to_ms(elapsed_us)
+      elapsed_ms = to_ms(elapsed_us)
 
-    {compile_message, diagnostics} =
-      case result do
-        {:ok, diagnostics} ->
-          message =
-            file_compiled(
-              status: :success,
-              project: project,
-              uri: source_file.uri,
-              elapsed_ms: elapsed_ms
-            )
+      {compile_message, diagnostics} =
+        case result do
+          {:ok, diagnostics} ->
+            message =
+              file_compiled(
+                status: :success,
+                project: project,
+                uri: source_file.uri,
+                elapsed_ms: elapsed_ms
+              )
 
-          {message, diagnostics}
+            {message, diagnostics}
 
-        {:error, diagnostics} ->
-          message =
-            file_compiled(
-              status: :error,
-              project: project,
-              uri: source_file.uri,
-              elapsed_ms: elapsed_ms
-            )
+          {:error, diagnostics} ->
+            message =
+              file_compiled(
+                status: :error,
+                project: project,
+                uri: source_file.uri,
+                elapsed_ms: elapsed_ms
+              )
 
-          {message, diagnostics}
-      end
+            {message, diagnostics}
+        end
 
-    :logger.info("Emitting #{inspect(diagnostics)}")
+      :logger.info("Emitting #{inspect(diagnostics)}")
 
-    diagnostics =
-      file_diagnostics(
-        project: project,
-        uri: source_file.uri,
-        diagnostics: List.wrap(diagnostics)
-      )
+      diagnostics =
+        file_diagnostics(
+          project: project,
+          uri: source_file.uri,
+          diagnostics: List.wrap(diagnostics)
+        )
 
-    RemoteControl.notify_listener(compile_message)
-    RemoteControl.notify_listener(diagnostics)
+      RemoteControl.notify_listener(compile_message)
+      RemoteControl.notify_listener(diagnostics)
 
-    {:noreply, project}
+      {:noreply, project}
+    end)
   end
 
   def handle_info(_, %Project{} = project) do

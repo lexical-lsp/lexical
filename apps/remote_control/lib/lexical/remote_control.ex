@@ -63,7 +63,7 @@ defmodule Lexical.RemoteControl do
   end
 
   def with_lock(lock_type, func) do
-    :global.trans({lock_type, self()}, func)
+    :global.trans({lock_type, self()}, func, [Node.self()])
   end
 
   def notify_listener(message) do
