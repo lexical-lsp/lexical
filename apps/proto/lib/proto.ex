@@ -1,6 +1,6 @@
-defmodule Lexical.Protocol do
+defmodule Proto do
   @moduledoc """
-  Documentation for `Lexical.Protocol`.
+  Documentation for `Proto`.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule Lexical.Protocol do
 
   ## Examples
 
-      iex> Lexical.Protocol.hello()
+      iex> Proto.hello()
       :world
 
   """
