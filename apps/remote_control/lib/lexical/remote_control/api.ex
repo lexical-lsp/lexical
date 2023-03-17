@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CodeMod
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build
@@ -13,14 +14,21 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, :code, :all_available)
   end
 
-  def formatter_for_file(%Project{} = project, path) do
-    {formatter, options} = RemoteControl.call(project, RemoteControl.Formatter, :for_file, [path])
-
-    {:ok, formatter, options}
+  def format(%Project{} = project, %SourceFile{} = source_file) do
+    RemoteControl.call(project, CodeMod.Format, :text_edits, [project, source_file])
   end
 
-  def formatter_options_for_file(%Project{} = project, path) do
-    RemoteControl.call(project, RemoteControl.Formatter, :opts_for_file, [path])
+  def replace_with_underscore(
+        %Project{} = project,
+        %SourceFile{} = source_file,
+        line_number,
+        variable_name
+      ) do
+    RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :text_edits, [
+      source_file,
+      line_number,
+      variable_name
+    ])
   end
 
   def complete(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do

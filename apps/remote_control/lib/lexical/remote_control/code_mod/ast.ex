@@ -1,4 +1,4 @@
-defmodule Lexical.Server.CodeMod.Ast do
+defmodule Lexical.RemoteControl.CodeMod.Ast do
   alias Lexical.SourceFile
 
   @type t :: any()

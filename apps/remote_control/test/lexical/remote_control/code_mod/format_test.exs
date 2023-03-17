@@ -1,8 +1,8 @@
-defmodule Lexical.Server.CodeMod.FormatTest do
+defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.Server.CodeMod.Format
+  alias Lexical.RemoteControl.CodeMod.Format
   alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case

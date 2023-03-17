@@ -65,11 +65,11 @@ defmodule Lexical.Server.Project.DispatchTest do
     setup [:with_dispatch_started]
 
     test "starts the remote control", %{project: project} do
-      assert_called RemoteControl.start_link(^project, _)
+      assert_called(RemoteControl.start_link(^project, _))
     end
 
     test "schedules a compile", %{project: project} do
-      assert_called RemoteControl.Api.schedule_compile(^project, true)
+      assert_called(RemoteControl.Api.schedule_compile(^project, true))
     end
 
     test "allows processes to register for a message", %{project: project, dispatch: dispatch} do

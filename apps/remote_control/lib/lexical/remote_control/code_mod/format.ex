@@ -1,5 +1,5 @@
-defmodule Lexical.Server.CodeMod.Format do
-  alias Lexical.Server.CodeMod.Diff
+defmodule Lexical.RemoteControl.CodeMod.Format do
+  alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.Project
   alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl
@@ -28,9 +28,7 @@ defmodule Lexical.Server.CodeMod.Format do
     project_path = Project.project_path(project)
 
     with :ok <- check_current_directory(document, project_path),
-         {:ok, formatter, options} <- formatter_for(project, document.path),
-         :ok <-
-           check_inputs_apply(document, project_path, Keyword.get(options, :inputs)) do
+         {:ok, formatter} <- formatter_for(project, document.path) do
       document
       |> SourceFile.to_string()
       |> formatter.()
@@ -49,17 +47,9 @@ defmodule Lexical.Server.CodeMod.Format do
           {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
   defp formatter_for(%Project{} = project, uri_or_path) do
     path = SourceFile.Path.ensure_path(uri_or_path)
-
-    case RemoteControl.Api.formatter_for_file(project, path) do
-      {:ok, formatter_function, options} ->
-        wrapped_formatter_function = wrap_with_try_catch(formatter_function)
-        {:ok, wrapped_formatter_function, options}
-
-      _ ->
-        options = RemoteControl.Api.formatter_options_for_file(project, path)
-        formatter = build_formatter(options)
-        {:ok, formatter, options}
-    end
+    formatter_function = formatter_for_file(project, path)
+    wrapped_formatter_function = wrap_with_try_catch(formatter_function)
+    {:ok, wrapped_formatter_function}
   end
 
   defp build_formatter(opts) do
@@ -96,57 +86,21 @@ defmodule Lexical.Server.CodeMod.Format do
     end
   end
 
-  defp check_inputs_apply(%SourceFile{} = document, project_path, inputs)
-       when is_list(inputs) do
-    formatter_dir = dominating_formatter_exs_dir(document, project_path)
-
-    inputs_apply? =
-      Enum.any?(inputs, fn input_glob ->
-        glob =
-          if Path.type(input_glob) == :relative do
-            Path.join(formatter_dir, input_glob)
-          else
-            input_glob
-          end
-
-        PathGlob.match?(document.path, glob, match_dot: true)
-      end)
-
-    if inputs_apply? do
-      :ok
-    else
-      {:error, :input_mismatch}
-    end
-  end
-
-  defp check_inputs_apply(_, _, _), do: :ok
-
   defp subdirectory?(child, parent: parent) do
     normalized_parent = Path.absname(parent)
     String.starts_with?(child, normalized_parent)
   end
 
-  # Finds the directory with the .formatter.exs that's the nearest parent to the
-  # source file, or the project dir if none was found.
-  defp dominating_formatter_exs_dir(%SourceFile{} = document, project_path) do
-    document.path
-    |> Path.dirname()
-    |> dominating_formatter_exs_dir(project_path)
-  end
+  defp formatter_for_file(%Project{} = project, file_path) do
+    {formatter, _opts} =
+      if RemoteControl.project_node?() do
+        Mix.Tasks.Format.formatter_for_file(file_path)
+      else
+        RemoteControl.in_mix_project(project, fn _ ->
+          Mix.Tasks.Format.formatter_for_file(file_path)
+        end)
+      end
 
-  defp dominating_formatter_exs_dir(project_dir, project_dir) do
-    project_dir
-  end
-
-  defp dominating_formatter_exs_dir(current_dir, project_path) do
-    formatter_exs_name = Path.join(current_dir, ".formatter.exs")
-
-    if File.exists?(formatter_exs_name) do
-      current_dir
-    else
-      current_dir
-      |> Path.dirname()
-      |> dominating_formatter_exs_dir(project_path)
-    end
+    formatter
   end
 end

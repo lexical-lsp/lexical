@@ -1,14 +1,18 @@
-defmodule Lexical.Server.CodeMod.ReplaceWithUnderscore do
+defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
+  alias Lexical.SourceFile
   alias Lexical.Protocol.Types.TextEdit
-  alias Lexical.Server.CodeMod.Ast
-  alias Lexical.Server.CodeMod.Diff
+  alias Lexical.RemoteControl.CodeMod.Ast
+  alias Lexical.RemoteControl.CodeMod.Diff
 
-  @spec text_edits(String.t(), Ast.t(), String.t() | atom) :: {:ok, [TextEdit.t()]} | :error
-  def text_edits(original_text, ast, variable_name) do
+  @spec text_edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
+          {:ok, [TextEdit.t()]} | :error
+  def text_edits(%SourceFile{} = source_file, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
-    with {:ok, transformed} <- apply_transform(original_text, ast, variable_name) do
-      {:ok, to_text_edits(original_text, transformed)}
+    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
+         {:ok, line_ast} <- Ast.from(line_text),
+         {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
+      {:ok, to_text_edits(line_text, transformed_text)}
     end
   end
 

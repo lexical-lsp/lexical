@@ -25,7 +25,7 @@ defmodule CommonProtocol.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:proto, in_umbrella: true},
+      {:proto, in_umbrella: true, runtime: false},
       {:jason, "~> 1.4", optional: true}
     ]
   end

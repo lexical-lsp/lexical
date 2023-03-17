@@ -1,9 +1,5 @@
 defmodule Lexical.Test.CodeMod.Case do
-  alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent,
-    as: RangedContentChangeEvent
-
   alias Lexical.SourceFile
-
   use ExUnit.CaseTemplate
 
   using do
@@ -25,7 +21,7 @@ defmodule Lexical.Test.CodeMod.Case do
       end
 
       defp maybe_convert_to_ast(code, options) do
-        alias Lexical.Server.CodeMod.Ast
+        alias Lexical.RemoteControl.CodeMod.Ast
 
         if Keyword.get(options, :convert_to_ast, true) do
           Ast.from(code)
@@ -41,19 +37,14 @@ defmodule Lexical.Test.CodeMod.Case do
     base_indent = indent(first)
     indent_length = String.length(base_indent)
 
-    Enum.map_join([first | rest], "\n", &strip_leading_indent(&1, indent_length))
+    [first | rest]
+    |> Enum.map_join("\n", &strip_leading_indent(&1, indent_length))
     |> maybe_trim(opts)
   end
 
   def apply_edits(original, text_edits, opts) do
     source_file = SourceFile.new("file:///file.ex", original, 0)
-
-    converted_edits =
-      Enum.map(text_edits, fn edit ->
-        RangedContentChangeEvent.new(text: edit.new_text, range: edit.range)
-      end)
-
-    {:ok, edited_source_file} = SourceFile.apply_content_changes(source_file, 1, converted_edits)
+    {:ok, edited_source_file} = SourceFile.apply_content_changes(source_file, 1, text_edits)
     edited_source = SourceFile.to_string(edited_source_file)
 
     if Keyword.get(opts, :trim, true) do

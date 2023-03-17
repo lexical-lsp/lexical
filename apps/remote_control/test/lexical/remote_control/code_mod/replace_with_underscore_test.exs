@@ -1,11 +1,13 @@
-defmodule Lexical.Server.CodeMod.ReplaceWithUnderscoreTest do
-  alias Lexical.Server.CodeMod.ReplaceWithUnderscore
+defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
+  alias Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore
+  alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case
 
-  def apply_code_mod(original_text, ast, options) do
+  def apply_code_mod(original_text, _ast, options) do
     variable = Keyword.get(options, :variable, :unused)
-    ReplaceWithUnderscore.text_edits(original_text, ast, variable)
+    source_file = SourceFile.new("file:///file.ex", original_text, 0)
+    ReplaceWithUnderscore.text_edits(source_file, 0, variable)
   end
 
   describe "fixes in parameters" do
@@ -210,5 +212,11 @@ defmodule Lexical.Server.CodeMod.ReplaceWithUnderscoreTest do
 
       assert result == "with {_unused, something_else} <- my_enum, do: something_else"
     end
+  end
+
+  test "it preserves the leading indent" do
+    {:ok, result} = modify("       {foo, unused, bar}", trim: false)
+
+    assert result == "       {foo, _unused, bar}"
   end
 end
