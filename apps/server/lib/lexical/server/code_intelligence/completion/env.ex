@@ -1,10 +1,13 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
+  alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile
-  defstruct [:document, :context, :prefix, :suffix, :position, :words]
+
+  defstruct [:project, :document, :context, :prefix, :suffix, :position, :words]
 
   def new(
+        %Project{} = project,
         %SourceFile{} = document,
         %Position{} = cursor_position,
         %Completion.Context{} = context
@@ -17,6 +20,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
       {:ok,
        %__MODULE__{
+         project: project,
          document: document,
          prefix: prefix,
          suffix: suffix,
@@ -27,6 +31,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     else
       _ ->
         {:error, :out_of_bounds}
+    end
+  end
+
+  def struct_reference?(%__MODULE__{} = env) do
+    with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line) do
+      fragment = String.slice(line, 0..(env.position.character - 1))
+
+      case Code.Fragment.cursor_context(fragment) do
+        {:struct, _} ->
+          true
+
+        {:local_or_var, '__'} ->
+          # a reference to `%__MODULE`, often in a function head, as in
+          # def foo(%__)
+          String.contains?(line, "%__")
+
+        _ ->
+          false
+      end
+    else
+      _ ->
+        false
     end
   end
 

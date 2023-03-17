@@ -7,9 +7,13 @@ defmodule Lexical.Protocol.Proto.Macros.Inspect do
         import Inspect.Algebra
 
         def inspect(proto_type, opts) do
-          proto_map = Map.from_struct(proto_type)
+          proto_map =
+            proto_type
+            |> Map.from_struct()
+            |> Enum.reject(fn {k, v} -> is_nil(v) end)
+            |> Map.new()
 
-          concat(["%#{unquote(trimmed_name)}", to_doc(proto_map, opts), ""])
+          concat(["%#{unquote(trimmed_name)}{", to_doc(proto_map, opts), "}"])
         end
       end
     end

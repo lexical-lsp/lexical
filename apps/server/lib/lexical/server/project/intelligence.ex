@@ -24,6 +24,10 @@ defmodule Lexical.Server.Project.Intelligence do
     def child_defines_struct?(%__MODULE__{} = state, prefix) do
       Enum.any?(state.struct_modules, &String.starts_with?(&1, prefix))
     end
+
+    def defines_struct?(%__MODULE__{} = state, module_name) do
+      Enum.any?(state.struct_modules, &(&1 == module_name))
+    end
   end
 
   alias Lexical.Project
@@ -69,6 +73,11 @@ defmodule Lexical.Server.Project.Intelligence do
   @impl GenServer
   def handle_call({:child_defines_struct?, parent_module}, _from, %State{} = state) do
     {:reply, State.child_defines_struct?(state, parent_module), state}
+  end
+
+  @impl GenServer
+  def handle_call({:defines_struct?, parent_module}, _from, %State{} = state) do
+    {:reply, State.defines_struct?(state, parent_module), state}
   end
 
   @impl GenServer

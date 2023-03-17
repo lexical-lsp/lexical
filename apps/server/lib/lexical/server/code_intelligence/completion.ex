@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
-  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
@@ -31,19 +31,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = context
       ) do
-    {:ok, env} = Env.new(document, position, context)
-    completions(project, env)
+    {:ok, env} = Env.new(project, document, position, context)
+    completions = completions(project, env)
+    Logger.warning("Emitting completions: #{inspect(completions)}")
+    completions
   end
 
   defp to_completion_items(
          local_completions,
          %Project{} = project,
-         %Completion.Context{} = context
+         %Env{} = env
        ) do
+    Logger.info("Local completions are #{inspect(local_completions)}")
+
     for result <- local_completions,
         displayable?(project, result),
-        applies_to_context?(project, result, context),
-        %Completion.Item{} = item <- List.wrap(translate_completion(result)) do
+        applies_to_context?(project, result, env.context),
+        %Completion.Item{} = item <- List.wrap(translate_completion(result, env)) do
       item
     end
   end
@@ -67,7 +71,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       true ->
         project
         |> RemoteControl.Api.complete(env.document, env.position)
-        |> to_completion_items(project, env.context)
+        |> to_completion_items(project, env)
     end
   end
 
@@ -113,7 +117,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     true
   end
 
-  defp translate_completion(%Result.Function{} = function) do
+  defp translate_completion(%Result.Function{} = function, _env) do
     label = "#{function.name}/#{function.arity}"
     arg_detail = Enum.join(function.argument_names, ",")
     detail = "#{function.origin}.#{label}(#{arg_detail})"
@@ -137,27 +141,46 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.StructField{name: "__struct__"}) do
-    :skip
-  end
+  defp translate_completion(%Result.Module{} = module, %Env{} = env) do
+    detail =
+      case module.summary do
+        nil -> module.name
+        "" -> module.name
+        other -> other
+      end
 
-  defp translate_completion(%Result.StructField{} = struct_field) do
-    Completion.Item.new(
-      detail: struct_field.name,
-      label: struct_field.name,
-      kind: :field
-    )
-  end
+    struct_reference? = Env.struct_reference?(env)
 
-  defp translate_completion(%Result.Module{} = module) do
+    {insert_text, detail_label} =
+      cond do
+        struct_reference? and Intelligence.defines_struct?(env.project, module.full_name) ->
+          insert_text = module.name <> "{}"
+          {insert_text, " (Struct)"}
+
+        struct_reference? and Intelligence.child_defines_struct?(env.project, module.full_name) ->
+          insert_text = module.name
+          {insert_text, " (Module)"}
+
+        true ->
+          {module.name, ""}
+      end
+
+    completion_kind =
+      if Intelligence.defines_struct?(env.project, module.full_name) do
+        :struct
+      else
+        :module
+      end
+
     Completion.Item.new(
       label: module.name,
-      kind: :module,
-      detail: module.summary
+      kind: completion_kind,
+      detail: detail <> detail_label,
+      insert_text: insert_text
     )
   end
 
-  defp translate_completion(%Result.ModuleAttribute{name: "@moduledoc"}) do
+  defp translate_completion(%Result.ModuleAttribute{name: "@moduledoc"}, _env) do
     doc_snippet = ~s(
       @moduledoc """
       $0
@@ -184,7 +207,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     [with_doc, without_doc]
   end
 
-  defp translate_completion(%Result.ModuleAttribute{name: "@doc"}) do
+  defp translate_completion(%Result.ModuleAttribute{name: "@doc"}, _env) do
     doc_snippet = ~s(
       @doc """
       $0
@@ -211,7 +234,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     [with_doc, without_doc]
   end
 
-  defp translate_completion(%Result.ModuleAttribute{} = attribute) do
+  defp translate_completion(%Result.ModuleAttribute{} = attribute, _env) do
     Completion.Item.new(
       detail: "module attribute",
       kind: :constant,
@@ -220,7 +243,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Variable{} = variable) do
+  defp translate_completion(%Result.Variable{} = variable, _env) do
     Completion.Item.new(
       detail: variable.name,
       kind: :variable,
@@ -228,20 +251,45 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Struct{} = struct) do
+  defp translate_completion(%Result.Struct{} = struct, env) do
+    insert_text =
+      cond do
+        Env.struct_reference?(env) and not String.contains?(env.prefix, ".") ->
+          "%#{struct.name}{}"
+
+        Env.struct_reference?(env) ->
+          "#{struct.name}{}"
+
+        true ->
+          struct.name
+      end
+
     Completion.Item.new(
       detail: "#{struct.name} (Struct)",
       kind: :struct,
-      label: struct.name
+      label: struct.name,
+      insert_text: insert_text
     )
   end
 
-  defp translate_completion(%Result.Macro{name: name})
+  defp translate_completion(%Result.StructField{name: "__struct__"}, _env) do
+    :skip
+  end
+
+  defp translate_completion(%Result.StructField{} = struct_field, _env) do
+    Completion.Item.new(
+      detail: struct_field.name,
+      label: struct_field.name,
+      kind: :field
+    )
+  end
+
+  defp translate_completion(%Result.Macro{name: name}, _env)
        when name in ["__before_compile__", "__using__", "__after_compile__"] do
     :skip
   end
 
-  defp translate_completion(%Result.Macro{name: "def", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "def", arity: 2} = macro, _env) do
     label = "#{macro.name} (Define a function)"
 
     snippet = """
@@ -260,7 +308,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defp", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "defp", arity: 2} = macro, _env) do
     label = "#{macro.name} (Define a private function)"
 
     snippet = """
@@ -279,7 +327,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defmodule"} = macro) do
+  defp translate_completion(%Result.Macro{name: "defmodule"} = macro, _env) do
     label = "defmodule (Define a module)"
 
     snippet = """
@@ -298,7 +346,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defmacro", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "defmacro", arity: 2} = macro, _env) do
     label = "#{macro.name} (Define a macro)"
 
     snippet = """
@@ -317,7 +365,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defmacrop", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "defmacrop", arity: 2} = macro, _env) do
     label = "#{macro.name} (Define a private macro)"
 
     snippet = """
@@ -336,7 +384,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defprotocol"} = macro) do
+  defp translate_completion(%Result.Macro{name: "defprotocol"} = macro, _env) do
     label = "#{macro.name} (Define a protocol)"
 
     snippet = """
@@ -355,7 +403,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defimpl", arity: 3} = macro) do
+  defp translate_completion(%Result.Macro{name: "defimpl", arity: 3} = macro, _env) do
     label = "#{macro.name} (Define a protocol implementation)"
 
     snippet = """
@@ -374,7 +422,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defoverridable"} = macro) do
+  defp translate_completion(%Result.Macro{name: "defoverridable"} = macro, _env) do
     label = "#{macro.name} (Mark a function as overridable)"
 
     snippet = "defoverridable ${1:keyword or behaviour} $0"
@@ -389,7 +437,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defdelegate", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "defdelegate", arity: 2} = macro, _env) do
     label = "#{macro.name} (Define a delegate function)"
 
     snippet = """
@@ -406,7 +454,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defguard", arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "defguard", arity: 1} = macro, _env) do
     label = "#{macro.name} (Define a guard macro)"
 
     snippet = """
@@ -423,7 +471,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defguardp", arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "defguardp", arity: 1} = macro, _env) do
     label = "#{macro.name} (Define a private guard macro)"
 
     snippet = """
@@ -440,7 +488,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defexception", arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "defexception", arity: 1} = macro, _env) do
     label = "#{macro.name} (Define an exception)"
 
     snippet = """
@@ -457,7 +505,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "defstruct", arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "defstruct", arity: 1} = macro, _env) do
     label = "#{macro.name} (Define a struct)"
 
     snippet = """
@@ -474,7 +522,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "alias", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "alias", arity: 2} = macro, _env) do
     label = "#{macro.name} (alias a module's name)"
 
     snippet = "alias $0"
@@ -489,7 +537,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "require" <> _, arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "require" <> _, arity: 2} = macro, _env) do
     label = "#{macro.name} (require a module's macros)"
 
     snippet = "require $0"
@@ -504,7 +552,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "quote" <> _, arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "quote" <> _, arity: 2} = macro, _env) do
     label = "#{macro.name} (quote block)"
 
     snippet = """
@@ -523,7 +571,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "receive" <> _, arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "receive" <> _, arity: 1} = macro, _env) do
     label = "#{macro.name} (receive block)"
 
     snippet = """
@@ -542,7 +590,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "try" <> _, arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "try" <> _, arity: 1} = macro, _env) do
     label = "#{macro.name} (try / catch / rescue block)"
 
     snippet = """
@@ -561,7 +609,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "with" <> _, arity: 1} = macro) do
+  defp translate_completion(%Result.Macro{name: "with" <> _, arity: 1} = macro, _env) do
     label = "with block"
 
     snippet = """
@@ -580,7 +628,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "case", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "case", arity: 2} = macro, _env) do
     label = "#{macro.name} (Case statement)"
 
     snippet = """
@@ -599,7 +647,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "if", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "if", arity: 2} = macro, _env) do
     label = "#{macro.name} (If statement)"
 
     snippet = """
@@ -618,7 +666,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "import", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "import", arity: 2} = macro, _env) do
     label = "#{macro.name} (import a module's functions)"
 
     snippet = "import $0"
@@ -633,7 +681,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "unless", arity: 2} = macro) do
+  defp translate_completion(%Result.Macro{name: "unless", arity: 2} = macro, _env) do
     label = "#{macro.name} (Unless statement)"
 
     snippet = """
@@ -652,7 +700,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "cond"} = macro) do
+  defp translate_completion(%Result.Macro{name: "cond"} = macro, _env) do
     label = "#{macro.name} (Cond statement)"
 
     snippet = """
@@ -672,7 +720,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: "for"} = macro) do
+  defp translate_completion(%Result.Macro{name: "for"} = macro, _env) do
     label = "#{macro.name} (comprehension)"
 
     snippet = """
@@ -691,7 +739,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: dunder_form} = macro)
+  defp translate_completion(%Result.Macro{name: "__MODULE__"} = macro, env) do
+    if Env.struct_reference?(env) do
+      Completion.Item.new(detail: "%__MODULE__{}", label: "%__MODULE__{}", kind: :struct)
+    else
+      Completion.Item.new(
+        detail: macro.spec,
+        kind: :constant,
+        label: "__MODULE__",
+        sort_text: boost("__MODULE__")
+      )
+    end
+  end
+
+  defp translate_completion(%Result.Macro{name: dunder_form} = macro, _env)
        when dunder_form in ~w(__CALLER__ __DIR__ __ENV__ __MODULE__ __STACKTRACE__) do
     label = dunder_form
 
@@ -703,12 +764,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Macro{name: dunder_form})
+  defp translate_completion(%Result.Macro{name: dunder_form}, _env)
        when dunder_form in ~w(__aliases__ __block__) do
     :skip
   end
 
-  defp translate_completion(%Result.Macro{name: name} = macro)
+  defp translate_completion(%Result.Macro{name: name} = macro, _env)
        when name not in @snippet_macros do
     label = "#{macro.name}/#{macro.arity}"
     sort_text = String.replace(label, "__", "")
@@ -721,7 +782,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(_) do
+  defp translate_completion(_, _env) do
     :skip
   end
 

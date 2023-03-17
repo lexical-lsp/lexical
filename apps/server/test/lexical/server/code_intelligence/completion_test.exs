@@ -10,6 +10,7 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
 
   use ExUnit.Case
   import Lexical.Test.Fixtures
+  import Lexical.Test.CursorSupport
   import RemoteControl.Api.Messages
 
   setup_all do
@@ -25,21 +26,6 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
     {:ok, project: project}
-  end
-
-  def cursor_position(text) do
-    text
-    |> String.graphemes()
-    |> Enum.reduce_while({0, 0}, fn
-      "|", line_and_column ->
-        {:halt, line_and_column}
-
-      "\n", {line, _} ->
-        {:cont, {line + 1, 0}}
-
-      _, {line, column} ->
-        {:cont, {line, column + 1}}
-    end)
   end
 
   def complete(project, text, trigger_character \\ nil) do
@@ -700,8 +686,45 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
                |> complete("%Project.Structs.|")
                |> fetch_completion(kind: :struct)
 
-      assert Enum.find(account_and_user, &(&1.label == "Account"))
       assert Enum.find(account_and_user, &(&1.label == "User"))
+      account = Enum.find(account_and_user, &(&1.label == "Account"))
+      assert account
+      assert account.insert_text == "Account{}"
+      assert account.detail == "Account (Struct)"
+    end
+
+    test "should complete aliases after %", %{project: project} do
+      assert [completion] =
+               complete(project, """
+               alias Project.Structs.User
+               def my_function(%Us|)
+               """)
+
+      assert completion.insert_text == "User{}"
+      assert completion.kind == :struct
+    end
+
+    test "should complete module aliases after %", %{project: project} do
+      assert [completion] =
+               complete(project, """
+               defmodule TestModule do
+               alias Project.Structs.User
+
+                 def my_function(%Us|)
+               """)
+
+      assert completion.insert_text == "User{}"
+      assert completion.kind == :struct
+    end
+
+    test "should complete non-aliased correctly", %{project: project} do
+      assert [completion] =
+               complete(project, """
+               def my_function(%Project.Structs.U|)
+               """)
+
+      assert completion.insert_text == "User{}"
+      assert completion.kind == :struct
     end
 
     test "when using %, only parents of a struct are returned", %{project: project} do
@@ -734,17 +757,28 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert Enum.find(fields, &(&1.label == "email_address"))
     end
 
-    @tag :skip
     test "it should complete module structs", %{project: project} do
       completion = """
       defmodule NewStruct do
         defstruct [:name, :value]
 
-        def my_function(%|)
+        def my_function(%__|)
       """
 
-      assert [completion] = complete(project, completion)
-      assert completion.label == "%__MODULE__"
+      assert {:ok, completion} =
+               project
+               |> complete(completion)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.label == "%__MODULE__{}"
+      assert completion.detail == "%__MODULE__{}"
+      assert completion.kind == :struct
+    end
+
+    test "can be aliased", %{project: project} do
+      assert [completion] = complete(project, "alias Project.Structs.A|")
+
+      assert completion.insert_text == "Account"
     end
   end
 
