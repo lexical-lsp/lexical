@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
   alias Lexical.Project
 
   def init(%Project{} = project, listener_pid) do
+    true = Code.append_path(hex_path())
     RemoteControl.set_project(project)
     RemoteControl.set_project_listener_pid(listener_pid)
     project_root = Project.root_path(project)
@@ -22,6 +23,17 @@ defmodule Lexical.RemoteControl.Bootstrap do
       start_logger(project)
       Project.ensure_workspace_exists(project)
     end
+  end
+
+  defp hex_path() do
+    hex_ebin = Path.join(["hex-*", "**", "ebin"])
+
+    [hex_path] =
+      Mix.path_for(:archives)
+      |> Path.join(hex_ebin)
+      |> Path.wildcard()
+
+    hex_path
   end
 
   defp start_logger(%Project{} = project) do
