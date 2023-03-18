@@ -1,18 +1,5 @@
 defmodule CommonProtocol do
   @moduledoc """
-  Documentation for `CommonProtocol`.
+  A lightweight core set of protocol modules that can be used across projects
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> CommonProtocol.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end

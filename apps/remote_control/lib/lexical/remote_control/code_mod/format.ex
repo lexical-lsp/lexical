@@ -17,13 +17,6 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     end
   end
 
-  @spec format(SourceFile.t()) :: {:ok, String.t()} | {:error, any}
-  def format(%SourceFile{} = document) do
-    with {:ok, _, formatted_code} <- do_format(document) do
-      {:ok, formatted_code}
-    end
-  end
-
   defp do_format(%Project{} = project, %SourceFile{} = document) do
     project_path = Project.project_path(project)
 

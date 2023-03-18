@@ -1,18 +1,5 @@
 defmodule Proto do
   @moduledoc """
-  Documentation for `Proto`.
+  Generators and a DSL for creating stuctures that represent the LSP protocol
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Proto.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end
