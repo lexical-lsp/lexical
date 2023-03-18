@@ -29,11 +29,10 @@ defmodule Helpers do
       |> project()
       |> Project.root_path()
 
-    file_path =
-      [root_path, "lib", "file.ex"]
-      |> Path.join()
-      |> SourceFile.Path.to_uri()
-      |> SourceFile.new(text, 0)
+    [root_path, "lib", "file.ex"]
+    |> Path.join()
+    |> SourceFile.Path.to_uri()
+    |> SourceFile.new(text, 0)
   end
 
   def pos(line, character) do
