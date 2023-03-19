@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Build.ErrorTest do
   alias Lexical.RemoteControl.Build.Error
-  use ExUnit.Case
+
+  use ExUnit.Case, async: true
 
   def to_quoted(source) do
     Code.string_to_quoted(source)
@@ -8,6 +9,28 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
   def parse_error({:error, {a, b, c}}) do
     Error.parse_error_to_diagnostics(a, b, c)
+  end
+
+  describe "normalize_diagnostic/1" do
+    test "normalizes the message when its a iodata" do
+      diagnostic = %Mix.Task.Compiler.Diagnostic{
+        file: "lib/dummy.ex",
+        severity: :warning,
+        message: [
+          ":slave.stop/1",
+          " is deprecated. ",
+          "It will be removed in OTP 27. Use the 'peer' module instead"
+        ],
+        position: 6,
+        compiler_name: "Elixir",
+        details: nil
+      }
+
+      normalized = Error.normalize_diagnostic(diagnostic)
+
+      assert normalized.message ==
+               ":slave.stop/1 is deprecated. It will be removed in OTP 27. Use the 'peer' module instead"
+    end
   end
 
   describe "handling parse errors" do

@@ -3,6 +3,10 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   require Logger
 
+  def normalize_diagnostic(%Diagnostic{message: message} = diagnostic) do
+    %{diagnostic | message: IO.iodata_to_binary(message)}
+  end
+
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
   def parse_error_to_diagnostics(context, {_error, detail} = message_info, token) do
     detail_diagnostics = detail_diagnostics(detail)
