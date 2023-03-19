@@ -119,7 +119,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
     defp to_protocol(%Mix.Error{} = diagnostic, _) do
       proto_diagnoatic = %Diagnostic{
-        message: diagnostic,
+        message: diagnostic.message,
         range:
           Range.new(
             start: Position.new(line: 0, character: 0),
