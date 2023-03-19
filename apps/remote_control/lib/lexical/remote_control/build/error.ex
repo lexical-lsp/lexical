@@ -131,6 +131,9 @@ defmodule Lexical.RemoteControl.Build.Error do
     {_, context} = Macro.traverse(quoted_ast, nil, traverser, fn ast, acc -> {ast, acc} end)
 
     cond do
+      is_nil(context) ->
+        position(0)
+
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
         position(context[:line], context[:column])
 
