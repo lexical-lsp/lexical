@@ -66,7 +66,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       message: Exception.message(error),
       position: mfa_to_position(mfa, quoted_ast),
       file: stack_to_file(stack),
-      severity: error,
+      severity: :error,
       compiler_name: "Elixir"
     }
   end
