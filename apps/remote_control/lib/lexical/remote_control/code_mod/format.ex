@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CodeMod.Format do
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.Project
   alias Lexical.Protocol.Types.TextEdit
@@ -10,7 +11,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   @spec text_edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
   def text_edits(%Project{} = project, %SourceFile{} = document) do
-    with :ok <- RemoteControl.Api.compile_source_file(project, document),
+    with :ok <- Build.compile_source_file(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
       {:ok, edits}
@@ -28,14 +29,6 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     end
   end
 
-  defp do_format(%SourceFile{} = document) do
-    formatter = build_formatter([])
-
-    document
-    |> SourceFile.to_string()
-    |> formatter.()
-  end
-
   @spec formatter_for(Project.t(), String.t()) ::
           {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
   defp formatter_for(%Project{} = project, uri_or_path) do
@@ -43,14 +36,6 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     formatter_function = formatter_for_file(project, path)
     wrapped_formatter_function = wrap_with_try_catch(formatter_function)
     {:ok, wrapped_formatter_function}
-  end
-
-  defp build_formatter(opts) do
-    fn code ->
-      formatted_iodata = Code.format_string!(code, opts)
-      IO.iodata_to_binary([formatted_iodata, ?\n])
-    end
-    |> wrap_with_try_catch()
   end
 
   defp wrap_with_try_catch(formatter_fn) do
