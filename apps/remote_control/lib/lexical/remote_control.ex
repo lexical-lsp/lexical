@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
 
-  @allowed_apps ~w(common path_glob remote_control elixir_sense)a
+  @allowed_apps ~w(jason common path_glob remote_control elixir_sense)a
 
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
 

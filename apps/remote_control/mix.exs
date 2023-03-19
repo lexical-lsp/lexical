@@ -33,6 +33,7 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
+      {:jason, "~> 1.4"},
       {:common, in_umbrella: true},
       {:common_protocol, in_umbrella: true},
       {:path_glob, "~> 0.2", optional: true},
