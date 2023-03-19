@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   describe "normalize_diagnostic/1" do
     test "normalizes the message when its a iodata" do
       diagnostic = %Mix.Task.Compiler.Diagnostic{
-        file: "/Users/scottming/Code/dummy/lib/dummy.ex",
+        file: "lib/dummy.ex",
         severity: :warning,
         message: [
           ":slave.stop/1",
