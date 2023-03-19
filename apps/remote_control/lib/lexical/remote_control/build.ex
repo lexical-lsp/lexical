@@ -183,7 +183,7 @@ defmodule Lexical.RemoteControl.Build do
             {:ok, []}
 
           {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
-            {:ok, diagnostics}
+            {:ok, Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)}
         end
       rescue
         e ->
