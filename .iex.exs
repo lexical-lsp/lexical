@@ -1,14 +1,11 @@
-# Node.start(:"remsh@127.0.0.1")
-# Node.set_cookie(:lexical)
-# Node.connect(:"manager@127.0.0.1")
-
 alias Lexical.RemoteControl
 alias Lexical.SourceFile
 alias Lexical.SourceFile.Position
 
 defmodule Helpers do
-  alias Lexical.Protocol.Types.Completion
   alias Lexical.Project
+  alias Lexical.Project
+  alias Lexical.Protocol.Types.Completion
   alias Lexical.Server.CodeIntelligence
   alias Lexical.SourceFile.Position
 
@@ -23,7 +20,19 @@ defmodule Helpers do
   end
 
   def sf(text) do
-    SourceFile.new("file:///file.ex", text, 0)
+    sf(:lexical, text)
+  end
+
+  def sf(project, text) do
+    root_path =
+      project
+      |> project()
+      |> Project.root_path()
+
+    [root_path, "lib", "file.ex"]
+    |> Path.join()
+    |> SourceFile.Path.to_uri()
+    |> SourceFile.new(text, 0)
   end
 
   def pos(line, character) do

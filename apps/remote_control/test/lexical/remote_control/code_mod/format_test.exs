@@ -1,8 +1,9 @@
-defmodule Lexical.Server.CodeMod.FormatTest do
+defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.Server.CodeMod.Format
+  alias Lexical.RemoteControl.CodeMod.Format
   alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case
@@ -49,22 +50,29 @@ defmodule Lexical.Server.CodeMod.FormatTest do
     ]t
   end
 
-  def with_forwarded_listener(_) do
-    :ok
-  end
-
-  setup do
-    project = project()
+  def with_real_project(%{project: project}) do
     {:ok, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->
       :ok = RemoteControl.stop(project)
     end)
 
+    :ok
+  end
+
+  def with_patched_build(_) do
+    patch(Build, :compile_source_file, fn _, _ -> :ok end)
+    :ok
+  end
+
+  setup do
+    project = project()
     {:ok, project: project}
   end
 
   describe "format/2" do
+    setup [:with_patched_build]
+
     test "it should be able to format a file in the project", %{project: project} do
       {:ok, result} = modify(unformatted(), project: project)
 
@@ -118,7 +126,7 @@ defmodule Lexical.Server.CodeMod.FormatTest do
   end
 
   describe "emitting diagnostics" do
-    setup [:with_forwarded_listener]
+    setup [:with_real_project]
 
     test "it should emit diagnostics when a syntax error occurs", %{project: project} do
       assert {:error, _} = ~q[

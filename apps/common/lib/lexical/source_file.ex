@@ -172,6 +172,10 @@ defmodule Lexical.SourceFile do
     {:ok, %__MODULE__{source | document: Document.new(new_text)}}
   end
 
+  defp apply_change(%__MODULE__{} = source, %{range: range, new_text: text}) do
+    apply_change(source, %{range: range, text: text})
+  end
+
   defp apply_change(
          %__MODULE__{} = source,
          %{

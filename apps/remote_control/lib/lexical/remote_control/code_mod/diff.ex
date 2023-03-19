@@ -1,4 +1,4 @@
-defmodule Lexical.Server.CodeMod.Diff do
+defmodule Lexical.RemoteControl.CodeMod.Diff do
   alias Lexical.CodeUnit
   alias Lexical.Protocol.Types.Position
   alias Lexical.Protocol.Types.Range

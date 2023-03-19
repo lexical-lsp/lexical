@@ -11,7 +11,8 @@ defmodule Lexical.RemoteControl.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
 
@@ -22,9 +23,18 @@ defmodule Lexical.RemoteControl.MixProject do
     ]
   end
 
+  defp elixirc_paths(:test) do
+    ~w(lib test/support)
+  end
+
+  defp elixirc_paths(_) do
+    ~w(lib)
+  end
+
   defp deps do
     [
       {:common, in_umbrella: true},
+      {:common_protocol, in_umbrella: true},
       {:path_glob, "~> 0.2", optional: true},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git", runtime: false},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false}

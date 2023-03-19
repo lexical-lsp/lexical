@@ -1,5 +1,4 @@
 defmodule Lexical.Protocol.Proto.Convert do
-  alias Lexical.Protocol.Types
   alias Lexical.Ranged
   alias Lexical.SourceFile
 
@@ -49,24 +48,22 @@ defmodule Lexical.Protocol.Proto.Convert do
     {:ok, request, nil}
   end
 
-  defp convert(%Types.Range{} = range, %SourceFile{} = source_file) do
-    Ranged.Native.from_lsp(range, source_file)
-  end
-
-  defp convert(%Types.Position{} = position, %SourceFile{} = source_file) do
-    Ranged.Native.from_lsp(position, source_file)
-  end
-
   defp convert(%_struct{} = request, %SourceFile{} = source_file) do
-    kvps =
-      request
-      |> Map.from_struct()
-      |> Enum.reduce(request, fn {key, value}, request ->
-        {:ok, value} = convert(value, source_file)
-        Map.put(request, key, value)
-      end)
+    case Ranged.Native.impl_for(request) do
+      nil ->
+        key_value_pairs =
+          request
+          |> Map.from_struct()
+          |> Enum.reduce(request, fn {key, value}, request ->
+            {:ok, value} = convert(value, source_file)
+            Map.put(request, key, value)
+          end)
 
-    {:ok, Map.merge(request, kvps)}
+        {:ok, Map.merge(request, key_value_pairs)}
+
+      _ ->
+        Ranged.Native.from_lsp(request, source_file)
+    end
   end
 
   defp convert(list, %SourceFile{} = source_file) when is_list(list) do
