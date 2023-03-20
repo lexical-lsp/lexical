@@ -72,11 +72,11 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   defp formatter_for_file(%Project{} = project, file_path) do
     {formatter, _opts} =
       if RemoteControl.project_node?() do
-        Mix.Tasks.Format.formatter_for_file(file_path)
-      else
         RemoteControl.in_mix_project(project, fn _ ->
           Mix.Tasks.Format.formatter_for_file(file_path)
         end)
+      else
+        Mix.Tasks.Format.formatter_for_file(file_path)
       end
 
     formatter

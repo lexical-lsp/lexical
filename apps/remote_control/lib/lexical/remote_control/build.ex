@@ -19,7 +19,12 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   def compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
-    RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
+    # Don't format mix.exs files until we come up with with a way to prevent them from causing errors
+    unless Path.absname(source_file.path) == "mix.exs" do
+      RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
+    end
+
+    :ok
   end
 
   def with_lock(func) do
@@ -199,31 +204,7 @@ defmodule Lexical.RemoteControl.Build do
     compile = fn ->
       with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
         try do
-          mix_project =
-            if Path.basename(source_file.path) == "mix.exs" do
-              # We're compiling a mix.exs file, which will cause an error about redefining the project.
-              # Popping the project off the stack prior to compiling and pushing it after compilation
-              # makes the error go away.
-              RemoteControl.in_mix_project(fn _module ->
-                Mix.ProjectStack.pop()
-              end)
-            end
-
-          result = Code.compile_quoted(quoted_ast, source_file.path)
-
-          case mix_project do
-            %{name: name, config: config, file: file} ->
-              Logger.info("pushing proj")
-
-              RemoteControl.in_mix_project(fn _ ->
-                Mix.ProjectStack.push(name, config, file)
-              end)
-
-            nil ->
-              :ok
-          end
-
-          result
+          Code.compile_quoted(quoted_ast, source_file.path)
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
