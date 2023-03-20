@@ -7,13 +7,8 @@ defmodule Lexical.BuildTest do
   alias Mix.Task.Compiler.Diagnostic
 
   import Messages
+  import Lexical.Test.Fixtures
   use ExUnit.Case
-
-  def fixtures_dir do
-    [__ENV__.file, "..", "..", "fixtures"]
-    |> Path.join()
-    |> Path.expand()
-  end
 
   def compile_source_file(%Project{} = project, filename \\ "file.ex", source_code) do
     sequence = System.unique_integer([:monotonic, :positive])
@@ -31,7 +26,7 @@ defmodule Lexical.BuildTest do
 
   def with_project(project_name) do
     project_name = to_string(project_name)
-    fixture_dir = Path.join(fixtures_dir(), project_name)
+    fixture_dir = Path.join(fixtures_path(), project_name)
     project = Project.new("file://#{fixture_dir}")
 
     {:ok, _} = RemoteControl.start_link(project, self())
