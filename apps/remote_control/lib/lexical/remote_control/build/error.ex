@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       message: Exception.message(error),
       position: mfa_to_position(mfa, quoted_ast),
       file: stack_to_file(stack),
-      severity: error,
+      severity: :error,
       compiler_name: "Elixir"
     }
   end
@@ -135,6 +135,9 @@ defmodule Lexical.RemoteControl.Build.Error do
     {_, context} = Macro.traverse(quoted_ast, nil, traverser, fn ast, acc -> {ast, acc} end)
 
     cond do
+      is_nil(context) ->
+        position(0)
+
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
         position(context[:line], context[:column])
 
