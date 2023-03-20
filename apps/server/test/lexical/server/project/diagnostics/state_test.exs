@@ -31,6 +31,18 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     end
   end
 
+  def change_with(source_file, content) do
+    changes = [%{range: nil, text: content}]
+
+    {:ok, source_file} =
+      SourceFile.Store.get_and_update(
+        source_file.uri,
+        &SourceFile.apply_content_changes(&1, 2, changes)
+      )
+
+    source_file
+  end
+
   defp compiler_position({line, column}) do
     {compiler_position(line), compiler_position(column)}
   end
@@ -143,6 +155,32 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
       assert range.end.line == 3
       assert range.end.character == 0
+    end
+  end
+
+  describe "clear_all_flushed/1" do
+    test "it should not clear a dirty open file", %{state: state} do
+      source_file = source_file("hello") |> change_with("hello2")
+
+      {:ok, state} =
+        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+
+      state = State.clear_all_flushed(state)
+      diagnostics = State.get(state, source_file.uri)
+
+      refute diagnostics == []
+    end
+
+    test "it should clear a file's diagnostics that is just open", %{state: state} do
+      source_file = source_file("hello")
+
+      {:ok, state} =
+        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+
+      state = State.clear_all_flushed(state)
+      diagnostics = State.get(state, source_file.uri)
+
+      assert diagnostics == []
     end
   end
 end
