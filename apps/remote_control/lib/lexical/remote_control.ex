@@ -140,8 +140,8 @@ defmodule Lexical.RemoteControl do
 
     result =
       with :ok <- File.cd(root_path),
-           {:ok, elixir} <- elixir_executable(),
-           {:ok, paths} <- elixir_code_paths(elixir) do
+           {:ok, elixir} <- elixir_executable(project),
+           {:ok, paths} <- elixir_code_paths(project, elixir) do
         {:ok, format_paths(paths)}
       end
 
@@ -149,19 +149,42 @@ defmodule Lexical.RemoteControl do
     result
   end
 
-  defp elixir_executable do
-    case System.find_executable("elixir") do
-      nil -> {:error, :no_elixir}
-      executable -> {:ok, executable}
+  defp elixir_executable(%Project{} = project) do
+    root_path = Project.root_path(project)
+
+    path_result =
+      case version_manager() do
+        :asdf ->
+          case System.cmd("asdf", ~w(which elixir), cd: root_path) do
+            {path, 0} ->
+              String.trim(path)
+
+            _ ->
+              nil
+          end
+
+        :none ->
+          File.cd!(root_path, fn -> System.find_executable("elixir") end)
+      end
+
+    case path_result do
+      nil ->
+        {:error, :no_elixir}
+
+      executable when is_binary(executable) ->
+        {:ok, executable}
     end
   end
 
-  def format_paths(paths_as_charlists) do
+  defp format_paths(paths_as_charlists) do
     Enum.map_join(paths_as_charlists, " ", &Path.expand/1)
   end
 
-  defp elixir_code_paths(elixir_executable) do
-    with {output, 0} <- System.cmd(elixir_executable, ~w[--eval IO.inspect(:code.get_path())]),
+  defp elixir_code_paths(%Project{} = project, elixir_executable) do
+    root_path = Project.root_path(project)
+    command = ~w[--eval IO.inspect(:code.get_path())]
+
+    with {output, 0} <- System.cmd(elixir_executable, command, cd: root_path),
          {evaluated, _} <- Code.eval_string(output) do
       {:ok, evaluated}
     end
@@ -176,4 +199,16 @@ defmodule Lexical.RemoteControl do
         {:error, :epmd_failed}
     end
   end
+
+  defp version_manager do
+    cond do
+      asdf?() ->
+        :asdf
+
+      true ->
+        :none
+    end
+  end
+
+  defp asdf?(), do: not is_nil(System.find_executable("asdf"))
 end
