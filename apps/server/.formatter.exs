@@ -1,9 +1,9 @@
 # Used by "mix format"
 imported_deps =
   if Mix.env() == :test do
-    [:patch]
+    [:patch, :common]
   else
-    []
+    [:common]
   end
 
 [

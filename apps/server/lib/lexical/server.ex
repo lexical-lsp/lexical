@@ -82,6 +82,11 @@ defmodule Lexical.Server do
     end
   end
 
+  def handle_message(%Requests.Cancel{} = cancel_request, %State{} = state) do
+    Provider.Queue.cancel(to_string(cancel_request.id))
+    {:ok, state}
+  end
+
   def handle_message(%message_module{} = message, %State{} = state)
       when message_module in @server_specific_messages do
     case apply_to_state(state, message) do

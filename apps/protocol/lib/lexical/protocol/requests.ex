@@ -19,6 +19,12 @@ defmodule Lexical.Protocol.Requests do
       workspace_folders: optional(list_of(Types.Workspace.Folder))
   end
 
+  defmodule Cancel do
+    use Proto
+
+    defrequest "$/cancelRequest", :exclusive, id: one_of([string(), integer()])
+  end
+
   defmodule FindReferences do
     use Proto
 
