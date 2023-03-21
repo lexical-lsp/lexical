@@ -189,7 +189,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       {:ok, state} =
         State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
 
-      SourceFile.Store.close(source_file.uri)
+      :ok = SourceFile.Store.close(source_file.uri)
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
