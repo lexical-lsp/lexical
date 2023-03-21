@@ -36,10 +36,10 @@ defmodule Lexical.Server.Project.Diagnostics do
           with true <- SourceFile.Store.open?(uri),
                {:ok, %SourceFile{} = source_file} <- SourceFile.Store.fetch(uri),
                true <- source_file.dirty? do
-            {uri, []}
+            {uri, diagnostics}
           else
             _ ->
-              {uri, diagnostics}
+              {uri, []}
           end
         end)
 

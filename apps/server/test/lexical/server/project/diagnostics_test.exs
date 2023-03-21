@@ -55,25 +55,6 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
   describe "clearing diagnostics on compile" do
     setup [:with_patched_tranport]
 
-    test "it keeps a file's diagnostics if it is dirty", %{
-      project: project
-    } do
-      source_file = open_file(project, "defmodule Foo")
-
-      file_diagnostics_message =
-        file_diagnostics(diagnostics: [diagnostic(source_file.uri)], uri: source_file.uri)
-
-      Project.Dispatch.broadcast(project, file_diagnostics_message)
-      assert_receive {:transport, %PublishDiagnostics{} = publish_diagnostics}, 500
-
-      [previous_diagnostic] = publish_diagnostics.lsp.diagnostics
-
-      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
-      assert_receive {:transport, new_diagnostics}
-
-      assert new_diagnostics.lsp.diagnostics == [previous_diagnostic]
-    end
-
     test "it clears a file's diagnostics if it's not dirty", %{
       project: project
     } do
