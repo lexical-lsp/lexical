@@ -1,6 +1,5 @@
 defmodule Lexical.Server.Provider.Queue do
   defmodule State do
-    alias Lexical
     alias Lexical.Protocol.Proto.LspTypes.ResponseError
     alias Lexical.Protocol.Requests
     alias Lexical.Server.Provider.Env
@@ -22,11 +21,12 @@ defmodule Lexical.Server.Provider.Queue do
       with {:ok, handler_module} <- Handlers.for_request(request),
            {:ok, req} <- request.__struct__.to_elixir(request) do
         task = %Task{} = as_task(request, fn -> handler_module.handle(req, env) end)
+        request_id = to_string(request.id)
 
         new_state = %__MODULE__{
           state
-          | tasks_by_id: Map.put(state.tasks_by_id, request.id, task),
-            pids_to_ids: Map.put(state.pids_to_ids, task.pid, request.id)
+          | tasks_by_id: Map.put(state.tasks_by_id, request_id, task),
+            pids_to_ids: Map.put(state.pids_to_ids, task.pid, request_id)
         }
 
         {:ok, new_state}
@@ -44,6 +44,10 @@ defmodule Lexical.Server.Provider.Queue do
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.tasks_by_id, request_id),
            true <- Process.exit(task.pid, :kill) do
+        error = ResponseError.new(message: "Request cancelled", code: :request_cancelled)
+        reply = %{id: request_id, error: error}
+        Transport.write(reply)
+
         %State{
           state
           | tasks_by_id: Map.delete(state.tasks_by_id, request_id),
@@ -155,6 +159,12 @@ defmodule Lexical.Server.Provider.Queue do
 
   def cancel(%{id: request_id}) do
     cancel(request_id)
+  end
+
+  def cancel(request_id) when is_integer(request_id) do
+    request_id
+    |> Integer.to_string()
+    |> cancel()
   end
 
   def cancel(request_id) when is_binary(request_id) do
