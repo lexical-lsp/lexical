@@ -35,8 +35,8 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
     leading_indent = leading_indent(line_text)
 
     Macro.postwalk(quoted_ast, fn
-      {^unused_variable_name, meta, context} ->
-        {underscored_variable_name, meta, context}
+      {^unused_variable_name, meta, nil} ->
+        {underscored_variable_name, meta, nil}
 
       other ->
         other
