@@ -8,6 +8,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
   """
   alias Lexical.RemoteControl
   alias Lexical.Project
+  require Logger
 
   def init(%Project{} = project, listener_pid) do
     true = Code.append_path(hex_path())
@@ -21,6 +22,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:logger),
          :ok <- Mix.start() do
       start_logger(project)
+      maybe_change_directory(project)
       Project.ensure_workspace_exists(project)
     end
   end
@@ -54,5 +56,26 @@ defmodule Lexical.RemoteControl.Bootstrap do
     }
 
     :logger.add_handler(handler_name, :logger_std_h, config)
+  end
+
+  defp maybe_change_directory(%Project{} = project) do
+    current_dir = File.cwd!()
+
+    # Note about the following code:
+    # I tried a bunch of stuff to get it to work, like checking if the
+    # app is an umbrella (umbrealls? returns false when started in a subapp)
+    # to no avail. This was the only thing that consistently worked
+    configured_root =
+      RemoteControl.in_mix_project(project, fn _ ->
+        Mix.Project.config()
+        |> Keyword.get(:config_path)
+        |> Path.dirname()
+        |> Path.join("..")
+        |> Path.expand()
+      end)
+
+    unless current_dir == configured_root do
+      File.cd!(configured_root)
+    end
   end
 end
