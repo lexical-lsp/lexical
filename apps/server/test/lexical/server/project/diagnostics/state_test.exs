@@ -168,14 +168,28 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
 
-      refute diagnostics == []
+      assert [_] = diagnostics
     end
 
-    test "it should clear a file's diagnostics that is just open", %{state: state} do
+    test "it should clear a file's diagnostics if it is just open", %{state: state} do
       source_file = source_file("hello")
 
       {:ok, state} =
         State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+
+      state = State.clear_all_flushed(state)
+      diagnostics = State.get(state, source_file.uri)
+
+      assert diagnostics == []
+    end
+
+    test "it should clear a file's diagnostics if it is closed", %{state: state} do
+      source_file = source_file("hello")
+
+      {:ok, state} =
+        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+
+      SourceFile.Store.close(source_file.uri)
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
