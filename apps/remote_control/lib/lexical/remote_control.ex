@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl do
     :ok = ensure_epmd_started()
     entropy = :rand.uniform(65536)
 
-    start_net_kernel(entropy)
+    start_net_kernel(project, entropy)
 
     node_name = String.to_charlist("#{Project.name(project)}")
     {:ok, paths} = system_paths(project)
@@ -106,8 +106,8 @@ defmodule Lexical.RemoteControl do
     :"#{Project.name(project)}@127.0.0.1"
   end
 
-  defp start_net_kernel(entropy) do
-    :net_kernel.start([:"manager-#{entropy}@127.0.0.1"])
+  defp start_net_kernel(%Project{} = project, entropy) do
+    :net_kernel.start([:"manager-#{Project.name(project)}-#{entropy}@127.0.0.1"])
   end
 
   def ensure_apps_started(node, app_names) do
