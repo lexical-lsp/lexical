@@ -84,6 +84,36 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   end
 
   describe "error_to_diagnostic/3" do
+    test "handles UndefinedError for erlang moudle" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+         :slave.stop
+        end
+      ] |> to_quoted() |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[function :slave.stop/0 is undefined or private.]
+      assert diagnostic.position == 3
+    end
+
+    test "handles UndefinedError" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+          def bar do
+            print(:bar)
+          end
+        end
+      ] |> to_quoted() |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~
+               ~s[undefined function print/1]
+
+      assert diagnostic.position == 4
+    end
+
     test "handles ArgumentError" do
       {:exception, exception, stack, quoted_ast} =
         ~s[String.to_integer ""] |> to_quoted() |> compile()

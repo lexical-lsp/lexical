@@ -47,20 +47,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
-  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
-    [{module, function, arguments, _} | _] = stack
-    arity = length(arguments)
-    mfa = {module, function, arity}
-
-    %Diagnostic{
-      message: Exception.message(undefined_function),
-      position: mfa_to_position(mfa, quoted_ast),
-      file: stack_to_file(stack),
-      severity: :error,
-      compiler_name: "Elixir"
-    }
-  end
-
   def error_to_diagnostic(%Mix.Error{} = error, stack, quoted_ast) do
     [{module, function, arguments, _} | _] = stack
 
@@ -87,6 +73,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
       when module in [
+             UndefinedFunctionError,
              ArgumentError,
              Protocol.UndefinedError,
              ExUnit.DuplicateTestError,
