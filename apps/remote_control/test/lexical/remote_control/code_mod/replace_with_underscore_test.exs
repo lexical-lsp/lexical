@@ -90,6 +90,13 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
 
       assert result == "def my_func([a, b | _unused]) do"
     end
+
+    test "does not change the name of a function if it is the same as a parameter" do
+      {:ok, result} = ~q{
+          def unused(unused) do
+      } |> modify()
+      assert result == "def unused(_unused) do"
+    end
   end
 
   describe "fixes in variables" do
