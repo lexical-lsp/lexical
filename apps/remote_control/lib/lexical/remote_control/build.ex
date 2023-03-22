@@ -36,14 +36,31 @@ defmodule Lexical.RemoteControl.Build do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @impl GenServer
   def init([]) do
     project = RemoteControl.get_project()
 
     with :ok <- set_compiler_options() do
-      {:ok, project}
+      {:ok, project, {:continue, :initial_build}}
     end
   end
 
+  @impl GenServer
+  def handle_continue(:initial_build, %Project{} = project) do
+    # If the project directory isn't there, for some reason the main build fails, but a
+    # non-forced build will work, after which the project can be built correctly.
+    unless File.exists?(Project.build_path(project)) do
+      Logger.info("Performing initial build on new workspace")
+
+      RemoteControl.in_mix_project(fn _ ->
+        Mix.Task.run(:compile, mix_compile_opts(false))
+      end)
+    end
+
+    {:noreply, project}
+  end
+
+  @impl GenServer
   def handle_cast({:compile, force?}, %Project{} = project) do
     with_lock(fn ->
       {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
@@ -74,6 +91,7 @@ defmodule Lexical.RemoteControl.Build do
     end)
   end
 
+  @impl GenServer
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
     with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
@@ -121,6 +139,7 @@ defmodule Lexical.RemoteControl.Build do
     end)
   end
 
+  @impl GenServer
   def handle_info(_, %Project{} = project) do
     {:noreply, project}
   end
@@ -139,7 +158,7 @@ defmodule Lexical.RemoteControl.Build do
     [columns: true, token_metadata: true]
   end
 
-  defp safe_compile_project(force?) do
+  defp mix_compile_opts(force?) do
     opts = ~w(
         --return-errors
         --ignore-module-conflict
@@ -149,13 +168,14 @@ defmodule Lexical.RemoteControl.Build do
         --no-protocol-consolidation
     )
 
-    opts =
-      if force? do
-        ["--force " | opts]
-      else
-        opts
-      end
+    if force? do
+      ["--force " | opts]
+    else
+      opts
+    end
+  end
 
+  defp safe_compile_project(force?) do
     RemoteControl.in_mix_project(fn _ ->
       try do
         Mix.Task.clear()
@@ -176,7 +196,7 @@ defmodule Lexical.RemoteControl.Build do
 
         compile_fun = fn ->
           Mix.Task.clear()
-          Mix.Task.run("compile", opts)
+          Mix.Task.run("compile", mix_compile_opts(force?))
         end
 
         case compile_fun.() do
