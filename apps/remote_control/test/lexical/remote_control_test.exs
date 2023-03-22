@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControlTest do
   alias Lexical.RemoteControl
 
   use ExUnit.Case
+  use Testing.EventualAssertions
   import Lexical.Test.Fixtures
 
   def start_project(%Project{} = project) do
@@ -14,6 +15,10 @@ defmodule Lexical.RemoteControlTest do
     end)
 
     :ok
+  end
+
+  def remote_control_cwd(project) do
+    RemoteControl.call(project, File, :cwd!, [])
   end
 
   describe "detecting an umbrella app" do
@@ -28,22 +33,14 @@ defmodule Lexical.RemoteControlTest do
 
       start_project(subapp_project)
 
-      project_path = RemoteControl.call(subapp_project, File, :cwd!, [])
-
-      Project.root_path(parent_project)
-
-      assert project_path == Project.root_path(parent_project)
+      assert_eventually remote_control_cwd(subapp_project) == Project.root_path(parent_project)
     end
 
     test "keeps the current directory if it's started in the parent app" do
       parent_project = project(:umbrella)
       start_project(parent_project)
 
-      project_path = RemoteControl.call(parent_project, File, :cwd!, [])
-
-      Project.root_path(parent_project)
-
-      assert project_path == Project.root_path(parent_project)
+      assert remote_control_cwd(parent_project) == Project.root_path(parent_project)
     end
   end
 end
