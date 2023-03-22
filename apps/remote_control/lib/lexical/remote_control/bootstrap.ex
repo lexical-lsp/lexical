@@ -21,6 +21,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:mix),
          {:ok, _} <- Application.ensure_all_started(:logger),
          :ok <- Mix.start() do
+      Mix.env(:test)
       start_logger(project)
       maybe_change_directory(project)
       Project.ensure_workspace_exists(project)
