@@ -17,7 +17,7 @@ defmodule Lexical.RemoteControl do
 
   def start_link(%Project{} = project, project_listener) do
     :ok = ensure_epmd_started()
-    entropy = :rand.uniform(65536)
+    entropy = :rand.uniform(65_536)
 
     start_net_kernel(project, entropy)
 
@@ -201,6 +201,8 @@ defmodule Lexical.RemoteControl do
   end
 
   defp version_manager do
+    # disabling this because we're going to immediately add another version manager
+    # credo:disable-for-next-line Credo.Check.Refactor.CondStatements
     cond do
       asdf?() ->
         :asdf

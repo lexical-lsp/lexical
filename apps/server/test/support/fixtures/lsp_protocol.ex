@@ -114,10 +114,7 @@ defmodule ElixirLS.LanguageServer.Fixtures.LspProtocol do
 
   defp build_field(type, field_name, opts) do
     set_value = Keyword.get(opts, field_name)
-
-    with {:ok, built_value} <- build_field(type, field_name, set_value, opts) do
-      {:ok, built_value}
-    end
+    build_field(type, field_name, set_value, opts)
   end
 
   defp build_field({:literal, literal_value}, _, _, _) do

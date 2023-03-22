@@ -384,7 +384,7 @@ defmodule Lexical.SourceFileTest do
 
     test "incrementally replacing multi-line content, huge number of lines" do
       orig = "a1\ncc\nb1"
-      text = for _ <- 1..20000, into: "", do: "\ndd"
+      text = for _ <- 1..20_000, into: "", do: "\ndd"
 
       assert {:ok, source} =
                run_changes(orig, [
@@ -675,7 +675,7 @@ defmodule Lexical.SourceFileTest do
 
     test "invalid update range - before the document starts -> after the document ends" do
       orig = "foo\nbar"
-      invalid_range = new_range(-1, 1, 2, 10000)
+      invalid_range = new_range(-1, 1, 2, 10_000)
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [

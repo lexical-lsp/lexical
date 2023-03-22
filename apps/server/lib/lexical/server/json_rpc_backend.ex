@@ -60,12 +60,10 @@ defmodule Lexical.Server.JsonRpc.Backend do
 
     {:erl_level, level} = List.keyfind(md, :erl_level, 0, {:erl_level, level})
 
-    cond do
-      not meets_level?(level, log_level) ->
-        {:ok, state}
-
-      true ->
-        {:ok, log_event(level, msg, ts, md, state)}
+    if meets_level?(level, log_level) do
+      {:ok, log_event(level, msg, ts, md, state)}
+    else
+      {:ok, state}
     end
   end
 

@@ -195,6 +195,7 @@ defmodule Mix.Tasks.Deps.SafeCompile do
     # before we run the command given that REBAR_BARE_COMPILER_OUTPUT_DIR
     # writes directly to _build.
     #
+    # credo:disable-for-next-line Credo.Check.Design.TagTODO
     # TODO: We still symlink ebin/ by default for backwards compatibility.
     # This partially negates the effects of REBAR_BARE_COMPILER_OUTPUT_DIR
     # if an ebin directory exists, so we should consider disabling it in future

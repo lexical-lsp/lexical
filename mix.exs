@@ -16,7 +16,8 @@ defmodule Lexical.MixProject do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.29.1", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.29.1", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test]}
     ]
   end
 
