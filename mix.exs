@@ -56,6 +56,20 @@ defmodule Lexical.MixProject do
         include_executables_for: [:unix],
         include_erts: false,
         cookie: "lexical",
+        rel_templates_path: "rel/deploy",
+        strip_beams: false
+      ],
+      lexical_debug: [
+        applications: [
+          server: :permanent,
+          remote_control: :load,
+          mix: :load
+        ],
+        include_executables_for: [:unix],
+        include_erts: false,
+        path: "lexical_debug",
+        cookie: "lexical",
+        rel_templates_path: "rel/debug",
         strip_beams: false
       ],
       remote_control: [

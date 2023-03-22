@@ -25,3 +25,5 @@ erl_crash.dump
 .lexical
 
 lexical.log
+
+lexical_debug
