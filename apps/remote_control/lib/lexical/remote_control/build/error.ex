@@ -75,6 +75,32 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
+  def error_to_diagnostic(%RuntimeError{} = runtime_error, _stack, _quoted_ast) do
+    %Diagnostic{
+      message: Exception.message(runtime_error),
+      position: 1,
+      file: nil,
+      severity: :error,
+      compiler_name: "Elixir"
+    }
+  end
+
+  def error_to_diagnostic(%module{} = argument_error, stack, _quoted_ast)
+      when module in [
+             ArgumentError,
+             Protocol.UndefinedError,
+             ExUnit.DuplicateTestError,
+             ExUnit.DuplicateDescribeError
+           ] do
+    %Diagnostic{
+      message: Exception.message(argument_error),
+      position: stack_to_position_until(stack),
+      file: nil,
+      severity: :error,
+      compiler_name: "Elixir"
+    }
+  end
+
   def message_to_diagnostic(message_string) do
     message_string
     |> extract_individual_messages()
@@ -147,6 +173,20 @@ defmodule Lexical.RemoteControl.Build.Error do
       true ->
         nil
     end
+  end
+
+  defp stack_to_position_until([{_, target, _, _} | rest])
+       when target not in [:__FILE__, :__MODULE__] do
+    stack_to_position_until(rest)
+  end
+
+  defp stack_to_position_until([{_, target, _, context} | _rest])
+       when target in [:__FILE__, :__MODULE__] do
+    context_to_position(context)
+  end
+
+  defp stack_to_position_until([]) do
+    nil
   end
 
   defp stack_to_position([{_module, _function, _arity, context} | _] = _stack) do
