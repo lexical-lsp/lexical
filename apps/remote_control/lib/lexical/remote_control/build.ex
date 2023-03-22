@@ -55,7 +55,11 @@ defmodule Lexical.RemoteControl.Build do
       RemoteControl.in_mix_project(fn _ ->
         Mix.Task.run(:compile, mix_compile_opts(false))
       end)
+
+      Logger.info("initial build complete")
     end
+
+    update_build_path(project)
 
     {:noreply, project}
   end
@@ -324,5 +328,14 @@ defmodule Lexical.RemoteControl.Build do
       {:ok, _} -> true
       _ -> false
     end
+  end
+
+  defp update_build_path(%Project{} = project) do
+    RemoteControl.in_mix_project(project, fn _ ->
+      [Mix.Project.build_path(), "lib", "**", "ebin"]
+      |> Path.join()
+      |> Path.wildcard()
+      |> Enum.each(&Code.prepend_path/1)
+    end)
   end
 end
