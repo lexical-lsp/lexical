@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
-  def error_to_diagnostic(%module{} = argument_error, stack, _quoted_ast)
+  def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
       when module in [
              ArgumentError,
              Protocol.UndefinedError,
@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl.Build.Error do
              ExUnit.DuplicateDescribeError
            ] do
     %Diagnostic{
-      message: Exception.message(argument_error),
+      message: Exception.message(exception),
       position: stack_to_position_until(stack),
       file: nil,
       severity: :error,
