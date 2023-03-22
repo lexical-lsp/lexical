@@ -7,6 +7,7 @@ impossible_to_format = [
 ]
 
 [
+  import_deps: [:common],
   inputs:
     Enum.flat_map(
       [

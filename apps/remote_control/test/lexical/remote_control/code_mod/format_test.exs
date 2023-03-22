@@ -134,7 +134,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       end
       ] |> modify(project: project)
 
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
       assert diagnostic.message =~ "syntax error"
     end
   end

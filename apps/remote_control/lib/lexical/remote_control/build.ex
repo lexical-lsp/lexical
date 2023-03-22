@@ -36,14 +36,35 @@ defmodule Lexical.RemoteControl.Build do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @impl GenServer
   def init([]) do
     project = RemoteControl.get_project()
 
     with :ok <- set_compiler_options() do
-      {:ok, project}
+      {:ok, project, {:continue, :initial_build}}
     end
   end
 
+  @impl GenServer
+  def handle_continue(:initial_build, %Project{} = project) do
+    # If the project directory isn't there, for some reason the main build fails, but a
+    # non-forced build will work, after which the project can be built correctly.
+    unless File.exists?(Project.build_path(project)) do
+      Logger.info("Performing initial build on new workspace")
+
+      RemoteControl.in_mix_project(fn _ ->
+        Mix.Task.run(:compile, mix_compile_opts(false))
+      end)
+
+      Logger.info("initial build complete")
+    end
+
+    update_build_path(project)
+
+    {:noreply, project}
+  end
+
+  @impl GenServer
   def handle_cast({:compile, force?}, %Project{} = project) do
     with_lock(fn ->
       {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
@@ -74,6 +95,7 @@ defmodule Lexical.RemoteControl.Build do
     end)
   end
 
+  @impl GenServer
   def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
     with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
@@ -107,8 +129,6 @@ defmodule Lexical.RemoteControl.Build do
             {message, diagnostics}
         end
 
-      :logger.info("Emitting #{inspect(diagnostics)}")
-
       diagnostics =
         file_diagnostics(
           project: project,
@@ -123,6 +143,7 @@ defmodule Lexical.RemoteControl.Build do
     end)
   end
 
+  @impl GenServer
   def handle_info(_, %Project{} = project) do
     {:noreply, project}
   end
@@ -141,7 +162,7 @@ defmodule Lexical.RemoteControl.Build do
     [columns: true, token_metadata: true]
   end
 
-  defp safe_compile_project(force?) do
+  defp mix_compile_opts(force?) do
     opts = ~w(
         --return-errors
         --ignore-module-conflict
@@ -151,13 +172,14 @@ defmodule Lexical.RemoteControl.Build do
         --no-protocol-consolidation
     )
 
-    opts =
-      if force? do
-        ["--force " | opts]
-      else
-        opts
-      end
+    if force? do
+      ["--force " | opts]
+    else
+      opts
+    end
+  end
 
+  defp safe_compile_project(force?) do
     RemoteControl.in_mix_project(fn _ ->
       try do
         Mix.Task.clear()
@@ -177,17 +199,21 @@ defmodule Lexical.RemoteControl.Build do
         end
 
         compile_fun = fn ->
-          capture_io(:stderr, fn -> Mix.Task.run("compile", opts) end)
+          Mix.Task.clear()
+          Mix.Task.run("compile", mix_compile_opts(force?))
         end
 
         case compile_fun.() do
-          {_output, {:error, _} = error} ->
+          {:error, _} = error ->
             error
 
-          {_output, {_status, []}} ->
-            {:ok, []}
+          {status, diagnostics} when status in [:ok, :noop] ->
+            Logger.info(
+              "Compile completed with status #{status} " <>
+                "Produced #{length(diagnostics)} diagnostics " <>
+                inspect(diagnostics)
+            )
 
-          {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
             {:ok, Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)}
         end
       rescue
@@ -202,15 +228,24 @@ defmodule Lexical.RemoteControl.Build do
     parser_options = [file: source_file.path] ++ parser_options()
 
     compile = fn ->
-      with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
-        try do
-          Code.compile_quoted(quoted_ast, source_file.path)
-        rescue
-          exception ->
-            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            {:exception, filled_exception, stack, quoted_ast}
+      RemoteControl.in_mix_project(fn _ ->
+        with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
+          try do
+            # If we're compiling a mix.exs file, the after compile callback from
+            # `use Mix.Project` will blow up if we add the same project to the project stack
+            # twice. Preemptively popping it prevents that error from occurring.
+            if Path.basename(source_file.path) == "mix.exs" do
+              Mix.ProjectStack.pop()
+            end
+
+            Code.compile_quoted(quoted_ast, source_file.path)
+          rescue
+            exception ->
+              {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+              {:exception, filled_exception, stack, quoted_ast}
+          end
         end
-      end
+      end)
     end
 
     case capture_io(:stderr, compile) do
@@ -293,5 +328,14 @@ defmodule Lexical.RemoteControl.Build do
       {:ok, _} -> true
       _ -> false
     end
+  end
+
+  defp update_build_path(%Project{} = project) do
+    RemoteControl.in_mix_project(project, fn _ ->
+      [Mix.Project.build_path(), "lib", "**", "ebin"]
+      |> Path.join()
+      |> Path.wildcard()
+      |> Enum.each(&Code.prepend_path/1)
+    end)
   end
 end
