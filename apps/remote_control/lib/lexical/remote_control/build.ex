@@ -107,8 +107,6 @@ defmodule Lexical.RemoteControl.Build do
             {message, diagnostics}
         end
 
-      :logger.info("Emitting #{inspect(diagnostics)}")
-
       diagnostics =
         file_diagnostics(
           project: project,
@@ -177,17 +175,21 @@ defmodule Lexical.RemoteControl.Build do
         end
 
         compile_fun = fn ->
-          capture_io(:stderr, fn -> Mix.Task.run("compile", opts) end)
+          Mix.Task.clear()
+          Mix.Task.run("compile", opts)
         end
 
         case compile_fun.() do
-          {_output, {:error, _} = error} ->
+          {:error, _} = error ->
             error
 
-          {_output, {_status, []}} ->
-            {:ok, []}
+          {status, diagnostics} when status in [:ok, :noop] ->
+            Logger.info(
+              "Compile completed with status #{status} " <>
+                "Produced #{length(diagnostics)} diagnostics " <>
+                inspect(diagnostics)
+            )
 
-          {_output, {status, [_ | _] = diagnostics}} when status in [:ok, :noop] ->
             {:ok, Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)}
         end
       rescue
@@ -202,15 +204,24 @@ defmodule Lexical.RemoteControl.Build do
     parser_options = [file: source_file.path] ++ parser_options()
 
     compile = fn ->
-      with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
-        try do
-          Code.compile_quoted(quoted_ast, source_file.path)
-        rescue
-          exception ->
-            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            {:exception, filled_exception, stack, quoted_ast}
+      RemoteControl.in_mix_project(fn _ ->
+        with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
+          try do
+            # If we're compiling a mix.exs file, the after compile callback from
+            # `use Mix.Project` will blow up if we add the same project to the project stack
+            # twice. Preemptively popping it prevents that error from occurring.
+            if Path.basename(source_file.path) == "mix.exs" do
+              Mix.ProjectStack.pop()
+            end
+
+            Code.compile_quoted(quoted_ast, source_file.path)
+          rescue
+            exception ->
+              {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+              {:exception, filled_exception, stack, quoted_ast}
+          end
         end
-      end
+      end)
     end
 
     case capture_io(:stderr, compile) do
