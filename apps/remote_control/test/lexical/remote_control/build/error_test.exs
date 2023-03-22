@@ -3,22 +3,24 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
   use ExUnit.Case, async: true
 
-  def to_quoted(source) do
-    Code.string_to_quoted(source)
+  def compile(source) do
+    case Code.string_to_quoted(source) do
+      {:ok, quoted_ast} ->
+        try do
+          Code.compile_quoted(quoted_ast)
+        rescue
+          exception ->
+            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+            {:exception, filled_exception, stack, quoted_ast}
+        end
+
+      error ->
+        error
+    end
   end
 
   def parse_error({:error, {a, b, c}}) do
     Error.parse_error_to_diagnostics(a, b, c)
-  end
-
-  defp compile({:ok, quoted_ast}, file \\ "nofile") do
-    try do
-      Code.compile_quoted(quoted_ast, file)
-    rescue
-      exception ->
-        {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-        {:exception, filled_exception, stack, quoted_ast}
-    end
   end
 
   describe "normalize_diagnostic/1" do
@@ -47,7 +49,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     test "handles token missing errors" do
       assert [diagnostic] =
                ~s[%{foo: 3]
-               |> to_quoted()
+               |> compile()
                |> parse_error()
 
       assert diagnostic.message =~ ~s[missing terminator: } (for "{" starting at line 1)]
@@ -71,7 +73,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
           publish_diagnostics(state)
         end
         ]
-        |> to_quoted()
+        |> compile()
         |> parse_error()
 
       assert [error, detail] = errors
@@ -84,12 +86,29 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   end
 
   describe "error_to_diagnostic/3" do
+    test "handles FunctionClauseError" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+          def add(a, b) when is_integer(a) and is_integer(b) do
+            a + b
+          end
+        end
+
+        Foo.add("1", "2")
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[no function clause matching in Foo.add/2]
+      assert diagnostic.position == 3
+    end
+
     test "handles UndefinedError for erlang moudle" do
       {:exception, exception, stack, quoted_ast} = ~S[
         defmodule Foo do
          :slave.stop
         end
-      ] |> to_quoted() |> compile()
+      ] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -104,7 +123,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
             print(:bar)
           end
         end
-      ] |> to_quoted() |> compile()
+      ] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -115,8 +134,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles ArgumentError" do
-      {:exception, exception, stack, quoted_ast} =
-        ~s[String.to_integer ""] |> to_quoted() |> compile()
+      {:exception, exception, stack, quoted_ast} = ~s[String.to_integer ""] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -132,7 +150,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
               String.to_integer("")
             end,
             file: "")
-      ] |> to_quoted() |> compile()
+      ] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -144,7 +162,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       {:exception, exception, stack, quoted_ast} = ~S[
         defmodule Foo do
           for i <- 1, do: i
-        end] |> to_quoted() |> compile()
+        end] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -155,7 +173,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     test "handles Protocol.UndefinedError for comprehension when no module" do
       {:exception, exception, stack, quoted_ast} = ~S[
           for i <- 1, do: i
-        ] |> to_quoted() |> compile()
+        ] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
@@ -164,61 +182,16 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles RuntimeError" do
-      # NOTE: its hard to trigger this error with unit test code, but its easy to encounter this error in a test file
-      ~s[
-      defmodule FooTest do
-        use ExUnit.Case, async: true
-
-        describe "dummy" do
-        end
-
-      end]
-
-      # You can put these lines in a test file and delete the line 5 `end`, and wait a while to trigger this error
-
-      {:exception, exception, stack, quoted_ast} =
-        {:exception,
-         %RuntimeError{
-           message:
-             "cannot use ExUnit.Case without starting the ExUnit application, please call ExUnit.start() or explicitly start the :ex_unit app"
-         },
-         [
-           {ExUnit.Case, :__after_compile__, 2,
-            [file: 'lib/ex_unit/case.ex', line: 505, error_info: %{module: Exception}]},
-           {:elixir_module, :"-expand_callback/6-fun-0-", 6,
-            [file: 'src/elixir_module.erl', line: 413]},
-           {:elixir_module, :expand_callback, 6, [file: 'src/elixir_module.erl', line: 412]},
-           {:lists, :foldl, 3, [file: 'lists.erl', line: 1350]},
-           {:elixir_module, :compile, 6, [file: 'src/elixir_module.erl', line: 161]},
-           {:elixir_compiler, :eval_or_compile, 3, [file: 'src/elixir_compiler.erl', line: 38]},
-           {:elixir_lexical, :run, 3, [file: 'src/elixir_lexical.erl', line: 15]},
-           {:elixir_compiler, :quoted, 3, [file: 'src/elixir_compiler.erl', line: 17]}
-         ],
-         {:defmodule, [do: [line: 1, column: 21], end: [line: 7, column: 1], line: 1, column: 1],
-          [
-            {:__aliases__, [last: [line: 1, column: 11], line: 1, column: 11], [:FooTest]},
-            [
-              do:
-                {:__block__, [],
-                 [
-                   {:use,
-                    [end_of_expression: [newlines: 2, line: 2, column: 31], line: 2, column: 3],
-                    [
-                      {:__aliases__, [last: [line: 2, column: 14], line: 2, column: 7],
-                       [:ExUnit, :Case]},
-                      [async: true]
-                    ]},
-                   {:describe,
-                    [do: [line: 4, column: 20], end: [line: 5, column: 3], line: 4, column: 3],
-                    ["dummy", [do: {:__block__, [], []}]]}
-                 ]}
-            ]
-          ]}}
+      {:exception, exception, stack, quoted_ast} = ~S[
+      defmodule Foo do
+        raise RuntimeError.exception("This is a runtime error")
+      end
+      ] |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
 
       assert diagnostic.message =~
-               ~s[cannot use ExUnit.Case without starting the ExUnit application]
+               ~s[This is a runtime error]
 
       assert diagnostic.position == 1
     end
@@ -238,7 +211,6 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
           end
         end
         ]
-        |> to_quoted()
         |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
@@ -266,7 +238,6 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
           end
         end
         ]
-        |> to_quoted()
         |> compile()
 
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)

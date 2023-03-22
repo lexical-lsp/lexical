@@ -38,9 +38,11 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   def error_to_diagnostic(%FunctionClauseError{} = function_clause, stack, _quoted_ast) do
+    [{_module, _function, _arity, context} | _] = stack
+
     %Diagnostic{
       message: Exception.message(function_clause),
-      position: stack_to_position(stack),
+      position: context_to_position(context),
       file: nil,
       severity: :error,
       compiler_name: "Elixir"
@@ -81,7 +83,7 @@ defmodule Lexical.RemoteControl.Build.Error do
            ] do
     %Diagnostic{
       message: Exception.message(exception),
-      position: stack_to_position_until(stack),
+      position: stack_to_position(stack),
       file: nil,
       severity: :error,
       compiler_name: "Elixir"
@@ -162,22 +164,18 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp stack_to_position_until([{_, target, _, _} | rest])
+  defp stack_to_position([{_, target, _, _} | rest])
        when target not in [:__FILE__, :__MODULE__] do
-    stack_to_position_until(rest)
+    stack_to_position(rest)
   end
 
-  defp stack_to_position_until([{_, target, _, context} | _rest])
+  defp stack_to_position([{_, target, _, context} | _rest])
        when target in [:__FILE__, :__MODULE__] do
     context_to_position(context)
   end
 
-  defp stack_to_position_until([]) do
+  defp stack_to_position([]) do
     nil
-  end
-
-  defp stack_to_position([{_module, _function, _arity, context} | _] = _stack) do
-    context_to_position(context)
   end
 
   defp stack_to_file(stacktrace) do
