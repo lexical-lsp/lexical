@@ -8,7 +8,9 @@ defmodule Lexical.Server.State do
     Initialized
   }
 
+  alias Lexical.Protocol.Notifications.Exit
   alias Lexical.Protocol.Requests.Initialize
+  alias Lexical.Protocol.Requests.Shutdown
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.CodeAction
@@ -23,7 +25,7 @@ defmodule Lexical.Server.State do
   require CodeAction.Kind
   require Logger
 
-  defstruct configuration: nil, initialized?: false
+  defstruct configuration: nil, initialized?: false, shutdown_received?: false
 
   @supported_code_actions [
     :quick_fix
@@ -60,6 +62,17 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{initialized?: false}, request) do
     Logger.error("Received #{request.method} before server was initialized")
     {:error, :not_initialized}
+  end
+
+  def apply(%__MODULE__{shutdown_received?: true} = state, %Exit{}) do
+    Logger.warn("Received an Exit notification. Halting the server in 150ms")
+    :timer.apply_after(50, System, :halt, [0])
+    {:ok, state}
+  end
+
+  def apply(%__MODULE__{shutdown_received?: true}, request) do
+    Logger.error("Received #{request.method} after shutdown. Ignoring")
+    {:error, :shutting_down}
   end
 
   def apply(%__MODULE__{} = state, %DidChangeConfiguration{} = event) do
@@ -140,6 +153,13 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{} = state, %Initialized{}) do
     Logger.info("Lexical Initialized")
     {:ok, %__MODULE__{state | initialized?: true}}
+  end
+
+  def apply(%__MODULE__{} = state, %Shutdown{} = shutdown) do
+    Transport.write(Responses.Shutdown.new(id: shutdown.id))
+    Logger.error("Shutting down")
+
+    {:ok, %__MODULE__{state | shutdown_received?: true}}
   end
 
   def apply(%__MODULE__{} = state, msg) do

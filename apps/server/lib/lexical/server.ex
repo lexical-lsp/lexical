@@ -4,6 +4,7 @@ defmodule Lexical.Server do
   alias Lexical.Protocol.Responses
   alias Lexical.Server.Provider
   alias Lexical.Server.State
+
   import Logger
 
   use GenServer
@@ -14,7 +15,9 @@ defmodule Lexical.Server do
     Notifications.DidClose,
     Notifications.DidOpen,
     Notifications.DidSave,
-    Notifications.Initialized
+    Notifications.Exit,
+    Notifications.Initialized,
+    Requests.Shutdown
   ]
 
   @spec response_complete(Requests.request(), Responses.response()) :: :ok

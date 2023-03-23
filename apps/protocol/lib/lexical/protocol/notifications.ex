@@ -4,31 +4,37 @@ defmodule Lexical.Protocol.Notifications do
 
   defmodule Initialized do
     use Proto
-    defnotification("initialized", :shared)
+    defnotification "initialized", :shared
+  end
+
+  defmodule Exit do
+    use Proto
+
+    defnotification "exit", :exclusive
   end
 
   defmodule Cancel do
     use Proto
 
-    defnotification("$/cancelRequest", :shared, id: integer())
+    defnotification "$/cancelRequest", :shared, id: integer()
   end
 
   defmodule DidOpen do
     use Proto
 
-    defnotification("textDocument/didOpen", :shared, text_document: Types.TextDocument.Item)
+    defnotification "textDocument/didOpen", :shared, text_document: Types.TextDocument.Item
   end
 
   defmodule DidClose do
     use Proto
 
-    defnotification("textDocument/didClose", :shared, text_document: Types.TextDocument.Identifier)
+    defnotification "textDocument/didClose", :shared, text_document: Types.TextDocument.Identifier
   end
 
   defmodule DidChange do
     use Proto
 
-    defnotification("textDocument/didChange", :shared,
+    defnotification "textDocument/didChange", :shared,
       text_document: Types.TextDocument.Versioned.Identifier,
       content_changes:
         list_of(
@@ -37,45 +43,42 @@ defmodule Lexical.Protocol.Notifications do
             Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent1
           ])
         )
-    )
   end
 
   defmodule DidChangeConfiguration do
     use Proto
 
-    defnotification("workspace/didChangeConfiguration", :shared, settings: map_of(any()))
+    defnotification "workspace/didChangeConfiguration", :shared, settings: map_of(any())
   end
 
   defmodule DidChangeWatchedFiles do
     use Proto
 
-    defnotification("workspace/didChangeWatchedFiles", :shared, changes: list_of(Types.FileEvent))
+    defnotification "workspace/didChangeWatchedFiles", :shared, changes: list_of(Types.FileEvent)
   end
 
   defmodule DidSave do
     use Proto
 
-    defnotification("textDocument/didSave", :shared, text_document: Types.TextDocument.Identifier)
+    defnotification "textDocument/didSave", :shared, text_document: Types.TextDocument.Identifier
   end
 
   defmodule PublishDiagnostics do
     use Proto
 
-    defnotification("textDocument/publishDiagnostics", :shared,
+    defnotification "textDocument/publishDiagnostics", :shared,
       uri: string(),
       version: optional(integer()),
       diagnostics: list_of(Types.Diagnostic)
-    )
   end
 
   defmodule LogMessage do
     use Proto
     require Types.Message.Type
 
-    defnotification("window/logMessage", :shared,
+    defnotification "window/logMessage", :shared,
       message: string(),
       type: Types.Message.Type
-    )
 
     for type <- [:error, :warning, :info, :log] do
       def unquote(type)(message) do
@@ -88,10 +91,9 @@ defmodule Lexical.Protocol.Notifications do
     use Proto
     require Types.Message.Type
 
-    defnotification("window/showMessage", :shared,
+    defnotification "window/showMessage", :shared,
       message: string(),
       type: Types.Message.Type
-    )
 
     for type <- [:error, :warning, :info, :log] do
       def unquote(type)(message) do
