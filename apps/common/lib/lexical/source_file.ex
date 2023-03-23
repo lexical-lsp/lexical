@@ -188,11 +188,9 @@ defmodule Lexical.SourceFile do
          }
        )
        when start_line >= 0 and start_char >= 0 and end_line >= 0 and end_char >= 0 do
-    with {:ok, ex_range} <- Ranged.Native.from_lsp(range, source) do
-      apply_change(source, ex_range, new_text)
-    else
-      _ ->
-        {:error, {:invalid_range, range}}
+    case Ranged.Native.from_lsp(range, source) do
+      {:ok, ex_range} -> apply_change(source, ex_range, new_text)
+      _ -> {:error, {:invalid_range, range}}
     end
   end
 
@@ -212,7 +210,7 @@ defmodule Lexical.SourceFile do
     [edit_text, to_iodata(source)]
   end
 
-  defp apply_valid_edits(%__MODULE{} = source, edit_text, start_pos, end_pos) do
+  defp apply_valid_edits(%__MODULE__{} = source, edit_text, start_pos, end_pos) do
     Document.reduce(source.document, [], fn line() = line, acc ->
       case edit_action(line, edit_text, start_pos, end_pos) do
         :drop ->

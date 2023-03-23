@@ -9,11 +9,12 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
   def handle(%Requests.Formatting{} = request, %Env{} = env) do
     document = request.source_file
 
-    with {:ok, text_edits} <- RemoteControl.Api.format(env.project, document) do
-      response = Responses.Formatting.new(request.id, text_edits)
-      Logger.info("Response #{inspect(response)}")
-      {:reply, response}
-    else
+    case RemoteControl.Api.format(env.project, document) do
+      {:ok, text_edits} ->
+        response = Responses.Formatting.new(request.id, text_edits)
+        Logger.info("Response #{inspect(response)}")
+        {:reply, response}
+
       {:error, reason} ->
         Logger.error("Formatter failed #{inspect(reason)}")
 

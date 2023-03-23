@@ -1,0 +1,2 @@
+#! /usr/bin/env bash
+mix do format --check-formatted, credo

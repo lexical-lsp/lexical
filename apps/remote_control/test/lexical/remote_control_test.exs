@@ -40,7 +40,7 @@ defmodule Lexical.RemoteControlTest do
       parent_project = project(:umbrella)
       start_project(parent_project)
 
-      assert remote_control_cwd(parent_project) == Project.root_path(parent_project)
+      assert_eventually remote_control_cwd(parent_project) == Project.root_path(parent_project)
     end
   end
 end

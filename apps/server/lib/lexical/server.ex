@@ -40,9 +40,10 @@ defmodule Lexical.Server do
 
   def handle_cast({:protocol_message, message}, %State{} = state) do
     new_state =
-      with {:ok, new_state} <- handle_message(message, state) do
-        new_state
-      else
+      case handle_message(message, state) do
+        {:ok, new_state} ->
+          new_state
+
         error ->
           error("Could not handle message #{inspect(message.__struct__)} #{inspect(error)}")
           state

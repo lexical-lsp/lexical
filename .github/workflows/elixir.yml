@@ -79,6 +79,10 @@ jobs:
       # Customize this step as desired.
       - name: Check Formatting
         run: mix format --check-formatted
+      
+      # Step: Run credo static code analysis
+      - name: Credo static analysis
+        run: mix credo
 
       # Step: Execute the tests.
       - name: Run tests

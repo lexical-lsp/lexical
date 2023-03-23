@@ -277,8 +277,7 @@ defmodule Lexical.RemoteControl.Build.Error do
           }
         ]
 
-      other ->
-        IO.inspect(other)
+      _ ->
         []
     end
   end
