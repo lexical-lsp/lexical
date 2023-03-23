@@ -38,24 +38,12 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   def error_to_diagnostic(%FunctionClauseError{} = function_clause, stack, _quoted_ast) do
+    [{_module, _function, _arity, context} | _] = stack
+
     %Diagnostic{
       message: Exception.message(function_clause),
-      position: stack_to_position(stack),
+      position: context_to_position(context),
       file: nil,
-      severity: :error,
-      compiler_name: "Elixir"
-    }
-  end
-
-  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
-    [{module, function, arguments, _} | _] = stack
-    arity = length(arguments)
-    mfa = {module, function, arity}
-
-    %Diagnostic{
-      message: Exception.message(undefined_function),
-      position: mfa_to_position(mfa, quoted_ast),
-      file: stack_to_file(stack),
       severity: :error,
       compiler_name: "Elixir"
     }
@@ -70,6 +58,58 @@ defmodule Lexical.RemoteControl.Build.Error do
       message: Exception.message(error),
       position: mfa_to_position(mfa, quoted_ast),
       file: stack_to_file(stack),
+      severity: :error,
+      compiler_name: "Elixir"
+    }
+  end
+
+  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
+    [{module, function, arguments, context} | _] = stack
+    empty_context? = context == []
+
+    if elixir_module?(module) and empty_context? do
+      arity = length(arguments)
+      mfa = {module, function, arity}
+
+      %Diagnostic{
+        message: Exception.message(undefined_function),
+        position: mfa_to_position(mfa, quoted_ast),
+        file: stack_to_file(stack),
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    else
+      %Diagnostic{
+        message: Exception.message(undefined_function),
+        position: stack_to_position(stack),
+        file: nil,
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    end
+  end
+
+  def error_to_diagnostic(%RuntimeError{} = runtime_error, _stack, _quoted_ast) do
+    %Diagnostic{
+      message: Exception.message(runtime_error),
+      position: 1,
+      file: nil,
+      severity: :error,
+      compiler_name: "Elixir"
+    }
+  end
+
+  def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
+      when module in [
+             ArgumentError,
+             Protocol.UndefinedError,
+             ExUnit.DuplicateTestError,
+             ExUnit.DuplicateDescribeError
+           ] do
+    %Diagnostic{
+      message: Exception.message(exception),
+      position: stack_to_position(stack),
+      file: nil,
       severity: :error,
       compiler_name: "Elixir"
     }
@@ -149,8 +189,24 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp stack_to_position([{_module, _function, _arity, context} | _] = _stack) do
+  defp elixir_module?(module) do
+    module
+    |> Atom.to_string()
+    |> String.starts_with?("Elixir.")
+  end
+
+  defp stack_to_position([{_, target, _, _} | rest])
+       when target not in [:__FILE__, :__MODULE__] do
+    stack_to_position(rest)
+  end
+
+  defp stack_to_position([{_, target, _, context} | _rest])
+       when target in [:__FILE__, :__MODULE__] do
     context_to_position(context)
+  end
+
+  defp stack_to_position([]) do
+    nil
   end
 
   defp stack_to_file(stacktrace) do

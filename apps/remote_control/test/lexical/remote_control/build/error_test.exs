@@ -3,8 +3,21 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
   use ExUnit.Case, async: true
 
-  def to_quoted(source) do
-    Code.string_to_quoted(source)
+  def compile(source) do
+    case Code.string_to_quoted(source) do
+      {:ok, quoted_ast} ->
+        try do
+          modules = for {m, _b} <- Code.compile_quoted(quoted_ast), do: m
+          {:ok, modules}
+        rescue
+          exception ->
+            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+            {:exception, filled_exception, stack, quoted_ast}
+        end
+
+      error ->
+        error
+    end
   end
 
   def parse_error({:error, {a, b, c}}) do
@@ -37,7 +50,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     test "handles token missing errors" do
       assert [diagnostic] =
                ~s[%{foo: 3]
-               |> to_quoted()
+               |> compile()
                |> parse_error()
 
       assert diagnostic.message =~ ~s[missing terminator: } (for "{" starting at line 1)]
@@ -61,7 +74,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
           publish_diagnostics(state)
         end
         ]
-        |> to_quoted()
+        |> compile()
         |> parse_error()
 
       assert [error, detail] = errors
@@ -70,6 +83,182 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
       assert detail.message =~ ~S[The "(" here is missing terminator ")"]
       assert detail.position == 4
+    end
+  end
+
+  describe "error_to_diagnostic/3" do
+    test "handles FunctionClauseError" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+          def add(a, b) when is_integer(a) and is_integer(b) do
+            a + b
+          end
+        end
+
+        Foo.add("1", "2")
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[no function clause matching in Foo.add/2]
+      assert diagnostic.position == 3
+    end
+
+    test "handles UndefinedError for erlang moudle" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+         :slave.stop
+        end
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[function :slave.stop/0 is undefined or private.]
+      assert diagnostic.position == 3
+    end
+
+    test "handles UndefinedError" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+          def bar do
+            print(:bar)
+          end
+        end
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~
+               ~s[undefined function print/1]
+
+      assert diagnostic.position == 4
+    end
+
+    test "handles UndefinedError without moudle" do
+      {:exception, exception, stack, quoted_ast} =
+        ~S[
+
+          IO.ins
+        ]
+        |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[function IO.ins/0 is undefined or private]
+      assert diagnostic.position == 3
+    end
+
+    test "handles ArgumentError" do
+      {:exception, exception, stack, quoted_ast} = ~s[String.to_integer ""] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[errors were found at the given arguments:]
+      assert diagnostic.position == 1
+    end
+
+    test "can't find right line when use macro" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+          Module.create(
+            Foo,
+            quote do
+              String.to_integer("")
+            end,
+            file: "")
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[errors were found at the given arguments:]
+      assert diagnostic.position == nil
+    end
+
+    test "handles Protocol.UndefinedError for comprehension" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+        defmodule Foo do
+          for i <- 1, do: i
+        end] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
+      assert diagnostic.position == 3
+    end
+
+    test "handles Protocol.UndefinedError for comprehension when no module" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+          for i <- 1, do: i
+        ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
+      assert diagnostic.position == 2
+    end
+
+    test "handles RuntimeError" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+      defmodule Foo do
+        raise RuntimeError.exception("This is a runtime error")
+      end
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~
+               ~s[This is a runtime error]
+
+      assert diagnostic.position == 1
+    end
+
+    test "handles ExUnit.DuplicateTestError" do
+      {:exception, exception, stack, quoted_ast} =
+        ~s[
+        defmodule FooTest do
+          use ExUnit.Case, async: true
+
+          test "foo" do
+            assert 1 == 1
+          end
+
+          test "foo" do
+            assert 1 == 1
+          end
+        end
+        ]
+        |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[\"test foo\" is already defined in FooTest]
+      assert diagnostic.position == 9
+    end
+
+    test "handles ExUnit.DuplicateDescribeError" do
+      {:exception, exception, stack, quoted_ast} =
+        ~s[
+        defmodule FooTest do
+          use ExUnit.Case, async: true
+
+          describe "foo" do
+            test "foo" do
+              assert 1 == 1
+            end
+          end
+
+          describe "foo" do
+            test "foo" do
+              assert 1 == 1
+            end
+          end
+        end
+        ]
+        |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[describe \"foo\" is already defined in FooTest]
+      assert diagnostic.position == 11
     end
   end
 end
