@@ -63,6 +63,32 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
+  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
+    [{module, function, arguments, context} | _] = stack
+    empty_context? = context == []
+
+    if elixir_module?(module) and empty_context? do
+      arity = length(arguments)
+      mfa = {module, function, arity}
+
+      %Diagnostic{
+        message: Exception.message(undefined_function),
+        position: mfa_to_position(mfa, quoted_ast),
+        file: stack_to_file(stack),
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    else
+      %Diagnostic{
+        message: Exception.message(undefined_function),
+        position: stack_to_position(stack),
+        file: nil,
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    end
+  end
+
   def error_to_diagnostic(%RuntimeError{} = runtime_error, _stack, _quoted_ast) do
     %Diagnostic{
       message: Exception.message(runtime_error),
@@ -75,7 +101,6 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
       when module in [
-             UndefinedFunctionError,
              ArgumentError,
              Protocol.UndefinedError,
              ExUnit.DuplicateTestError,
@@ -162,6 +187,12 @@ defmodule Lexical.RemoteControl.Build.Error do
       true ->
         nil
     end
+  end
+
+  defp elixir_module?(module) do
+    module
+    |> Atom.to_string()
+    |> String.starts_with?("Elixir.")
   end
 
   defp stack_to_position([{_, target, _, _} | rest])
