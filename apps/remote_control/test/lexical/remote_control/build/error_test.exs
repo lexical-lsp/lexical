@@ -7,7 +7,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     case Code.string_to_quoted(source) do
       {:ok, quoted_ast} ->
         try do
-          Code.compile_quoted(quoted_ast)
+          modules = for {m, _b} <- Code.compile_quoted(quoted_ast), do: m
+          {:ok, modules}
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
