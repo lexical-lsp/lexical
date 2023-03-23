@@ -25,6 +25,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "$/cancelRequest", :exclusive, id: one_of([string(), integer()])
   end
 
+  defmodule Shutdown do
+    use Proto
+
+    defrequest "shutdown", :exclusive, []
+  end
+
   defmodule FindReferences do
     use Proto
 

@@ -70,7 +70,7 @@ defmodule Lexical.Protocol.Proto.Notification do
   defp build_parse(method) do
     quote do
       def parse(%{"method" => unquote(method), "jsonrpc" => "2.0"} = request) do
-        params = Map.get(request, "params", %{})
+        params = Map.get(request, "params") || %{}
         flattened_notificaiton = Map.merge(request, params)
 
         case LSP.parse(flattened_notificaiton) do
