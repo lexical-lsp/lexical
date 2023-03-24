@@ -22,6 +22,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:logger),
          :ok <- Mix.start() do
       Mix.env(:test)
+      ExUnit.start()
       start_logger(project)
       maybe_change_directory(project)
       Project.ensure_workspace_exists(project)
@@ -64,7 +65,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
 
     # Note about the following code:
     # I tried a bunch of stuff to get it to work, like checking if the
-    # app is an umbrella (umbrealls? returns false when started in a subapp)
+    # app is an umbrella (umbrealla? returns false when started in a subapp)
     # to no avail. This was the only thing that consistently worked
     configured_root =
       RemoteControl.in_mix_project(project, fn _ ->

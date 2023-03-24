@@ -51,14 +51,21 @@ defmodule Lexical.RemoteControl do
     # Locking on the build make sure we don't get a conflict on the mix.exs being
     # already defined
 
+    old_cwd = File.cwd!()
     Build.with_lock(fn ->
-      build_path = Project.build_path(project)
-      project_root = Project.root_path(project)
+      try do
+        build_path = Project.build_path(project)
+        project_root = Project.root_path(project)
 
-      project
-      |> Project.name()
-      |> String.to_atom()
-      |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
+        project
+        |> Project.name()
+        |> String.to_atom()
+        |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
+      after
+
+        File.cd!(old_cwd)
+
+      end
     end)
   end
 
