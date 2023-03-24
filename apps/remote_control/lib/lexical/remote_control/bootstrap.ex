@@ -21,8 +21,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
     with :ok <- File.cd(project_root),
          {:ok, _} <- Application.ensure_all_started(:elixir),
          {:ok, _} <- Application.ensure_all_started(:mix),
-         {:ok, _} <- Application.ensure_all_started(:logger),
-         :ok <- Mix.start() do
+         {:ok, _} <- Application.ensure_all_started(:logger) do
       Mix.env(:test)
       ExUnit.start()
       start_logger(project)
