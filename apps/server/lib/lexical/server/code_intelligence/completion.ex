@@ -141,7 +141,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Module{} = module, %Env{} = env) do
+  defp translate_completion(%result_struct{} = module, %Env{} = env)
+       when result_struct in [Result.Module, Result.Behaviour] do
     detail =
       case module.summary do
         nil -> module.name
