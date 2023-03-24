@@ -16,7 +16,7 @@ defmodule Lexical.Protocol.RequestsTest do
   end
 
   describe "matching macros" do
-    test "can identify a request  with params" do
+    test "can identify a request with params" do
       request(id, method, params) = fixture()
 
       assert id == 3
