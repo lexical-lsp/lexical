@@ -117,6 +117,18 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.position == 3
     end
 
+    test "handles UndefinedError for erlang function without defined module" do
+      {:exception, exception, stack, quoted_ast} = ~S[
+
+         :slave.stop(:name, :name)
+      ] |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~ ~s[function :slave.stop/2 is undefined or private.]
+      assert diagnostic.position == 3
+    end
+
     test "handles UndefinedError" do
       {:exception, exception, stack, quoted_ast} = ~S[
         defmodule Foo do

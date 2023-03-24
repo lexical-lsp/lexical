@@ -65,9 +65,8 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
     [{module, function, arguments, context} | _] = stack
-    empty_context? = context == []
 
-    if elixir_module?(module) and empty_context? do
+    if context == [] do
       arity = length(arguments)
       mfa = {module, function, arity}
 
@@ -155,13 +154,14 @@ defmodule Lexical.RemoteControl.Build.Error do
     # Because elixir's Code module has less than stellr line reporting, I think the best we can
     # do here is to get the error from the stack trace
 
-    module_path =
-      module
-      |> Module.split()
-      |> Enum.map(&String.to_atom/1)
+    module_path = safe_split(module)
 
     traverser = fn
       {{:., _, [{:__aliases__, _, ^module_path}, ^function]}, context, arguments} = ast, _
+      when length(arguments) == arity ->
+        {ast, context}
+
+      {{:., _, [^module_path, ^function]}, context, arguments} = ast, _
       when length(arguments) == arity ->
         {ast, context}
 
@@ -189,10 +189,14 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp elixir_module?(module) do
+  defp safe_split(module) do
     module
     |> Atom.to_string()
-    |> String.starts_with?("Elixir.")
+    |> String.split(".")
+    |> case do
+      [erlang_module] -> String.to_atom(erlang_module)
+      ["Elixir" | elixir_module_path] -> Enum.map(elixir_module_path, &String.to_atom/1)
+    end
   end
 
   defp stack_to_position([{_, target, _, _} | rest])
