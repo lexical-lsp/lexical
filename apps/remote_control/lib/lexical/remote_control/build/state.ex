@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.CompileTracer
+  alias Lexical.RemoteControl.ModuleMappings
   alias Lexical.SourceFile
 
   import Build.CaptureIO
@@ -20,7 +20,7 @@ defmodule Lexical.RemoteControl.Build.State do
     compiled_uris =
       for {uri, {source_file, edit_time}} <- state.uri_to_source_and_edit_time,
           should_compile?(edit_time) do
-        Logger.info("On-type compiling #{source_file.path}")
+        Logger.debug("On-type compiling #{source_file.path}")
         compile_file(state.project, source_file)
         uri
       end
@@ -223,6 +223,8 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   defp safe_compile(%SourceFile{} = source_file) do
+    old_modules = ModuleMappings.modules_in_file(source_file.path)
+
     compile = fn ->
       RemoteControl.in_mix_project(fn _ -> compile_code(source_file) end)
     end
@@ -243,11 +245,11 @@ defmodule Lexical.RemoteControl.Build.State do
         {:error, diagnostics}
 
       {"", modules} ->
-        maybe_purge(modules)
+        purge_removed_modules(old_modules, modules)
         {:ok, []}
 
       {captured_warnings, modules} ->
-        maybe_purge(modules)
+        purge_removed_modules(old_modules, modules)
 
         diagnostics =
           captured_warnings
@@ -280,35 +282,15 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  defp has_types?(bytecode) do
-    case :beam_lib.chunks(bytecode, [:abstract_code]) do
-      {:ok, {_mod_name, terms}} ->
-        {:raw_abstract_v1, code} = Keyword.get(terms, :abstract_code)
-        Enum.any?(code, &match?({:attribute, _, :type, _}, &1))
+  defp purge_removed_modules(old_modules, new_modules) do
+    new_modules = MapSet.new(new_modules, fn {module, _bytecode} -> module end)
+    old_modules = MapSet.new(old_modules)
 
-      _ ->
-        false
-    end
-  end
-
-  defp maybe_purge(module_list) do
-    # When using code snippets to define a module, as the user types the module name,
-    # multiple modules are created, as each character is typed. For example, if the
-    # snippet's module name is Mod the following modules would be created; [M, Mo, Mod].
-    # To prevent this, we'll purge any modules during incremental file compilation that
-    # define no functions, macros, structs, or types.
-
-    Enum.each(module_list, fn {module_name, bytecode} ->
-      case CompileTracer.extract_module_updated(module_name) do
-        module_updated(functions: [], macros: [], struct: nil) ->
-          unless has_types?(bytecode) do
-            :code.purge(module_name)
-            :code.delete(module_name)
-          end
-
-        _ ->
-          :ok
-      end
+    old_modules
+    |> MapSet.difference(new_modules)
+    |> Enum.each(fn to_remove ->
+      :code.purge(to_remove)
+      :code.delete(to_remove)
     end)
   end
 

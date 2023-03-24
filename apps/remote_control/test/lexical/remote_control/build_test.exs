@@ -11,18 +11,22 @@ defmodule Lexical.BuildTest do
   use ExUnit.Case
   use Patch
 
-  def compile_source_file(%Project{} = project, filename \\ "file.ex", source_code) do
-    sequence = System.unique_integer([:monotonic, :positive])
-
+  def compile_source_file(%Project{} = project, file_path \\ nil, source_code) do
     uri =
-      project
-      |> Project.root_path()
-      |> Path.join(to_string(sequence))
-      |> Path.join(filename)
-      |> SourceFile.Path.to_uri()
+      if is_binary(file_path) do
+        SourceFile.Path.to_uri(file_path)
+      else
+        sequence = System.unique_integer([:monotonic, :positive])
+
+        project
+        |> Project.root_path()
+        |> Path.join(to_string(sequence))
+        |> Path.join("file.exs")
+        |> SourceFile.Path.to_uri()
+      end
 
     source = SourceFile.new(uri, source_code, 0)
-    Build.compile_source_file(project, source)
+    Build.force_compile_source_file(project, source)
   end
 
   def with_project(project_name) do
@@ -460,17 +464,42 @@ defmodule Lexical.BuildTest do
     end
   end
 
+  def loaded?(project, module) do
+    RemoteControl.call(project, Code, :ensure_loaded?, [module])
+  end
+
   describe "module sanitization" do
     setup [:with_metadata_project]
 
-    test "adding an empty module doesn't add it to the project's code", %{project: project} do
+    test "editing a module clears intermediate modules", %{project: project} do
+      source = ~S[
+        defmodule Module.<edit>.Submodule do
+          def my_fun do
+          end
+        end
+      ]
+
+      for submodule <- ~w(S Su Sub),
+          source = String.replace(source, "<edit>", submodule),
+          module_name = Module.concat(["Module", submodule, "Submodule"]) do
+        compile_source_file(project, __ENV__.file, source)
+
+        assert_receive module_updated(name: ^module_name), 500
+      end
+
+      refute loaded?(project, Module.S.Submodule)
+      refute loaded?(project, Module.Su.Submodule)
+      assert loaded?(project, Module.Sub.Submodule)
+    end
+
+    test "empty modules are kept", %{project: project} do
       source = ~S[
         defmodule EmptyModule do
         end
       ]
       compile_source_file(project, source)
       assert_receive file_compiled(status: :success), 500
-      refute RemoteControl.call(project, Code, :ensure_loaded?, [EmptyModule])
+      assert loaded?(project, EmptyModule)
     end
 
     test "a module that defines a function is kept", %{project: project} do
@@ -481,7 +510,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
       assert_receive file_compiled(status: :success), 500
-      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAFunction])
+      assert loaded?(project, WithAFunction)
     end
 
     test "a module that defines a macro is kept", %{project: project} do
@@ -492,7 +521,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
       assert_receive file_compiled(status: :success), 500
-      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAMacro])
+      assert loaded?(project, WithAMacro)
     end
 
     test "a module that defines a struct is kept", %{project: project} do
@@ -503,7 +532,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
       assert_receive file_compiled(status: :success), 500
-      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAStruct])
+      assert loaded?(project, WithAStruct)
     end
 
     test "a module with typespecs is kept", %{project: project} do
@@ -514,7 +543,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
       assert_receive file_compiled(status: :success), 500
-      assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAType])
+      assert loaded?(project, WithAType)
     end
   end
 end
