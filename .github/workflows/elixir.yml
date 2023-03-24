@@ -51,21 +51,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.cache-name }}-
 
-      # Step: Define how to cache the `_build` directory. After the first run,
-      # this speeds up tests runs a lot. This includes not re-compiling our
-      # project's downloaded deps every run.
-      # - name: Cache compiled build
-      #   id: cache-build
-      #   uses: actions/cache@v3
-      #   env:
-      #     cache-name: cache-compiled-build
-      #   with:
-      #     path: _build
-      #     key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-mix-${{ env.cache-name }}-
-      #       ${{ runner.os }}-mix-
-
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
       - name: Install dependencies
