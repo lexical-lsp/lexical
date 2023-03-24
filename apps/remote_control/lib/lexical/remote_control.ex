@@ -222,7 +222,7 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  defp asdf?(), do: not is_nil(System.find_executable("asdf"))
+  defp asdf?(), do: is_binary(System.find_executable("asdf"))
 
-  defp rtx?(), do: not is_nil(System.find_executable("rtx"))
+  defp rtx?(), do: is_binary(System.find_executable("rtx"))
 end
