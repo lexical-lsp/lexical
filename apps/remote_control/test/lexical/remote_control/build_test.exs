@@ -9,6 +9,7 @@ defmodule Lexical.BuildTest do
   import Messages
   import Lexical.Test.Fixtures
   use ExUnit.Case
+  use Patch
 
   def compile_source_file(%Project{} = project, filename \\ "file.ex", source_code) do
     sequence = System.unique_integer([:monotonic, :positive])
@@ -45,7 +46,7 @@ defmodule Lexical.BuildTest do
       end
     ]
     compile_source_file(project, module)
-    assert_receive file_compiled(), 5000
+    assert_receive file_compiled(), 500
     :ok
   end
 
@@ -64,14 +65,14 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:project_metadata)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
+      assert_receive project_compiled(status: :success), 500
     end
 
     test "receives metadata about the defined modules" do
       {:ok, project} = with_project(:project_metadata)
 
       Build.schedule_compile(project, true)
-      assert_receive module_updated(name: ProjectMetadata, functions: functions), 5000, 500
+      assert_receive module_updated(name: ProjectMetadata, functions: functions), 500
 
       assert {:zero_arity, 0} in functions
       assert {:one_arity, 1} in functions
@@ -84,8 +85,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:umbrella)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
-      assert_receive project_diagnostics(diagnostics: [])
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: []), 500
 
       assert_receive module_updated(name: Umbrella.First, functions: functions), 500
 
@@ -93,7 +94,7 @@ defmodule Lexical.BuildTest do
       assert {:arity_1, 1} in functions
       assert {:arity_2, 2} in functions
 
-      assert_receive module_updated(name: Umbrella.Second, functions: functions), 500, 500
+      assert_receive module_updated(name: Umbrella.Second, functions: functions), 500
 
       assert {:arity_0, 0} in functions
       assert {:arity_1, 1} in functions
@@ -106,8 +107,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_errors)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 5000
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic{}])
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{}]), 500
     end
   end
 
@@ -117,8 +118,8 @@ defmodule Lexical.BuildTest do
     test "stuff", %{project: project} do
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 5000
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.message =~ "SyntaxError"
     end
@@ -129,15 +130,199 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_warnings)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
-      assert_receive project_diagnostics(diagnostics: diagnostics)
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: diagnostics), 500
 
       assert [%Diagnostic{}, %Diagnostic{}] = diagnostics
     end
   end
 
-  describe "project listener notifications" do
-    setup [:with_metadata_project, :with_empty_module]
+  def with_patched_state_timeout(_) do
+    patch(Lexical.RemoteControl.Build.State, :should_compile?, true)
+    patch(Lexical.RemoteControl.Build.State, :edit_window_millis, 50)
+    :ok
+  end
+
+  describe "compiling source files" do
+    setup [:with_metadata_project, :with_empty_module, :with_patched_state_timeout]
+
+    test "handles syntax errors", %{project: project} do
+      source = ~S[
+        defmodule WithErrors do
+          def error do
+            %{,}
+          end
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+
+      assert %Diagnostic{} = diagnostic
+      assert diagnostic.severity == :error
+      assert diagnostic.message =~ ~S[syntax error before: ',']
+      assert diagnostic.position == {4, 15}
+    end
+
+    test "handles missing token errors", %{project: project} do
+      source = ~S[%{foo: 3]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+
+      assert %Diagnostic{} = diagnostic
+      assert diagnostic.severity == :error
+      assert diagnostic.message =~ ~S[missing terminator: }]
+      assert diagnostic.position == {1, 9}
+    end
+
+    test "handles compile errors", %{project: project} do
+      source = ~S[
+        doesnt_exist()
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+
+      assert %Diagnostic{} = diagnostic
+      assert diagnostic.severity == :error
+      assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
+      assert diagnostic.position == 2
+    end
+
+    test "handles function clause errors", %{project: project} do
+      source = ~S[
+        f = fn 1 -> :correct end
+        f.(3)
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+
+      assert %Diagnostic{} = diagnostic
+      assert diagnostic.severity == :error
+      assert diagnostic.message =~ "no function clause matching"
+      assert diagnostic.position == 2
+    end
+
+    test "handles compile errors with suggestions", %{project: project} do
+      source = ~S[
+
+        IO.ins
+      ]
+      compile_source_file(project, "my_test.ex", source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+      assert diagnostic.severity == :error
+      assert diagnostic.file =~ "my_test.ex"
+      assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
+      assert diagnostic.position == {3, 12}
+    end
+
+    test "reports unused variables", %{project: project} do
+      source = ~S[
+        defmodule WithWarnings do
+          def error do
+            unused = 3
+          end
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
+
+      assert diagnostic.severity == :warning
+      assert diagnostic.position == {4, 0}
+      assert diagnostic.message =~ ~S[warning: variable "unused" is unused]
+      assert diagnostic.details == {WithWarnings, :error, 0}
+    end
+
+    test "reports missing parens", %{project: project} do
+      source = ~S[
+        defmodule WithWarnings do
+          def error do
+            calc
+          end
+
+          defp calc do
+            3
+          end
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
+
+      assert diagnostic.severity == :warning
+      assert diagnostic.position == {4, 0}
+
+      assert diagnostic.message =~
+               ~S[warning: variable "calc" does not exist and is being expanded to "calc()"]
+
+      assert diagnostic.details == {WithWarnings, :error, 0}
+    end
+
+    test "reports unused defp functions", %{project: project} do
+      source = ~S[
+        defmodule UnusedDefp do
+          defp unused do
+          end
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
+
+      assert diagnostic.severity == :warning
+      assert diagnostic.position == {3, 0}
+      assert diagnostic.message =~ ~S[warning: function unused/0 is unused]
+      assert diagnostic.details == nil
+    end
+
+    test "handles undefined usages", %{project: project} do
+      source = ~S[
+        defmodule WithUndefinedFunction do
+          def error do
+            unknown_fn()
+          end
+        end
+      ]
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+
+      assert diagnostic.severity == :error
+      assert diagnostic.position == 4
+      assert diagnostic.message =~ ~S[undefined function unknown_fn/0]
+      assert diagnostic.details == nil
+    end
+
+    test "reports multiple errors", %{project: project} do
+      source = ~S[
+        defmodule WithFiveErrors do
+          def error(unused_1, unused_2) do
+            unknown_fn()
+            unused_3 = other_unknown()
+          end
+        end
+      ]
+
+      compile_source_file(project, source)
+
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 500
+
+      assert length(diagnostics) == 5
+    end
 
     test "adding a new module notifies the listener", %{project: project} do
       source = ~S[
@@ -162,9 +347,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive module_updated(name: FirstModule), 500, 500
-      assert_receive module_updated(name: SecondModule), 500, 500
-      assert_receive module_updated(name: ThirdModule), 500, 500
+      assert_receive module_updated(name: FirstModule), 500
+      assert_receive module_updated(name: SecondModule), 500
+      assert_receive module_updated(name: ThirdModule), 500
     end
 
     test "adding a function notifies the listener", %{project: project} do
@@ -284,7 +469,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       refute RemoteControl.call(project, Code, :ensure_loaded?, [EmptyModule])
     end
 
@@ -295,7 +480,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAFunction])
     end
 
@@ -306,7 +491,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAMacro])
     end
 
@@ -317,7 +502,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAStruct])
     end
 
@@ -328,7 +513,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAType])
     end
   end
