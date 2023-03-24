@@ -194,8 +194,8 @@ defmodule Lexical.RemoteControl.Build.Error do
     |> Atom.to_string()
     |> String.split(".")
     |> case do
-      [_elixir | [_ | _] = rest] -> Enum.map(rest, &String.to_atom/1)
       [erlang_module] -> String.to_atom(erlang_module)
+      ["Elixir" | elixir_module_path] -> Enum.map(elixir_module_path, &String.to_atom/1)
     end
   end
 
