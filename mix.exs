@@ -10,7 +10,8 @@ defmodule Lexical.MixProject do
       releases: releases(),
       aliases: aliases(),
       docs: docs(),
-      name: "Lexical"
+      name: "Lexical",
+      consolidate_protocols: Mix.env() != :test
     ]
   end
 
