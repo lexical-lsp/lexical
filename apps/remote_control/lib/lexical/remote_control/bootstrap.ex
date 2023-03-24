@@ -10,18 +10,20 @@ defmodule Lexical.RemoteControl.Bootstrap do
   alias Lexical.Project
   require Logger
 
-  def init(%Project{} = project, listener_pid) do
+  def init(%Project{} = project, listener_pid, remote_control_config) do
     true = Code.append_path(hex_path())
     RemoteControl.set_project(project)
     RemoteControl.set_project_listener_pid(listener_pid)
+    Application.put_all_env(remote_control: remote_control_config)
+
     project_root = Project.root_path(project)
 
     with :ok <- File.cd(project_root),
          {:ok, _} <- Application.ensure_all_started(:elixir),
          {:ok, _} <- Application.ensure_all_started(:mix),
-         {:ok, _} <- Application.ensure_all_started(:logger),
-         :ok <- Mix.start() do
+         {:ok, _} <- Application.ensure_all_started(:logger) do
       Mix.env(:test)
+      ExUnit.start()
       start_logger(project)
       maybe_change_directory(project)
       Project.ensure_workspace_exists(project)
@@ -64,7 +66,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
 
     # Note about the following code:
     # I tried a bunch of stuff to get it to work, like checking if the
-    # app is an umbrella (umbrealls? returns false when started in a subapp)
+    # app is an umbrella (umbrealla? returns false when started in a subapp)
     # to no avail. This was the only thing that consistently worked
     configured_root =
       RemoteControl.in_mix_project(project, fn _ ->

@@ -9,6 +9,7 @@ defmodule Lexical.BuildTest do
   import Messages
   import Lexical.Test.Fixtures
   use ExUnit.Case
+  use Patch
 
   def compile_source_file(%Project{} = project, filename \\ "file.ex", source_code) do
     sequence = System.unique_integer([:monotonic, :positive])
@@ -45,7 +46,7 @@ defmodule Lexical.BuildTest do
       end
     ]
     compile_source_file(project, module)
-    assert_receive file_compiled(), 5000
+    assert_receive file_compiled(), 500
     :ok
   end
 
@@ -64,14 +65,14 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:project_metadata)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
+      assert_receive project_compiled(status: :success), 500
     end
 
     test "receives metadata about the defined modules" do
       {:ok, project} = with_project(:project_metadata)
 
       Build.schedule_compile(project, true)
-      assert_receive module_updated(name: ProjectMetadata, functions: functions), 5000
+      assert_receive module_updated(name: ProjectMetadata, functions: functions), 500
 
       assert {:zero_arity, 0} in functions
       assert {:one_arity, 1} in functions
@@ -84,10 +85,10 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:umbrella)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
-      assert_receive project_diagnostics(diagnostics: [])
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: []), 500
 
-      assert_receive module_updated(name: Umbrella.First, functions: functions)
+      assert_receive module_updated(name: Umbrella.First, functions: functions), 500
 
       assert {:arity_0, 0} in functions
       assert {:arity_1, 1} in functions
@@ -106,8 +107,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_errors)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 5000
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic{}])
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{}]), 500
     end
   end
 
@@ -117,8 +118,8 @@ defmodule Lexical.BuildTest do
     test "stuff", %{project: project} do
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 5000
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.message =~ "SyntaxError"
     end
@@ -129,15 +130,21 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_warnings)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 5000
-      assert_receive project_diagnostics(diagnostics: diagnostics)
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: diagnostics), 500
 
       assert [%Diagnostic{}, %Diagnostic{}] = diagnostics
     end
   end
 
+  def with_patched_state_timeout(_) do
+    patch(Lexical.RemoteControl.Build.State, :should_compile?, true)
+    patch(Lexical.RemoteControl.Build.State, :edit_window_millis, 50)
+    :ok
+  end
+
   describe "compiling source files" do
-    setup [:with_metadata_project, :with_empty_module]
+    setup [:with_metadata_project, :with_empty_module, :with_patched_state_timeout]
 
     test "handles syntax errors", %{project: project} do
       source = ~S[
@@ -149,8 +156,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
@@ -162,8 +169,8 @@ defmodule Lexical.BuildTest do
       source = ~S[%{foo: 3]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
@@ -177,8 +184,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
@@ -193,8 +200,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic{} = diagnostic
       assert diagnostic.severity == :error
@@ -210,7 +217,7 @@ defmodule Lexical.BuildTest do
       compile_source_file(project, "my_test.ex", source)
 
       assert_receive file_compiled(status: :error), 500
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
       assert diagnostic.severity == :error
       assert diagnostic.file =~ "my_test.ex"
       assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
@@ -227,8 +234,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :success)
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
       assert diagnostic.position == {4, 0}
@@ -250,8 +257,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :success)
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
       assert diagnostic.position == {4, 0}
@@ -271,8 +278,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :success)
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic])
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
       assert diagnostic.position == {3, 0}
@@ -290,8 +297,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert diagnostic.severity == :error
       assert diagnostic.position == 4
@@ -311,8 +318,8 @@ defmodule Lexical.BuildTest do
 
       compile_source_file(project, source)
 
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 5000
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 500
 
       assert length(diagnostics) == 5
     end
@@ -324,7 +331,7 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_source_file(project, source)
-      assert_receive module_updated(name: NewModule, functions: [])
+      assert_receive module_updated(name: NewModule, functions: []), 500
     end
 
     test "adding multiple modules notifies the listener for each module", %{project: project} do
@@ -355,7 +362,7 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_source_file(project, source)
-      assert_receive module_updated(name: UnderTest, functions: [added_function: 2])
+      assert_receive module_updated(name: UnderTest, functions: [added_function: 2]), 500
     end
 
     test "removing a function notifies the listener", %{project: project} do
@@ -372,10 +379,10 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_source_file(project, initial)
-      assert_receive module_updated()
+      assert_receive module_updated(), 500
 
       compile_source_file(project, removed)
-      assert_receive module_updated(name: Remove, functions: [])
+      assert_receive module_updated(name: Remove, functions: []), 500
     end
 
     test "changing a function's arity notifies the listener", %{project: project} do
@@ -386,7 +393,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, initial)
-      assert_receive module_updated(name: ArityChange, functions: [arity: 1])
+      assert_receive module_updated(name: ArityChange, functions: [arity: 1]), 500
 
       changed = ~S[
         defmodule ArityChange do
@@ -395,7 +402,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, changed)
-      assert_receive module_updated(name: ArityChange, functions: [arity: 2])
+      assert_receive module_updated(name: ArityChange, functions: [arity: 2]), 500
     end
 
     test "adding a macro notifies the listener", %{project: project} do
@@ -409,7 +416,7 @@ defmodule Lexical.BuildTest do
        end
       ]
       compile_source_file(project, changed)
-      assert_receive module_updated(name: UnderTest, macros: [something: 1])
+      assert_receive module_updated(name: UnderTest, macros: [something: 1]), 500
     end
 
     test "removing a macro notifies the listener", %{project: project} do
@@ -426,10 +433,10 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_source_file(project, initial)
-      assert_receive module_updated()
+      assert_receive module_updated(), 500
 
       compile_source_file(project, removed)
-      assert_receive module_updated(name: RemoveMacro, macros: [])
+      assert_receive module_updated(name: RemoveMacro, macros: []), 500
     end
 
     test "changing a macro's arity notifies the listener", %{project: project} do
@@ -440,7 +447,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, initial)
-      assert_receive module_updated(name: ArityChange, macros: [arity: 1])
+      assert_receive module_updated(name: ArityChange, macros: [arity: 1]), 500
 
       changed = ~S[
         defmodule ArityChange do
@@ -449,7 +456,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, changed)
-      assert_receive module_updated(name: ArityChange, macros: [arity: 2])
+      assert_receive module_updated(name: ArityChange, macros: [arity: 2]), 500
     end
   end
 
@@ -462,7 +469,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       refute RemoteControl.call(project, Code, :ensure_loaded?, [EmptyModule])
     end
 
@@ -473,7 +480,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAFunction])
     end
 
@@ -484,7 +491,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAMacro])
     end
 
@@ -495,7 +502,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAStruct])
     end
 
@@ -506,7 +513,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_source_file(project, source)
-      assert_receive file_compiled(status: :success), 5000
+      assert_receive file_compiled(status: :success), 500
       assert RemoteControl.call(project, Code, :ensure_loaded?, [WithAType])
     end
   end
