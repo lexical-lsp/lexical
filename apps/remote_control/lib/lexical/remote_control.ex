@@ -163,6 +163,15 @@ defmodule Lexical.RemoteControl do
               nil
           end
 
+        :rtx ->
+          case System.cmd("rtx", ~w(which elixir), cd: root_path) do
+            {path, 0} ->
+              String.trim(path)
+
+            _ ->
+              nil
+          end
+
         :none ->
           File.cd!(root_path, fn -> System.find_executable("elixir") end)
       end
@@ -201,16 +210,19 @@ defmodule Lexical.RemoteControl do
   end
 
   defp version_manager do
-    # disabling this because we're going to immediately add another version manager
-    # credo:disable-for-next-line Credo.Check.Refactor.CondStatements
     cond do
       asdf?() ->
         :asdf
+
+      rtx?() ->
+        :rtx
 
       true ->
         :none
     end
   end
 
-  defp asdf?(), do: not is_nil(System.find_executable("asdf"))
+  defp asdf?(), do: is_binary(System.find_executable("asdf"))
+
+  defp rtx?(), do: is_binary(System.find_executable("rtx"))
 end
