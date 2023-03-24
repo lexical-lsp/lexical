@@ -34,10 +34,16 @@ defmodule Lexical.RemoteControl do
       ])
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
+    remote_control_config = Application.get_all_env(:remote_control)
 
     with {:ok, node} <- :slave.start_link(@localhost_charlist, node_name, erl_args),
          :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
-         :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project, project_listener]),
+         :ok <-
+           :rpc.call(node, RemoteControl.Bootstrap, :init, [
+             project,
+             project_listener,
+             remote_control_config
+           ]),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node}
     end
@@ -52,6 +58,7 @@ defmodule Lexical.RemoteControl do
     # already defined
 
     old_cwd = File.cwd!()
+
     Build.with_lock(fn ->
       try do
         build_path = Project.build_path(project)
@@ -62,9 +69,7 @@ defmodule Lexical.RemoteControl do
         |> String.to_atom()
         |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
       after
-
         File.cd!(old_cwd)
-
       end
     end)
   end
