@@ -24,6 +24,18 @@ defmodule Lexical.RemoteControl.Build do
     :ok
   end
 
+  # this is for testing
+  def force_compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
+    unless Path.absname(source_file.path) == "mix.exs" do
+      RemoteControl.call(project, GenServer, :call, [
+        __MODULE__,
+        {:force_compile_file, source_file}
+      ])
+    end
+
+    :ok
+  end
+
   def with_lock(func) do
     RemoteControl.with_lock(__MODULE__, func)
   end
@@ -47,6 +59,12 @@ defmodule Lexical.RemoteControl.Build do
     State.initial_compile(state)
     schedule_tick()
     {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_call({:force_compile_file, %SourceFile{} = source_file}, _from, %State{} = state) do
+    State.compile_file(state.project, source_file)
+    {:reply, :ok, state}
   end
 
   @impl GenServer

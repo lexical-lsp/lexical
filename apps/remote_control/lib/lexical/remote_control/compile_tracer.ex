@@ -1,10 +1,13 @@
 defmodule Lexical.RemoteControl.CompileTracer do
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.ModuleMappings
 
   import RemoteControl.Api.Messages
+  require Logger
 
-  def trace({:on_module, _, _}, env) do
+  def trace({:on_module, _, _}, %Macro.Env{} = env) do
     message = extract_module_updated(env.module)
+    ModuleMappings.update(env.module, env.file)
     RemoteControl.notify_listener(message)
     :ok
   end

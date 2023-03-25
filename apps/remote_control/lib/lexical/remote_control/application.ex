@@ -11,7 +11,11 @@ defmodule Lexical.RemoteControl.Application do
   def start(_type, _args) do
     children =
       if RemoteControl.project_node?() do
-        [RemoteControl.Build, RemoteControl.Build.CaptureServer]
+        [
+          RemoteControl.ModuleMappings,
+          RemoteControl.Build,
+          RemoteControl.Build.CaptureServer
+        ]
       else
         []
       end
