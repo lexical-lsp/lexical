@@ -23,10 +23,10 @@ defmodule Lexical.RemoteControl.ModuleMappings do
 
           %{^module => old_path} ->
             # the module has changed its file
-            remove_this_module = fn old_module -> old_module == module end
+            remove_this_module? = fn old_module -> old_module == module end
 
             state.file_to_modules
-            |> Map.update(old_path, [], &Enum.reject(&1, remove_this_module))
+            |> Map.update(old_path, [], &Enum.reject(&1, remove_this_module?))
             |> Map.update(file_path, [module], &[module | &1])
 
           _ ->
