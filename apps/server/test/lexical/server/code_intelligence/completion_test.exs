@@ -679,6 +679,30 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     end
   end
 
+  describe "module completions" do
+    test "modules should emit a completion", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("Enu|")
+               |> fetch_completion(kind: :module)
+
+      assert completion.kind == :module
+      assert completion.label == "Enum"
+      assert completion.detail
+    end
+
+    test "behaviours should emit a completion", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("GenS|")
+               |> fetch_completion(kind: :module)
+
+      assert completion.kind == :module
+      assert completion.label == "GenServer"
+      assert completion.detail =~ "A behaviour module"
+    end
+  end
+
   describe "structs" do
     test "should complete after %", %{project: project} do
       assert {:ok, [_, _] = account_and_user} =
