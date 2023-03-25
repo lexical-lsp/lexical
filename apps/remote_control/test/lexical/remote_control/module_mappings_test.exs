@@ -31,7 +31,7 @@ defmodule Lexical.RemoteControl.ModuleMappingsTest do
       assert ModuleMappings.file_for_module(__MODULE__) == __ENV__.file
     end
 
-    test "it allows yo to get the modules defined in a file" do
+    test "it allows you to get the modules defined in a file" do
       assert ModuleMappings.modules_in_file(__ENV__.file) == [__MODULE__]
     end
 
