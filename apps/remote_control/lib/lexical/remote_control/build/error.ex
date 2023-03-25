@@ -98,9 +98,31 @@ defmodule Lexical.RemoteControl.Build.Error do
     }
   end
 
+  def error_to_diagnostic(%ArgumentError{} = argument_error, stack, _quoted_ast) do
+    reversed_stack = Enum.reverse(stack)
+    [{_, _, _, context}, {_, maybe_pipe, _, _} | _] = reversed_stack
+
+    if maybe_pipe == :|> do
+      %Diagnostic{
+        message: Exception.message(argument_error),
+        position: context_to_position(context),
+        file: nil,
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    else
+      %Diagnostic{
+        message: Exception.message(argument_error),
+        position: stack_to_position(stack),
+        file: nil,
+        severity: :error,
+        compiler_name: "Elixir"
+      }
+    end
+  end
+
   def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
       when module in [
-             ArgumentError,
              Protocol.UndefinedError,
              ExUnit.DuplicateTestError,
              ExUnit.DuplicateDescribeError

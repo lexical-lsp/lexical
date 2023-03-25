@@ -169,6 +169,30 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.position == 1
     end
 
+    test "handles ArgumentError when in module" do
+      {:exception, exception, stack, quoted_ast} = ~s[
+        defmodule Foo do
+          :a |> {1, 2}
+        end
+      ] |> compile()
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      assert diagnostic.message =~ ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+      assert diagnostic.position == 3
+    end
+
+    test "handles ArgumentError when in function" do
+      {:exception, exception, stack, quoted_ast} = ~s[
+        defmodule Foo do
+          def foo do
+            :a |> {1, 2}
+          end
+        end
+      ] |> compile()
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      assert diagnostic.message =~ ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+      assert diagnostic.position == 4
+    end
+
     test "can't find right line when use macro" do
       {:exception, exception, stack, quoted_ast} = ~S[
           Module.create(
