@@ -15,16 +15,17 @@ defmodule Lexical.RemoteControl.Build do
   # Public interface
 
   def schedule_compile(%Project{} = project, force? \\ false) do
-    RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile, force?}])
+    RemoteControl.call(project, GenServer, :cast, [
+      RemoteControl.namespace_module(__MODULE__),
+      {:compile, force?}
+    ])
   end
 
   def compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
-    # Don't format mix.exs files until we come up with with a way to prevent them from causing errors
-    unless Path.absname(source_file.path) == "mix.exs" do
-      RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
-    end
-
-    :ok
+    RemoteControl.call(project, GenServer, :cast, [
+      RemoteControl.namespace_module(__MODULE__),
+      {:compile_file, source_file}
+    ])
   end
 
   def with_lock(func) do
@@ -96,7 +97,9 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   @impl GenServer
-  def handle_cast({:compile_file, %SourceFile{} = source_file}, %Project{} = project) do
+  def handle_cast({:compile_file, source_file}, %Project{} = project) do
+    source_file = %SourceFile{} = RemoteControl.namespace_struct(source_file)
+
     with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
 

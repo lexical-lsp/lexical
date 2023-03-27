@@ -6,11 +6,14 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   alias Lexical.RemoteControl
   alias Lexical.SourceFile
 
-  require Logger
   @type formatter_function :: (String.t() -> any) | nil
 
   @spec text_edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
-  def text_edits(%Project{} = project, %SourceFile{} = document) do
+  def text_edits(project, document) do
+    # Structs received from RPC, cast them
+    project = %Project{} = RemoteControl.namespace_struct(project)
+    document = %SourceFile{} = RemoteControl.namespace_struct(document)
+
     with :ok <- Build.compile_source_file(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)

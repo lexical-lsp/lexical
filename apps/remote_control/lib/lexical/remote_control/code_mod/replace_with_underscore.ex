@@ -1,12 +1,15 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
   alias Lexical.SourceFile
   alias Lexical.Protocol.Types.TextEdit
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeMod.Ast
   alias Lexical.RemoteControl.CodeMod.Diff
 
   @spec text_edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, [TextEdit.t()]} | :error
-  def text_edits(%SourceFile{} = source_file, line_number, variable_name) do
+  def text_edits(source_file, line_number, variable_name) do
+    # Struct received from RPC, cast it
+    source_file = %SourceFile{} = RemoteControl.namespace_struct(source_file)
     variable_name = ensure_atom(variable_name)
 
     with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),

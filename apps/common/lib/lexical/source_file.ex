@@ -135,6 +135,18 @@ defmodule Lexical.SourceFile do
     |> IO.iodata_to_binary()
   end
 
+  @doc """
+  Casts itself when received through RPC due to different module names
+  """
+  @spec cast_from_rpc(t) :: t
+  def cast_from_rpc(source) do
+    source_map = Map.from_struct(source)
+    document_map = Map.from_struct(source_map.document)
+    document = struct(Document, document_map)
+    source_map = Map.put(source_map, :document, document)
+    source_file = struct(__MODULE__, source_map)
+  end
+
   # private
 
   defp line_count(%__MODULE__{} = source) do

@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod
+
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build
@@ -15,7 +16,10 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def format(%Project{} = project, %SourceFile{} = source_file) do
-    RemoteControl.call(project, CodeMod.Format, :text_edits, [project, source_file])
+    result = RemoteControl.call(project, CodeMod.Format, :text_edits, [project, source_file])
+    with {:ok, edits} <- result do
+      {:ok, Enum.map(edits, &RemoteControl.namespace_struct(&1)) }
+    end
   end
 
   def replace_with_underscore(
@@ -24,11 +28,14 @@ defmodule Lexical.RemoteControl.Api do
         line_number,
         variable_name
       ) do
-    RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :text_edits, [
+    result = RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :text_edits, [
       source_file,
       line_number,
       variable_name
     ])
+    with {:ok, edits} <- result do
+      {:ok, Enum.map(edits, &RemoteControl.namespace_struct(&1)) }
+    end
   end
 
   def complete(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
@@ -39,9 +46,10 @@ defmodule Lexical.RemoteControl.Api do
   def complete(%Project{} = project, source_string, %Position{} = position) do
     Logger.info("Completion for #{inspect(position)}")
 
-    RemoteControl.call(project, Lexical.RemoteControl.Completion, :elixir_sense_expand, [
+    result = RemoteControl.call(project, Lexical.RemoteControl.Completion, :elixir_sense_expand, [
       source_string,
       position
     ])
+    Enum.map(result, &RemoteControl.namespace_struct(&1))
   end
 end

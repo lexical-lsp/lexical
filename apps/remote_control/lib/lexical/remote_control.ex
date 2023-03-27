@@ -9,9 +9,9 @@ defmodule Lexical.RemoteControl do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
 
-  @allowed_apps ~w(common path_glob remote_control elixir_sense)a
-
-  @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+  @env Mix.env()
+  @allowed_apps ~w(path_glob elixir_sense)a
+  @remote_apps ~w(remote_control common common_protocol)a
 
   @localhost_charlist '127.0.0.1'
 
@@ -33,11 +33,15 @@ defmodule Lexical.RemoteControl do
         "-noshell"
       ])
 
-    apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
+    apps_to_start = [:elixir | @allowed_apps] ++ @remote_apps ++ [:runtime_tools]
 
     with {:ok, node} <- :slave.start_link(@localhost_charlist, node_name, erl_args),
          :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
-         :ok <- :rpc.call(node, RemoteControl.Bootstrap, :init, [project, project_listener]),
+         :ok <-
+           :rpc.call(node, namespace_module(RemoteControl.Bootstrap), :init, [
+             project,
+             project_listener
+           ]),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node}
     end
@@ -97,9 +101,47 @@ defmodule Lexical.RemoteControl do
   end
 
   def call(%Project{} = project, m, f, a \\ []) do
+    # If a module is part of argument list then it
+    # must be namespaced at the callsite with namespace_module()
     project
     |> node_name()
-    |> :erpc.call(m, f, a)
+    |> :erpc.call(namespace_module(m), f, a)
+  end
+
+  def namespace_module(module) do
+    unless @env == :dev do
+      module
+    else
+      # Assumption is that if you are using this function then the
+      # module *needs* to be casted
+      case Module.split(module) do
+        ["Lexical" | rest] -> Module.concat(["LexicalNamespace" | rest])
+        ["LexicalNamespace" | rest] -> Module.concat(["Lexical" | rest])
+        # Something else like Elixir.GenServer
+        _ -> module
+      end
+    end
+  end
+
+  def namespace_struct(%unknown_module{} = struct) do
+    unless @env == :dev do
+      struct
+    else
+      known_module = namespace_module(unknown_module)
+
+      unless Code.ensure_compiled?(known_module) do
+        raise ArgumentError,
+              "Expected to know module #{known_module} but no definition was found."
+      end
+
+      if function_exported?(known_module, :cast_from_rpc, 1) do
+        # Struct might have nested structs, call module function
+        known_module.cast_from_rpc(struct)
+      else
+        # General case scenario, just re-cast
+        struct(known_module, Map.from_struct(struct))
+      end
+    end
   end
 
   defp node_name(%Project{} = project) do
@@ -119,12 +161,46 @@ defmodule Lexical.RemoteControl do
     end)
   end
 
+  @build_path Mix.Project.build_path()
+  @umbrella_root Application.compile_env(:remote_control, :umbrella_root)
+  @build_path_relative Path.relative_to(@build_path, @umbrella_root)
   def glob_paths do
-    for entry <- :code.get_path(),
-        entry_string = List.to_string(entry),
-        entry_string != ".",
-        Enum.any?(@app_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
-      entry
+    unless @env == :dev do
+      app_globs =
+        Enum.map(@allowed_apps ++ @remote_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+
+      for entry <- :code.get_path(),
+          entry_string = List.to_string(entry),
+          entry_string != ".",
+          Enum.any?(app_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
+        entry
+      end
+    else
+      app_globs = Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+
+      allowed_paths =
+        for entry <- :code.get_path(),
+            entry_string = List.to_string(entry),
+            entry_string != ".",
+            Enum.any?(app_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
+          entry
+        end
+
+      remote_paths =
+        Enum.map(@remote_apps, fn app_name ->
+          # Path per config/dev.exs
+          Path.join([
+            @build_path,
+            "namespaced",
+            @build_path_relative,
+            "lib",
+            "#{app_name}",
+            "ebin"
+          ])
+          |> String.to_charlist()
+        end)
+
+      allowed_paths ++ remote_paths
     end
   end
 

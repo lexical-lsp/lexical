@@ -8,9 +8,9 @@ defmodule Lexical.RemoteControl.Bootstrap do
   """
   alias Lexical.RemoteControl
   alias Lexical.Project
-  require Logger
 
-  def init(%Project{} = project, listener_pid) do
+  def init(project, listener_pid) do
+    project = %Project{} = RemoteControl.namespace_struct(project)
     true = Code.append_path(hex_path())
     RemoteControl.set_project(project)
     RemoteControl.set_project_listener_pid(listener_pid)
