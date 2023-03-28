@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControlTest do
   import Lexical.Test.Fixtures
 
   def start_project(%Project{} = project) do
-    assert {:ok, _} = RemoteControl.start_link(project, self())
+    assert {:ok, _, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->
       RemoteControl.stop(project)

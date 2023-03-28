@@ -34,7 +34,7 @@ defmodule Lexical.BuildTest do
     fixture_dir = Path.join(fixtures_path(), project_name)
     project = Project.new("file://#{fixture_dir}")
 
-    {:ok, _} = RemoteControl.start_link(project, self())
+    {:ok, _, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->
       :ok = RemoteControl.stop(project)

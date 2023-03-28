@@ -51,7 +51,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   end
 
   def with_real_project(%{project: project}) do
-    {:ok, _} = RemoteControl.start_link(project, self())
+    {:ok, _, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->
       :ok = RemoteControl.stop(project)
