@@ -43,16 +43,18 @@ defmodule Lexical.RemoteControl.Build.State do
     unless File.exists?(Project.build_path(project)) do
       Logger.info("Performing initial build on new workspace")
 
-      RemoteControl.in_mix_project(fn _ ->
-        try do
+      result =
+        RemoteControl.Mix.in_project(project, fn _ ->
           Mix.Task.run(:compile, mix_compile_opts(false))
-        rescue
-          e ->
-            Logger.error("Initial compile failed #{Exception.message(e)}")
-        end
-      end)
+        end)
 
-      Logger.info("initial build complete")
+      case result do
+        {:error, {:exception, ex}} ->
+          Logger.error("Initial compile failed #{Exception.message(ex)}")
+
+        _ ->
+          Logger.info("initial build complete")
+      end
     end
 
     update_build_path(project)
@@ -179,52 +181,50 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   defp safe_compile_project(force?) do
-    RemoteControl.in_mix_project(fn _ ->
-      try do
+    RemoteControl.Mix.in_project(fn _ ->
+      Mix.Task.clear()
+
+      if connected_to_internet?() do
+        Mix.Task.run("local.hex", ~w(--force --if-missing))
+        Mix.Task.run("local.rebar", ~w(--force --if-missing))
+        Mix.Task.run("deps.get")
+      else
+        Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
+      end
+
+      Mix.Task.run("deps.safe_compile")
+
+      if force? do
+        Mix.Task.run("clean")
+      end
+
+      compile_fun = fn ->
         Mix.Task.clear()
+        Mix.Task.run("compile", mix_compile_opts(force?))
+      end
 
-        if connected_to_internet?() do
-          Mix.Task.run("local.hex", ~w(--force --if-missing))
-          Mix.Task.run("local.rebar", ~w(--force --if-missing))
-          Mix.Task.run("deps.get")
-        else
-          Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
-        end
+      case compile_fun.() do
+        {:error, _} = error ->
+          error
 
-        Mix.Task.run("deps.safe_compile")
+        {status, diagnostics} when status in [:ok, :noop] ->
+          Logger.info(
+            "Compile completed with status #{status} " <>
+              "Produced #{length(diagnostics)} diagnostics " <>
+              inspect(diagnostics)
+          )
 
-        if force? do
-          Mix.Task.run("clean")
-        end
-
-        compile_fun = fn ->
-          Mix.Task.clear()
-          Mix.Task.run("compile", mix_compile_opts(force?))
-        end
-
-        case compile_fun.() do
-          {:error, _} = error ->
-            error
-
-          {status, diagnostics} when status in [:ok, :noop] ->
-            Logger.info(
-              "Compile completed with status #{status} " <>
-                "Produced #{length(diagnostics)} diagnostics " <>
-                inspect(diagnostics)
-            )
-
-            {:ok, Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)}
-        end
-      rescue
-        e ->
-          {:error, e}
+          Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)
       end
     end)
   end
 
   defp safe_compile(%SourceFile{} = source_file) do
     compile = fn ->
-      RemoteControl.in_mix_project(fn _ -> compile_code(source_file) end)
+      case RemoteControl.Mix.in_project(fn _ -> compile_code(source_file) end) do
+        {:ok, result} -> result
+        other -> other
+      end
     end
 
     case capture_io(:stderr, compile) do
@@ -336,7 +336,7 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   defp update_build_path(%Project{} = project) do
-    RemoteControl.in_mix_project(project, fn _ ->
+    RemoteControl.Mix.in_project(project, fn _ ->
       [Mix.Project.build_path(), "lib", "**", "ebin"]
       |> Path.join()
       |> Path.wildcard()

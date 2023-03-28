@@ -7,7 +7,6 @@ defmodule Lexical.RemoteControl do
 
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Build
 
   @allowed_apps ~w(common path_glob remote_control elixir_sense)a
 
@@ -47,31 +46,6 @@ defmodule Lexical.RemoteControl do
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node}
     end
-  end
-
-  def in_mix_project(fun) when is_function(fun) do
-    in_mix_project(get_project(), fun)
-  end
-
-  def in_mix_project(%Project{} = project, fun) do
-    # Locking on the build make sure we don't get a conflict on the mix.exs being
-    # already defined
-
-    old_cwd = File.cwd!()
-
-    Build.with_lock(fn ->
-      try do
-        build_path = Project.build_path(project)
-        project_root = Project.root_path(project)
-
-        project
-        |> Project.name()
-        |> String.to_atom()
-        |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
-      after
-        File.cd!(old_cwd)
-      end
-    end)
   end
 
   def with_lock(lock_type, func) do

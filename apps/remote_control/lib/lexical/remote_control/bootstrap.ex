@@ -68,8 +68,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
     # I tried a bunch of stuff to get it to work, like checking if the
     # app is an umbrella (umbrealla? returns false when started in a subapp)
     # to no avail. This was the only thing that consistently worked
-    configured_root =
-      RemoteControl.in_mix_project(project, fn _ ->
+    {:ok, configured_root} =
+      RemoteControl.Mix.in_project(project, fn _ ->
         Mix.Project.config()
         |> Keyword.get(:config_path)
         |> Path.dirname()
