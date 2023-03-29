@@ -3,11 +3,8 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.State
-  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.SourceFile
-  alias Mix.Task.Compiler.Diagnostic
 
-  import Messages
   import Lexical.Test.Fixtures
 
   import Testing.EventualAssertions
