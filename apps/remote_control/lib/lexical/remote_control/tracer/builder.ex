@@ -1,4 +1,4 @@
-defmodule Lexical.Tracer.Builder do
+defmodule Lexical.RemoteControl.Tracer.Builder do
   require Logger
 
   def build_module_info(module, file, line) do
