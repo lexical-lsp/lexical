@@ -146,7 +146,7 @@ defmodule Lexical.RemoteControl.Build.State do
   def set_compiler_options do
     Code.compiler_options(
       parser_options: parser_options(),
-      tracers: [RemoteControl.CompileTracer]
+      tracers: [RemoteControl.CompileTracer, RemoteControl.Tracer]
     )
 
     :ok

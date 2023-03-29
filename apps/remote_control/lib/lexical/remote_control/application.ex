@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.Application do
       if RemoteControl.project_node?() do
         [
           RemoteControl.ModuleMappings,
-          RemoteControl.CompileTracer,
+          RemoteControl.Tracer,
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer,
         ]

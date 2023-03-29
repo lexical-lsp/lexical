@@ -1,5 +1,21 @@
-defmodule Lexical.CompileTracer.Builder do
+defmodule Lexical.Tracer.Builder do
+  alias Lexical.SourceFile
+  alias Lexical.SourceFile.Store, as: SourceFileStore
+  alias Lexical.SourceFile.Path, as: SourceFilePath
+
+  require Logger
+
   def build_module_info(module, file, line) do
+    with {:ok, text} <- File.read(file) do
+      do_build_module_info(module, file, line, text)
+    else
+      _ ->
+        Logger.warn("can't read file #{file}")
+        nil
+    end
+  end
+
+  defp do_build_module_info(module, file, line, text) do
     defs =
       for {name, arity} <- Module.definitions_in(module) do
         def_info = apply(Module, :get_definition, [module, {name, arity}])
@@ -13,9 +29,9 @@ defmodule Lexical.CompileTracer.Builder do
 
     %{
       file: file,
-      defs: fill_range(defs, file),
+      defs: fill_range(text, defs),
       attributes: attributes,
-      range: find_module_range(file, line),
+      range: find_module_range(text, line),
       line: line
     }
   end
@@ -38,14 +54,15 @@ defmodule Lexical.CompileTracer.Builder do
     }
   end
 
-  defp find_module_range(file, line) do
+  defp find_module_range(text, line) do
     # Fill the range of the module name.
-    ast = Code.string_to_quoted!(File.read!(file), columns: true)
+    ast = Code.string_to_quoted!(text, columns: true)
     {_ast, acc} = Macro.prewalk(ast, %{line: line}, &put_module_range/2)
     acc.range
   end
 
-  defp fill_range(defs, file) do
+
+  defp fill_range(text, defs) do
     # Fill the range of each def name in the module.
     defs_map =
       for {{name, _arity}, %{kind: kind, meta: [line: line]}} = infos <- defs,
@@ -54,9 +71,21 @@ defmodule Lexical.CompileTracer.Builder do
         {{kind, name, line}, infos}
       end
 
-    ast = Code.string_to_quoted!(File.read!(file), columns: true)
+    ast = Code.string_to_quoted!(text, columns: true)
     {_ast, new_defs_map} = Macro.prewalk(ast, defs_map, &put_def_range/2)
     new_defs_map |> Map.values() |> Enum.sort_by(&elem(&1, 1).meta[:line])
+  end
+
+  defp get_text(file) do
+    uri = SourceFilePath.to_uri(file)
+    {:ok, source_file} =
+      if SourceFileStore.open?(uri) do
+        SourceFileStore.fetch(uri)
+      else
+        {:ok, source_file} = SourceFileStore.open_temporary(uri)
+        SourceFileStore.fetch(source_file.uri)
+      end
+    SourceFile.to_string(source_file)
   end
 
   @kind [:def, :defp, :defmacro, :defmacrop]
