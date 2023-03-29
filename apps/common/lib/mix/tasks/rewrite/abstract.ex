@@ -282,13 +282,15 @@ defmodule Mix.Tasks.Namespace.Abstract do
       |> String.split(".")
 
     case split_module do
-      ["Lexical"] -> :LXRelease
+      ["Lexical"] ->
+        :LXRelease
 
       ["Elixir" | rest] ->
         Enum.map(rest, fn
           "Lexical" -> "LXRelease"
           other -> other
-        end) |> Module.concat()
+        end)
+        |> Module.concat()
 
       _ ->
         module
