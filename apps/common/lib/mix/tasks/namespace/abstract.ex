@@ -31,6 +31,10 @@ defmodule Mix.Tasks.Namespace.Abstract do
     {:attribute, anno, :module, rewrite_module(mod)}
   end
 
+  defp do_rewrite({:attribute, anno, :__impl__, attrs}) do
+    {:attribute, anno, :__impl__, rewrite(attrs)}
+  end
+
   defp do_rewrite({:function, anno, name, arity, clauses}) do
     {:function, anno, name, arity, rewrite(clauses)}
   end
@@ -49,6 +53,15 @@ defmodule Mix.Tasks.Namespace.Abstract do
 
   defp do_rewrite({:attribute, anno, type, {name, type_rep, clauses}}) do
     {:attribute, anno, type, {name, rewrite(type_rep), rewrite(clauses)}}
+  end
+
+  defp do_rewrite({:for, target}) do
+    # Protocol implementation
+    {:for, rewrite_module(target)}
+  end
+
+  defp do_rewrite({:protocol, protocol}) do
+    {:protocol, rewrite_module(protocol)}
   end
 
   # Record Fields
