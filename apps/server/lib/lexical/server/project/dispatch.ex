@@ -52,7 +52,6 @@ defmodule Lexical.Server.Project.Dispatch do
     end
   end
 
-  alias Lexical.RemoteControl
   alias Lexical.Project
   use GenServer
 
@@ -95,14 +94,7 @@ defmodule Lexical.Server.Project.Dispatch do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    {:ok, _} = RemoteControl.start_link(project, self())
-    {:ok, State.new(project), {:continue, :trigger_build}}
-  end
-
-  @impl GenServer
-  def handle_continue(:trigger_build, %State{} = state) do
-    RemoteControl.Api.schedule_compile(state.project, true)
-    {:noreply, state}
+    {:ok, State.new(project)}
   end
 
   @impl GenServer
@@ -142,11 +134,11 @@ defmodule Lexical.Server.Project.Dispatch do
     {:noreply, state}
   end
 
-  # Private api
-
-  defp name(%Project{} = project) do
+  def name(%Project{} = project) do
     :"#{Project.name(project)}::dispatch"
   end
+
+  # Private api
 
   defp extract_message_type(message_type) when is_atom(message_type), do: message_type
   defp extract_message_type(message_type) when is_tuple(message_type), do: elem(message_type, 0)
