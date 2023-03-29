@@ -44,10 +44,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
           {:struct, _} ->
             true
 
-          {:local_or_var, '__'} ->
+          {:local_or_var, [?_, ?_ | rest]} ->
             # a reference to `%__MODULE`, often in a function head, as in
             # def foo(%__)
-            String.contains?(line, "%__")
+            String.starts_with?("MODULE", List.to_string(rest)) and String.contains?(line, "%__")
 
           _ ->
             false
