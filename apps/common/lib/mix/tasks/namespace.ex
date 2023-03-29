@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Namespace do
     app_globs = "{" <> Enum.join(app_names, ",") <> "}"
 
     beam_files =
-      [Mix.Project.build_path(), "lib", app_globs, "**", "ebin", "*.beam"]
+      [Mix.Project.build_path(), "lib", app_globs, "**", "ebin", "Elixir.Lexical.*.beam"]
       |> Path.join()
       |> Path.wildcard()
 
