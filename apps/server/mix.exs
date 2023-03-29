@@ -20,7 +20,7 @@ defmodule Lexical.Server.MixProject do
   def application do
     [
       extra_applications: [:logger, :runtime_tools, :et, :wx, :kernel, :erts],
-      mod: {Lexical.Server.Application, []}
+      mod: {module(), []}
     ]
   end
 
@@ -28,6 +28,14 @@ defmodule Lexical.Server.MixProject do
     [
       test: "test --no-start"
     ]
+  end
+
+  defp module do
+    if System.get_env("NAMESPACE") do
+      LXRelease.Server.Application
+    else
+      Lexical.Server.Application
+    end
   end
 
   defp elixirc_paths(:test) do

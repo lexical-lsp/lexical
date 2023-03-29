@@ -1,0 +1,33 @@
+defmodule Mix.Tasks.Namespace.Transform do
+  alias Mix.Tasks.Namespace.Code
+  alias Mix.Tasks.Namespace.Abstract
+
+  def transform(path) do
+    erlang_path = String.to_charlist(path)
+
+    with {:ok, forms} <- abstract_code(erlang_path),
+         rewritten_forms = Abstract.rewrite(forms),
+         {:ok, module_name, binary} <- Code.compile(rewritten_forms) do
+      write_module_beam(path, module_name, binary)
+    end
+  end
+
+  defp write_module_beam(old_path, module_name, binary) do
+    ebin_path = Path.dirname(old_path)
+    new_beam_path = Path.join(ebin_path, "#{module_name}.beam")
+
+    with :ok <- File.write(new_beam_path, binary, [:ibnary, :raw]) do
+      File.rm(old_path)
+    end
+  end
+
+  defp abstract_code(path) do
+    with {:ok, {_orig_module, code_parts}} <- :beam_lib.chunks(path, [:abstract_code]),
+         {:ok, {:raw_abstract_v1, forms}} <- Keyword.fetch(code_parts, :abstract_code) do
+      {:ok, forms}
+    else
+      _ ->
+        {:error, :not_found}
+    end
+  end
+end
