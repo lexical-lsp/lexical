@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Namespace.Abstract do
   https://www.erlang.org/doc/apps/erts/absform.html
   """
   def rewrite(abstract_format) when is_list(abstract_format) do
-    Enum.map(abstract_format, &do_rewrite/1)
+    Enum.map(abstract_format, &rewrite/1)
   end
 
   def rewrite(abstract_format) do
@@ -282,8 +282,13 @@ defmodule Mix.Tasks.Namespace.Abstract do
       |> String.split(".")
 
     case split_module do
-      ["Elixir", "Lexical" | rest] ->
-        Module.concat(["LXRelease" | rest])
+      ["Lexical"] -> :LXRelease
+
+      ["Elixir" | rest] ->
+        Enum.map(rest, fn
+          "Lexical" -> "LXRelease"
+          other -> other
+        end) |> Module.concat()
 
       _ ->
         module
