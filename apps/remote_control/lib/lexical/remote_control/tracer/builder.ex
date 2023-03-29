@@ -1,8 +1,4 @@
 defmodule Lexical.Tracer.Builder do
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Store, as: SourceFileStore
-  alias Lexical.SourceFile.Path, as: SourceFilePath
-
   require Logger
 
   def build_module_info(module, file, line) do
@@ -58,7 +54,7 @@ defmodule Lexical.Tracer.Builder do
     # Fill the range of the module name.
     ast = Code.string_to_quoted!(text, columns: true)
     {_ast, acc} = Macro.prewalk(ast, %{line: line}, &put_module_range/2)
-    acc.range
+    Map.get(acc, :range)
   end
 
 
@@ -76,28 +72,22 @@ defmodule Lexical.Tracer.Builder do
     new_defs_map |> Map.values() |> Enum.sort_by(&elem(&1, 1).meta[:line])
   end
 
-  defp get_text(file) do
-    uri = SourceFilePath.to_uri(file)
-    {:ok, source_file} =
-      if SourceFileStore.open?(uri) do
-        SourceFileStore.fetch(uri)
-      else
-        {:ok, source_file} = SourceFileStore.open_temporary(uri)
-        SourceFileStore.fetch(source_file.uri)
-      end
-    SourceFile.to_string(source_file)
-  end
-
   @kind [:def, :defp, :defmacro, :defmacrop]
   defp put_def_range(
          {def_kind, _, [{def_name, [line: line, column: column], _} | _]} = node,
          acc
        )
        when def_kind in @kind do
-    {fun, info} = Map.get(acc, {def_kind, def_name, line})
-    info = %{info | range: to_range(line, column, def_name)}
-    acc = %{acc | {def_kind, def_name, line} => {fun, info}}
-    {node, acc}
+    result = Map.get(acc, {def_kind, def_name, line})
+
+    case result do
+      {fun, info} ->
+        info = %{info | range: to_range(line, column, def_name)}
+        {node, %{acc | {def_kind, def_name, line} => {fun, info}}}
+
+      _ ->
+        {node, acc}
+    end
   end
 
   defp put_def_range(node, acc) do
