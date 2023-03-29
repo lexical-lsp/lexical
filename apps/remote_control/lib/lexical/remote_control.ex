@@ -43,7 +43,8 @@ defmodule Lexical.RemoteControl do
              project_listener,
              remote_control_config
            ]),
-         :ok <- ensure_apps_started(node, apps_to_start) do
+         :ok <- ensure_apps_started(node, apps_to_start),
+         :ok =  :rpc.call(node, RemoteControl.Tracer, :set_project_dir, [Project.root_path(project)]) do
       supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
       {:ok, node, supervisor_pid}
     end

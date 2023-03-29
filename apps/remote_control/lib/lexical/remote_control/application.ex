@@ -13,8 +13,9 @@ defmodule Lexical.RemoteControl.Application do
       if RemoteControl.project_node?() do
         [
           RemoteControl.ModuleMappings,
+          RemoteControl.Tracer,
           RemoteControl.Build,
-          RemoteControl.Build.CaptureServer
+          RemoteControl.Build.CaptureServer,
         ]
       else
         []
