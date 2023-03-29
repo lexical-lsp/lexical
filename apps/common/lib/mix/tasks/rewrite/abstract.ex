@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Namespace.Abstract do
   end
 
   defp do_rewrite({:attribute, anno, :import, {module, funs}}) do
-    {:attribue, anno, :import, {rewrite_module(module), rewrite(funs)}}
+    {:attribute, anno, :import, {rewrite_module(module), rewrite(funs)}}
   end
 
   defp do_rewrite({:attribute, anno, :module, mod}) do
@@ -36,11 +36,11 @@ defmodule Mix.Tasks.Namespace.Abstract do
   end
 
   defp do_rewrite({:attribute, anno, spec, {{name, arity}, spec_clauses}}) do
-    {:attribute, anno, rewrite(spec), {{name, arity, rewrite(spec_clauses)}}}
+    {:attribute, anno, rewrite(spec), {{name, arity}, rewrite(spec_clauses)}}
   end
 
   defp do_rewrite({:attribute, anno, :spec, {{mod, name, arity}, clauses}}) do
-    {:attribute, anno, :spc, {{rewrite(mod), name, arity}, rewrite(clauses)}}
+    {:attribute, anno, :spec, {{rewrite(mod), name, arity}, rewrite(clauses)}}
   end
 
   defp do_rewrite({:attribute, anno, :record, {name, fields}}) do
