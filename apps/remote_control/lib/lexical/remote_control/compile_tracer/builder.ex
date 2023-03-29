@@ -1,0 +1,103 @@
+defmodule Lexical.CompileTracer.Builder do
+  def build_module_info(module, file, line) do
+    defs =
+      for {name, arity} <- Module.definitions_in(module) do
+        def_info = apply(Module, :get_definition, [module, {name, arity}])
+        {{name, arity}, build_def_info(def_info)}
+      end
+
+    attributes =
+      for name <- apply(Module, :attributes_in, [module]) do
+        {name, Module.get_attribute(module, name)}
+      end
+
+    %{
+      file: file,
+      defs: fill_range(defs, file),
+      attributes: attributes,
+      range: find_module_range(file, line),
+      line: line
+    }
+  end
+
+  def build_def_info({:v1, def_kind, meta_1, clauses}) do
+    clauses =
+      for {meta_2, arguments, guards, _body} <- clauses do
+        %{
+          arguments: arguments,
+          guards: guards,
+          meta: meta_2
+        }
+      end
+
+    %{
+      kind: def_kind,
+      clauses: clauses,
+      meta: meta_1,
+      range: nil
+    }
+  end
+
+  defp find_module_range(file, line) do
+    # Fill the range of the module name.
+    ast = Code.string_to_quoted!(File.read!(file), columns: true)
+    {_ast, acc} = Macro.prewalk(ast, %{line: line}, &put_module_range/2)
+    acc.range
+  end
+
+  defp fill_range(defs, file) do
+    # Fill the range of each def name in the module.
+    defs_map =
+      for {{name, _arity}, %{kind: kind, meta: [line: line]}} = infos <- defs,
+          into: %{} do
+        # we use kind, name and line to distinguish between different node
+        {{kind, name, line}, infos}
+      end
+
+    ast = Code.string_to_quoted!(File.read!(file), columns: true)
+    {_ast, new_defs_map} = Macro.prewalk(ast, defs_map, &put_def_range/2)
+    new_defs_map |> Map.values() |> Enum.sort_by(&elem(&1, 1).meta[:line])
+  end
+
+  @kind [:def, :defp, :defmacro, :defmacrop]
+  defp put_def_range(
+         {def_kind, _, [{def_name, [line: line, column: column], _} | _]} = node,
+         acc
+       )
+       when def_kind in @kind do
+    {fun, info} = Map.get(acc, {def_kind, def_name, line})
+    info = %{info | range: to_range(line, column, def_name)}
+    acc = %{acc | {def_kind, def_name, line} => {fun, info}}
+    {node, acc}
+  end
+
+  defp put_def_range(node, acc) do
+    {node, acc}
+  end
+
+  defp put_module_range(
+         {:defmodule, _, [{:__aliases__, [line: line, column: column], module_path} | _]} = node,
+         %{line: line} = acc
+       ) do
+    range = to_range(line, column, Enum.join(module_path, "."))
+    {node, Map.put(acc, :range, range)}
+  end
+
+  defp put_module_range(node, acc) do
+    {node, acc}
+  end
+
+  defp to_range(line, column, name) when is_atom(name) do
+    name_length = Atom.to_string(name)
+    to_range(line, column, name_length)
+  end
+
+  defp to_range(line, column, name) do
+    name_length = String.length(name)
+    # TODO: to Sourcefile.Range
+    %{
+      start: %{line: line, character: column},
+      end: %{line: line, character: column + name_length}
+    }
+  end
+end

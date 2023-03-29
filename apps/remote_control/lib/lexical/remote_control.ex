@@ -44,7 +44,8 @@ defmodule Lexical.RemoteControl do
              project_listener,
              remote_control_config
            ]),
-         :ok <- ensure_apps_started(node, apps_to_start) do
+         :ok <- ensure_apps_started(node, apps_to_start),
+         :ok <- :rpc.call(node, RemoteControl.CompileTracer, :set_project_dir, [Project.root_path(project)]) do
       {:ok, node}
     end
   end
