@@ -33,6 +33,12 @@ defmodule Lexical.Server.Project.Node do
     :"#{Project.name(project)}::node"
   end
 
+  def node_name(%Project{} = project) do
+    project
+    |> name()
+    |> GenServer.call(:node_name)
+  end
+
   def trigger_build(%Project{} = project) do
     project
     |> name()
@@ -54,6 +60,11 @@ defmodule Lexical.Server.Project.Node do
   def handle_continue(:trigger_build, %State{} = state) do
     RemoteControl.Api.schedule_compile(state.project, true)
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_call(:node_name, _from, %State{} = state) do
+    {:reply, state.node, state}
   end
 
   @impl GenServer
