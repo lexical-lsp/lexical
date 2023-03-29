@@ -122,6 +122,14 @@ defmodule Lexical.RemoteControl.Completion.Result do
     end
   end
 
+  defmodule MixTask do
+    defstruct [:full_name, :metadata, :name, :subtype, :summary, :type]
+
+    def new(%{} = elixir_sense_map) do
+      struct(__MODULE__, elixir_sense_map)
+    end
+  end
+
   def from_elixir_sense(%{type: :module, subtype: nil} = elixir_sense_map) do
     Module.new(elixir_sense_map)
   end
@@ -140,6 +148,10 @@ defmodule Lexical.RemoteControl.Completion.Result do
 
   def from_elixir_sense(%{type: :module, subtype: :protocol} = elixir_sense_map) do
     Protocol.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(%{type: :module, subtype: :task} = elixir_sense_map) do
+    MixTask.new(elixir_sense_map)
   end
 
   def from_elixir_sense(%{type: :function} = elixir_sense_map) do
