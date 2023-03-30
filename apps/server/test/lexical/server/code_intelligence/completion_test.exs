@@ -30,7 +30,9 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
 
   def complete(project, text, trigger_character \\ nil) do
     {line, column} = cursor_position(text)
-    [text, _] = String.split(text, "|")
+
+    text = strip_cursor(text)
+
     root_path = Project.root_path(project)
     file_path = Path.join([root_path, "lib", "file.ex"])
     document = SourceFile.new("file://#{file_path}", text, 0)
@@ -728,6 +730,17 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert completion.kind == :struct
     end
 
+    test "should complete, but not add curlies for aliases after %", %{project: project} do
+      assert [completion] =
+               complete(project, """
+               alias Project.Structs.User
+               def my_function(%Us|{})
+               """)
+
+      assert completion.insert_text == "User"
+      assert completion.kind == :struct
+    end
+
     test "should complete module aliases after %", %{project: project} do
       assert [completion] =
                complete(project, """
@@ -748,6 +761,18 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
                """)
 
       assert completion.insert_text == "User{}"
+      assert completion.kind == :struct
+    end
+
+    test "does not add curlies if they're already present in a non-aliased reference", %{
+      project: project
+    } do
+      assert [completion] =
+               complete(project, """
+               def my_function(%Project.Structs.U|{})
+               """)
+
+      assert completion.insert_text == "User"
       assert completion.kind == :struct
     end
 
@@ -861,6 +886,79 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert empty_completion.insert_text == "@doc false"
       assert empty_completion.label == "@doc"
       assert empty_completion.kind == :property
+    end
+  end
+
+  describe "function completions" do
+    test "arity 1 omits arguments if in a pipeline", %{project: project} do
+      {:ok, [completion, _]} =
+        project
+        |> complete("|> Enum.dedu|")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "dedup()$0"
+    end
+
+    test "arity > 1 omits the first argument if in a pipeline", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("|> Enum.chunk_b|")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "chunk_by(${1:fun})$0"
+    end
+
+    test "do not add parens if they're already present", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Enum.dedup_b|()")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "dedup_by$0"
+    end
+  end
+
+  describe "function captures" do
+    test "suggest modules", %{project: project} do
+      completion = """
+      Enum.map(1..10, &Inte|)
+      """
+
+      {:ok, completion} =
+        project
+        |> complete(completion)
+        |> fetch_completion(kind: :module)
+
+      assert completion.label == "Integer"
+    end
+
+    test "of arity 1 are suggested with /1", %{project: project} do
+      completion = """
+      Enum.map(1..10, &Integer.to_|)
+      """
+
+      completions = complete(project, completion)
+      arity_one_completions = Enum.filter(completions, &String.ends_with?(&1.sort_text, "/1"))
+
+      Enum.each(arity_one_completions, fn completion ->
+        assert String.ends_with?(completion.insert_text, "/1$0")
+      end)
+    end
+
+    test "arity > 1 provides a snippet with parens and commas", %{project: project} do
+      completion = """
+      Enum.map(1..10, Enum.reduce_w|)
+      """
+
+      {:ok, completion} =
+        project
+        |> complete(completion)
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text ==
+               "reduce_while(${1:enumerable}, ${2:acc}, ${3:fun})$0"
     end
   end
 end
