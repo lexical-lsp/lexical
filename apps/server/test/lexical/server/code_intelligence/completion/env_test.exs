@@ -38,6 +38,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
       assert Completion.Env.struct_reference?(env)
     end
 
+    test "is true if the reference is for %__MOD in a function definition " do
+      env = new_env("def my_fn(%__MOD")
+      assert Completion.Env.struct_reference?(env)
+    end
+
+    test "is false if the reference is for %__MOC in a function definition" do
+      env = new_env("def my_fn(%__MOC)")
+      refute Completion.Env.struct_reference?(env)
+    end
+
     test "is false if a module reference lacks a %" do
       env = new_env("def my_function(__|)")
       refute Completion.Env.struct_reference?(env)

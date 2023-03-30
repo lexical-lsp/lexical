@@ -799,6 +799,24 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert completion.kind == :struct
     end
 
+    test "it should complete module structs after characters are typed", %{project: project} do
+      completion = """
+      defmodule NewStruct do
+        defstruct [:name, :value]
+
+        def my_function(%__MO|)
+      """
+
+      assert {:ok, completion} =
+               project
+               |> complete(completion)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.label == "%__MODULE__{}"
+      assert completion.detail == "%__MODULE__{}"
+      assert completion.kind == :struct
+    end
+
     test "can be aliased", %{project: project} do
       assert [completion] = complete(project, "alias Project.Structs.A|")
 
