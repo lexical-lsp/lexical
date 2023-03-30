@@ -95,12 +95,17 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
       Logger.warn("No call for #{inspect(context)}")
     end
 
-    if is_nil(def_info) do
-      Logger.warn("Can not find call for #{inspect(context)}")
-    end
+    def_info =
+      if not is_nil(call) && is_nil(def_info) do
+        {m, f, a} = call.callee
+        # for default arity
+        get_def_info_by_mfa(project, {m, f, a + 1})
+      else
+        def_info
+      end
 
-    if not is_nil(call) && is_nil(def_info) do
-      Logger.warn("Found call but no def info for #{inspect(call)}")
+    if is_nil(def_info) do
+      Logger.warn("No def info for #{inspect(call.callee)}")
     end
 
     def_info &&
