@@ -19,7 +19,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
         {pos.line + 1, pos.character + 1}
       )
 
-    case to_response(request.id, maybe_location, source_file) do
+    case to_response(request.id, maybe_location) do
       {:ok, response} ->
         {:reply, response}
 
@@ -29,14 +29,15 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
     end
   end
 
-  defp to_response(request_id, nil, _source_file) do
+  defp to_response(request_id, nil) do
     {:ok, Responses.GotoDefinition.new(request_id, nil)}
   end
 
-  defp to_response(request_id, location, %SourceFile{} = source_file) do
+  defp to_response(request_id, location) do
     %{range: range, uri: uri} = location
 
-    with {:ok, ls_range} <- Ranged.Lsp.from_native(range, source_file) do
+    with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
+         {:ok, ls_range} <- Ranged.Lsp.from_native(range, source_file) do
       location = Location.new(uri: uri, range: ls_range)
       {:ok, Responses.GotoDefinition.new(request_id, location)}
     end
