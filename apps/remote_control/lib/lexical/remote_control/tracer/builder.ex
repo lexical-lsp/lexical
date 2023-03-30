@@ -73,10 +73,33 @@ defmodule Lexical.RemoteControl.Tracer.Builder do
 
   @kind [:def, :defp, :defmacro, :defmacrop]
   defp put_def_range(
+         {def_kind, _,
+          [
+            {:when, _,
+             [
+               {def_name, [line: line, column: column], _} | _
+             ]}
+            | _
+          ]} = node,
+         acc
+       )
+       when def_kind in @kind do
+    do_put_def_range(node, acc, def_kind, def_name, line, column)
+  end
+
+  defp put_def_range(
          {def_kind, _, [{def_name, [line: line, column: column], _} | _]} = node,
          acc
        )
        when def_kind in @kind do
+    do_put_def_range(node, acc, def_kind, def_name, line, column)
+  end
+
+  defp put_def_range(node, acc) do
+    {node, acc}
+  end
+
+  defp do_put_def_range(node, acc, def_kind, def_name, line, column) do
     result = Map.get(acc, {def_kind, def_name, line})
 
     case result do
@@ -87,10 +110,6 @@ defmodule Lexical.RemoteControl.Tracer.Builder do
       _ ->
         {node, acc}
     end
-  end
-
-  defp put_def_range(node, acc) do
-    {node, acc}
   end
 
   defp put_module_range(

@@ -64,7 +64,11 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
 
     module_info = get_moudle_info_by_name(project, real_module)
 
-    module_info && module_info.range &&
+    if is_nil(module_info) do
+      Logger.warn("No module info for #{inspect(real_module)}")
+    end
+
+    module_info &&
       %{
         range: to_source_file_range(module_info.range),
         uri: SourceFilePath.ensure_uri(module_info.file)
@@ -86,11 +90,20 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
         get_def_info_by_mfa(project, call.callee)
       end
 
-    if call && is_nil(def_info) do
-      Logger.warn("No def info for #{inspect(call)}")
+    # NOTE: Logging for debugging
+    if is_nil(call) do
+      Logger.warn("No call for #{inspect(context)}")
     end
 
-    def_info && def_info.range &&
+    if is_nil(def_info) do
+      Logger.warn("Can not find call for #{inspect(context)}")
+    end
+
+    if not is_nil(call) && is_nil(def_info) do
+      Logger.warn("Found call but no def info for #{inspect(call)}")
+    end
+
+    def_info &&
       %{
         range: to_source_file_range(def_info.range),
         uri: SourceFilePath.ensure_uri(def_info.file)
