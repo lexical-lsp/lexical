@@ -57,7 +57,6 @@ defmodule Lexical.RemoteControl.Tracer.Builder do
     Map.get(acc, :range)
   end
 
-
   defp fill_range(text, defs) do
     # Fill the range of each def name in the module.
     defs_map =
@@ -112,11 +111,12 @@ defmodule Lexical.RemoteControl.Tracer.Builder do
   end
 
   defp to_range(line, column, name) do
+    # NOTE: Since the modules that the builder depends are 1-based, so here is 1-based
     name_length = String.length(name)
-    # TODO: to Sourcefile.Range
+
     %{
-      start: %{line: line, character: column},
-      end: %{line: line, character: column + name_length}
+      start: %{line: line, column: column},
+      end: %{line: line, column: column + name_length}
     }
   end
 end

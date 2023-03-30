@@ -36,6 +36,7 @@ defmodule Lexical.RemoteControl.MixProject do
       {:common, in_umbrella: true},
       {:common_protocol, in_umbrella: true},
       {:path_glob, "~> 0.2", optional: true},
+      {:nimble_parsec, "~> 1.2.3"},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git", runtime: false},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false}
     ]

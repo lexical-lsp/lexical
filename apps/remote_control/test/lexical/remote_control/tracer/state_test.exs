@@ -44,7 +44,7 @@ defmodule Lexical.RemoteControl.Tracer.StateTest do
       Code.compile_file(file)
 
       assert State.get_module_range_by_file_and_line(file, 2) ==
-               %{end: %{character: 50, line: 1}, start: %{character: 11, line: 1}}
+               %{end: %{column: 50, line: 1}, start: %{column: 11, line: 1}}
     end
 
     test "handles multiple modules", %{project: project} do
@@ -52,13 +52,13 @@ defmodule Lexical.RemoteControl.Tracer.StateTest do
       Code.compile_file(file)
 
       assert State.get_module_range_by_file_and_line(file, 2) ==
-               %{end: %{character: 53, line: 1}, start: %{character: 11, line: 1}}
+               %{end: %{column: 53, line: 1}, start: %{column: 11, line: 1}}
 
       assert State.get_module_range_by_file_and_line(file, 6) ==
-               %{end: %{character: 53, line: 5}, start: %{character: 11, line: 5}}
+               %{end: %{column: 53, line: 5}, start: %{column: 11, line: 5}}
 
       assert State.get_module_range_by_file_and_line(file, 11) ==
-               %{end: %{character: 23, line: 10}, start: %{character: 13, line: 10}}
+               %{end: %{column: 23, line: 10}, start: %{column: 13, line: 10}}
     end
   end
 
@@ -131,7 +131,7 @@ defmodule Lexical.RemoteControl.Tracer.StateTest do
       Code.compile_file(file)
 
       assert %{
-               range: %{end: %{character: 21, line: 8}, start: %{character: 7, line: 8}}
+               range: %{end: %{column: 21, line: 8}, start: %{column: 7, line: 8}}
              } =
                State.get_def_info_by_mfa(
                  {CompilationTracers.ReferencesReferenced, :referenced_fun, 0}
