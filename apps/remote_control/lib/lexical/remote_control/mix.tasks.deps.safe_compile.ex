@@ -97,8 +97,8 @@ defmodule Mix.Tasks.Deps.SafeCompile do
 
             true ->
               shell.error(
-                "Could not compile #{inspect(app)}, no \"mix.exs\", \"rebar.config\" or \"Makefile\" " <>
-                  "(pass :compile as an option to customize compilation, set it to \"false\" to do nothing)"
+                ~s[Could not compile #{inspect(app)}, no "mix.exs", "rebar.config" or "Makefile"] <>
+                  ~s[pass :compile as an option to customize compilation, set it to "false" to do nothing]
               )
 
               false
@@ -370,8 +370,8 @@ defmodule Mix.Tasks.Deps.SafeCompile do
         "change the arguments to Mix.install/2 to try another version"
     else
       "Errors may have been logged above. You can recompile this dependency with " <>
-        "\"mix deps.compile #{app}\", update it with \"mix deps.update #{app}\" or " <>
-        "clean it with \"mix deps.clean #{app}\""
+        ~s["mix deps.compile #{app}", update it with "mix deps.update #{app}" or ] <>
+        ~s[clean it with "mix deps.clean #{app}"]
     end
   end
 end

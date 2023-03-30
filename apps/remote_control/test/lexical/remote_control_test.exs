@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControlTest do
   alias Lexical.Project
-  alias Lexical.SourceFile
   alias Lexical.RemoteControl
+  alias Lexical.SourceFile
 
   use ExUnit.Case
   use Testing.EventualAssertions
@@ -33,14 +33,16 @@ defmodule Lexical.RemoteControlTest do
 
       start_project(subapp_project)
 
-      assert_eventually remote_control_cwd(subapp_project) == Project.root_path(parent_project), 250
+      assert_eventually remote_control_cwd(subapp_project) == Project.root_path(parent_project),
+                        250
     end
 
     test "keeps the current directory if it's started in the parent app" do
       parent_project = project(:umbrella)
       start_project(parent_project)
 
-      assert_eventually remote_control_cwd(parent_project) == Project.root_path(parent_project), 250
+      assert_eventually remote_control_cwd(parent_project) == Project.root_path(parent_project),
+                        250
     end
   end
 end

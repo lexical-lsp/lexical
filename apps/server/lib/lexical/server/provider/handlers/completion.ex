@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Provider.Handlers.Completion do
-  alias Lexical.Server.Provider.Env
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Server.CodeIntelligence
+  alias Lexical.Server.Provider.Env
 
   require Logger
 

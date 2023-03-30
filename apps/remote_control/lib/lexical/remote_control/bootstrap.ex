@@ -6,8 +6,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
   the project's code paths, which are then added to the code paths from the language server. At this
   point, it's safe to start the project, as we should have all the code present to compile the system.
   """
-  alias Lexical.RemoteControl
   alias Lexical.Project
+  alias Lexical.RemoteControl
   require Logger
 
   def init(%Project{} = project, listener_pid, remote_control_config) do
@@ -30,7 +30,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
     end
   end
 
-  defp hex_path() do
+  defp hex_path do
     hex_ebin = Path.join(["hex-*", "**", "ebin"])
 
     [hex_path] =

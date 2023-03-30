@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Provider.QueueTest do
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Provider.Env
-  alias Lexical.Server.Provider.Queue
   alias Lexical.Server.Provider.Handlers
+  alias Lexical.Server.Provider.Queue
   alias Lexical.Server.Transport
 
   use ExUnit.Case

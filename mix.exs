@@ -86,6 +86,7 @@ defmodule Lexical.MixProject do
   defp aliases do
     [
       compile: "compile --docs --debug-info",
+      credo: "credo --strict",
       docs: "docs --html",
       test: "test --no-start"
     ]

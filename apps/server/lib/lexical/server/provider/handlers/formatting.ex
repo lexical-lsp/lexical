@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Provider.Handlers.Formatting do
-  alias Lexical.Server.Provider.Env
-  alias Lexical.RemoteControl
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
+  alias Lexical.RemoteControl
+  alias Lexical.Server.Provider.Env
 
   require Logger
 

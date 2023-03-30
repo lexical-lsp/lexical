@@ -3,9 +3,9 @@ defmodule Lexical.Protocol.Proto.Response do
 
   alias Lexical.Protocol.Proto.Macros.{
     Access,
+    Meta,
     Struct,
-    Typespec,
-    Meta
+    Typespec
   }
 
   defmacro defresponse(response_type) do

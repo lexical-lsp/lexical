@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
-  alias Lexical.SourceFile
   alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl.CodeMod.Ast
   alias Lexical.RemoteControl.CodeMod.Diff
+  alias Lexical.SourceFile
 
   @spec text_edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, [TextEdit.t()]} | :error

@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.SourceFile.Position
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Position
 
   defstruct [:project, :document, :context, :prefix, :suffix, :position, :words]
 

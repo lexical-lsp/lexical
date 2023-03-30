@@ -1,14 +1,14 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
-  alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.Protocol.Types.Completion.Context
+  alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.SourceFile
-  alias Lexical.Test.Fixtures
   alias Lexical.Test.CursorSupport
+  alias Lexical.Test.Fixtures
 
   use ExUnit.Case
-  import Fixtures
-  import CursorSupport
   import Completion.Env
+  import CursorSupport
+  import Fixtures
 
   def new_env(text) do
     project = project()

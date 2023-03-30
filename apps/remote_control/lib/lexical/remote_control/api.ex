@@ -1,10 +1,10 @@
 defmodule Lexical.RemoteControl.Api do
-  alias Lexical.SourceFile.Position
-  alias Lexical.SourceFile
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod
+  alias Lexical.SourceFile
+  alias Lexical.SourceFile.Position
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build

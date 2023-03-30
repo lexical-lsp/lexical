@@ -2,8 +2,8 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   alias Lexical.Project
   alias Lexical.Protocol.Types.Diagnostic
   alias Lexical.Protocol.Types.Range
-  alias Lexical.SourceFile
   alias Lexical.Server.Project.Diagnostics.State
+  alias Lexical.SourceFile
   alias Mix.Task.Compiler
 
   import Lexical.Test.Fixtures

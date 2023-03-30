@@ -1,6 +1,6 @@
 defmodule Lexical.Protocol.JsonRpc do
-  alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Requests
 
   @crlf "\r\n"
 

@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Project.DispatchTest do
   alias Lexical.Project
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.Server.Project.Dispatch
 
   import Messages
   import Lexical.Test.Fixtures
