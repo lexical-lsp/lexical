@@ -16,8 +16,8 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
     context = Code.Fragment.surround_context(text, {line, column})
 
     case call_kind(context) do
-      # :function -> function_definition(context, source_file)
       :module -> module_definition(project, context, source_file, {line, column})
+      :function -> function_definition(project, context, source_file)
       _ -> nil
     end
   end
@@ -47,7 +47,6 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
        when kind in [:struct, :alias] do
     {:ok, fetched} = SourceFile.fetch_line_at(source_file, line - 1)
     {:line, line_text, _, _, _} = fetched
-    Logger.info("Line text: #{inspect(line_text)}")
     actual_modules = ModuleParser.modules_at_cursor(line_text, column)
 
     aliases = get_alias_mapping_by_file_and_line(project, source_file.path, line)
@@ -63,15 +62,55 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
 
     real_module = to_module(real_modules)
 
-    Logger.info("Real module: #{inspect(real_module)}")
-
     module_info = get_moudle_info_by_name(project, real_module)
 
-    module_info.range &&
+    module_info && module_info.range &&
       %{
         range: to_source_file_range(module_info.range),
         uri: SourceFilePath.ensure_uri(module_info.file)
       }
+  end
+
+  defp function_definition(project, context, source_file) do
+    # Tracer already has the call info
+    # We just need to get the call info from the context position
+    position = function_call_position(context)
+
+    call =
+      if position do
+        get_call_by_file_and_position(project, source_file.path, position)
+      end
+
+    def_info =
+      if call do
+        get_def_info_by_mfa(project, call.callee)
+      end
+
+    if call && is_nil(def_info) do
+      Logger.warn("No def info for #{inspect(call)}")
+    end
+
+    def_info && def_info.range &&
+      %{
+        range: to_source_file_range(def_info.range),
+        uri: SourceFilePath.ensure_uri(def_info.file)
+      }
+  end
+
+  defp function_call_position(%{context: {call_kind, _call}, begin: begin})
+       when call_kind in [:local_call, :local_or_var] do
+    begin
+  end
+
+  defp function_call_position(%{context: {:dot, {:alias, _alias}, call}, end: end_}) do
+    {elem(end_, 0), elem(end_, 1) - length(call)}
+  end
+
+  defp to_source_file_range(range) do
+    %Range{
+      start: %Position{line: range.start.line - 1, character: range.start.column - 1},
+      end: %Position{line: range.end.line - 1, character: range.end.column - 1}
+    }
   end
 
   defp to_module(modules) when is_list(modules) do
@@ -94,37 +133,11 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
     RemoteControl.call(project, State, :get_moudle_info_by_name, [name])
   end
 
-  #
-  # defp function_definition(context, file) do
-  #   # Tracer already has the call info
-  #   # We just need to get the call info from the context position
-  #   position = function_call_position(context)
-  #
-  #   call =
-  #     if position do
-  #       State.get_call_by_file_and_position(file, position)
-  #     end
-  #
-  #   if call do
-  #     State.get_def_info_by_mfa(call.callee)
-  #   end
-  # end
-  #
-  # defp function_call_position(%{context: {call_kind, _call}, begin: begin})
-  #      when call_kind in [:local_call, :local_or_var] do
-  #   begin
-  # end
-  #
-  # defp function_call_position(%{context: {:dot, {:alias, _alias}, call}, end: end_}) do
-  #   {elem(end_, 0), elem(end_, 1) - length(call)}
-  # end
-  #
-  # defp function_call_position(_), do: nil
+  defp get_call_by_file_and_position(project, file, position) do
+    RemoteControl.call(project, State, :get_call_by_file_and_position, [file, position])
+  end
 
-  defp to_source_file_range(range) do
-    %Range{
-      start: %Position{line: range.start.line - 1, character: range.start.column - 1},
-      end: %Position{line: range.end.line - 1, character: range.end.column - 1}
-    }
+  defp get_def_info_by_mfa(project, mfa) do
+    RemoteControl.call(project, State, :get_def_info_by_mfa, [mfa])
   end
 end
