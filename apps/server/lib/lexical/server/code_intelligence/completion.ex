@@ -117,12 +117,39 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     true
   end
 
-  defp translate_completion(%Result.Function{} = function, _env) do
+  defp translate_completion(%Result.Function{} = function, %Env{} = env) do
     label = "#{function.name}/#{function.arity}"
     arg_detail = Enum.join(function.argument_names, ",")
     detail = "#{function.origin}.#{label}(#{arg_detail})"
+    add_args? = not String.contains?(env.suffix, "(")
 
-    insert_text = "#{function.name}($0)"
+    insert_text =
+      cond do
+        function.arity == 1 and Env.function_capture?(env) ->
+          "#{function.name}/1$0"
+
+        add_args? ->
+          argument_names =
+            if Env.pipe?(env) do
+              tl(function.argument_names)
+            else
+              function.argument_names
+            end
+
+          arg_templates =
+            argument_names
+            |> Enum.with_index()
+            |> Enum.map_join(", ", fn {name, index} ->
+              escaped_name = String.replace(name, "\\", "\\\\")
+              "${#{index + 1}:#{escaped_name}}"
+            end)
+
+          "#{function.name}(#{arg_templates})$0"
+
+        true ->
+          "#{function.name}$0"
+      end
+
     sort_text = String.replace(label, "__", "")
 
     tags =
@@ -143,20 +170,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
   defp translate_completion(%result_struct{} = module, %Env{} = env)
        when result_struct in [Result.Module, Result.Behaviour] do
-    detail =
-      case module.summary do
-        nil -> module.name
-        "" -> module.name
-        other -> other
-      end
-
+    detail = fallback(module.summary, module.name)
     struct_reference? = Env.struct_reference?(env)
+    defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
+    add_curlies? = defines_struct? and not String.contains?(env.suffix, "{")
 
     {insert_text, detail_label} =
       cond do
-        struct_reference? and Intelligence.defines_struct?(env.project, module.full_name) ->
-          insert_text = module.name <> "{}"
-          {insert_text, " (Struct)"}
+        struct_reference? and defines_struct? ->
+          {module.name, " (Struct)"}
 
         struct_reference? and Intelligence.child_defines_struct?(env.project, module.full_name) ->
           insert_text = module.name
@@ -166,8 +188,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           {module.name, ""}
       end
 
+    insert_text =
+      if add_curlies? do
+        insert_text <> "{}"
+      else
+        insert_text
+      end
+
     completion_kind =
-      if Intelligence.defines_struct?(env.project, module.full_name) do
+      if defines_struct? do
         :struct
       else
         :module
@@ -252,17 +281,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     )
   end
 
-  defp translate_completion(%Result.Struct{} = struct, env) do
+  defp translate_completion(%Result.Struct{} = struct, %Env{} = env) do
+    struct_reference? = Env.struct_reference?(env)
+    add_curlies? = struct_reference? and not String.contains?(env.suffix, "{")
+
     insert_text =
       cond do
-        Env.struct_reference?(env) and not String.contains?(env.prefix, ".") ->
-          "%#{struct.name}{}"
+        struct_reference? and not String.contains?(env.prefix, ".") ->
+          "%#{struct.name}"
 
-        Env.struct_reference?(env) ->
-          "#{struct.name}{}"
+        struct_reference? ->
+          "#{struct.name}"
 
         true ->
           struct.name
+      end
+
+    insert_text =
+      if add_curlies? do
+        insert_text <> "{}"
+      else
+        insert_text
       end
 
     Completion.Item.new(
@@ -797,4 +836,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   defp boost(text, _) do
     boost(text, 0)
   end
+
+  defp fallback(nil, fallback), do: fallback
+  defp fallback("", fallback), do: fallback
+  defp fallback(detail, _), do: detail
 end

@@ -2,15 +2,53 @@ defmodule Lexical.Test.CursorSupport do
   def cursor_position(text) do
     text
     |> String.graphemes()
+    |> Enum.chunk_every(2, 1, [""])
     |> Enum.reduce_while({0, 0}, fn
-      "|", line_and_column ->
-        {:halt, line_and_column}
+      ["|", ">"], {line, column} ->
+        {:cont, {line, column + 1}}
 
-      "\n", {line, _} ->
+      ["|", _], position ->
+        {:halt, position}
+
+      ["\n", _], {line, _column} ->
         {:cont, {line + 1, 0}}
 
       _, {line, column} ->
         {:cont, {line, column + 1}}
     end)
+  end
+
+  def context_before_cursor(text) do
+    text
+    |> String.graphemes()
+    |> Enum.chunk_every(2, 1, [""])
+    |> Enum.reduce_while([], fn
+      ["|", ">"], iodata ->
+        {:cont, [iodata, "|"]}
+
+      ["|", _lookahead], iodata ->
+        {:halt, iodata}
+
+      [c, _], iodata ->
+        {:cont, [iodata, c]}
+    end)
+    |> IO.iodata_to_binary()
+  end
+
+  def strip_cursor(text) do
+    text
+    |> String.graphemes()
+    |> Enum.chunk_every(2, 1, [""])
+    |> Enum.reduce([], fn
+      ["|", ">"], iodata ->
+        [iodata, "|"]
+
+      ["|", _lookahead], iodata ->
+        iodata
+
+      [c, _], iodata ->
+        [iodata, c]
+    end)
+    |> IO.iodata_to_binary()
   end
 end

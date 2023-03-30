@@ -35,24 +35,41 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  def function_capture?(%__MODULE__{} = env) do
+    case cursor_context(env) do
+      {:ok, line, {:alias, module_name}} ->
+        # &Enum|
+        String.contains?(line, List.to_string([?& | module_name]))
+
+      {:ok, line, {:dot, {:alias, module_name}, _}} ->
+        # &Enum.f|
+        String.contains?(line, List.to_string([?& | module_name]))
+
+      _ ->
+        false
+    end
+  end
+
   def struct_reference?(%__MODULE__{} = env) do
-    case SourceFile.fetch_text_at(env.document, env.position.line) do
-      {:ok, line} ->
-        fragment = String.slice(line, 0..(env.position.character - 1))
+    case cursor_context(env) do
+      {:ok, _line, {:struct, _}} ->
+        true
 
-        case Code.Fragment.cursor_context(fragment) do
-          {:struct, _} ->
-            true
+      {:ok, line, {:local_or_var, [?_, ?_ | rest]}} ->
+        # a reference to `%__MODULE`, often in a function head, as in
+        # def foo(%__)
+        String.starts_with?("MODULE", List.to_string(rest)) and String.contains?(line, "%__")
 
-          {:local_or_var, [?_, ?_ | rest]} ->
-            # a reference to `%__MODULE`, often in a function head, as in
-            # def foo(%__)
-            String.starts_with?("MODULE", List.to_string(rest)) and String.contains?(line, "%__")
+      _ ->
+        false
+    end
+  end
 
-          _ ->
-            false
-        end
-
+  def pipe?(%__MODULE__{} = env) do
+    with {:ok, line, context} <- surround_context(env),
+         {:ok, {:operator, '|>'}} <- previous_surround_context(line, context) do
+      true
+    else
       _ ->
         false
     end
@@ -68,5 +85,38 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   def last_word(%__MODULE__{} = env) do
     List.last(env.words)
+  end
+
+  defp cursor_context(%__MODULE__{} = env) do
+    with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line) do
+      fragment = String.slice(line, 0..(env.position.character - 1))
+      {:ok, line, Code.Fragment.cursor_context(fragment)}
+    end
+  end
+
+  defp surround_context(%__MODULE__{} = env) do
+    with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line),
+         %{context: _} = context <-
+           Code.Fragment.surround_context(line, {1, env.position.character}) do
+      {:ok, line, context}
+    end
+  end
+
+  defp previous_surround_context(line, %{begin: {1, column}}) do
+    previous_surround_context(line, column)
+  end
+
+  defp previous_surround_context(_line, 1) do
+    :error
+  end
+
+  defp previous_surround_context(line, character) when is_integer(character) do
+    case Code.Fragment.surround_context(line, {1, character - 1}) do
+      :none ->
+        previous_surround_context(line, character - 1)
+
+      %{context: context} ->
+        {:ok, context}
+    end
   end
 end
