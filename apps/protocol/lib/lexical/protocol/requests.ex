@@ -39,6 +39,14 @@ defmodule Lexical.Protocol.Requests do
       text_document: Types.TextDocument.Identifier
   end
 
+  defmodule GoToDefinition do
+    use Proto
+
+    defrequest "textDocument/definition", :exclusive,
+      text_document: Types.TextDocument.Identifier,
+      position: Types.Position
+  end
+
   defmodule Formatting do
     use Proto
 

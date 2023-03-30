@@ -18,6 +18,14 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, CodeMod.Format, :text_edits, [project, source_file])
   end
 
+  def definition(%Project{} = project, %SourceFile{} = source_file, position) do
+    RemoteControl.call(project, Lexical.RemoteControl.Tracer.Definition, :definition, [
+      project,
+      source_file,
+      position
+    ])
+  end
+
   def replace_with_underscore(
         %Project{} = project,
         %SourceFile{} = source_file,

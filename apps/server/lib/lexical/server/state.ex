@@ -182,7 +182,8 @@ defmodule Lexical.Server.State do
         code_action_provider: code_action_options,
         completion_provider: completion_options,
         document_formatting_provider: true,
-        text_document_sync: sync_options
+        text_document_sync: sync_options,
+        definition_provider: true
       )
 
     result =

@@ -5,7 +5,6 @@ defmodule Lexical.RemoteControl.Tracer.DefinitionTest do
   alias Lexical.RemoteControl.Tracer.Definition
   alias Lexical.SourceFile.Store, as: SourceFileStore
   alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position
 
   import Messages
   import Lexical.Test.Fixtures
@@ -35,14 +34,12 @@ defmodule Lexical.RemoteControl.Tracer.DefinitionTest do
     {:ok, project: project}
   end
 
-  alias Lexical.RemoteControl.Tracer.State
-
   describe "module definition" do
     setup [:with_real_project]
 
     test "cursor at `__MODULE__`", %{project: project} do
       file = open_file(project, "lib/compilation_tracers/module_references_by_self.ex")
-      position = Position.new(1, 2)
+      position = {2, 3}
 
       assert_receive project_compiled(status: :success), 200
 
