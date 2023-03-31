@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Lexical.RemoteControl.Application, []}
+      mod: {module(), []}
     ]
   end
 
@@ -29,6 +29,14 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp elixirc_paths(_) do
     ~w(lib)
+  end
+
+  defp module do
+    if System.get_env("NAMESPACE") do
+      LXRelease.RemoteControl.Application
+    else
+      Lexical.RemoteControl.Application
+    end
   end
 
   defp deps do

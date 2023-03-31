@@ -59,7 +59,8 @@ defmodule Lexical.MixProject do
         include_erts: false,
         cookie: "lexical",
         rel_templates_path: "rel/deploy",
-        strip_beams: false
+        strip_beams: false,
+        steps: [&maybe_namespace/1, :assemble, &maybe_namespace_release/1]
       ],
       lexical_debug: [
         applications: [
@@ -83,8 +84,31 @@ defmodule Lexical.MixProject do
     ]
   end
 
+  defp maybe_namespace(%Mix.Release{} = release) do
+    if System.get_env("NAMESPACE") do
+      Mix.Task.run("namespace.beams", [release.path])
+    end
+
+    release
+  end
+
+  defp maybe_namespace_release(%Mix.Release{} = release) do
+    if System.get_env("NAMESPACE") do
+      Mix.Task.run("namespace.release", [release.path, release.version_path])
+    end
+
+    release
+  end
+
+  defp maybe_clean(_) do
+    if System.get_env("NAMESPACE") do
+      Mix.Task.run("clean")
+    end
+  end
+
   defp aliases do
     [
+      release: [&maybe_clean/1, "release", &maybe_clean/1],
       compile: "compile --docs --debug-info",
       credo: "credo --strict",
       docs: "docs --html",
