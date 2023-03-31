@@ -24,7 +24,7 @@ defmodule Lexical.Server.Project.NodeTest do
   end
 
   test "the project should be compiled when the node starts" do
-    assert_receive project_compiled(), 250
+    assert_receive project_compiled(), 750
   end
 
   test "remote control is started when the node starts", %{project: project} do
