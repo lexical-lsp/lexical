@@ -36,7 +36,7 @@ defmodule Mix.Tasks.Namespace do
       IO.write("Applying namespace: #{percent_complete} complete")
     end)
 
-    Mix.Shell.IO.info("\nNamspace applied. Generating apps")
+    Mix.Shell.IO.info("\nNamespace applied. Generating apps")
     Mix.Task.rerun("compile.app")
   end
 
