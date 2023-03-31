@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Namespace do
+defmodule Mix.Tasks.Namespace.Beams do
   alias Mix.Tasks.Namespace.Transform
 
   use Mix.Task

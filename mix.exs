@@ -86,7 +86,7 @@ defmodule Lexical.MixProject do
 
   defp maybe_namespace(%Mix.Release{} = release) do
     if System.get_env("NAMESPACE") do
-      Mix.Task.run("namespace", [release.path])
+      Mix.Task.run("namespace.beams", [release.path])
     end
 
     release
@@ -94,16 +94,21 @@ defmodule Lexical.MixProject do
 
   defp maybe_namespace_release(%Mix.Release{} = release) do
     if System.get_env("NAMESPACE") do
-      vsn = release.applications[:remote_control][:vsn]
-      remote_control_ebin = Path.join([release.path, "lib", "remote_control-#{vsn}", "ebin"])
-      Mix.Task.run("namespace.release", [release.version_path, remote_control_ebin])
+      Mix.Task.run("namespace.release", [release.path, release.version_path])
     end
 
     release
   end
 
+  defp maybe_clean(_) do
+    if System.get_env("NAMESPACE") do
+      Mix.Task.run("clean")
+    end
+  end
+
   defp aliases do
     [
+      release: [&maybe_clean/1, "release", &maybe_clean/1],
       compile: "compile --docs --debug-info",
       credo: "credo --strict",
       docs: "docs --html",
