@@ -60,7 +60,7 @@ defmodule Lexical.MixProject do
         cookie: "lexical",
         rel_templates_path: "rel/deploy",
         strip_beams: false,
-        steps: [&maybe_namespace/1, :assemble]
+        steps: [&maybe_namespace/1, :assemble, &maybe_namespace_release/1]
       ],
       lexical_debug: [
         applications: [
@@ -87,6 +87,16 @@ defmodule Lexical.MixProject do
   defp maybe_namespace(%Mix.Release{} = release) do
     if System.get_env("NAMESPACE") do
       Mix.Task.run("namespace", [release.path])
+    end
+
+    release
+  end
+
+  defp maybe_namespace_release(%Mix.Release{} = release) do
+    if System.get_env("NAMESPACE") do
+      vsn = release.applications[:remote_control][:vsn]
+      remote_control_ebin = Path.join([release.path, "lib", "remote_control-#{vsn}", "ebin"])
+      Mix.Task.run("namespace.release", [release.version_path, remote_control_ebin])
     end
 
     release
