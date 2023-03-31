@@ -104,10 +104,6 @@ defmodule Lexical.RemoteControl.Tracer.Definition do
         def_info
       end
 
-    if is_nil(def_info) do
-      Logger.warn("No def info for #{inspect(call.callee)}")
-    end
-
     def_info &&
       %{
         range: to_source_file_range(def_info.range),
