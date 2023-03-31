@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Namespace.Transform do
-  alias Mix.Tasks.Namespace.Code
   alias Mix.Tasks.Namespace.Abstract
+  alias Mix.Tasks.Namespace.Code
 
   def transform(path) do
     erlang_path = String.to_charlist(path)
