@@ -1,17 +1,23 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
+  alias Lexical.Completion.Environment
   alias Lexical.Project
-  alias Lexical.Protocol.Types.Completion
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
 
-  defstruct [:project, :document, :context, :prefix, :suffix, :position, :words]
+  defstruct [:project, :document, :prefix, :suffix, :position, :words]
 
-  def new(
-        %Project{} = project,
-        %SourceFile{} = document,
-        %Position{} = cursor_position,
-        %Completion.Context{} = context
-      ) do
+  @type t :: %__MODULE__{
+          project: Lexical.Project.t(),
+          document: Lexical.SourceFile.t(),
+          prefix: String.t(),
+          suffix: String.t(),
+          position: Lexical.SourceFile.Position.t(),
+          words: [String.t()]
+        }
+
+  @behaviour Environment
+
+  def new(%Project{} = project, %SourceFile{} = document, %Position{} = cursor_position) do
     case SourceFile.fetch_text_at(document, cursor_position.line) do
       {:ok, line} ->
         graphemes = String.graphemes(line)
@@ -26,8 +32,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
            prefix: prefix,
            suffix: suffix,
            position: cursor_position,
-           words: words,
-           context: context
+           words: words
          }}
 
       _ ->
@@ -35,6 +40,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def function_capture?(%__MODULE__{} = env) do
     case cursor_context(env) do
       {:ok, line, {:alias, module_name}} ->
@@ -50,6 +56,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def struct_reference?(%__MODULE__{} = env) do
     case cursor_context(env) do
       {:ok, _line, {:struct, _}} ->
@@ -65,6 +72,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def pipe?(%__MODULE__{} = env) do
     with {:ok, line, context} <- surround_context(env),
          {:ok, {:operator, '|>'}} <- previous_surround_context(line, context) do
@@ -75,6 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def empty?("") do
     true
   end
@@ -83,6 +92,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     String.trim(string) == ""
   end
 
+  @impl Environment
   def last_word(%__MODULE__{} = env) do
     List.last(env.words)
   end

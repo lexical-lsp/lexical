@@ -1,5 +1,4 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
-  alias Lexical.Protocol.Types.Completion.Context
   alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.SourceFile
   alias Lexical.Test.CursorSupport
@@ -18,7 +17,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     position = SourceFile.Position.new(line, column)
 
-    {:ok, env} = new(project, source_file, position, Context.new(trigger_kind: :invoked))
+    {:ok, env} = new(project, source_file, position)
 
     env
   end

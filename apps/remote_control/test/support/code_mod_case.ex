@@ -1,11 +1,12 @@
 defmodule Lexical.Test.CodeMod.Case do
   alias Lexical.SourceFile
+  alias Lexical.Test.CodeSigil
   use ExUnit.CaseTemplate
 
   using do
     quote do
       import Lexical.Test.Fixtures
-      import unquote(__MODULE__), only: [sigil_q: 2]
+      import unquote(CodeSigil), only: [sigil_q: 2]
 
       def apply_code_mod(_, _, _) do
         {:error, "You must implement apply_code_mod/3"}
@@ -32,16 +33,6 @@ defmodule Lexical.Test.CodeMod.Case do
     end
   end
 
-  def sigil_q(text, opts \\ []) do
-    ["", first | rest] = text |> String.split("\n")
-    base_indent = indent(first)
-    indent_length = String.length(base_indent)
-
-    [first | rest]
-    |> Enum.map_join("\n", &strip_leading_indent(&1, indent_length))
-    |> maybe_trim(opts)
-  end
-
   def apply_edits(original, text_edits, opts) do
     source_file = SourceFile.new("file:///file.ex", original, 0)
     {:ok, edited_source_file} = SourceFile.apply_content_changes(source_file, 1, text_edits)
@@ -52,35 +43,5 @@ defmodule Lexical.Test.CodeMod.Case do
     else
       edited_source
     end
-  end
-
-  defp maybe_trim(iodata, [?t]) do
-    iodata
-    |> IO.iodata_to_binary()
-    |> String.trim_trailing()
-  end
-
-  defp maybe_trim(iodata, _) do
-    IO.iodata_to_binary(iodata)
-  end
-
-  @indent_re ~r/^\s*/
-  defp indent(first_line) do
-    case Regex.scan(@indent_re, first_line) do
-      [[indent]] -> indent
-      _ -> ""
-    end
-  end
-
-  defp strip_leading_indent(s, 0) do
-    s
-  end
-
-  defp strip_leading_indent(<<" ", rest::binary>>, count) when count > 0 do
-    strip_leading_indent(rest, count - 1)
-  end
-
-  defp strip_leading_indent(s, _) do
-    s
   end
 end
