@@ -1,9 +1,9 @@
 defmodule Lexical.RemoteControl.CodeMod.Format do
-  alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.Project
   alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.SourceFile
 
   require Logger

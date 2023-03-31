@@ -1,10 +1,10 @@
 defmodule Lexical.Protocol.Proto.Macros.Message do
   alias Lexical.Protocol.Proto.Macros.{
     Access,
-    Struct,
+    Meta,
     Parse,
-    Typespec,
-    Meta
+    Struct,
+    Typespec
   }
 
   alias Lexical.SourceFile

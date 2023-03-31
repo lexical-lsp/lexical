@@ -2,8 +2,8 @@ defmodule Lexical.Protocol.ProtoTest do
   alias Lexical.Protocol.Proto
   alias Lexical.Protocol.Proto.Fixtures.LspProtocol
   alias Lexical.Protocol.Proto.LspTypes
-  alias Lexical.SourceFile
   alias Lexical.Protocol.Types
+  alias Lexical.SourceFile
 
   import LspProtocol
 

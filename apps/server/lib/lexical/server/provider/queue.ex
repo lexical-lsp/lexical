@@ -135,9 +135,9 @@ defmodule Lexical.Server.Provider.Queue do
     end
   end
 
-  alias Lexical.Server.Provider.Env
-  alias Lexical.Server.Configuration
   alias Lexical.Protocol.Requests
+  alias Lexical.Server.Configuration
+  alias Lexical.Server.Provider.Env
 
   use GenServer
 

@@ -8,13 +8,13 @@ defmodule Lexical.Protocol.Conversions do
   are the same in both utf-8 and utf-16, since they reference characters and not bytes.
   """
   alias Lexical.CodeUnit
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Line
-  alias Lexical.SourceFile.Document
-  alias Lexical.SourceFile.Range, as: ElixirRange
-  alias Lexical.SourceFile.Position, as: ElixirPosition
   alias Lexical.Protocol.Types.Position, as: LSPosition
   alias Lexical.Protocol.Types.Range, as: LSRange
+  alias Lexical.SourceFile
+  alias Lexical.SourceFile.Document
+  alias Lexical.SourceFile.Line
+  alias Lexical.SourceFile.Position, as: ElixirPosition
+  alias Lexical.SourceFile.Range, as: ElixirRange
 
   import Line
 

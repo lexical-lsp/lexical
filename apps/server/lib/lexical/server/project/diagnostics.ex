@@ -2,11 +2,11 @@ defmodule Lexical.Server.Project.Diagnostics do
   defmodule State do
     alias Lexical.CodeUnit
     alias Lexical.Math
-    alias Lexical.SourceFile
     alias Lexical.Project
     alias Lexical.Protocol.Types.Diagnostic
     alias Lexical.Protocol.Types.Position
     alias Lexical.Protocol.Types.Range
+    alias Lexical.SourceFile
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]

@@ -1,7 +1,7 @@
 defmodule Lexical.SourceFileTest do
-  alias Lexical.SourceFile
   alias Lexical.Protocol.Types.Position
   alias Lexical.Protocol.Types.Range
+  alias Lexical.SourceFile
 
   use ExUnit.Case
   use ExUnitProperties

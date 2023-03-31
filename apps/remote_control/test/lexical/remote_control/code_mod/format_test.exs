@@ -1,8 +1,9 @@
+# credo:disable-for-this-file Credo.Check.Readability.RedundantBlankLines
 defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Format
   alias Lexical.SourceFile
 

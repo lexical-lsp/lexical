@@ -1,16 +1,16 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
-  alias Lexical.Server.Project.Dispatch
-  alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
   alias Lexical.RemoteControl
   alias Lexical.Server
+  alias Lexical.Server.CodeIntelligence.Completion
+  alias Lexical.Server.Project.Dispatch
   alias Lexical.SourceFile
 
   use ExUnit.Case
-  import Lexical.Test.Fixtures
   import Lexical.Test.CursorSupport
+  import Lexical.Test.Fixtures
   import RemoteControl.Api.Messages
 
   setup_all do
