@@ -1,21 +1,21 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
-  alias Lexical.Server.CodeIntelligence.Completion.Translator
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.Project.Intelligence
 
-  use Translator, for: [Result.Module, Result.Behaviour]
+  use Translatable.Impl, for: [Result.Module, Result.Behaviour]
 
-  def translate(%Result.Module{} = module, %Env{} = env) do
-    do_translate(module, env)
+  def translate(%Result.Module{} = module, builder, %Env{} = env) do
+    do_translate(module, builder, env)
   end
 
-  def translate(%Result.Behaviour{} = behaviour, %Env{} = env) do
-    do_translate(behaviour, env)
+  def translate(%Result.Behaviour{} = behaviour, builder, %Env{} = env) do
+    do_translate(behaviour, builder, env)
   end
 
-  defp do_translate(%_{} = module, %Env{} = env) do
-    detail = fallback(module.summary, module.name)
+  defp do_translate(%_{} = module, builder, %Env{} = env) do
+    detail = builder.fallback(module.summary, module.name)
     struct_reference? = Env.struct_reference?(env)
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
     add_curlies? = defines_struct? and not String.contains?(env.suffix, "{")
@@ -47,7 +47,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         :module
       end
 
-    plain_text(insert_text,
+    builder.plain_text(insert_text,
       label: module.name,
       kind: completion_kind,
       detail: detail <> detail_label

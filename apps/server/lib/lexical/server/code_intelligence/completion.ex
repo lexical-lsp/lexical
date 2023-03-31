@@ -5,6 +5,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.Server.CodeIntelligence.Completion.Builder
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
   alias Lexical.SourceFile
@@ -47,7 +48,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     for result <- local_completions,
         displayable?(project, result),
         applies_to_context?(project, result, context),
-        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, env)) do
+        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Builder, env)) do
       item
     end
   end

@@ -1,16 +1,16 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
-  alias Lexical.Server.CodeIntelligence.Completion.Translator
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
-  use Translator, for: Result.StructField
+  use Translatable.Impl, for: Result.StructField
 
-  def translate(%Result.StructField{name: "__struct__"}, _env) do
+  def translate(%Result.StructField{name: "__struct__"}, _builder, _env) do
     :skip
   end
 
-  def translate(%Result.StructField{} = struct_field, %Env{} = _env) do
-    plain_text(struct_field.name,
+  def translate(%Result.StructField{} = struct_field, builder, %Env{}) do
+    builder.plain_text(struct_field.name,
       detail: struct_field.name,
       label: struct_field.name,
       kind: :field

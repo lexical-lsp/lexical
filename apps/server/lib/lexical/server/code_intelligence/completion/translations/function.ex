@@ -1,11 +1,11 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
-  alias Lexical.Server.CodeIntelligence.Completion.Translator
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
-  use Translator, for: Result.Function
+  use Translatable.Impl, for: Result.Function
 
-  def translate(%Result.Function{} = function, %Env{} = env) do
+  def translate(%Result.Function{} = function, builder, %Env{} = env) do
     label = "#{function.name}/#{function.arity}"
     arg_detail = Enum.join(function.argument_names, ",")
     detail = "#{function.origin}.#{label}(#{arg_detail})"
@@ -45,7 +45,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
         [:deprecated]
       end
 
-    snippet(insert_text,
+    builder.snippet(insert_text,
       detail: detail,
       kind: :function,
       label: label,

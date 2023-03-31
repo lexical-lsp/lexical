@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
+  alias Lexical.Completion.Environment
   alias Lexical.Project
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
@@ -13,6 +14,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
           position: Lexical.SourceFile.Position.t(),
           words: [String.t()]
         }
+
+  @behaviour Environment
 
   def new(%Project{} = project, %SourceFile{} = document, %Position{} = cursor_position) do
     case SourceFile.fetch_text_at(document, cursor_position.line) do
@@ -37,6 +40,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def function_capture?(%__MODULE__{} = env) do
     case cursor_context(env) do
       {:ok, line, {:alias, module_name}} ->
@@ -52,6 +56,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def struct_reference?(%__MODULE__{} = env) do
     case cursor_context(env) do
       {:ok, _line, {:struct, _}} ->
@@ -67,6 +72,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def pipe?(%__MODULE__{} = env) do
     with {:ok, line, context} <- surround_context(env),
          {:ok, {:operator, '|>'}} <- previous_surround_context(line, context) do
@@ -77,6 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @impl Environment
   def empty?("") do
     true
   end
@@ -85,6 +92,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     String.trim(string) == ""
   end
 
+  @impl Environment
   def last_word(%__MODULE__{} = env) do
     List.last(env.words)
   end
