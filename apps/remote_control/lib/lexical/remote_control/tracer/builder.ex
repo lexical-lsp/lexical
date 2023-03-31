@@ -60,6 +60,7 @@ defmodule Lexical.RemoteControl.Tracer.Builder do
   defp fill_range(text, defs) do
     # Fill the range of each def name in the module.
     defs = Enum.sort_by(defs, fn {{name, arity}, _} -> {name, arity} end)
+
     defs_map =
       for {{name, _arity}, %{kind: kind, meta: [line: line]}} = infos <- defs,
           into: %{} do
