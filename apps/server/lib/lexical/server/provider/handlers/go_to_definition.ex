@@ -59,7 +59,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
          }}
 
       _ ->
-        column = if column == 1, do: first_char_position(text), else: column
+        column = if column == 1, do: first_char_column(text), else: column
 
         {:ok,
          %Range{
@@ -69,7 +69,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
     end
   end
 
-  defp first_char_position(string) do
+  defp first_char_column(string) do
     original_length = String.length(string)
     trimmed_length = String.length(String.trim_leading(string))
     original_length - trimmed_length + 1
