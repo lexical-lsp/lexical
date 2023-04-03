@@ -11,23 +11,31 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       |> SourceFile.to_string()
       |> ElixirSense.definition(position.line + 1, position.character + 1)
 
-    if maybe_location do
-      %{file: file, line: line, column: column} = maybe_location
-      file_path = file || source_file.path
+    parse_location(maybe_location, source_file)
+  end
 
-      with {:ok, {source_file, range}} <- location_to_range(file_path, line, column) do
+  defp parse_location(%ElixirSense.Location{} = location, source_file) do
+    %{file: file, line: line, column: column} = location
+    file_path = file || source_file.path
+
+    case location_to_range(file_path, line, column) do
+      {:ok, {source_file, range}} ->
         {:ok, %{source_file: source_file, range: range}}
-      end
-    else
-      {:ok, nil}
+
+      error ->
+        error
     end
+  end
+
+  defp parse_location(nil, _) do
+    {:ok, nil}
   end
 
   defp location_to_range(file_path, line, column) do
     uri = SourceFile.Path.ensure_uri(file_path)
 
     with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
-         {:ok, {:line, text, _, _, _}} = SourceFile.fetch_line_at(source_file, line - 1) do
+         {:ok, {:line, text, _, _, _}} <- SourceFile.fetch_line_at(source_file, line - 1) do
       {:ok, {source_file, to_persisted_range(text, line, column)}}
     else
       _ ->
