@@ -44,4 +44,8 @@ defmodule Lexical.RemoteControl.Api do
       position
     ])
   end
+
+  def definition(%SourceFile{} = source_file, %Position{} = position) do
+    RemoteControl.CodeIntelligence.Definition.definition(source_file, position)
+  end
 end
