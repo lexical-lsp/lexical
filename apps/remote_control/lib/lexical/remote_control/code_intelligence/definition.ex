@@ -5,6 +5,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
   require Logger
 
+  @spec definition(SourceFile.t(), Position.t()) ::
+          {:ok, {SourceFile.t(), Range.t()}} | {:error, String.t()}
   def definition(%SourceFile{} = source_file, %Position{} = position) do
     maybe_location =
       source_file
@@ -20,7 +22,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
     case location_to_range(file_path, line, column) do
       {:ok, {source_file, range}} ->
-        {:ok, %{source_file: source_file, range: range}}
+        {:ok, {source_file, range}}
 
       error ->
         error
@@ -35,42 +37,40 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     uri = SourceFile.Path.ensure_uri(file_path)
 
     with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
-         {:ok, {:line, text, _, _, _}} <- SourceFile.fetch_line_at(source_file, line - 1) do
-      {:ok, {source_file, to_persisted_range(text, line, column)}}
+         {:ok, text} <- SourceFile.fetch_text_at(source_file, line - 1) do
+      {:ok, {source_file, to_precise_range(text, line, column)}}
     else
       _ ->
         {:error, "Could not open source file: #{inspect(file_path)}"}
     end
   end
 
-  defp to_persisted_range(text, line, column) do
+  defp to_precise_range(text, line, column) do
     case Code.Fragment.surround_context(text, {line, column}) do
-      %{begin: begin, end: end_} ->
-        {begin_line, begin_column} = begin
-        {end_line, end_column} = end_
-        to_range({begin_line, begin_column}, {end_line, end_column})
+      %{begin: start_pos, end: end_pos} ->
+        to_range(start_pos, end_pos)
 
       _ ->
         # NOTE: sometimes the column is 1, the cursor looks strange
-        # so we need to normalize it to the first char column
-        column = if column == 1, do: first_char_column(text), else: column
-        to_range({line, column}, {line, column})
+        # So we need to ignore the spaces before letters,
+        # such as there are two spaces before `def`.
+        column = if column == 1, do: count_leading_spaces(text) + 1, else: column
+        pos = {line, column}
+        to_range(pos, pos)
     end
   end
 
-  defp to_range(begin, end_) do
-    {begin_line, begin_column} = begin
-    {end_line, end_column} = end_
-
-    %Range{
-      start: %Position{line: begin_line - 1, character: begin_column - 1},
-      end: %Position{line: end_line - 1, character: end_column - 1}
-    }
+  defp to_range({begin_line, begin_column}, {end_line, end_column}) do
+    Range.new(
+      Position.new(begin_line - 1, begin_column - 1),
+      Position.new(end_line - 1, end_column - 1)
+    )
   end
 
-  defp first_char_column(string) do
-    original_length = String.length(string)
-    trimmed_length = String.length(String.trim_leading(string))
-    original_length - trimmed_length + 1
-  end
+  defp count_leading_spaces(str), do: count_leading_spaces(str, 0)
+
+  defp count_leading_spaces(<<c::utf8, rest::binary>>, count) when c in [?\s, ?\t],
+    do: count_leading_spaces(rest, count + 1)
+
+  defp count_leading_spaces(_, count), do: count
 end

@@ -22,9 +22,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
     {:ok, Responses.GotoDefinition.new(request_id, nil)}
   end
 
-  defp to_response(request_id, location) do
-    %{source_file: source_file, range: range} = location
-
+  defp to_response(request_id, {source_file, range}) do
     with {:ok, ls_range} <- Ranged.Lsp.from_native(range, source_file) do
       ls_location = Location.new(uri: source_file.uri, range: ls_range)
       {:ok, Responses.GotoDefinition.new(request_id, ls_location)}
