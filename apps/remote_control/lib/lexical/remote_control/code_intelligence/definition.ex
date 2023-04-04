@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   require Logger
 
   @spec definition(SourceFile.t(), Position.t()) ::
-          {:ok, {SourceFile.t(), Range.t()}} | {:error, String.t()}
+          {:ok, {SourceFile.t(), Range.t()} | nil} | {:error, String.t()}
   def definition(%SourceFile{} = source_file, %Position{} = position) do
     maybe_location =
       source_file
