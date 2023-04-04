@@ -7,8 +7,9 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
 
   require Logger
 
-  def handle(%GoToDefinition{} = request, _env) do
-    with {:ok, location} <- RemoteControl.Api.definition(request.source_file, request.position),
+  def handle(%GoToDefinition{} = request, env) do
+    with {:ok, location} <-
+           RemoteControl.Api.definition(env.project, request.source_file, request.position),
          {:ok, ls_location} <- to_response(request.id, location) do
       {:reply, ls_location}
     else

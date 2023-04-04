@@ -45,7 +45,10 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
-  def definition(%SourceFile{} = source_file, %Position{} = position) do
-    RemoteControl.CodeIntelligence.Definition.definition(source_file, position)
+  def definition(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
+    RemoteControl.call(project, RemoteControl.CodeIntelligence.Definition, :definition, [
+      source_file,
+      position
+    ])
   end
 end

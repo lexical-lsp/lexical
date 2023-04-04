@@ -12,6 +12,7 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
+          Lexical.SourceFile.Store,
           RemoteControl.ModuleMappings,
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer
