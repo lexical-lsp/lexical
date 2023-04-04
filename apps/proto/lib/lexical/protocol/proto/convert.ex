@@ -3,7 +3,7 @@ defmodule Lexical.Protocol.Proto.Convert do
   alias Lexical.SourceFile
 
   def to_elixir(%{lsp: lsp_request} = request) do
-    with {:ok, elixir_request, source_file} <- convert(lsp_request) do
+    with {:ok, elixir_request, source_file} <- convert_to_elixir(lsp_request) do
       updated_request =
         case Map.merge(request, Map.from_struct(elixir_request)) do
           %_{source_file: _} = updated -> Map.put(updated, :source_file, source_file)
@@ -37,25 +37,25 @@ defmodule Lexical.Protocol.Proto.Convert do
     :error
   end
 
-  defp convert(%_{text_document: _} = request) do
+  defp convert_to_elixir(%_{text_document: _} = request) do
     with {:ok, source_file} <- fetch_source_file(request),
-         {:ok, converted} <- convert(request, source_file) do
+         {:ok, converted} <- convert_to_elixir(request, source_file) do
       {:ok, converted, source_file}
     end
   end
 
-  defp convert(%_{} = request) do
+  defp convert_to_elixir(%_{} = request) do
     {:ok, request, nil}
   end
 
-  defp convert(%_struct{} = request, %SourceFile{} = source_file) do
+  defp convert_to_elixir(%_struct{} = request, %SourceFile{} = source_file) do
     case Ranged.Native.impl_for(request) do
       nil ->
         key_value_pairs =
           request
           |> Map.from_struct()
           |> Enum.reduce(request, fn {key, value}, request ->
-            {:ok, value} = convert(value, source_file)
+            {:ok, value} = convert_to_elixir(value, source_file)
             Map.put(request, key, value)
           end)
 
@@ -66,27 +66,27 @@ defmodule Lexical.Protocol.Proto.Convert do
     end
   end
 
-  defp convert(list, %SourceFile{} = source_file) when is_list(list) do
+  defp convert_to_elixir(list, %SourceFile{} = source_file) when is_list(list) do
     items =
       Enum.map(list, fn item ->
-        {:ok, item} = convert(item, source_file)
+        {:ok, item} = convert_to_elixir(item, source_file)
         item
       end)
 
     {:ok, items}
   end
 
-  defp convert(%{} = map, %SourceFile{} = source_file) do
+  defp convert_to_elixir(%{} = map, %SourceFile{} = source_file) do
     converted =
       Map.new(map, fn {k, v} ->
-        {:ok, converted} = convert(v, source_file)
+        {:ok, converted} = convert_to_elixir(v, source_file)
         {k, converted}
       end)
 
     {:ok, converted}
   end
 
-  defp convert(item, %SourceFile{} = _) do
+  defp convert_to_elixir(item, %SourceFile{} = _) do
     {:ok, item}
   end
 end
