@@ -12,6 +12,10 @@ defmodule Lexical.Protocol.Response do
     end
   end
 
+  def to_lsp(other) do
+    {:ok, other}
+  end
+
   defp fetch_source_file(%{text_document: %{uri: uri}}) do
     SourceFile.Store.fetch(uri)
   end
