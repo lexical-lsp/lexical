@@ -40,9 +40,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
         to_range(start_pos, end_pos)
 
       _ ->
-        # NOTE: sometimes the column is 1, the cursor looks strange
-        # So we need to ignore the spaces before letters,
-        # such as there are two spaces before `def`.
+        # If the column is 1, but the code doesn't start on the first column, which isn't what we want.
+        # The cursor will be placed to the left of the actual definition.
         column = if column == 1, do: count_leading_spaces(text) + 1, else: column
         pos = {line, column}
         to_range(pos, pos)
