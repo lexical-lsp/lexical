@@ -150,8 +150,8 @@ defmodule Lexical.Server.Project.Diagnostics do
 
         _error ->
           Range.new(
-            start: Position.new(line: 0, character: 0),
-            end: Position.new(line: line_number, character: 0)
+            start: Position.new(line: line_number, character: 0),
+            end: Position.new(line: line_number + 1, character: 0)
           )
       end
     end
