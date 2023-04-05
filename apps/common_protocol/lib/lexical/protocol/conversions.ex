@@ -8,6 +8,7 @@ defmodule Lexical.Protocol.Conversions do
   are the same in both utf-8 and utf-16, since they reference characters and not bytes.
   """
   alias Lexical.CodeUnit
+  alias Lexical.Math
   alias Lexical.Protocol.Types.Position, as: LSPosition
   alias Lexical.Protocol.Types.Range, as: LSRange
   alias Lexical.SourceFile
@@ -18,10 +19,7 @@ defmodule Lexical.Protocol.Conversions do
 
   import Line
 
-  def to_elixir(
-        %LSRange{} = ls_range,
-        %SourceFile{} = source
-      ) do
+  def to_elixir(%LSRange{} = ls_range, %SourceFile{} = source) do
     with {:ok, start_pos} <- to_elixir(ls_range.start, source.document),
          {:ok, end_pos} <- to_elixir(ls_range.end, source.document) do
       {:ok, %ElixirRange{start: start_pos, end: end_pos}}
@@ -41,26 +39,24 @@ defmodule Lexical.Protocol.Conversions do
     # we need to handle out of bounds line numbers, because it's possible to build a document
     # by starting with an empty document and appending to the beginning of it, with a start range of
     # {0, 0} and and end range of {1, 0} (replace the first line)
-    document_line_number = min(position.line, document_size)
-    elixir_line_number = document_line_number + document.starting_index
+    document_line_number = min(position.line, document_size) + document.starting_index
     ls_character = position.character
 
     cond do
       document_line_number == document_size and ls_character == 0 ->
         # allow a line one more than the document size, as long as the character is 0.
         # that means we're operating on the last line of the document
-
-        {:ok, ElixirPosition.new(elixir_line_number, ls_character)}
+        {:ok, ElixirPosition.new(document_line_number, 1)}
 
       position.line >= document_size ->
         # they've specified something outside of the document clamp it down so they can append at the
         # end
-        {:ok, ElixirPosition.new(elixir_line_number, 0)}
+        {:ok, ElixirPosition.new(document_line_number, 1)}
 
       true ->
-        with {:ok, line} <- Document.fetch_line(document, elixir_line_number),
+        with {:ok, line} <- Document.fetch_line(document, document_line_number),
              {:ok, elixir_character} <- extract_elixir_character(position, line) do
-          {:ok, ElixirPosition.new(elixir_line_number, elixir_character)}
+          {:ok, ElixirPosition.new(document_line_number, elixir_character)}
         end
     end
   end
@@ -71,10 +67,11 @@ defmodule Lexical.Protocol.Conversions do
     %{line: start_line, column: start_col} = start_pos
     %{line: end_line, column: end_col} = end_pos
 
-    range = %ElixirRange{
-      start: ElixirPosition.new(start_line, start_col - 1),
-      end: ElixirPosition.new(end_line, end_col - 1)
-    }
+    range =
+      ElixirRange.new(
+        ElixirPosition.new(start_line, start_col),
+        ElixirPosition.new(end_line, end_col)
+      )
 
     {:ok, range}
   end
@@ -107,25 +104,25 @@ defmodule Lexical.Protocol.Conversions do
   # Private
 
   defp extract_lsp_character(%ElixirPosition{} = position, line(ascii?: true, text: text)) do
-    character = min(position.character, byte_size(text))
+    character = min(position.character - 1, byte_size(text))
     {:ok, character}
   end
 
   defp extract_lsp_character(%ElixirPosition{} = position, line(text: utf8_text)) do
-    with {:ok, code_unit} <- CodeUnit.to_utf16(utf8_text, position.character) do
+    with {:ok, code_unit} <- CodeUnit.to_utf16(utf8_text, position.character - 1) do
       character = min(code_unit, CodeUnit.count(:utf16, utf8_text))
       {:ok, character}
     end
   end
 
   defp extract_elixir_character(%LSPosition{} = position, line(ascii?: true, text: text)) do
-    character = min(position.character, byte_size(text))
+    character = min(position.character + 1, byte_size(text) + 1)
     {:ok, character}
   end
 
   defp extract_elixir_character(%LSPosition{} = position, line(text: utf8_text)) do
     with {:ok, code_unit} <- CodeUnit.to_utf8(utf8_text, position.character) do
-      character = min(code_unit, byte_size(utf8_text))
+      character = min(code_unit, byte_size(utf8_text) + 1)
       {:ok, character}
     end
   end

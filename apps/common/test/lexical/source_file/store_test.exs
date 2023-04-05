@@ -95,8 +95,8 @@ defmodule Lexical.SourceFile.StoreTest do
         build_change(
           text: "dog",
           range: [
-            start: [line: 0, character: 0],
-            end: [line: 0, character: 3]
+            start: [line: 1, character: 1],
+            end: [line: 1, character: 4]
           ]
         )
 

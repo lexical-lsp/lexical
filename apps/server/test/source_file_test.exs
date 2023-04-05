@@ -32,7 +32,7 @@ defmodule Lexical.SourceFileTest do
     test "it should be able to parse a single line" do
       assert parsed = new("file:///elixir.ex", "hello", 1)
 
-      assert {:ok, "hello"} = fetch_text_at(parsed, 0)
+      assert {:ok, "hello"} = fetch_text_at(parsed, 1)
     end
 
     test "it should parse its input into lines", ctx do
@@ -40,15 +40,15 @@ defmodule Lexical.SourceFileTest do
       refute parsed.dirty?
       assert parsed.version == 100
 
-      assert {:ok, "defmodule MyModule do"} = fetch_text_at(parsed, 0)
-      assert {:ok, "  def foo, do: 3"} = fetch_text_at(parsed, 1)
-      assert {:ok, ""} = fetch_text_at(parsed, 2)
-      assert {:ok, "  def bar(a, b) do"} = fetch_text_at(parsed, 3)
-      assert {:ok, "    a + b"} = fetch_text_at(parsed, 4)
-      assert {:ok, "  end"} = fetch_text_at(parsed, 5)
-      assert {:ok, "end"} = fetch_text_at(parsed, 6)
+      assert {:ok, "defmodule MyModule do"} = fetch_text_at(parsed, 1)
+      assert {:ok, "  def foo, do: 3"} = fetch_text_at(parsed, 2)
+      assert {:ok, ""} = fetch_text_at(parsed, 3)
+      assert {:ok, "  def bar(a, b) do"} = fetch_text_at(parsed, 4)
+      assert {:ok, "    a + b"} = fetch_text_at(parsed, 5)
+      assert {:ok, "  end"} = fetch_text_at(parsed, 6)
+      assert {:ok, "end"} = fetch_text_at(parsed, 7)
 
-      assert :error = fetch_text_at(parsed, 7)
+      assert :error = fetch_text_at(parsed, 8)
     end
   end
 
@@ -578,7 +578,7 @@ defmodule Lexical.SourceFileTest do
       }
 
       assert {:ok, source} = run_changes(orig, [event])
-      assert {:ok, ""} = fetch_text_at(source, 2)
+      assert {:ok, ""} = fetch_text_at(source, 3)
     end
 
     test "deleting a line with a multi-byte character" do
@@ -595,7 +595,7 @@ defmodule Lexical.SourceFileTest do
                  %{text: "", range: new_range(2, 0, 2, 19)}
                ])
 
-      {:ok, line} = fetch_text_at(source, 2)
+      {:ok, line} = fetch_text_at(source, 3)
       assert line == ""
     end
 
@@ -614,7 +614,7 @@ defmodule Lexical.SourceFileTest do
                  %{text: "", range: new_range(2, 11, 2, 13)}
                ])
 
-      {:ok, line} = fetch_text_at(source, 2)
+      {:ok, line} = fetch_text_at(source, 3)
 
       assert line == "    {\"🎸\", \"ok\"}"
     end

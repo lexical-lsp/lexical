@@ -39,7 +39,7 @@ defmodule Lexical.CodeUnit do
   """
   @spec utf8_offset(String.t(), utf16_offset()) :: utf8_offset()
   def utf8_offset(binary, character_position) do
-    do_utf8_offset(binary, character_position, 0)
+    do_utf8_offset(binary, character_position, 1)
   end
 
   @doc """
@@ -47,7 +47,7 @@ defmodule Lexical.CodeUnit do
   """
   @spec to_utf8(String.t(), utf16_code_unit()) :: {:ok, utf8_code_unit()} | error
   def to_utf8(binary, utf16_unit) do
-    do_to_utf8(binary, utf16_unit, 0)
+    do_to_utf8(binary, utf16_unit, 1)
   end
 
   @doc """

@@ -4,7 +4,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
 
-  defstruct [:project, :document, :prefix, :suffix, :position, :words]
+  defstruct [:project, :document, :prefix, :suffix, :position, :words, :zero_based_character]
 
   @type t :: %__MODULE__{
           project: Lexical.Project.t(),
@@ -12,7 +12,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
           prefix: String.t(),
           suffix: String.t(),
           position: Lexical.SourceFile.Position.t(),
-          words: [String.t()]
+          words: [String.t()],
+          zero_based_character: non_neg_integer()
         }
 
   @behaviour Environment
@@ -20,9 +21,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   def new(%Project{} = project, %SourceFile{} = document, %Position{} = cursor_position) do
     case SourceFile.fetch_text_at(document, cursor_position.line) do
       {:ok, line} ->
+        zero_based_character = cursor_position.character - 1
         graphemes = String.graphemes(line)
-        prefix = graphemes |> Enum.take(cursor_position.character) |> IO.iodata_to_binary()
-        suffix = String.slice(line, cursor_position.character..-1)
+        prefix = graphemes |> Enum.take(zero_based_character) |> IO.iodata_to_binary()
+        suffix = String.slice(line, zero_based_character..-1)
         words = String.split(prefix)
 
         {:ok,
@@ -32,7 +34,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
            prefix: prefix,
            suffix: suffix,
            position: cursor_position,
-           words: words
+           words: words,
+           zero_based_character: zero_based_character
          }}
 
       _ ->
@@ -99,7 +102,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   defp cursor_context(%__MODULE__{} = env) do
     with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line) do
-      fragment = String.slice(line, 0..(env.position.character - 1))
+      fragment = String.slice(line, 0..(env.zero_based_character - 1))
       {:ok, line, Code.Fragment.cursor_context(fragment)}
     end
   end
@@ -107,7 +110,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   defp surround_context(%__MODULE__{} = env) do
     with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line),
          %{context: _} = context <-
-           Code.Fragment.surround_context(line, {1, env.position.character}) do
+           Code.Fragment.surround_context(line, {1, env.zero_based_character}) do
       {:ok, line, context}
     end
   end

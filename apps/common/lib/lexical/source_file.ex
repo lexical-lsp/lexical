@@ -146,14 +146,15 @@ defmodule Lexical.SourceFile do
          %Range{start: %Position{} = start_pos, end: %Position{} = end_pos},
          new_text
        ) do
+
     start_line = start_pos.line
 
     new_lines_iodata =
       cond do
-        start_line >= line_count(source) - source.document.starting_index ->
+        start_line > line_count(source) ->
           append_to_end(source, new_text)
 
-        start_line < 0 ->
+        start_line < 1 ->
           prepend_to_beginning(source, new_text)
 
         true ->
@@ -189,8 +190,11 @@ defmodule Lexical.SourceFile do
        )
        when start_line >= 0 and start_char >= 0 and end_line >= 0 and end_char >= 0 do
     case Ranged.Native.from_lsp(range, source) do
-      {:ok, ex_range} -> apply_change(source, ex_range, new_text)
-      _ -> {:error, {:invalid_range, range}}
+      {:ok, ex_range} ->
+        apply_change(source, ex_range, new_text)
+
+      _ ->
+        {:error, {:invalid_range, range}}
     end
   end
 
@@ -223,6 +227,7 @@ defmodule Lexical.SourceFile do
   end
 
   defp edit_action(line() = line, edit_text, %Position{} = start_pos, %Position{} = end_pos) do
+
     %Position{line: start_line, character: start_char} = start_pos
     %Position{line: end_line, character: end_char} = end_pos
 
@@ -238,7 +243,6 @@ defmodule Lexical.SourceFile do
       line_number == start_line && line_number == end_line ->
         prefix_text = utf8_prefix(line, start_char)
         suffix_text = utf8_suffix(line, end_char)
-
         {:append, [prefix_text, edit_text, suffix_text, ending]}
 
       line_number == start_line ->
@@ -255,13 +259,13 @@ defmodule Lexical.SourceFile do
   end
 
   defp utf8_prefix(line(text: text), start_code_unit) do
-    length = max(0, start_code_unit)
+    length = max(0, start_code_unit - 1)
     binary_part(text, 0, length)
   end
 
   defp utf8_suffix(line(text: text), start_code_unit) do
     byte_count = byte_size(text)
-    start_index = min(start_code_unit, byte_count)
+    start_index = min(start_code_unit - 1, byte_count)
     length = byte_count - start_index
 
     binary_part(text, start_index, length)

@@ -7,7 +7,7 @@ defmodule Lexical.SourceFile.Document do
 
   import Line
 
-  @default_starting_index 0
+  @default_starting_index 1
 
   defstruct lines: nil, starting_index: @default_starting_index
 
@@ -43,6 +43,10 @@ defmodule Lexical.SourceFile.Document do
     :error
   end
 
+  def fetch_line(%__MODULE__{lines: {}}, _) do
+    :error
+  end
+
   def fetch_line(%__MODULE__{} = document, index) when is_integer(index) do
     case elem(document.lines, index - document.starting_index) do
       line() = line -> {:ok, line}
@@ -69,11 +73,41 @@ defimpl Inspect, for: Lexical.SourceFile.Document do
   alias Lexical.SourceFile.Document
   alias Lexical.SourceFile.Line
 
+  import Inspect.Algebra
   import Line
 
-  def inspect(document, _opts) do
-    {:ok, line(text: text)} = Document.fetch_line(document, 0)
-    "%Document<'#{text}' (#{Document.size(document)}... lines)>"
+  def inspect(%Document{lines: {}}) do
+    concat([empty(), "%Document<empty>"])
+  end
+
+  def inspect(document, opts) do
+    document_body =
+      case Document.fetch_line(document, 1) do
+        {:ok, line(text: text)} ->
+          concat(empty(), to_doc(text <> "...", opts))
+
+        :error ->
+          " empty "
+      end
+
+    line_or_lines =
+      if Document.size(document) == 1 do
+        "line"
+      else
+        "lines"
+      end
+
+    concat([
+      empty(),
+      "%Document<",
+      document_body,
+      "(",
+      space(
+        to_doc(Document.size(document), opts),
+        line_or_lines
+      ),
+      ")>"
+    ])
   end
 end
 

@@ -6,8 +6,8 @@ defmodule Lexical.RemoteControl.Completion do
     # Add one to both the line and character, because elixir sense
     # has one-based lines, and the character needs to be after the context,
     # rather than in between.
-    line = position.line + 1
-    character = position.character + 1
+    line = position.line
+    character = position.character
     hint = ElixirSense.Core.Source.prefix(source, line, character)
 
     if String.trim(hint) == "" do

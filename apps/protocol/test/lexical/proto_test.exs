@@ -424,8 +424,8 @@ defmodule Lexical.Protocol.ProtoTest do
       assert %SourceFile{} = notif.source_file
       assert %SourceFile.Position{} = notif.position
 
-      assert notif.position.line == 0
-      assert notif.position.character == 0
+      assert notif.position.line == 1
+      assert notif.position.character == 1
     end
 
     defmodule Notif.WithRange do
@@ -452,10 +452,10 @@ defmodule Lexical.Protocol.ProtoTest do
 
       assert %SourceFile{} = notif.source_file
       assert %SourceFile.Range{} = notif.range
-      assert notif.range.start.line == 0
-      assert notif.range.start.character == 0
-      assert notif.range.end.line == 0
-      assert notif.range.end.character == 3
+      assert notif.range.start.line == 1
+      assert notif.range.start.character == 1
+      assert notif.range.end.line == 1
+      assert notif.range.end.character == 4
     end
   end
 
@@ -563,8 +563,8 @@ defmodule Lexical.Protocol.ProtoTest do
 
       assert req.range ==
                SourceFile.Range.new(
-                 SourceFile.Position.new(0, 0),
-                 SourceFile.Position.new(0, 5)
+                 SourceFile.Position.new(1, 1),
+                 SourceFile.Position.new(1, 6)
                )
     end
   end
