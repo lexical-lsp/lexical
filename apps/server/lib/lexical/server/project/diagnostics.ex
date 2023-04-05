@@ -135,7 +135,7 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
-      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file) + 1)
+      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
       column = max(column, 1)
 
       elixir_range =
