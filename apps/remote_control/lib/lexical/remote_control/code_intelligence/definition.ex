@@ -19,21 +19,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   defp parse_location(%ElixirSense.Location{} = location, source_file) do
     %{file: file, line: line, column: column} = location
     file_path = file || source_file.path
-
-    case location_to_range(file_path, line, column) do
-      {:ok, {source_file, range}} ->
-        {:ok, {source_file, range}}
-
-      error ->
-        error
-    end
-  end
-
-  defp parse_location(nil, _) do
-    {:ok, nil}
-  end
-
-  defp location_to_range(file_path, line, column) do
     uri = SourceFile.Path.ensure_uri(file_path)
 
     with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
@@ -43,6 +28,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       _ ->
         {:error, "Could not open source file: #{inspect(file_path)}"}
     end
+  end
+
+  defp parse_location(nil, _) do
+    {:ok, nil}
   end
 
   defp to_precise_range(text, line, column) do
