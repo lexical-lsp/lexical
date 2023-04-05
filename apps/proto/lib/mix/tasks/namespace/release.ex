@@ -8,9 +8,9 @@ defmodule Mix.Tasks.Namespace.Release do
 
   def run(_) do
     release = Mix.Release.from_config!(:lexical, Mix.Project.config(), [])
-    Enum.map(@apps_to_rewrite, &update_app(release.path, release.version_path, &1))
+    Enum.each(@apps_to_rewrite, &update_app(release.path, release.version_path, &1))
     # namespace .app filenames because the filename is used as identifier by BEAM
-    Enum.map(@apps_to_rewrite, &namespace_app_file(release.path, &1))
+    Enum.each(@apps_to_rewrite, &namespace_app_file(release.path, &1))
     Mix.Shell.IO.info("\nApplied namespace to release app.")
   end
 
