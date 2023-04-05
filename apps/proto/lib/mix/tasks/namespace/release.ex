@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Namespace.Release do
     Mix.Shell.IO.info("\nApplied namespace to release app.")
   end
 
-  defp path(:ebin, release_path, app_name) do
+  defp ebin_path(release_path, app_name) do
     [ebin_path] =
       [release_path, "lib", "#{app_name}-*", "ebin"]
       |> Path.join()
@@ -23,15 +23,15 @@ defmodule Mix.Tasks.Namespace.Release do
     ebin_path
   end
 
-  defp path(:app_file, release_path, app_name) do
-    Path.join([path(:ebin, release_path, app_name), "#{app_name}.app"])
+  defp app_file_path(release_path, app_name) do
+    Path.join([ebin_path(release_path, app_name), "#{app_name}.app"])
   end
 
   defp update_app(release_path, release_version_path, app_name) do
     # Rename references in release scripts
     release_file_paths = Enum.map(@release_files, &Path.join([release_version_path, &1]))
     # Rename references in the dependencies of app files
-    apps_file_paths = Enum.map(@apps_to_rewrite, &path(:app_file, release_path, &1))
+    apps_file_paths = Enum.map(@apps_to_rewrite, &app_file_path(release_path, &1))
     paths = apps_file_paths ++ release_file_paths
 
     Enum.each(paths, &update_file_contents(&1, app_name))
@@ -48,8 +48,8 @@ defmodule Mix.Tasks.Namespace.Release do
   end
 
   defp namespace_app_file(release_path, app_name) do
-    ebin_path = path(:ebin, release_path, app_name)
-    app_file_path = path(:app_file, release_path, app_name)
+    ebin_path = ebin_path(release_path, app_name)
+    app_file_path = app_file_path(release_path, app_name)
     namespaced_app_file = Path.join([ebin_path, "lx_" <> "#{app_name}.app"])
     :ok = File.rename(app_file_path, namespaced_app_file)
   end
