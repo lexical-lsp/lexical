@@ -295,9 +295,12 @@ defmodule Mix.Tasks.Namespace.Abstract do
       |> String.split(".")
 
     case split_module do
+      # namespace app references, e.g. in remote_control.ex
       ["remote_control"] ->
-        # namespace app references
         :lx_remote_control
+
+      ["common"] ->
+        :lx_common
 
       ["Lexical"] ->
         :LXRelease
