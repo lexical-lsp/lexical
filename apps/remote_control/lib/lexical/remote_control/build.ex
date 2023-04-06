@@ -16,7 +16,9 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   def compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
-    RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
+    unless Path.absname(source_file.path) == "mix.exs" do
+      RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
+    end
 
     :ok
   end
