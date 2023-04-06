@@ -47,6 +47,7 @@ defmodule Lexical.Completion.Builder do
   @type maybe_string :: String.t() | nil
 
   @opaque translated_item :: %{
+            __struct__: module(),
             detail: maybe_string(),
             documentation: maybe_string(),
             filter_text: maybe_string(),
@@ -58,16 +59,16 @@ defmodule Lexical.Completion.Builder do
             tags: [completion_item_tag] | nil
           }
 
-  @type result :: translated_item() | :skip
-
   @type t :: module()
 
-  @callback snippet(String.t()) :: result
-  @callback snippet(String.t(), item_opt) :: result
+  @type result :: t | :skip
 
-  @callback plain_text(String.t()) :: result
-  @callback plain_text(String.t(), item_opt) :: result
+  @callback snippet(String.t()) :: translated_item()
+  @callback snippet(String.t(), item_opts) :: translated_item()
+
+  @callback plain_text(String.t()) :: translated_item()
+  @callback plain_text(String.t(), item_opts) :: translated_item()
 
   @callback fallback(any, any) :: any
-  @callback boost(translated_item, 0..10) :: translated_item
+  @callback boost(binary(), 0..10) :: binary()
 end

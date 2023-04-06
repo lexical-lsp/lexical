@@ -1,5 +1,6 @@
 defmodule Lexical.Proto.Decoders do
   alias Lexical.Proto.CompileMetadata
+  alias Lexical.Proto.Typespecs
 
   defmacro for_notifications(_) do
     notification_modules = CompileMetadata.notification_modules()
@@ -19,7 +20,7 @@ defmodule Lexical.Proto.Decoders do
         end
       end
 
-      unquote(build_typespec(:notification, notification_modules))
+      use Typespecs, for: :notifications
 
       unquote_splicing(notification_matchers)
 
@@ -62,7 +63,7 @@ defmodule Lexical.Proto.Decoders do
         end
       end
 
-      unquote(build_typespec(:request, request_modules))
+      use Typespecs, for: :requests
 
       unquote_splicing(request_matchers)
 
@@ -122,27 +123,6 @@ defmodule Lexical.Proto.Decoders do
       def decode(unquote(method_name), request) do
         unquote(request_module).parse(request)
       end
-    end
-  end
-
-  def build_typespec(type_name, modules) do
-    spec_name = {type_name, [], nil}
-
-    spec =
-      Enum.reduce(modules, nil, fn
-        module, nil ->
-          quote do
-            unquote(module).t()
-          end
-
-        module, spec ->
-          quote do
-            unquote(module).t() | unquote(spec)
-          end
-      end)
-
-    quote do
-      @type unquote(spec_name) :: unquote(spec)
     end
   end
 

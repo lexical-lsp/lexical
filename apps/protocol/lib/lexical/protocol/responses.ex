@@ -1,5 +1,6 @@
 defmodule Lexical.Protocol.Responses do
   alias Lexical.Proto
+  alias Lexical.Proto.Typespecs
   alias Lexical.Protocol.Types
 
   defmodule InitializeResult do
@@ -43,4 +44,6 @@ defmodule Lexical.Protocol.Responses do
     # yeah, this is odd... it has no params
     defresponse []
   end
+
+  use Typespecs, for: :responses
 end

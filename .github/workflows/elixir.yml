@@ -39,6 +39,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set Variables
+        id: set_mix_lock_hash
+        run: |
+          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
+          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
+
       # Step: Define how to cache deps. Restores existing cache if present.
       - name: Cache deps
         id: cache-deps
@@ -50,6 +56,17 @@ jobs:
           key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.cache-name }}-
+
+      - name: Cache dialyzer plt files
+        id: cache-plt
+        uses: actions/cache@v3
+        with:
+          path: |
+            _build/dev/*.plt
+            _build/dev/*.plt.hash
+          key: plt-cache-${{steps.set_mix_lock_hash.outputs.mix_lock_hash}}
+          restore-keys: |
+            plt-cache-
 
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
@@ -68,6 +85,9 @@ jobs:
       # Step: Run credo static code analysis
       - name: Credo static analysis
         run: mix credo
+
+      - name: Run dialyzer
+        run: MIX_ENV=dev mix dialyzer
 
       # Step: Execute the tests.
       - name: Run tests

@@ -49,7 +49,7 @@ defmodule Lexical.Server.Project.Diagnostics do
           [diagnostic | diagnostics]
         end)
 
-      {:ok, %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}}
+      %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
     end
 
     def add(%__MODULE__{} = state, %Mix.Error{} = error) do
@@ -71,12 +71,12 @@ defmodule Lexical.Server.Project.Diagnostics do
           &[compiler_diagnostic | &1]
         )
 
-      {:ok, %__MODULE__{state | diagnostics_by_uri: file_diagnostics}}
+      %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
     end
 
     def add(%__MODULE__{} = state, other) do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
-      {:ok, state}
+      state
     end
 
     defp keep_diagnostics?(%SourceFile{} = source_file) do
@@ -130,14 +130,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
-        case State.add(state, diagnostic) do
-          {:ok, new_state} ->
-            new_state
-
-          {:error, reason} ->
-            report_diagnostic_error(diagnostic, reason)
-            state
-        end
+        State.add(state, diagnostic)
       end)
 
     publish_diagnostics(state)
@@ -151,14 +144,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
-        case State.add(state, diagnostic) do
-          {:ok, new_state} ->
-            new_state
-
-          {:error, reason} ->
-            report_diagnostic_error(diagnostic, reason)
-            state
-        end
+        State.add(state, diagnostic)
       end)
 
     publish_diagnostics(state)
@@ -189,9 +175,5 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   defp name(%Project{} = project) do
     :"#{Project.name(project)}::diagnostics"
-  end
-
-  defp report_diagnostic_error(diagnostic, reason) do
-    Logger.error("Could not add diagnostic #{inspect(diagnostic)} because #{inspect(reason)}")
   end
 end
