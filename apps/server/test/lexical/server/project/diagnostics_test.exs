@@ -105,9 +105,9 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
       range = diagnostic.range
-      assert range.start.line == 0
+      assert range.start.line == 3
       assert range.start.character == 0
-      assert range.end.line == 3
+      assert range.end.line == 4
       assert range.end.character == 0
     end
   end
