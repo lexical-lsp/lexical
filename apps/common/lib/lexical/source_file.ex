@@ -146,7 +146,6 @@ defmodule Lexical.SourceFile do
          %Range{start: %Position{} = start_pos, end: %Position{} = end_pos},
          new_text
        ) do
-
     start_line = start_pos.line
 
     new_lines_iodata =
@@ -227,7 +226,6 @@ defmodule Lexical.SourceFile do
   end
 
   defp edit_action(line() = line, edit_text, %Position{} = start_pos, %Position{} = end_pos) do
-
     %Position{line: start_line, character: start_char} = start_pos
     %Position{line: end_line, character: end_char} = end_pos
 
