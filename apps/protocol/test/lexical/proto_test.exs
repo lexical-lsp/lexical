@@ -9,7 +9,8 @@ defmodule Lexical.Protocol.ProtoTest do
 
   require LspTypes.ErrorCodes
 
-  use ExUnit.Case, async: true
+  use ExUnit.Case
+  use Patch
 
   defmodule Child do
     use Proto
