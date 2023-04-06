@@ -60,6 +60,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       ]
 
       completions = complete(project, source)
+
       arity_one_completions = Enum.filter(completions, &String.ends_with?(&1.sort_text, "/1"))
 
       Enum.each(arity_one_completions, fn completion ->

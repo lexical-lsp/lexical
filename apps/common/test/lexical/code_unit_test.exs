@@ -8,11 +8,11 @@ defmodule Lexical.CodeUnitTest do
   describe "utf8 offsets" do
     test "handles single-byte characters" do
       s = "do"
-      assert 0 == utf8_offset(s, 0)
-      assert 1 == utf8_offset(s, 1)
-      assert 2 == utf8_offset(s, 2)
-      assert 2 == utf8_offset(s, 3)
-      assert 2 == utf8_offset(s, 4)
+      assert 1 == utf8_offset(s, 0)
+      assert 2 == utf8_offset(s, 1)
+      assert 3 == utf8_offset(s, 2)
+      assert 3 == utf8_offset(s, 3)
+      assert 3 == utf8_offset(s, 4)
     end
 
     test "caps offsets at the end of the string and beyond" do
@@ -22,10 +22,10 @@ defmodule Lexical.CodeUnitTest do
       # character code unit offsets, which differ
       # from utf8's, and can have gaps.
 
-      assert 4 == utf8_offset(line, 1)
-      assert 4 == utf8_offset(line, 2)
-      assert 4 == utf8_offset(line, 3)
-      assert 4 == utf8_offset(line, 4)
+      assert 5 == utf8_offset(line, 1)
+      assert 5 == utf8_offset(line, 2)
+      assert 5 == utf8_offset(line, 3)
+      assert 5 == utf8_offset(line, 4)
     end
 
     test "handles multi-byte characters properly" do
@@ -35,13 +35,13 @@ defmodule Lexical.CodeUnitTest do
       # character code unit offsets, which differ
       # from utf8's, and can have gaps.
 
-      assert 0 == utf8_offset(line, 0)
-      assert 1 == utf8_offset(line, 1)
-      assert 5 == utf8_offset(line, 3)
-      assert 6 == utf8_offset(line, 4)
-      assert 7 == utf8_offset(line, 5)
-      assert 8 == utf8_offset(line, 6)
-      assert 8 == utf8_offset(line, 7)
+      assert 1 == utf8_offset(line, 0)
+      assert 2 == utf8_offset(line, 1)
+      assert 6 == utf8_offset(line, 3)
+      assert 7 == utf8_offset(line, 4)
+      assert 8 == utf8_offset(line, 5)
+      assert 9 == utf8_offset(line, 6)
+      assert 9 == utf8_offset(line, 7)
     end
   end
 
@@ -86,32 +86,32 @@ defmodule Lexical.CodeUnitTest do
 
       code_unit_count = count_utf8_code_units(line)
 
-      assert to_utf8(line, 0) == {:ok, 0}
+      assert to_utf8(line, 0) == {:ok, 1}
       assert to_utf8(line, 1) == {:error, :misaligned}
-      assert to_utf8(line, 2) == {:ok, 4}
-      assert to_utf8(line, 3) == {:ok, 7}
-      assert to_utf8(line, 4) == {:ok, 10}
+      assert to_utf8(line, 2) == {:ok, 5}
+      assert to_utf8(line, 3) == {:ok, 8}
+      assert to_utf8(line, 4) == {:ok, 11}
       assert to_utf8(line, 5) == {:error, :misaligned}
-      assert to_utf8(line, 6) == {:ok, code_unit_count}
+      assert to_utf8(line, 6) == {:ok, code_unit_count + 1}
     end
 
     test "after a unicode character" do
       line = "    {\"🎸\",   \"ok\"}"
 
-      assert to_utf8(line, 0) == {:ok, 0}
-      assert to_utf8(line, 1) == {:ok, 1}
-      assert to_utf8(line, 4) == {:ok, 4}
-      assert to_utf8(line, 5) == {:ok, 5}
-      assert to_utf8(line, 6) == {:ok, 6}
+      assert to_utf8(line, 0) == {:ok, 1}
+      assert to_utf8(line, 1) == {:ok, 2}
+      assert to_utf8(line, 4) == {:ok, 5}
+      assert to_utf8(line, 5) == {:ok, 6}
+      assert to_utf8(line, 6) == {:ok, 7}
       assert to_utf8(line, 7) == {:error, :misaligned}
       # after the guitar character
-      assert to_utf8(line, 8) == {:ok, 10}
-      assert to_utf8(line, 9) == {:ok, 11}
-      assert to_utf8(line, 10) == {:ok, 12}
-      assert to_utf8(line, 11) == {:ok, 13}
-      assert to_utf8(line, 12) == {:ok, 14}
-      assert to_utf8(line, 13) == {:ok, 15}
-      assert to_utf8(line, 17) == {:ok, 19}
+      assert to_utf8(line, 8) == {:ok, 11}
+      assert to_utf8(line, 9) == {:ok, 12}
+      assert to_utf8(line, 10) == {:ok, 13}
+      assert to_utf8(line, 11) == {:ok, 14}
+      assert to_utf8(line, 12) == {:ok, 15}
+      assert to_utf8(line, 13) == {:ok, 16}
+      assert to_utf8(line, 17) == {:ok, 20}
     end
   end
 
@@ -168,7 +168,8 @@ defmodule Lexical.CodeUnitTest do
       assert utf16_unit == utf16_unit_count
 
       assert {:ok, utf8_unit} = to_utf8(s, utf16_unit)
-      assert utf8_unit == utf8_code_unit_count
+      # adding 1 here because our utf8 conversion is one-based
+      assert utf8_unit == utf8_code_unit_count + 1
     end
   end
 
@@ -178,9 +179,11 @@ defmodule Lexical.CodeUnitTest do
       utf8_code_unit_count = count_utf8_code_units(s)
 
       assert {:ok, utf8_code_unit} = to_utf8(s, utf16_code_unit_count)
-      assert utf8_code_unit == utf8_code_unit_count
+      # adding 1 here because our utf8 conversion is one-based
+      assert utf8_code_unit == utf8_code_unit_count + 1
 
-      assert {:ok, utf16_unit} = to_utf16(s, utf8_code_unit)
+      # subtracting 1 here because our utf8 conversion is one-based
+      assert {:ok, utf16_unit} = to_utf16(s, utf8_code_unit - 1)
       assert utf16_unit == utf16_code_unit_count
     end
   end

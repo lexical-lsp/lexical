@@ -3,7 +3,7 @@ defmodule Lexical.Test.CursorSupport do
     text
     |> String.graphemes()
     |> Enum.chunk_every(2, 1, [""])
-    |> Enum.reduce_while({0, 0}, fn
+    |> Enum.reduce_while({starting_line(), starting_column()}, fn
       ["|", ">"], {line, column} ->
         {:cont, {line, column + 1}}
 
@@ -11,7 +11,7 @@ defmodule Lexical.Test.CursorSupport do
         {:halt, position}
 
       ["\n", _], {line, _column} ->
-        {:cont, {line + 1, 0}}
+        {:cont, {line + 1, starting_column()}}
 
       _, {line, column} ->
         {:cont, {line, column + 1}}
@@ -50,5 +50,13 @@ defmodule Lexical.Test.CursorSupport do
         [iodata, c]
     end)
     |> IO.iodata_to_binary()
+  end
+
+  defp starting_line do
+    1
+  end
+
+  defp starting_column do
+    1
   end
 end
