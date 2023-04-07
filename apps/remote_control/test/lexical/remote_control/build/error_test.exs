@@ -84,6 +84,83 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert detail.message =~ ~S[The "(" here is missing terminator ")"]
       assert detail.position == 4
     end
+
+    test "returns two diagnostics when missing end at the real end" do
+      errors =
+        ~S[
+        defmodule Foo do
+          def bar do
+            :ok
+        end]
+        |> compile()
+        |> parse_error()
+
+      assert [end_diagnostic, start_diagnostic] = errors
+      assert end_diagnostic.message == "missing terminator: end (for \"do\" starting at line 2)"
+      assert end_diagnostic.position == {5, 12}
+
+      assert start_diagnostic.message == ~S[The "do" here is missing a terminator: "end"]
+      assert start_diagnostic.position == 2
+    end
+
+    test "returns the token in the message when there is a token" do
+      errors = ~S[1 + * 3] |> compile() |> parse_error()
+      [end_diagnostic] = errors
+      assert end_diagnostic.message == "syntax error before: '*'"
+      assert end_diagnostic.position == {1, 5}
+    end
+
+    test "returns the approximate correct location when there is a hint." do
+      errors = ~S[
+        defmodule Foo do
+          def bar_missing_end do
+            :ok
+
+          def bar do
+            :ok
+          end
+        end] |> compile() |> parse_error()
+
+      [end_message, start_message, hint_message] = errors
+
+      assert end_message.message == ~S[missing terminator: end (for "do" starting at line 2)]
+      assert end_message.position == {9, 12}
+
+      assert start_message.message == ~S[The "do" here is missing a terminator: "end"]
+      assert start_message.position == 2
+
+      assert hint_message.message ==
+               ~S[HINT: it looks like the "do" here does not have a matching "end"]
+
+      assert hint_message.position == 3
+    end
+
+    test "returns the last approximate correct location when there are multiple missing" do
+      errors = ~S[
+        defmodule Foo do
+          def bar_missing_end do
+            :ok
+
+          def bar_missing_end2 do
+
+          def bar do
+            :ok
+          end
+        end] |> compile() |> parse_error()
+
+      [end_message, start_message, hint_message] = errors
+
+      assert end_message.message == ~S[missing terminator: end (for "do" starting at line 3)]
+      assert end_message.position == {11, 12}
+
+      assert start_message.message == ~S[The "do" here is missing a terminator: "end"]
+      assert start_message.position == 3
+
+      assert hint_message.message ==
+               ~S[HINT: it looks like the "do" here does not have a matching "end"]
+
+      assert hint_message.position == 6
+    end
   end
 
   describe "error_to_diagnostic/3" do
@@ -176,7 +253,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
       ] |> compile()
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
-      assert diagnostic.message =~ ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+
+      assert diagnostic.message =~
+               ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+
       assert diagnostic.position == 3
     end
 
@@ -189,7 +269,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
       ] |> compile()
       diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
-      assert diagnostic.message =~ ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+
+      assert diagnostic.message =~
+               ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
+
       assert diagnostic.position == 4
     end
 
