@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     detail_diagnostics = detail_diagnostics(detail)
     error = message_info_to_binary(message_info, token)
     error_diagnostics = parse_error_to_diagnostics(context, error, token)
-    error_diagnostics ++ detail_diagnostics
+    uniq(error_diagnostics ++ detail_diagnostics)
   end
 
   def parse_error_to_diagnostics(context, message_info, token) do
@@ -23,6 +23,20 @@ defmodule Lexical.RemoteControl.Build.Error do
     ]
 
     Enum.flat_map(parse_error_diagnostic_functions, & &1.(context, message_info, token))
+  end
+
+  defp uniq(diagnostics) do
+    # We need to uniq by position because the same position can be reported
+    # and the `end_line_diagnostic` is always the precise one
+    position_key = fn
+      %Diagnostic{position: position} when is_tuple(position) ->
+        elem(position, 0)
+
+      %Diagnostic{position: position} ->
+        position
+    end
+
+    Enum.uniq_by(diagnostics, &position_key.(&1))
   end
 
   defp build_end_line_diagnostics(context, message_info, token) do

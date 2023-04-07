@@ -85,6 +85,20 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert detail.position == 4
     end
 
+    test "return the more precise one when there are multiple diagnostics on the same line" do
+      errors =
+        ~S{Keywor.get([], fn x -> )}
+        |> compile()
+        |> parse_error()
+
+      assert [error] = errors
+
+      assert error.message ==
+               ~S[unexpected token: ). The "fn" at line 1 is missing terminator "end")]
+
+      assert error.position == {1, 24}
+    end
+
     test "returns two diagnostics when missing end at the real end" do
       errors =
         ~S[
