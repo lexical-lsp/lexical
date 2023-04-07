@@ -24,6 +24,34 @@ defmodule Lexical.Protocol.Proto.Response do
       unquote(Typespec.build())
       unquote(Meta.build(jsonrpc_types))
 
+      alias Lexical.Protocol.Proto.Convert
+
+      unquote(constructors())
+
+      defimpl Jason.Encoder, for: unquote(__CALLER__.module) do
+        def encode(%_{error: nil} = response, opts) do
+          %{
+            jsonrpc: "2.0",
+            id: response.id,
+            result: response.result
+          }
+          |> Jason.Encode.map(opts)
+        end
+
+        def encode(response, opts) do
+          %{
+            jsonrpc: "2.0",
+            id: response.id,
+            error: response.error
+          }
+          |> Jason.Encode.map(opts)
+        end
+      end
+    end
+  end
+
+  defp constructors do
+    quote do
       def new(id, result) do
         struct(__MODULE__, result: result, id: id)
       end
@@ -50,26 +78,6 @@ defmodule Lexical.Protocol.Proto.Response do
           id: id,
           error: LspTypes.ResponseError.new(code: error_code, message: error_message)
         }
-      end
-
-      defimpl Jason.Encoder, for: unquote(__CALLER__.module) do
-        def encode(%_{error: nil} = response, opts) do
-          %{
-            jsonrpc: "2.0",
-            id: response.id,
-            result: response.result
-          }
-          |> Jason.Encode.map(opts)
-        end
-
-        def encode(response, opts) do
-          %{
-            jsonrpc: "2.0",
-            id: response.id,
-            error: response.error
-          }
-          |> Jason.Encode.map(opts)
-        end
       end
     end
   end

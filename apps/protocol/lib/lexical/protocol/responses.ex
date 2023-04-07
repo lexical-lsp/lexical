@@ -5,7 +5,7 @@ defmodule Lexical.Protocol.Responses do
   defmodule InitializeResult do
     use Proto
 
-    defresponse Types.Initizlize.Result
+    defresponse Types.Initialize.Result
   end
 
   defmodule FindReferences do

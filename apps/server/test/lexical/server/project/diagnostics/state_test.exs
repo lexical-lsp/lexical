@@ -43,19 +43,8 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     source_file
   end
 
-  defp compiler_position({line, column}) do
-    {compiler_position(line), compiler_position(column)}
-  end
-
-  defp compiler_position(line) do
-    line + 1
-  end
-
   def compiler_diagnostic(opts \\ []) do
-    position =
-      opts
-      |> Keyword.get(:position, 4)
-      |> compiler_position()
+    position = Keyword.get(opts, :position, 1)
 
     %Compiler.Diagnostic{
       message: Keyword.get(opts, :message, "This file is broken"),
@@ -110,7 +99,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       end
       ]
       source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {1, 5})
+      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {2, 5})
 
       {:ok, state} = State.add(state, diagnostic, source_file.uri)
 
@@ -123,7 +112,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
       # Starting at 0 and going to character 0 on the next line highlights the entire line
       assert range.start.line == 1
-      assert range.start.character == 5
+      assert range.start.character == 4
 
       assert range.end.line == 2
       assert range.end.character == 0
@@ -139,7 +128,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       ]t
 
       source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {2, 9})
+      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {3, 10})
 
       {:ok, state} = State.add(state, diagnostic, source_file.uri)
 

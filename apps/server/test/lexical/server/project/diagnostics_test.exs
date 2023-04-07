@@ -90,24 +90,6 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
 
-    test "it converts a file's diagnostics to the first line if they're out of bounds", %{
-      project: project
-    } do
-      source_file = open_file(project, "defmodule Foo")
-      file_diagnostics = diagnostic(source_file.uri, position: {100, 2})
-
-      file_diagnostics_message =
-        file_diagnostics(diagnostics: [file_diagnostics], uri: source_file.uri)
-
-      Project.Dispatch.broadcast(project, file_diagnostics_message)
-      assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
-
-      range = diagnostic.range
-
-      assert range.start.line == 0
-      assert range.end.line == 1
-    end
-
     test "it adds a diagnostic to the last line if they're out of bounds", %{project: project} do
       source_file = open_file(project, "defmodule Dummy do\n  .\nend\n")
       # only 3 lines in the file, but elixir compiler gives us a line number of 4
@@ -123,8 +105,10 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
       range = diagnostic.range
-      assert range.start.line == 2
-      assert range.end.line == 3
+      assert range.start.line == 3
+      assert range.start.character == 0
+      assert range.end.line == 4
+      assert range.end.character == 0
     end
   end
 end

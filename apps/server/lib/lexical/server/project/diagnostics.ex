@@ -1,12 +1,14 @@
 defmodule Lexical.Server.Project.Diagnostics do
   defmodule State do
-    alias Lexical.CodeUnit
     alias Lexical.Math
     alias Lexical.Project
     alias Lexical.Protocol.Types.Diagnostic
     alias Lexical.Protocol.Types.Position
     alias Lexical.Protocol.Types.Range
+    alias Lexical.Ranged
     alias Lexical.SourceFile
+    alias Lexical.SourceFile.Position, as: ExPosition
+    alias Lexical.SourceFile.Range, as: ExRange
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
@@ -133,20 +135,23 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
-      line_number = Math.clamp(line_number - 1, 0, SourceFile.size(source_file) - 1)
-      column = max(column - 1, 0)
+      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
+      column = max(column, 1)
 
-      with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
-           {:ok, character} <- CodeUnit.to_utf16(line_text, column) do
-        Range.new(
-          start: Position.new(line: line_number, character: character),
-          end: Position.new(line: line_number + 1, character: 0)
+      elixir_range =
+        ExRange.new(
+          ExPosition.new(line_number, column),
+          ExPosition.new(line_number + 1, 1)
         )
-      else
-        _ ->
+
+      case Ranged.Lsp.from_native(elixir_range, source_file) do
+        {:ok, range} ->
+          range
+
+        _error ->
           Range.new(
-            start: Position.new(line: 0, character: 0),
-            end: Position.new(line: 1, character: 0)
+            start: Position.new(line: line_number, character: 0),
+            end: Position.new(line: line_number + 1, character: 0)
           )
       end
     end

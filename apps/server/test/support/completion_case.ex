@@ -44,7 +44,12 @@ defmodule Lexical.Test.Server.CompletionCase do
 
     root_path = Project.root_path(project)
     file_path = Path.join([root_path, "lib", "file.ex"])
-    document = SourceFile.new("file://#{file_path}", text, 0)
+
+    document =
+      file_path
+      |> SourceFile.Path.ensure_uri()
+      |> SourceFile.new(text, 0)
+
     position = %SourceFile.Position{line: line, character: column}
 
     context =

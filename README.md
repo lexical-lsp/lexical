@@ -22,4 +22,10 @@ To install lexical fetch the source code from git, then do the following:
  
  Lexical will now be available in `_build/prod/rel/lexical`
  
+To use lexical as a language server while working on lexical source code,
+use the following to produce the release and avoid bugs:
+
+ ```
+ NAMESPACE=1 mix release lexical
+ ```
 

@@ -94,7 +94,7 @@ defmodule Lexical.MixProject do
 
   defp maybe_namespace_release(%Mix.Release{} = release) do
     if System.get_env("NAMESPACE") do
-      Mix.Task.run("namespace.release", [release.path, release.version_path])
+      Mix.Task.run("namespace.release")
     end
 
     release
