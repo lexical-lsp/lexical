@@ -11,7 +11,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     maybe_location =
       source_file
       |> SourceFile.to_string()
-      |> ElixirSense.definition(position.line + 1, position.character + 1)
+      |> ElixirSense.definition(position.line, position.character)
 
     parse_location(maybe_location, source_file)
   end
@@ -22,7 +22,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     uri = SourceFile.Path.ensure_uri(file_path)
 
     with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
-         {:ok, text} <- SourceFile.fetch_text_at(source_file, line - 1) do
+         {:ok, text} <- SourceFile.fetch_text_at(source_file, line) do
       {:ok, {source_file, to_precise_range(text, line, column)}}
     else
       _ ->
@@ -50,8 +50,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
   defp to_range({begin_line, begin_column}, {end_line, end_column}) do
     Range.new(
-      Position.new(begin_line - 1, begin_column - 1),
-      Position.new(end_line - 1, end_column - 1)
+      Position.new(begin_line, begin_column),
+      Position.new(end_line, end_column)
     )
   end
 
