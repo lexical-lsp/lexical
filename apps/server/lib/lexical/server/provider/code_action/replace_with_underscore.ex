@@ -81,7 +81,7 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
 
   defp adjust_line_number(%TextEdit{} = text_edit, line_number) do
     text_edit
-    |> put_in([:range, :start, :line], line_number)
-    |> put_in([:range, :end, :line], line_number)
+    |> put_in([:range, :start, :line], line_number - 1)
+    |> put_in([:range, :end, :line], line_number - 1)
   end
 end
