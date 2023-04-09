@@ -19,6 +19,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
   defp with_referenced_file(%{project: project}) do
     path = file_path(project, Path.join("lib", "my_definition.ex"))
+    Code.compile_file(path)
     %{uri: SourceFile.Path.ensure_uri(path)}
   end
 
@@ -78,16 +79,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     {:ok, definition_line} = SourceFile.fetch_text_at(source_file, range.start.line)
     {:ok, module_header} = SourceFile.fetch_text_at(source_file, 1)
 
-    module_part = module_header <> "\n" <> "..." <> "\n\n"
+    module_part = Enum.join([module_header, "..."], "\n") <> "\n"
 
-    definition_part =
-      definition_line <>
-        "\n" <>
-        "#" <>
+    annotation =
+      "#" <>
         String.duplicate(" ", range.start.character - 2) <>
-        String.duplicate("^", range.end.character - range.start.character) <>
-        "\n"
+        String.duplicate("^", range.end.character - range.start.character)
 
-    module_part <> definition_part
+    Enum.join([module_part, definition_line, annotation], "\n") <> "\n"
   end
 end
