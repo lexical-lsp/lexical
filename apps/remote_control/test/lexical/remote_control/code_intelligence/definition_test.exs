@@ -236,9 +236,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     setup [:with_navigation_project, :with_referenced_file]
 
     test "find the function definition", ctx do
-      %{uri: referenced_uri} = ctx
-
-      {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
+      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
       position = cursor_to_position("gree|", 26, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
@@ -253,9 +251,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
 
     test "find the attribute", ctx do
-      %{uri: referenced_uri} = ctx
-
-      {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
+      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
       position = cursor_to_position("@|b", 41, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
@@ -270,9 +266,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
 
     test "find the variable", ctx do
-      %{uri: referenced_uri} = ctx
-
-      {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
+      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
       position = cursor_to_position("a|", 39, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
