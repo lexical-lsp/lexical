@@ -196,7 +196,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       uses_file = open_uses_file(project, uses_content)
       position = cursor_to_position("greet|", 5, uses_file)
 
-      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
       assert annotate(source_file, range) == ~q[
         defmodule MyDefinition do
@@ -217,7 +217,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
       position = cursor_to_position("gree|", 22, uses_file)
 
-      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
       assert annotate(source_file, range) == ~q[
         defmodule MyDefinition do
@@ -226,8 +226,63 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           def greet(name) do
         #     ^^^^^
       ]
+    end
 
-      assert source_file.uri == referenced_uri
+    test "find the attribute", ctx do
+      %{uri: referenced_uri} = ctx
+
+      {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
+      position = cursor_to_position("@|b", 37, uses_file)
+
+      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+
+      assert annotate(source_file, range) == ~q[
+        defmodule MyDefinition do
+        ...
+
+          @b 2
+        # ^^
+      ]
+    end
+
+    test "find the variable", ctx do
+      %{uri: referenced_uri} = ctx
+
+      {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
+      position = cursor_to_position("a|", 35, uses_file)
+
+      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+
+      assert annotate(source_file, range) == ~q[
+        defmodule MyDefinition do
+        ...
+
+            a = 1
+        #   ^
+      ]
+    end
+
+    test "can't find the definition when call a Elixir std module function", ctx do
+      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
+      position = cursor_to_position("String.to_intege|", 42, uses_file)
+
+      # TODO: this should be fixed when we have a call tracer
+      {:ok, nil} = Definition.definition(uses_file, position)
+    end
+
+    test "find the definition when call a erlang module", ctx do
+      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
+      position = cursor_to_position("binary_to_|", 46, uses_file)
+
+      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+
+      assert annotate(source_file, range) == ~q[
+        %%
+        ...
+
+        binary_to_atom(Binary) ->
+        ^^^^^^^^^^^^^^
+      ]
     end
   end
 
@@ -238,9 +293,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     module_part = Enum.join([module_header, "..."], "\n") <> "\n"
 
     annotation =
-      "#" <>
-        String.duplicate(" ", range.start.character - 2) <>
+      if range.start.character <= 2 do
+        # for erlang file
         String.duplicate("^", range.end.character - range.start.character)
+      else
+        "#" <>
+          String.duplicate(" ", range.start.character - 2) <>
+          String.duplicate("^", range.end.character - range.start.character)
+      end
 
     if range.start.line == 1 do
       Enum.join([definition_line, annotation], "\n") <> "\n"
