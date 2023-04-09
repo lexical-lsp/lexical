@@ -17,8 +17,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     %{project: project(:navigations)}
   end
 
-  defp with_referenced_file(%{project: project}) do
-    path = file_path(project, Path.join("lib", "my_definition.ex"))
+  defp with_referenced_file(%{project: project}, file \\ "my_definition.ex") do
+    path = file_path(project, Path.join("lib", file))
     Code.compile_file(path)
     %{uri: SourceFile.Path.ensure_uri(path)}
   end
@@ -58,6 +58,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
           def uses_macro() do
             MyDefinition.print_hello()
+          end
+
+          # elixir sense limitation
+          alias MultiArity
+
+          def uses_multiple_arity_fun() do
+            MultiArity.sum(1, 2, 3)
           end
         end
         ]
@@ -113,6 +120,28 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       ]
 
       assert source_file.uri == referenced_uri
+    end
+
+    test "it can't find the right arity function definition", ctx do
+      %{project: project, uses_content: uses_content} = ctx
+      with_referenced_file(%{project: project}, "multi_arity.ex")
+
+      uses_file = open_uses_file(project, uses_content)
+      position = cursor_to_position("MultiArity.sum|", 17, uses_file)
+
+      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+
+      # credo:disable-for-next-line Credo.Check.Design.TagTODO
+      # TODO: this is a limitation of elixir_sense
+      # can be fixed when we have a tracer
+      # when function is imported, it also has the issue
+      assert annotate(source_file, range) == ~q[
+        defmodule MultiArity do
+        ...
+
+          def sum(a, b) do
+        #     ^^^
+      ]
     end
   end
 
