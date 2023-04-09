@@ -4,6 +4,10 @@ defmodule MyDefinition do
   defmacro __using__(_opts) do
     quote do
       import MyDefinition
+
+      def hello_func_in_using() do
+        "Hello, world!"
+      end
     end
   end
 

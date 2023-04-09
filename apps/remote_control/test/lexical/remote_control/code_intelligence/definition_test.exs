@@ -185,6 +185,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           def my_function() do
             greet("World")
           end
+
+          def uses_hello_defined_in_using_quote() do
+            hello_func_in_using()
+          end
         end
         ]
 
@@ -206,6 +210,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
         #     ^^^^^
       ]
     end
+
+    test "it can't find the correct definition when func defined in the quote block", ctx do
+      %{project: project, uses_content: uses_content} = ctx
+      uses_file = open_uses_file(project, uses_content)
+      position = cursor_to_position("hello|_func_in_using", 9, uses_file)
+
+      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+
+      # credo:disable-for-next-line Credo.Check.Design.TagTODO
+      # TODO: this is wrong, it should go to the definition in the quote block
+      # but it goes to the `use` keyword in the caller module
+      # it can be fixed when we have a tracer, the tracer event kind will be `local_function`
+      assert annotate(source_file, range) == ~q[
+        defmodule MyModule do
+        ...
+
+          use MyDefinition
+        # ^^^
+      ]
+    end
   end
 
   describe "definition/2 when making local call" do
@@ -215,7 +239,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       %{uri: referenced_uri} = ctx
 
       {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
-      position = cursor_to_position("gree|", 22, uses_file)
+      position = cursor_to_position("gree|", 26, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -232,7 +256,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       %{uri: referenced_uri} = ctx
 
       {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
-      position = cursor_to_position("@|b", 37, uses_file)
+      position = cursor_to_position("@|b", 41, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -249,7 +273,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       %{uri: referenced_uri} = ctx
 
       {:ok, uses_file} = SourceFile.Store.open_temporary(referenced_uri)
-      position = cursor_to_position("a|", 35, uses_file)
+      position = cursor_to_position("a|", 39, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -264,15 +288,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "can't find the definition when call a Elixir std module function", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("String.to_intege|", 42, uses_file)
+      position = cursor_to_position("String.to_intege|", 46, uses_file)
 
+      # credo:disable-for-next-line Credo.Check.Design.TagTODO
       # TODO: this should be fixed when we have a call tracer
       {:ok, nil} = Definition.definition(uses_file, position)
     end
 
     test "find the definition when call a erlang module", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("binary_to_|", 46, uses_file)
+      position = cursor_to_position("binary_to_|", 50, uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
