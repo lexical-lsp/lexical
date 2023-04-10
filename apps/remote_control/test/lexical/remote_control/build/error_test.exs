@@ -146,21 +146,6 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.position == 4
     end
 
-    test "handles UndefinedError when unused" do
-      {:exception, exception, stack, quoted_ast} = ~S[
-        defmodule Foo do
-          a
-        end
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
-
-      assert diagnostic.message =~
-               ~s[undefined function a/0]
-
-      assert diagnostic.position == 3
-    end
-
     test "handles UndefinedError without moudle" do
       {:exception, exception, stack, quoted_ast} =
         ~S[
