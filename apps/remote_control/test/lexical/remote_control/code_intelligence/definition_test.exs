@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
   setup do
     start_supervised!(Lexical.SourceFile.Store)
+    Code.put_compiler_option(:ignore_module_conflict, true)
     :ok
   end
 
