@@ -24,16 +24,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     %{uri: SourceFile.Path.ensure_uri(path)}
   end
 
-  defp project_file_path(project, name) do
-    file_path(project, Path.join("lib", name))
-  end
-
   defp open_uses_file(project, content) do
-    path = project_file_path(project, "my_module.ex")
-    uri = SourceFile.Path.ensure_uri(path)
-    :ok = SourceFile.Store.open(uri, content, 1)
-    {:ok, uses_file} = SourceFile.Store.fetch(uri)
-    uses_file
+    uri =
+      project
+      |> file_path(Path.join("lib", "my_module.ex"))
+      |> SourceFile.Path.ensure_uri()
+
+    with :ok <- SourceFile.Store.open(uri, content, 1),
+         {:ok, uses_file} <- SourceFile.Store.fetch(uri) do
+      uses_file
+    end
   end
 
   defp cursor_to_position(cursor, line, source_file) do
