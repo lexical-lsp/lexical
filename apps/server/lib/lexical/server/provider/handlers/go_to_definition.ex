@@ -14,19 +14,19 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
       {:reply, ls_location}
     else
       {:error, reason} ->
-        Logger.error("GotoDefinition failed: #{inspect(reason)}")
-        {:error, Responses.GotoDefinition.error(request.id, :request_failed, inspect(reason))}
+        Logger.error("GoToDefinition failed: #{inspect(reason)}")
+        {:error, Responses.GoToDefinition.error(request.id, :request_failed, inspect(reason))}
     end
   end
 
   defp to_response(request_id, nil) do
-    {:ok, Responses.GotoDefinition.new(request_id, nil)}
+    {:ok, Responses.GoToDefinition.new(request_id, nil)}
   end
 
   defp to_response(request_id, {source_file, range}) do
     with {:ok, ls_range} <- Ranged.Lsp.from_native(range, source_file) do
       ls_location = Location.new(uri: source_file.uri, range: ls_range)
-      {:ok, Responses.GotoDefinition.new(request_id, ls_location)}
+      {:ok, Responses.GoToDefinition.new(request_id, ls_location)}
     end
   end
 end
