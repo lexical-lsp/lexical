@@ -1,10 +1,12 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   alias Lexical.RemoteControl.CodeIntelligence.Definition
+  alias Lexical.SourceFile
+  alias Lexical.SourceFile.Line
+  alias Lexical.SourceFile.Position
 
   import Lexical.Test.Fixtures
   import Lexical.Test.CodeSigil
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position
+  import Line
 
   use ExUnit.Case, async: false
 
@@ -36,12 +38,20 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
-  defp cursor_to_position(cursor, line, source_file) do
-    {:ok, text} = SourceFile.fetch_text_at(source_file, line)
+  defp cursor_to_position(cursor, source_file) do
+    find_line = fn source_file, cursor ->
+      Enum.find(Tuple.to_list(source_file.document.lines), fn line(text: text) ->
+        cursor_full_text = String.replace(cursor, "|", "")
+        String.contains?(text, cursor_full_text)
+      end)
+    end
+
+    line(line_number: line_number) = find_line.(source_file, cursor)
+    {:ok, text} = SourceFile.fetch_text_at(source_file, line_number)
     [cursor | _] = String.split(cursor, "|", parts: 2)
     [before_cursor, _] = String.split(text, cursor, parts: 2)
     character = String.length(before_cursor) + String.length(cursor) + 1
-    Position.new(line, character)
+    Position.new(line_number, character)
   end
 
   describe "definition/2 when making remote call by alias" do
@@ -75,7 +85,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the definition of a remote function call", ctx do
       %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDefinition.gree|", 6, uses_file)
+      position = cursor_to_position("MyDefinition.gree|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -93,7 +103,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the definition of the module", ctx do
       %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDef|inition", 6, uses_file)
+      position = cursor_to_position("MyDef|inition", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -108,7 +118,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the macro definition", ctx do
       %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDefinition.print_hello|", 10, uses_file)
+      position = cursor_to_position("MyDefinition.print_hello|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -128,7 +138,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       with_referenced_file(%{project: project}, "multi_arity.ex")
 
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MultiArity.sum|", 17, uses_file)
+      position = cursor_to_position("MultiArity.sum|", uses_file)
 
       assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -170,7 +180,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the definition of a remote function call", ctx do
       %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("greet|", 5, uses_file)
+      position = cursor_to_position("greet|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -188,7 +198,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the definition of a remote macro call", ctx do
       %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("print_hello|", 9, uses_file)
+      position = cursor_to_position("print_hello|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -228,7 +238,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the function definition", ctx do
       %{project: project, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("greet|", 5, uses_file)
+      position = cursor_to_position("greet|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -244,7 +254,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "it can't find the correct definition when func defined in the quote block", ctx do
       %{project: project, uses_content: uses_content} = ctx
       uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("hello|_func_in_using", 9, uses_file)
+      position = cursor_to_position("hello|_func_in_using", uses_file)
 
       assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -267,7 +277,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "find the function definition", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("gree|", 26, uses_file)
+      position = cursor_to_position(~s[greet|("world")], uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -282,7 +292,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "find the attribute", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("@|b", 41, uses_file)
+      position = cursor_to_position("      @|b", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -297,7 +307,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "find the variable", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("a|", 39, uses_file)
+      position = cursor_to_position("      a|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
@@ -312,7 +322,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "can't find the definition when call a Elixir std module function", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("String.to_intege|", 46, uses_file)
+      position = cursor_to_position("String.to_intege|", uses_file)
 
       # credo:disable-for-next-line Credo.Check.Design.TagTODO
       # TODO: this should be fixed when we have a call tracer
@@ -321,7 +331,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "find the definition when call a erlang module", ctx do
       {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("binary_to_|", 50, uses_file)
+      position = cursor_to_position("binary_to_|", uses_file)
 
       {:ok, {source_file, range}} = Definition.definition(uses_file, position)
 
