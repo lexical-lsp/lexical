@@ -31,16 +31,12 @@ defmodule Lexical.MathTest do
 
   property "count_leading_spaces/1" do
     check all(
-            str <- non_leading_space_string(),
-            spaces <- integer(0..100),
-            tabs <- integer(0..100)
+            maybe_spaces <- string([?\t, ?\s]),
+            string_base <- string(:printable),
+            maybe_with_leading_spaces = maybe_spaces <> string_base
           ) do
-      input = String.duplicate(" ", spaces) <> String.duplicate("\t", tabs) <> str
-      assert Math.count_leading_spaces(input) == spaces + tabs
+      space_count = byte_size(maybe_spaces)
+      assert Math.count_leading_spaces(maybe_with_leading_spaces) == space_count
     end
-  end
-
-  defp non_leading_space_string do
-    map(string(:ascii), fn s -> String.replace(s, ~r/^[\s\t]+/, "") end)
   end
 end
