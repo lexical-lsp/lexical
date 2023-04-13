@@ -40,7 +40,7 @@ defmodule Lexical.MathTest do
     end
   end
 
-  defp non_leading_space_string() do
+  defp non_leading_space_string do
     map(string(:ascii), fn s -> String.replace(s, ~r/^[\s\t]+/, "") end)
   end
 end
