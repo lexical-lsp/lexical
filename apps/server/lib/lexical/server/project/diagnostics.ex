@@ -9,6 +9,7 @@ defmodule Lexical.Server.Project.Diagnostics do
     alias Lexical.SourceFile
     alias Lexical.SourceFile.Position, as: ExPosition
     alias Lexical.SourceFile.Range, as: ExRange
+    alias Lexical.Text
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
@@ -144,7 +145,7 @@ defmodule Lexical.Server.Project.Diagnostics do
       line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
 
       with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number) do
-        column = Math.count_leading_spaces(line_text) + 1
+        column = Text.count_leading_spaces(line_text) + 1
         to_lsp_range(line_number, column, source_file)
       end
     end
