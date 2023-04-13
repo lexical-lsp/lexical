@@ -140,8 +140,8 @@ defmodule Lexical.Server.Project.Diagnostics do
       to_lsp_range(line_number, column, source_file)
     end
 
-    defp position_to_range(source_file, line) when is_integer(line) do
-      line_number = Math.clamp(line, 1, SourceFile.size(source_file))
+    defp position_to_range(source_file, line_number) when is_integer(line_number) do
+      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
 
       with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number) do
         column = Math.count_leading_spaces(line_text) + 1
@@ -149,11 +149,11 @@ defmodule Lexical.Server.Project.Diagnostics do
       end
     end
 
-    defp to_lsp_range(line, column, source_file) do
+    defp to_lsp_range(line_number, column, source_file) do
       elixir_range =
         ExRange.new(
-          ExPosition.new(line, column),
-          ExPosition.new(line + 1, 1)
+          ExPosition.new(line_number, column),
+          ExPosition.new(line_number + 1, 1)
         )
 
       case Ranged.Lsp.from_native(elixir_range, source_file) do
@@ -162,8 +162,8 @@ defmodule Lexical.Server.Project.Diagnostics do
 
         _error ->
           Range.new(
-            start: Position.new(line: line, character: 0),
-            end: Position.new(line: line + 1, character: 0)
+            start: Position.new(line: line_number, character: 0),
+            end: Position.new(line: line_number + 1, character: 0)
           )
       end
     end

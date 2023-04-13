@@ -29,21 +29,18 @@ defmodule Lexical.MathTest do
     end
   end
 
-  describe "count_leading_space/1" do
-    test "returns 0 when string is empty" do
-      assert Math.count_leading_spaces("") == 0
+  property "count_leading_spaces/1" do
+    check all(
+            str <- non_leading_space_string(),
+            spaces <- integer(0..100),
+            tabs <- integer(0..100)
+          ) do
+      input = String.duplicate(" ", spaces) <> String.duplicate("\t", tabs) <> str
+      assert Math.count_leading_spaces(input) == spaces + tabs
     end
+  end
 
-    test "returns 0 when string has no leading spaces" do
-      assert Math.count_leading_spaces("hello") == 0
-    end
-
-    test "returns 2 when string has two leading spaces" do
-      assert Math.count_leading_spaces("  hello") == 2
-    end
-
-    test "return 1 when string has one leading tab" do
-      assert Math.count_leading_spaces("\thello") == 1
-    end
+  defp non_leading_space_string() do
+    map(string(:ascii), fn s -> String.replace(s, ~r/^[\s\t]+/, "") end)
   end
 end
