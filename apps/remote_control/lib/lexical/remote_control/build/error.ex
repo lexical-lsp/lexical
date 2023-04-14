@@ -331,13 +331,13 @@ defmodule Lexical.RemoteControl.Build.Error do
     message_lines = String.split(message, "\n")
 
     with {:ok, location_line} <- find_location(message_lines),
-         {:ok, {file, line, column, mfa}} <- parse_location(location_line) do
+         {:ok, {file, line, mfa}} <- parse_location(location_line) do
       %Diagnostic{
         compiler_name: "Elixir",
         details: mfa,
         message: message,
         file: file,
-        position: position(line, column),
+        position: line,
         severity: :warning
       }
     else
@@ -355,17 +355,15 @@ defmodule Lexical.RemoteControl.Build.Error do
     with [] <- Regex.scan(@location_re, location_string),
          [[_, file, line]] <- Regex.scan(@file_and_line_re, location_string) do
       line = String.to_integer(line)
-      column = 0
-      location = {file, line, column, nil}
+      location = {file, line, nil}
       {:ok, location}
     else
       [[_, file, line, module, function, arity]] ->
         line = String.to_integer(line)
-        column = 0
         module = Module.concat([module])
         function = String.to_atom(function)
         arity = String.to_integer(arity)
-        location = {file, line, column, {module, function, arity}}
+        location = {file, line, {module, function, arity}}
         {:ok, location}
 
       _ ->

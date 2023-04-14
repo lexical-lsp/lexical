@@ -9,6 +9,7 @@ defmodule Lexical.Server.Project.Diagnostics do
     alias Lexical.SourceFile
     alias Lexical.SourceFile.Position, as: ExPosition
     alias Lexical.SourceFile.Range, as: ExRange
+    alias Lexical.Text
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
@@ -137,7 +138,19 @@ defmodule Lexical.Server.Project.Diagnostics do
     defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
       line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
       column = max(column, 1)
+      to_lsp_range(line_number, column, source_file)
+    end
 
+    defp position_to_range(source_file, line_number) when is_integer(line_number) do
+      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
+
+      with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number) do
+        column = Text.count_leading_spaces(line_text) + 1
+        to_lsp_range(line_number, column, source_file)
+      end
+    end
+
+    defp to_lsp_range(line_number, column, source_file) do
       elixir_range =
         ExRange.new(
           ExPosition.new(line_number, column),
@@ -154,13 +167,6 @@ defmodule Lexical.Server.Project.Diagnostics do
             end: Position.new(line: line_number + 1, character: 0)
           )
       end
-    end
-
-    defp position_to_range(_source_file, line) when is_integer(line) do
-      Range.new(
-        start: Position.new(line: max(line - 1, 0), character: 0),
-        end: Position.new(line: max(line, 0), character: 0)
-      )
     end
   end
 
