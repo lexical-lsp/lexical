@@ -1,28 +1,32 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
-  alias Lexical.RemoteControl.CodeIntelligence.Definition
+  alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.SourceFile
-  alias Lexical.SourceFile.Line
   alias Lexical.SourceFile.Position
 
   import Lexical.Test.Fixtures
   import Lexical.Test.CodeSigil
-  import Line
+  import Lexical.Test.CursorSupport
+  import Messages
 
   use ExUnit.Case, async: false
 
-  setup do
-    start_supervised!(Lexical.SourceFile.Store)
-    Code.put_compiler_option(:ignore_module_conflict, true)
-    :ok
-  end
-
   defp with_navigation_project(_ctx) do
-    %{project: project(:navigations)}
+    project = project(:navigations)
+    {:ok, _, _} = RemoteControl.start_link(project, self())
+
+    on_exit(fn ->
+      :ok = RemoteControl.stop(project)
+    end)
+
+    RemoteControl.Api.schedule_compile(project, true)
+    assert_receive project_compiled(), 5000
+
+    %{project: project}
   end
 
   defp with_referenced_file(%{project: project}, file \\ "my_definition.ex") do
     path = file_path(project, Path.join("lib", file))
-    Code.compile_file(path)
     %{uri: SourceFile.Path.ensure_uri(path)}
   end
 
@@ -32,339 +36,269 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       |> file_path(Path.join("lib", "my_module.ex"))
       |> SourceFile.Path.ensure_uri()
 
-    with :ok <- SourceFile.Store.open(uri, content, 1),
-         {:ok, uses_file} <- SourceFile.Store.fetch(uri) do
-      uses_file
+    with :ok <- RemoteControl.call(project, SourceFile.Store, :open, [uri, content, 1]),
+         {:ok, uses_file} <- RemoteControl.call(project, SourceFile.Store, :fetch, [uri]) do
+      {:ok, uses_file}
+    else
+      {:error, :already_open} ->
+        {:ok, uses_file} = RemoteControl.call(project, SourceFile.Store, :fetch, [uri])
+        {:ok, uses_file}
     end
   end
 
-  defp cursor_to_position(cursor, source_file) do
-    find_line = fn source_file, cursor ->
-      Enum.find(Tuple.to_list(source_file.document.lines), fn line(text: text) ->
-        cursor_full_text = String.replace(cursor, "|", "")
-        String.contains?(text, cursor_full_text)
-      end)
-    end
-
-    line(line_number: line_number) = find_line.(source_file, cursor)
-    {:ok, text} = SourceFile.fetch_text_at(source_file, line_number)
-    [cursor | _] = String.split(cursor, "|", parts: 2)
-    [before_cursor, _] = String.split(text, cursor, parts: 2)
-    character = String.length(before_cursor) + String.length(cursor) + 1
-    Position.new(line_number, character)
-  end
+  setup ~w(with_navigation_project)a
 
   describe "definition/2 when making remote call by alias" do
-    setup [:with_navigation_project, :with_referenced_file]
+    setup [:with_referenced_file]
 
-    setup do
+    test "find the definition of a remote function call", %{project: project, uri: referenced_uri} do
       uses_content = ~q[
-        defmodule MyModule do
+        defmodule UsesRemoteFunction do
           alias MyDefinition
-          require MyDefinition
 
-          def my_function() do
-            MyDefinition.greet("World")
-          end
-
-          def uses_macro() do
-            MyDefinition.print_hello()
-          end
-
-          # elixir sense limitation
-          alias MultiArity
-
-          def uses_multiple_arity_fun() do
-            MultiArity.sum(1, 2, 3)
+          def uses_greet() do
+            MyDefinition.greet|("World")
           end
         end
         ]
-      %{uses_content: uses_content}
+
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[  def «greet»(name) do]
     end
 
-    test "find the definition of a remote function call", ctx do
-      %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDefinition.gree|", uses_file)
+    test "find the definition of the module", %{project: project, uri: referenced_uri} do
+      uses_content = ~q[
+        defmodule UsesRemoteFunction do
+          alias MyDefinition
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+          def uses_greet() do
+            MyDefinition|.greet("World")
+          end
+        end
+        ]
 
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          def greet(name) do
-        #     ^^^^^
-      ]
-
-      assert source_file.uri == referenced_uri
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[defmodule «MyDefinition» do]
     end
 
-    test "find the definition of the module", ctx do
-      %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDef|inition", uses_file)
+    test "find the macro definition", %{project: project, uri: referenced_uri} do
+      uses_content = ~q[
+        defmodule UsesRemoteFunction do
+          alias MyDefinition
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+          def uses_macro() do
+            MyDefinition.print_hello|()
+          end
+        end
+        ]
 
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        #         ^^^^^^^^^^^^
-      ]
-
-      assert source_file.uri == referenced_uri
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[  defmacro «print_hello» do]
     end
 
-    test "find the macro definition", ctx do
-      %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MyDefinition.print_hello|", uses_file)
+    test "it can't find the right arity function definition", %{project: project} do
+      uses_content = ~q[
+        defmodule UsesRemoteFunction do
+          alias MultiArity
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          defmacro print_hello do
-        #          ^^^^^^^^^^^
-      ]
-
-      assert source_file.uri == referenced_uri
-    end
-
-    test "it can't find the right arity function definition", ctx do
-      %{project: project, uses_content: uses_content} = ctx
-      with_referenced_file(%{project: project}, "multi_arity.ex")
-
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("MultiArity.sum|", uses_file)
-
-      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
+          def uses_multiple_arity_fun() do
+            MultiArity.sum|(1, 2, 3)
+          end
+        end
+        ]
       # credo:disable-for-next-line Credo.Check.Design.TagTODO
       # TODO: this is a limitation of elixir_sense
       # can be fixed when we have a tracer
       # when function is imported, it also has the issue
-      assert annotate(source_file, range) == ~q[
-        defmodule MultiArity do
-        ...
+      {:ok, referenced_uri, definition_line} = definition(project, uses_content)
 
-          def sum(a, b) do
-        #     ^^^
-      ]
+      assert definition_line == ~S[  def «sum»(a, b) do]
+      assert referenced_uri =~ "navigations/lib/multi_arity.ex"
     end
   end
 
   describe "definition/2 when making remote call by import" do
-    setup [:with_navigation_project, :with_referenced_file]
+    setup [:with_referenced_file]
 
-    setup do
+    test "find the definition of a remote function call", %{project: project, uri: referenced_uri} do
       uses_content = ~q[
-        defmodule MyModule do
+        defmodule UsesRemoteFunction do
           import MyDefinition
 
-          def my_function() do
-            greet("World")
-          end
-
-          def uses_macro() do
-            print_hello()
+          def uses_greet() do
+            greet|("World")
           end
         end
         ]
 
-      %{uses_content: uses_content}
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[  def «greet»(name) do]
     end
 
-    test "find the definition of a remote function call", ctx do
-      %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("greet|", uses_file)
+    test "find the definition of a remote macro call",
+         %{project: project, uri: referenced_uri} do
+      uses_content = ~q[
+        defmodule UsesRemoteFunction do
+          import MyDefinition
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+          def uses_macro() do
+            print_hello|()
+          end
+        end
+        ]
 
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          def greet(name) do
-        #     ^^^^^
-      ]
-
-      assert source_file.uri == referenced_uri
-    end
-
-    test "find the definition of a remote macro call", ctx do
-      %{project: project, uri: referenced_uri, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("print_hello|", uses_file)
-
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          defmacro print_hello do
-        #          ^^^^^^^^^^^
-      ]
-
-      assert source_file.uri == referenced_uri
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[  defmacro «print_hello» do]
     end
   end
 
   describe "definition/2 when making remote call by use to import definition" do
-    setup [:with_navigation_project, :with_referenced_file]
+    setup [:with_referenced_file]
 
-    setup do
+    test "find the function definition", %{project: project, uri: referenced_uri} do
       uses_content = ~q[
-        defmodule MyModule do
+        defmodule UsesRemoteFunction do
           use MyDefinition
 
-          def my_function() do
-            greet("World")
-          end
-
-          def uses_hello_defined_in_using_quote() do
-            hello_func_in_using()
+          def uses_greet() do
+            greet|("World")
           end
         end
         ]
-
-      %{uses_content: uses_content}
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, uses_content)
+      assert definition_line == ~S[  def «greet»(name) do]
     end
 
-    test "find the function definition", ctx do
-      %{project: project, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("greet|", uses_file)
+    test "it can't find the correct definition when func defined in the quote block", %{
+      project: project
+    } do
+      uses_content = ~q[
+        defmodule UsesRemoteFunction do
+          use MyDefinition
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          def greet(name) do
-        #     ^^^^^
-      ]
-    end
-
-    test "it can't find the correct definition when func defined in the quote block", ctx do
-      %{project: project, uses_content: uses_content} = ctx
-      uses_file = open_uses_file(project, uses_content)
-      position = cursor_to_position("hello|_func_in_using", uses_file)
-
-      assert {:ok, {source_file, range}} = Definition.definition(uses_file, position)
+          def uses_hello_defined_in_using_quote() do
+            hello_func_in_using|()
+          end
+        end
+        ]
+      {:ok, referenced_uri, definition_line} = definition(project, uses_content)
 
       # credo:disable-for-next-line Credo.Check.Design.TagTODO
       # TODO: this is wrong, it should go to the definition in the quote block
       # but it goes to the `use` keyword in the caller module
       # it can be fixed when we have a tracer, the tracer event kind will be `local_function`
-      assert annotate(source_file, range) == ~q[
-        defmodule MyModule do
-        ...
-
-          use MyDefinition
-        # ^^^
-      ]
+      assert definition_line == ~S[  «use» MyDefinition]
+      assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
   end
 
   describe "definition/2 when making local call" do
-    setup [:with_navigation_project, :with_referenced_file]
+    setup [:with_referenced_file]
 
-    test "find the function definition", ctx do
-      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position(~s[greet|("world")], uses_file)
+    test "find the function definition", %{project: project} do
+      uses_content = ~q[
+        defmodule UsesOwnFunction do
+          def greet do
+          end
 
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
-          def greet(name) do
-        #     ^^^^^
+          def uses_greet do
+            greet|()
+          end
+        end
       ]
+
+      {:ok, referenced_uri, definition_line} = definition(project, uses_content)
+
+      assert definition_line == ~S[  def «greet» do]
+      assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
-    test "find the attribute", ctx do
-      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("      @|b", uses_file)
-
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
+    test "find the attribute", %{project: project} do
+      uses_content = ~q[
+        defmodule UsesAttribute do
           @b 2
-        # ^^
-      ]
+
+          def use_attribute do
+            @|b
+          end
+        end
+        ]
+      {:ok, referenced_uri, definition_line} = definition(project, uses_content)
+
+      assert definition_line =~ ~S[«@b» 2]
+      assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
-    test "find the variable", ctx do
-      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("      a|", uses_file)
-
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        defmodule MyDefinition do
-        ...
-
+    test "find the variable", %{project: project} do
+      uses_content = ~q[
+        defmodule UsesVariable do
+          def use_variable do
             a = 1
-        #   ^
+
+            if true do
+              a|
+            end
+          end
+        end
       ]
+      {:ok, referenced_uri, definition_line} = definition(project, uses_content)
+
+      assert definition_line =~ ~S[«a» = 1]
+      assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
-    test "can't find the definition when call a Elixir std module function", ctx do
-      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("String.to_intege|", uses_file)
+    test "can't find the definition when call a Elixir std module function",
+         %{project: project} do
+      uses_content = ~q[
+        String.to_integer|("1")
+      ]
 
       # credo:disable-for-next-line Credo.Check.Design.TagTODO
       # TODO: this should be fixed when we have a call tracer
-      {:ok, nil} = Definition.definition(uses_file, position)
+      {:ok, nil} = definition(project, uses_content)
     end
 
-    test "find the definition when call a erlang module", ctx do
-      {:ok, uses_file} = SourceFile.Store.open_temporary(ctx.uri)
-      position = cursor_to_position("binary_to_|", uses_file)
-
-      {:ok, {source_file, range}} = Definition.definition(uses_file, position)
-
-      assert annotate(source_file, range) == ~q[
-        %%
-        ...
-
-        binary_to_atom(Binary) ->
-        ^^^^^^^^^^^^^^
+    test "find the definition when call a erlang module", %{project: project} do
+      uses_content = ~q[
+        :erlang.binary_to_atom|("1")
       ]
+      {:ok, uri, definition_line} = definition(project, uses_content)
+
+      assert uri =~ "/src/erlang.erl"
+      assert definition_line =~ ~S[«binary_to_atom»(Binary)]
     end
   end
 
-  defp annotate(source_file, range) do
-    {:ok, definition_line} = SourceFile.fetch_text_at(source_file, range.start.line)
-    {:ok, module_header} = SourceFile.fetch_text_at(source_file, 1)
+  defp caller_position(uses_content) do
+    {line, character} = cursor_position(uses_content)
+    Position.new(line, character)
+  end
 
-    module_part = Enum.join([module_header, "..."], "\n") <> "\n"
+  defp definition(project, uses_content) do
+    position = caller_position(uses_content)
 
-    annotation =
-      if range.start.character <= 2 do
-        # for erlang file
-        String.duplicate("^", range.end.character - range.start.character)
-      else
-        "#" <>
-          String.duplicate(" ", range.start.character - 2) <>
-          String.duplicate("^", range.end.character - range.start.character)
-      end
+    with {:ok, uses_file} = open_uses_file(project, strip_cursor(uses_content)),
+         {:ok, {source_file, range}} <-
+           RemoteControl.Api.definition(project, uses_file, position),
+         {:ok, range_text} <- range_text(source_file, range) do
+      {:ok, source_file.uri, range_text}
+    end
+  end
 
-    if range.start.line == 1 do
-      Enum.join([definition_line, annotation], "\n") <> "\n"
-    else
-      Enum.join([module_part, definition_line, annotation], "\n") <> "\n"
+  defp range_text(source_file, range) do
+    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, range.start.line) do
+      start_column = range.start.character - 1
+      end_column = range.end.character - 1
+      end_symbol = ~s[»]
+      start_symbol = ~s[«]
+
+      graphemes = String.graphemes(line_text)
+      original_text = Enum.slice(graphemes, start_column..(end_column - 1))
+      text = [start_symbol | original_text ++ List.wrap(end_symbol)]
+
+      {text_before_range, _} = Enum.split(graphemes, start_column)
+      {_, text_after_range} = Enum.split(graphemes, end_column)
+      {:ok, IO.iodata_to_binary(text_before_range ++ text ++ text_after_range)}
     end
   end
 end
