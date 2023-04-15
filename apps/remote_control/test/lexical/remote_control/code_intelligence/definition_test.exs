@@ -294,18 +294,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
   defp definition_line(source_file, range) do
     with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, range.start.line) do
-      start_column = range.start.character - 1
-      end_column = range.end.character - 1
-      end_symbol = ~s[»]
-      start_symbol = ~s[«]
-
       graphemes = String.graphemes(line_text)
-      original_text = Enum.slice(graphemes, start_column..(end_column - 1))
-      ranged_text = [start_symbol | original_text ++ List.wrap(end_symbol)]
-
-      {text_before_range, _} = Enum.split(graphemes, start_column)
-      {_, text_after_range} = Enum.split(graphemes, end_column)
-      {:ok, IO.iodata_to_binary(text_before_range ++ ranged_text ++ text_after_range)}
+      {text_before_range, range_text, text_after_range} = extract_range(graphemes, range)
+      marked_text = mark_range(range_text)
+      {:ok, IO.iodata_to_binary(text_before_range ++ marked_text ++ text_after_range)}
     end
+  end
+
+  defp extract_range(graphemes, range) do
+    start_column = range.start.character - 1
+    end_column = range.end.character - 1
+
+    {text_before_range, remainder} = Enum.split(graphemes, start_column)
+    {range_text, text_after_range} = Enum.split(remainder, end_column - start_column)
+    {text_before_range, range_text, text_after_range}
+  end
+
+  defp mark_range(range_text) do
+    start_symbol = ~s[«]
+    end_symbol = ~s[»]
+    [start_symbol | range_text ++ List.wrap(end_symbol)]
   end
 end
