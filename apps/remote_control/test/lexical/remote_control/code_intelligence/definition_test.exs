@@ -287,12 +287,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     with {:ok, uses_file} <- open_uses_file(project, strip_cursor(uses_content)),
          {:ok, {source_file, range}} <-
            RemoteControl.Api.definition(project, uses_file, position),
-         {:ok, range_text} <- range_text(source_file, range) do
-      {:ok, source_file.uri, range_text}
+         {:ok, definition_line} <- definition_line(source_file, range) do
+      {:ok, source_file.uri, definition_line}
     end
   end
 
-  defp range_text(source_file, range) do
+  defp definition_line(source_file, range) do
     with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, range.start.line) do
       start_column = range.start.character - 1
       end_column = range.end.character - 1
