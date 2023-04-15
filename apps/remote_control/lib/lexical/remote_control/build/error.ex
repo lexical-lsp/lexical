@@ -12,19 +12,80 @@ defmodule Lexical.RemoteControl.Build.Error do
     detail_diagnostics = detail_diagnostics(detail)
     error = message_info_to_binary(message_info, token)
     error_diagnostics = parse_error_to_diagnostics(context, error, token)
-    error_diagnostics ++ detail_diagnostics
+    uniq(error_diagnostics ++ detail_diagnostics)
   end
 
   def parse_error_to_diagnostics(context, message_info, token) do
-    diagnostic = %Diagnostic{
-      file: nil,
-      severity: :error,
-      position: context_to_position(context),
-      compiler_name: "Elixir",
-      message: message_info_to_binary(message_info, token)
-    }
+    parse_error_diagnostic_functions = [
+      &build_end_line_diagnostics/3,
+      &build_start_line_diagnostics/3,
+      &build_hint_diagnostics/3
+    ]
 
-    [diagnostic]
+    Enum.flat_map(parse_error_diagnostic_functions, & &1.(context, message_info, token))
+  end
+
+  defp uniq(diagnostics) do
+    # We need to uniq by position because the same position can be reported
+    # and the `end_line_diagnostic` is always the precise one
+    extract_line = fn
+      %Diagnostic{position: {line, _column}} -> line
+      %Diagnostic{position: line} -> line
+    end
+
+    Enum.uniq_by(diagnostics, extract_line)
+  end
+
+  defp build_end_line_diagnostics(context, message_info, token) do
+    [end_line_message | _] = String.split(message_info, "\n")
+
+    [
+      %Diagnostic{
+        file: nil,
+        severity: :error,
+        position: context_to_position(context),
+        compiler_name: "Elixir",
+        message: "#{end_line_message}#{token}"
+      }
+    ]
+  end
+
+  @start_line_regex ~r/(\w+) \(for (.*) starting at line (\d+)\)/
+  defp build_start_line_diagnostics(_context, message_info, _token) do
+    case Regex.run(@start_line_regex, message_info) do
+      [_, missing, token, start_line] ->
+        diagnostic = %Diagnostic{
+          file: nil,
+          severity: :error,
+          position: String.to_integer(start_line),
+          compiler_name: "Elixir",
+          message: "The #{token} here is missing a terminator: #{inspect(missing)}"
+        }
+
+        [diagnostic]
+
+      _ ->
+        []
+    end
+  end
+
+  @hint_regex ~r/HINT: .*on line (\d+).*/m
+  defp build_hint_diagnostics(_context, message_info, _token) do
+    case Regex.run(@hint_regex, message_info) do
+      [message, hint_line] ->
+        diagnostic = %Diagnostic{
+          file: nil,
+          severity: :error,
+          position: String.to_integer(hint_line),
+          compiler_name: "Elixir",
+          message: String.replace(message, ~r/on line \d+/, "here")
+        }
+
+        [diagnostic]
+
+      _ ->
+        []
+    end
   end
 
   def error_to_diagnostic(%CompileError{} = compile_error, _stack, _quoted_ast) do
@@ -270,13 +331,13 @@ defmodule Lexical.RemoteControl.Build.Error do
     message_lines = String.split(message, "\n")
 
     with {:ok, location_line} <- find_location(message_lines),
-         {:ok, {file, line, column, mfa}} <- parse_location(location_line) do
+         {:ok, {file, line, mfa}} <- parse_location(location_line) do
       %Diagnostic{
         compiler_name: "Elixir",
         details: mfa,
         message: message,
         file: file,
-        position: position(line, column),
+        position: line,
         severity: :warning
       }
     else
@@ -294,17 +355,15 @@ defmodule Lexical.RemoteControl.Build.Error do
     with [] <- Regex.scan(@location_re, location_string),
          [[_, file, line]] <- Regex.scan(@file_and_line_re, location_string) do
       line = String.to_integer(line)
-      column = 0
-      location = {file, line, column, nil}
+      location = {file, line, nil}
       {:ok, location}
     else
       [[_, file, line, module, function, arity]] ->
         line = String.to_integer(line)
-        column = 0
         module = Module.concat([module])
         function = String.to_atom(function)
         arity = String.to_integer(arity)
-        location = {file, line, column, {module, function, arity}}
+        location = {file, line, {module, function, arity}}
         {:ok, location}
 
       _ ->

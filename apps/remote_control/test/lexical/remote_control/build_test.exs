@@ -242,7 +242,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {4, 0}
+      assert diagnostic.position == 4
       assert diagnostic.message =~ ~S[warning: variable "unused" is unused]
       assert diagnostic.details == {WithWarnings, :error, 0}
     end
@@ -265,7 +265,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {4, 0}
+      assert diagnostic.position == 4
 
       assert diagnostic.message =~
                ~S[warning: variable "calc" does not exist and is being expanded to "calc()"]
@@ -286,7 +286,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_diagnostics(diagnostics: [%Diagnostic{} = diagnostic]), 500
 
       assert diagnostic.severity == :warning
-      assert diagnostic.position == {3, 0}
+      assert diagnostic.position == 3
       assert diagnostic.message =~ ~S[warning: function unused/0 is unused]
       assert diagnostic.details == nil
     end
