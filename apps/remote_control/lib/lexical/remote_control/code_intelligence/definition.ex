@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
+  alias Lexical.Text
 
   require Logger
 
@@ -42,7 +43,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       _ ->
         # If the column is 1, but the code doesn't start on the first column, which isn't what we want.
         # The cursor will be placed to the left of the actual definition.
-        column = if column == 1, do: count_leading_spaces(text) + 1, else: column
+        column = if column == 1, do: Text.count_leading_spaces(text) + 1, else: column
         pos = {line, column}
         to_range(pos, pos)
     end
@@ -54,11 +55,4 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       Position.new(end_line, end_column)
     )
   end
-
-  defp count_leading_spaces(str), do: count_leading_spaces(str, 0)
-
-  defp count_leading_spaces(<<c::utf8, rest::binary>>, count) when c in [?\s, ?\t],
-    do: count_leading_spaces(rest, count + 1)
-
-  defp count_leading_spaces(_, count), do: count
 end
