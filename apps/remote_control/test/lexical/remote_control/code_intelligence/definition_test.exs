@@ -30,23 +30,31 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     %{uri: SourceFile.Path.ensure_uri(path)}
   end
 
+  defp uses_file_uri(project) do
+    project
+    |> file_path(Path.join("lib", "my_module.ex"))
+    |> SourceFile.Path.ensure_uri()
+  end
+
   defp open_uses_file(project, content) do
-    uri =
-      project
-      |> file_path(Path.join("lib", "my_module.ex"))
-      |> SourceFile.Path.ensure_uri()
+    uri = uses_file_uri(project)
 
     with :ok <- RemoteControl.call(project, SourceFile.Store, :open, [uri, content, 1]),
          {:ok, uses_file} <- RemoteControl.call(project, SourceFile.Store, :fetch, [uri]) do
       {:ok, uses_file}
-    else
-      {:error, :already_open} ->
-        {:ok, uses_file} = RemoteControl.call(project, SourceFile.Store, :fetch, [uri])
-        {:ok, uses_file}
     end
   end
 
-  setup ~w(with_navigation_project)a
+  setup_all ~w(with_navigation_project)a
+
+  setup %{project: project} do
+    uri = uses_file_uri(project)
+
+    # NOTE: We need to make sure every tests start with fresh caller content file
+    on_exit(fn ->
+      :ok = RemoteControl.call(project, SourceFile.Store, :close, [uri])
+    end)
+  end
 
   describe "definition/2 when making remote call by alias" do
     setup [:with_referenced_file]
@@ -294,11 +302,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
       graphemes = String.graphemes(line_text)
       original_text = Enum.slice(graphemes, start_column..(end_column - 1))
-      text = [start_symbol | original_text ++ List.wrap(end_symbol)]
+      ranged_text = [start_symbol | original_text ++ List.wrap(end_symbol)]
 
       {text_before_range, _} = Enum.split(graphemes, start_column)
       {_, text_after_range} = Enum.split(graphemes, end_column)
-      {:ok, IO.iodata_to_binary(text_before_range ++ text ++ text_after_range)}
+      {:ok, IO.iodata_to_binary(text_before_range ++ ranged_text ++ text_after_range)}
     end
   end
 end
