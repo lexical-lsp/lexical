@@ -39,9 +39,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   defp open_uses_file(project, content) do
     uri = uses_file_uri(project)
 
-    with :ok <- RemoteControl.call(project, SourceFile.Store, :open, [uri, content, 1]),
-         {:ok, uses_file} <- RemoteControl.call(project, SourceFile.Store, :fetch, [uri]) do
-      {:ok, uses_file}
+    with :ok <- RemoteControl.call(project, SourceFile.Store, :open, [uri, content, 1]) do
+      RemoteControl.call(project, SourceFile.Store, :fetch, [uri])
     end
   end
 
@@ -285,7 +284,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   defp definition(project, uses_content) do
     position = caller_position(uses_content)
 
-    with {:ok, uses_file} = open_uses_file(project, strip_cursor(uses_content)),
+    with {:ok, uses_file} <- open_uses_file(project, strip_cursor(uses_content)),
          {:ok, {source_file, range}} <-
            RemoteControl.Api.definition(project, uses_file, position),
          {:ok, range_text} <- range_text(source_file, range) do

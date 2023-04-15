@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
@@ -46,7 +47,7 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def definition(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
-    RemoteControl.call(project, RemoteControl.CodeIntelligence.Definition, :definition, [
+    RemoteControl.call(project, CodeIntelligence.Definition, :definition, [
       source_file,
       position
     ])
