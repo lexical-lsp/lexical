@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.CompileMetadata do
+defmodule Lexical.Proto.CompileMetadata do
   @moduledoc """
   Compile-time storage of protocol metadata
   """

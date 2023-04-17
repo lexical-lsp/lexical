@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.Macros.Json do
-  alias Lexical.Protocol.Proto.Field
+defmodule Lexical.Proto.Macros.Json do
+  alias Lexical.Proto.Field
 
   def build(dest_module) do
     quote location: :keep do

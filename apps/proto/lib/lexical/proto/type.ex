@@ -1,7 +1,7 @@
-defmodule Lexical.Protocol.Proto.Type do
-  alias Lexical.Protocol.Proto.CompileMetadata
+defmodule Lexical.Proto.Type do
+  alias Lexical.Proto.CompileMetadata
 
-  alias Lexical.Protocol.Proto.Macros.{
+  alias Lexical.Proto.Macros.{
     Access,
     Inspect,
     Json,

@@ -1,6 +1,6 @@
-defmodule Lexical.Protocol.Proto.Macros.Parse do
-  alias Lexical.Protocol.Proto.Field
-  alias Lexical.Protocol.Proto.Text
+defmodule Lexical.Proto.Macros.Parse do
+  alias Lexical.Proto.Field
+  alias Lexical.Proto.Text
 
   def build(opts) do
     {optional_opts, required_opts} =

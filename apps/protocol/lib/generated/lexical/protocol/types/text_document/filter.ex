@@ -1,6 +1,6 @@
 # This file's contents are auto-generated. Do not edit.
 defmodule Lexical.Protocol.Types.TextDocument.Filter do
-  alias Lexical.Protocol.Proto
+  alias Lexical.Proto
   alias __MODULE__, as: Parent
 
   defmodule TextDocumentFilter do

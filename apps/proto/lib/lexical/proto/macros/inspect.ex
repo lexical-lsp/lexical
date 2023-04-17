@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Macros.Inspect do
+defmodule Lexical.Proto.Macros.Inspect do
   def build(dest_module) do
     trimmed_name = trim_module_name(dest_module)
 

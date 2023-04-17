@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Enum do
+defmodule Lexical.Proto.Enum do
   defmacro defenum(opts) do
     quote location: :keep do
       unquote(parse_functions(opts))

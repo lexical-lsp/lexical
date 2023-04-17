@@ -1,12 +1,12 @@
-defmodule Lexical.Protocol.Proto do
-  alias Lexical.Protocol.Proto.Decoders
+defmodule Lexical.Proto do
+  alias Lexical.Proto.Decoders
 
   defmacro __using__([]) do
     quote location: :keep do
-      alias Lexical.Protocol.Proto
-      alias Lexical.Protocol.Proto.LspTypes
+      alias Lexical.Proto
+      alias Lexical.Proto.LspTypes
 
-      import Lexical.Protocol.Proto.TypeFunctions
+      import Lexical.Proto.TypeFunctions
       import Proto.Alias, only: [defalias: 1]
       import Proto.Enum, only: [defenum: 1]
       import Proto.Notification, only: [defnotification: 2, defnotification: 3]

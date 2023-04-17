@@ -1,7 +1,7 @@
-defmodule Lexical.Protocol.Proto.Response do
-  alias Lexical.Protocol.Proto.CompileMetadata
+defmodule Lexical.Proto.Response do
+  alias Lexical.Proto.CompileMetadata
 
-  alias Lexical.Protocol.Proto.Macros.{
+  alias Lexical.Proto.Macros.{
     Access,
     Meta,
     Struct,
@@ -18,13 +18,11 @@ defmodule Lexical.Protocol.Proto.Response do
     ]
 
     quote location: :keep do
-      alias Lexical.Protocol.Proto.LspTypes
+      alias Lexical.Proto.LspTypes
       unquote(Access.build())
       unquote(Struct.build(jsonrpc_types))
       unquote(Typespec.build())
       unquote(Meta.build(jsonrpc_types))
-
-      alias Lexical.Protocol.Proto.Convert
 
       unquote(constructors())
 

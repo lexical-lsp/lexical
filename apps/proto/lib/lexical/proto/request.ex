@@ -1,7 +1,7 @@
-defmodule Lexical.Protocol.Proto.Request do
-  alias Lexical.Protocol.Proto.CompileMetadata
-  alias Lexical.Protocol.Proto.Macros.Message
-  alias Lexical.Protocol.Proto.TypeFunctions
+defmodule Lexical.Proto.Request do
+  alias Lexical.Proto.CompileMetadata
+  alias Lexical.Proto.Macros.Message
+  alias Lexical.Proto.TypeFunctions
 
   import TypeFunctions, only: [optional: 1, literal: 1]
 
@@ -32,7 +32,7 @@ defmodule Lexical.Protocol.Proto.Request do
         end
       end
 
-      alias Lexical.Protocol.Proto.Convert
+      alias Lexical.Proto.Convert
       alias Lexical.Protocol.Types
 
       unquote(
@@ -50,10 +50,6 @@ defmodule Lexical.Protocol.Proto.Request do
         # use struct here because initially, the non-lsp struct doesn't have
         # to be filled out. Calling to_elixir fills it out.
         struct(__MODULE__, lsp: raw, id: raw.id, method: unquote(method), jsonrpc: "2.0")
-      end
-
-      def to_elixir(%__MODULE__{} = request) do
-        Convert.to_elixir(request)
       end
 
       defimpl Jason.Encoder, for: unquote(__CALLER__.module) do

@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.TypeFunctions do
+defmodule Lexical.Proto.TypeFunctions do
   def integer do
     :integer
   end
