@@ -1,6 +1,6 @@
 # This file's contents are auto-generated. Do not edit.
 defmodule Lexical.Protocol.Types.Initialize.Params do
-  alias Lexical.Protocol.Proto
+  alias Lexical.Proto
   alias Lexical.Protocol.Types
   alias __MODULE__, as: Parent
 

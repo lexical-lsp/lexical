@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Macros.Access do
+defmodule Lexical.Proto.Macros.Access do
   def build do
     quote location: :keep do
       def fetch(proto, key) when is_map_key(proto, key) do

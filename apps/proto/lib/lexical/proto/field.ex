@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.Field do
-  alias Lexical.Protocol.Proto.Text
+defmodule Lexical.Proto.Field do
+  alias Lexical.Proto.Text
 
   def extract(:any, _, value) do
     {:ok, value}

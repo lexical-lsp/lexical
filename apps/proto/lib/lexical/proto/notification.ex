@@ -1,6 +1,6 @@
-defmodule Lexical.Protocol.Proto.Notification do
-  alias Lexical.Protocol.Proto.CompileMetadata
-  alias Lexical.Protocol.Proto.Macros.Message
+defmodule Lexical.Proto.Notification do
+  alias Lexical.Proto.CompileMetadata
+  alias Lexical.Proto.Macros.Message
 
   defmacro defnotification(method, access, types \\ []) do
     CompileMetadata.add_notification_module(__CALLER__.module)
@@ -26,8 +26,6 @@ defmodule Lexical.Protocol.Proto.Notification do
         end
       end
 
-      alias Lexical.Protocol.Proto.Convert
-
       unquote(
         Message.build({:notification, :elixir}, method, access, elixir_types, param_names,
           include_parse?: false
@@ -42,10 +40,6 @@ defmodule Lexical.Protocol.Proto.Notification do
         # use struct here because initially, the non-lsp struct doesn't have
         # to be filled out. Calling to_elixir fills it out.
         struct(__MODULE__, lsp: LSP.new(opts), method: unquote(method), jsonrpc: "2.0")
-      end
-
-      def to_elixir(%__MODULE__{} = request) do
-        Convert.to_elixir(request)
       end
 
       defimpl Jason.Encoder, for: unquote(__CALLER__.module) do

@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Macros.Struct do
+defmodule Lexical.Proto.Macros.Struct do
   def build(opts) do
     keys = Keyword.keys(opts)
     required_keys = required_keys(opts)

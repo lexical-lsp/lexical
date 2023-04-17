@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.LspTypes do
-  alias Lexical.Protocol.Proto
+defmodule Lexical.Proto.LspTypes do
+  alias Lexical.Proto
   use Proto
 
   defmodule ErrorCodes do

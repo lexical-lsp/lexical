@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.Alias do
-  alias Lexical.Protocol.Proto.CompileMetadata
+defmodule Lexical.Proto.Alias do
+  alias Lexical.Proto.CompileMetadata
 
   defmacro defalias(alias_definition) do
     caller_module = __CALLER__.module

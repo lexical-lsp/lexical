@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.Macros.Message do
-  alias Lexical.Protocol.Proto.Macros.{
+defmodule Lexical.Proto.Macros.Message do
+  alias Lexical.Proto.Macros.{
     Access,
     Meta,
     Parse,

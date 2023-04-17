@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Text do
+defmodule Lexical.Proto.Text do
   def camelize(atom) when is_atom(atom) do
     atom |> Atom.to_string() |> camelize()
   end

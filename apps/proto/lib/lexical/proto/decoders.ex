@@ -1,5 +1,5 @@
-defmodule Lexical.Protocol.Proto.Decoders do
-  alias Lexical.Protocol.Proto.CompileMetadata
+defmodule Lexical.Proto.Decoders do
+  alias Lexical.Proto.CompileMetadata
 
   defmacro for_notifications(_) do
     notification_modules = CompileMetadata.notification_modules()
@@ -8,8 +8,6 @@ defmodule Lexical.Protocol.Proto.Decoders do
     access_map = build_acces_map(notification_modules)
 
     quote do
-      alias Lexical.Protocol.Proto.Convert
-
       defmacro notification(method) do
         quote do
           %{"method" => unquote(method), "jsonrpc" => "2.0"}
@@ -44,10 +42,6 @@ defmodule Lexical.Protocol.Proto.Decoders do
       def __meta__(:access) do
         %{unquote_splicing(access_map)}
       end
-
-      def to_elixir(%{lsp: _} = request_or_notification) do
-        Convert.to_elixir(request_or_notification)
-      end
     end
   end
 
@@ -58,8 +52,6 @@ defmodule Lexical.Protocol.Proto.Decoders do
     access_map = build_acces_map(request_modules)
 
     quote do
-      alias Lexical.Protocol.Proto.Convert
-
       def __meta__(:requests) do
         unquote(request_modules)
       end
@@ -89,10 +81,6 @@ defmodule Lexical.Protocol.Proto.Decoders do
 
       def decode(method, _) do
         {:error, {:unknown_request, method}}
-      end
-
-      def to_elixir(%{lsp: _} = request_or_notification) do
-        Convert.to_elixir(request_or_notification)
       end
     end
   end

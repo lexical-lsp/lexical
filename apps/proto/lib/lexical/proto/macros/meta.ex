@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Macros.Meta do
+defmodule Lexical.Proto.Macros.Meta do
   def build(opts) do
     field_types =
       for {field_name, field_type} <- opts do

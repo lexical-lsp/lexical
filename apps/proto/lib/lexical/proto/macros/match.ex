@@ -1,4 +1,4 @@
-defmodule Lexical.Protocol.Proto.Macros.Match do
+defmodule Lexical.Proto.Macros.Match do
   def build(field_types, dest_module) do
     macro_name =
       dest_module
