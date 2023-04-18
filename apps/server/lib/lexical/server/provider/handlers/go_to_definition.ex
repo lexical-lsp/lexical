@@ -3,13 +3,13 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Location
   alias Lexical.Ranged
-  alias Lexical.RemoteControl
+  alias Lexical.Server.CodeIntelligence.Definition
 
   require Logger
 
   def handle(%GoToDefinition{} = request, env) do
     with {:ok, location} <-
-           RemoteControl.Api.definition(env.project, request.source_file, request.position),
+           Definition.definition(env.project, request.source_file, request.position),
          {:ok, ls_location} <- to_response(request.id, location) do
       {:reply, ls_location}
     else

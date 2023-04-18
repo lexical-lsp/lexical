@@ -1,6 +1,7 @@
-defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
+defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.Server.CodeIntelligence
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Position
 
@@ -25,13 +26,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   defp subject_module(project, content) do
     uri = subject_module_uri(project)
 
-    with :ok <- RemoteControl.call(project, SourceFile.Store, :open, [uri, content, 1]) do
-      RemoteControl.call(project, SourceFile.Store, :fetch, [uri])
+    with :ok <- SourceFile.Store.open(uri, content, 1) do
+      SourceFile.Store.fetch(uri)
     end
   end
 
   setup_all do
-    # start_supervised!(Lexical.SourceFile.Store)
+    start_supervised!(Lexical.SourceFile.Store)
 
     project = project(:navigations)
     {:ok, _, _} = RemoteControl.start_link(project, self())
@@ -51,7 +52,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     # NOTE: We need to make sure every tests start with fresh caller content file
     on_exit(fn ->
-      :ok = RemoteControl.call(project, SourceFile.Store, :close, [uri])
+      :ok = SourceFile.Store.close(uri)
     end)
   end
 
@@ -284,7 +285,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     with {:ok, subject_module_file} <- subject_module(project, strip_cursor(subject_module)),
          {:ok, {source_file, range}} <-
-           RemoteControl.Api.definition(project, subject_module_file, position),
+           CodeIntelligence.Definition.definition(project, subject_module_file, position),
          {:ok, definition_line} <- definition_line(source_file, range) do
       {:ok, source_file.uri, definition_line}
     end
