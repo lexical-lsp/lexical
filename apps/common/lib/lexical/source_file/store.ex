@@ -23,7 +23,7 @@ defmodule Lexical.SourceFile.Store do
 
     @spec fetch(Store.uri()) :: {:ok, t()} | {:error, :not_open}
     def fetch(uri) do
-      case ets_fetch(:any, uri) do
+      case ets_fetch(uri, :any) do
         {:ok, _} = success -> success
         :error -> {:error, :not_open}
       end
@@ -31,7 +31,7 @@ defmodule Lexical.SourceFile.Store do
 
     @spec save(t, Store.uri()) :: {:ok, t()} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
-      case ets_fetch(:sources, uri) do
+      case ets_fetch(uri, :sources) do
         {:ok, source_file} ->
           source_file = SourceFile.mark_clean(source_file)
           ets_put(:sources, uri, source_file)
@@ -44,23 +44,23 @@ defmodule Lexical.SourceFile.Store do
 
     @spec open(t, Store.uri(), String.t(), pos_integer()) :: {:ok, t} | {:error, :already_open}
     def open(%__MODULE__{} = store, uri, text, version) do
-      case ets_fetch(:sources, uri) do
+      case ets_fetch(uri, :sources) do
         {:ok, _} ->
           {:error, :already_open}
 
         :error ->
           source_file = SourceFile.new(uri, text, version)
-          ets_put(:sources, uri, source_file)
+          ets_put(uri, :sources, source_file)
           {:ok, store}
       end
     end
 
     def open?(uri) do
-      ets_has_key?(:any, uri)
+      ets_has_key?(uri, :any)
     end
 
     def close(%__MODULE__{} = store, uri) do
-      case ets_pop(:sources, uri) do
+      case ets_pop(uri, :sources) do
         nil ->
           {:error, :not_open}
 
@@ -72,7 +72,7 @@ defmodule Lexical.SourceFile.Store do
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
       with {:ok, source_file} <- fetch(uri),
            {:ok, updated_source} <- updater_fn.(source_file) do
-        ets_put(:sources, uri, updated_source)
+        ets_put(uri, :sources, updated_source)
 
         {:ok, updated_source, store}
       else
@@ -100,7 +100,7 @@ defmodule Lexical.SourceFile.Store do
           |> maybe_cancel_old_ref(uri)
           |> Map.put(uri, ref)
 
-        ets_put(:temp, uri, source_file)
+        ets_put(uri, :temp, source_file)
         new_store = %__MODULE__{store | temporary_open_refs: new_refs}
 
         {:ok, source_file, new_store}
@@ -122,7 +122,7 @@ defmodule Lexical.SourceFile.Store do
 
     def unload(%__MODULE__{} = store, uri) do
       new_refs = Map.delete(store.temporary_open_refs, uri)
-      ets_delete(:temp, uri)
+      ets_delete(uri, :temp)
       %__MODULE__{store | temporary_open_refs: new_refs}
     end
 
@@ -149,19 +149,19 @@ defmodule Lexical.SourceFile.Store do
 
     @read_types [:sources, :temp, :any]
     @write_types [:sources, :temp]
-    defp ets_fetch(type, key) when type in @read_types do
+    defp ets_fetch(key, type) when type in @read_types do
       case :ets.match(@table_name, {key, type_selector(type), :"$1"}) do
         [[value]] -> {:ok, value}
         _ -> :error
       end
     end
 
-    defp ets_put(type, key, value) when type in @write_types do
+    defp ets_put(key, type, value) when type in @write_types do
       :ets.insert(@table_name, {key, type, value})
       :ok
     end
 
-    defp ets_has_key?(type, key) when type in @read_types do
+    defp ets_has_key?(key, type) when type in @read_types do
       match_spec = {key, type_selector(type), :"$1"}
 
       case :ets.match(@table_name, match_spec) do
@@ -170,9 +170,9 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
-    defp ets_pop(type, key) when type in @write_types do
-      with {:ok, value} <- ets_fetch(type, key),
-           :ok <- ets_delete(type, key) do
+    defp ets_pop(key, type) when type in @write_types do
+      with {:ok, value} <- ets_fetch(key, type),
+           :ok <- ets_delete(key, type) do
         value
       else
         _ ->
@@ -180,8 +180,8 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
-    defp ets_delete(type, key) when type in @write_types do
-      match_spec = {key, type_selector(type), :_}
+    defp ets_delete(key, type) when type in @write_types do
+      match_spec = {key, type, :_}
       :ets.match_delete(@table_name, match_spec)
       :ok
     end
