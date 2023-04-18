@@ -23,7 +23,7 @@ defmodule Lexical.Server.CodeIntelligence.Definition do
       {:ok, {source_file, to_precise_range(text, line, column)}}
     else
       _ ->
-        {:error, "Could not open source file: #{inspect(file_path)}"}
+        {:error, "Could not open source file or fetch line text: #{inspect(file_path)}"}
     end
   end
 
