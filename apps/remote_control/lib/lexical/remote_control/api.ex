@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def format(%Project{} = project, %SourceFile{} = source_file) do
-    RemoteControl.call(project, CodeMod.Format, :text_edits, [project, source_file])
+    RemoteControl.call(project, CodeMod.Format, :edits, [project, source_file])
   end
 
   def replace_with_underscore(
@@ -25,7 +25,7 @@ defmodule Lexical.RemoteControl.Api do
         line_number,
         variable_name
       ) do
-    RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :text_edits, [
+    RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :edits, [
       source_file,
       line_number,
       variable_name

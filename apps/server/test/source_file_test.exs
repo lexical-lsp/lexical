@@ -1,6 +1,7 @@
 defmodule Lexical.SourceFileTest do
   alias Lexical.Protocol.Types.Position
   alias Lexical.Protocol.Types.Range
+  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.SourceFile
 
   use ExUnit.Case
@@ -26,17 +27,29 @@ defmodule Lexical.SourceFileTest do
     {:ok, module: module}
   end
 
+  def file_uri do
+    "file:///elixir.ex"
+  end
+
+  def edit(text) do
+    TextEdit.new(new_text: text, range: nil)
+  end
+
+  def edit(text, range) do
+    TextEdit.new(new_text: text, range: range)
+  end
+
   describe "new" do
     setup [:with_a_simple_module]
 
     test "it should be able to parse a single line" do
-      assert parsed = new("file:///elixir.ex", "hello", 1)
+      assert parsed = new(file_uri(), "hello", 1)
 
       assert {:ok, "hello"} = fetch_text_at(parsed, 1)
     end
 
     test "it should parse its input into lines", ctx do
-      assert parsed = new("file:///elixir.ex", ctx.module, 100)
+      assert parsed = new(file_uri(), ctx.module, 100)
       refute parsed.dirty?
       assert parsed.version == 100
 
@@ -165,10 +178,8 @@ defmodule Lexical.SourceFileTest do
 
     def run_changes(original, changes, opts \\ []) do
       final_version = Keyword.get(opts, :version, 1)
-
-      "file:///elixir.ex"
-      |> new(original, 0)
-      |> apply_content_changes(final_version, changes)
+      source_file = new(file_uri(), original, 0)
+      apply_content_changes(source_file, final_version, changes)
     end
 
     test "empty update" do
@@ -178,13 +189,13 @@ defmodule Lexical.SourceFileTest do
     end
 
     test "setting the version" do
-      assert {:ok, source} = run_changes("abc123", [%{text: "mornin"}], version: 3)
+      assert {:ok, source} = run_changes("abc123", [edit("mornin")], version: 3)
       assert "mornin" == text(source)
       assert source.version == 3
     end
 
     test "full update" do
-      assert {:ok, source} = run_changes("abc123", [%{text: "efg456"}])
+      assert {:ok, source} = run_changes("abc123", [edit("efg456")])
       assert "efg456" == text(source)
       assert source.version == 1
 
@@ -192,8 +203,8 @@ defmodule Lexical.SourceFileTest do
                run_changes(
                  "abc123",
                  [
-                   %{text: "hello"},
-                   %{text: "world"}
+                   edit("hello"),
+                   edit("world")
                  ],
                  version: 2
                )
@@ -205,10 +216,7 @@ defmodule Lexical.SourceFileTest do
     test "starting a document" do
       assert {:ok, source} =
                run_changes("", [
-                 %{
-                   text: "document",
-                   range: new_range(0, 0, 1, 0)
-                 }
+                 edit("document", new_range(0, 0, 1, 0))
                ])
 
       assert "document" = text(source)
@@ -219,10 +227,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(hello_world, [
-                 %{
-                   text: "",
-                   range: range_for_substring(hello_world, "hello, world!")
-                 }
+                 edit("", range_for_substring(hello_world, "hello, world!"))
                ])
 
       assert "function abc() {\n  console.log(\"\");\n}" = text(source)
@@ -233,10 +238,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "",
-                   range: range_for_substring(orig, "  foo();\n  bar();\n")
-                 }
+                 edit("", range_for_substring(orig, "  foo();\n  bar();\n"))
                ])
 
       assert "function abc() {\n  \n}" = text(source)
@@ -247,10 +249,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "",
-                   range: range_for_substring(orig, "foo();\n  bar();")
-                 }
+                 edit("", range_for_substring(orig, "foo();\n  bar();"))
                ])
 
       assert "function abc() {\n  \n  \n}" == text(source)
@@ -261,10 +260,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: ", world!",
-                   range: range_after_substring(orig, "hello")
-                 }
+                 edit(", world!", range_after_substring(orig, "hello"))
                ])
 
       assert "function abc() {\n  console.log(\"hello, world!\");\n}" == text(source)
@@ -275,10 +271,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "\n    bar();",
-                   range: range_after_substring(orig, "foo();")
-                 }
+                 edit("\n    bar();", range_after_substring(orig, "foo();"))
                ])
 
       assert "function abc() {\n  while (true) {\n    foo();\n    bar();\n  };\n}" == text(source)
@@ -289,10 +282,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "hello, test case!!!",
-                   range: range_for_substring(orig, "hello, world!")
-                 }
+                 edit("hello, test case!!!", range_for_substring(orig, "hello, world!"))
                ])
 
       assert "function abc() {\n  console.log(\"hello, test case!!!\");\n}" == text(source)
@@ -303,10 +293,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "hey",
-                   range: range_for_substring(orig, "hello, world!")
-                 }
+                 edit("hey", range_for_substring(orig, "hello, world!"))
                ])
 
       assert "function abc() {\n  console.log(\"hey\");\n}" == text(source)
@@ -317,10 +304,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "world, hello!",
-                   range: range_for_substring(orig, "hello, world!")
-                 }
+                 edit("world, hello!", range_for_substring(orig, "hello, world!"))
                ])
 
       assert "function abc() {\n  console.log(\"world, hello!\");\n}" == text(source)
@@ -331,10 +315,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "\n//hello\nfunction d(){",
-                   range: range_for_substring(orig, "function abc() {")
-                 }
+                 edit("\n//hello\nfunction d(){", range_for_substring(orig, "function abc() {"))
                ])
 
       assert "\n//hello\nfunction d(){\n  console.log(\"hello, world!\");\n}" == text(source)
@@ -345,10 +326,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "xx\nyy",
-                   range: range_for_substring(orig, "\na3\nb3\na4\nb4\n")
-                 }
+                 edit("xx\nyy", range_for_substring(orig, "\na3\nb3\na4\nb4\n"))
                ])
 
       assert "a1\nb1\na2\nb2xx\nyy" == text(source)
@@ -359,10 +337,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "\nxx1\nxx2",
-                   range: range_for_substring(orig, "a2\nb2\na3")
-                 }
+                 edit("\nxx1\nxx2", range_for_substring(orig, "a2\nb2\na3"))
                ])
 
       assert "a1\nb1\n\nxx1\nxx2\nb3\na4\nb4\n" = text(source)
@@ -373,10 +348,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "\ny\n",
-                   range: range_for_substring(orig, "a2\nb2\na3")
-                 }
+                 edit("\ny\n", range_for_substring(orig, "a2\nb2\na3"))
                ])
 
       assert "a1\nb1\n\ny\n\nb3\na4\nb4\n" == text(source)
@@ -388,10 +360,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: text,
-                   range: range_for_substring(orig, "\ncc")
-                 }
+                 edit(text, range_for_substring(orig, "\ncc"))
                ])
 
       assert "a1" <> text <> "\nb1" == text(source)
@@ -402,18 +371,9 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "defg",
-                   range: new_range(0, 12, 0, 12)
-                 },
-                 %{
-                   text: "hello, test case!!!",
-                   range: new_range(1, 15, 1, 28)
-                 },
-                 %{
-                   text: "hij",
-                   range: new_range(0, 16, 0, 16)
-                 }
+                 edit("defg", new_range(0, 12, 0, 12)),
+                 edit("hello, test case!!!", new_range(1, 15, 1, 28)),
+                 edit("hij", new_range(0, 16, 0, 16))
                ])
 
       assert "function abcdefghij() {\n  console.log(\"hello, test case!!!\");\n}" = text(source)
@@ -424,10 +384,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: " some extra content",
-                   range: new_range(1, 3, 1, 3)
-                 }
+                 edit(" some extra content", new_range(1, 3, 1, 3))
                ])
 
       assert "foooo\nbar some extra content\nbaz" == text(source)
@@ -438,10 +395,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: " some extra\ncontent",
-                   range: new_range(1, 3, 1, 3)
-                 }
+                 edit(" some extra\ncontent", new_range(1, 3, 1, 3))
                ])
 
       assert "foooo\nbar some extra\ncontent\nbaz" == text(source)
@@ -452,10 +406,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "",
-                   range: new_range(1, 0, 1, 3)
-                 }
+                 edit("", new_range(1, 0, 1, 3))
                ])
 
       assert "foooo\n\nbaz" = text(source)
@@ -466,10 +417,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "",
-                   range: new_range(0, 5, 1, 3)
-                 }
+                 edit("", new_range(0, 5, 1, 3))
                ])
 
       assert "foooo\nbaz" == text(source)
@@ -480,10 +428,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "z",
-                   range: new_range(1, 2, 1, 3)
-                 }
+                 edit("z", new_range(1, 2, 1, 3))
                ])
 
       assert "foooo\nbaz\nbaz" == text(source)
@@ -494,10 +439,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "foobar",
-                   range: new_range(1, 0, 1, 3)
-                 }
+                 edit("foobar", new_range(1, 0, 1, 3))
                ])
 
       assert "foo\nfoobar" == text(source)
@@ -508,10 +450,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "z",
-                   range: new_range(1, 2, 1, 3)
-                 }
+                 edit("z", new_range(1, 2, 1, 3))
                ])
 
       assert "foooo\r\nbaz\rbaz" == text(source)
@@ -522,10 +461,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "z\r\nz\rz",
-                   range: new_range(1, 2, 1, 3)
-                 }
+                 edit("z\r\nz\rz", new_range(1, 2, 1, 3))
                ])
 
       assert "foooo\nbaz\r\nz\rz\nbaz" == text(source)
@@ -536,10 +472,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "z",
-                   range: new_range(1, 7, 1, 8)
-                 }
+                 edit("z", new_range(1, 7, 1, 8))
                ])
 
       assert "foooo\nb🏳️‍🌈z\nbaz" == text(source)
@@ -550,10 +483,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "z🏳️‍🌈z",
-                   range: new_range(1, 2, 1, 3)
-                 }
+                 edit("z🏳️‍🌈z", new_range(1, 2, 1, 3))
                ])
 
       assert "foooo\nbaz🏳️‍🌈z\nbaz" == text(source)
@@ -568,14 +498,14 @@ defmodule Lexical.SourceFileTest do
       end
       """
 
-      event = %{
-        text: "",
-        range:
+      event =
+        edit(
+          "",
           Range.new(
             start: Position.new(character: 0, line: 2),
             end: Position.new(character: 22, line: 2)
           )
-      }
+        )
 
       assert {:ok, source} = run_changes(orig, [event])
       assert {:ok, ""} = fetch_text_at(source, 3)
@@ -592,7 +522,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{text: "", range: new_range(2, 0, 2, 19)}
+                 edit("", new_range(2, 0, 2, 19))
                ])
 
       {:ok, line} = fetch_text_at(source, 3)
@@ -610,8 +540,8 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{text: "    {\"🎸\",   \"ok\"}", range: new_range(2, 0, 2, 0)},
-                 %{text: "", range: new_range(2, 11, 2, 13)}
+                 edit(~s(    {"🎸",   "ok"}), new_range(2, 0, 2, 0)),
+                 edit("", new_range(2, 11, 2, 13))
                ])
 
       {:ok, line} = fetch_text_at(source, 3)
@@ -625,10 +555,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [
-                 %{
-                   text: "abc123",
-                   range: new_range(-2, 0, -1, 3)
-                 }
+                 edit("abc123", new_range(-2, 0, -1, 3))
                ])
     end
 
@@ -638,10 +565,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [
-                 %{
-                   text: "foobar",
-                   range: new_range(-1, 0, 0, 3)
-                 }
+                 edit("foobar", new_range(-1, 0, 0, 3))
                ])
     end
 
@@ -650,10 +574,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "foobar",
-                   range: new_range(1, 0, 1, 10)
-                 }
+                 edit("foobar", new_range(1, 0, 1, 10))
                ])
 
       assert "foo\nfoobar" == text(source)
@@ -664,10 +585,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:ok, source} =
                run_changes(orig, [
-                 %{
-                   text: "abc123",
-                   range: new_range(3, 0, 6, 10)
-                 }
+                 edit("abc123", new_range(3, 0, 6, 10))
                ])
 
       assert "foo\nbarabc123" == text(source)
@@ -679,10 +597,7 @@ defmodule Lexical.SourceFileTest do
 
       assert {:error, {:invalid_range, ^invalid_range}} =
                run_changes(orig, [
-                 %{
-                   text: "entirely new content",
-                   range: invalid_range
-                 }
+                 edit("entirely new content", invalid_range)
                ])
     end
   end

@@ -1,9 +1,8 @@
 defmodule Lexical.Project.Diagnostics.StateTest do
   alias Lexical.Project
-  alias Lexical.Protocol.Types.Diagnostic
-  alias Lexical.Protocol.Types.Range
   alias Lexical.Server.Project.Diagnostics.State
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Edit
   alias Mix.Task.Compiler
 
   import Lexical.Test.Fixtures
@@ -32,7 +31,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   end
 
   def change_with(source_file, content) do
-    changes = [%{range: nil, text: content}]
+    changes = [Edit.new(content)]
 
     {:ok, source_file} =
       SourceFile.Store.get_and_update(
@@ -60,111 +59,39 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
     assert {:ok, state} = State.add(state, diagnostic)
 
-    assert [%Diagnostic{}] = State.get(state, SourceFile.Path.to_uri(diagnostic.file))
+    assert [%Compiler.Diagnostic{}] = State.get(state, SourceFile.Path.to_uri(diagnostic.file))
   end
 
-  test "it allows you to add a source file diagnostic", %{state: state} do
-    diagnostic = compiler_diagnostic(message: "Does not compile")
-    source_file = source_file("hello")
-    {:ok, state} = State.add(state, diagnostic, source_file.uri)
+  test "it allows you to add a mix error", %{state: state, project: project} do
+    error = %Mix.Error{message: "bad stuff"}
+    assert {:ok, state} = State.add(state, error)
 
-    assert [%Diagnostic{}] = State.get(state, source_file.uri)
-  end
+    [%Compiler.Diagnostic{} = diagnostic] =
+      State.get(state, SourceFile.Path.to_uri(project.mix_exs_uri))
 
-  describe "conversions" do
-    test "converts a position that is only a line number", %{state: state} do
-      diagnostic = compiler_diagnostic(message: "This code is awful")
-      {:ok, state} = State.add(state, diagnostic)
-
-      assert [%Diagnostic{} = proto_diagnostic] =
-               State.get(state, SourceFile.Path.to_uri(diagnostic.file))
-
-      assert proto_diagnostic.message == "This code is awful"
-      range = proto_diagnostic.range
-
-      # Starting at 0 and going to character 0 on the next line highlights the entire line
-      assert range.start.line == diagnostic.position - 1
-      assert range.start.character == 0
-
-      assert range.end.line == diagnostic.position
-      assert range.end.character == 0
-    end
-
-    test "converts a position that is a line and a column", %{state: state} do
-      source = ~q[
-      defmodule MyModule do
-        def foo do
-
-        end
-      end
-      ]
-      source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {2, 5})
-
-      {:ok, state} = State.add(state, diagnostic, source_file.uri)
-
-      assert [%Diagnostic{} = proto_diagnostic] =
-               State.get(state, SourceFile.Path.to_uri(diagnostic.file))
-
-      assert proto_diagnostic.message == "Hoo boy, this is a mess"
-
-      %Range{} = range = proto_diagnostic.range
-
-      # Starting at 0 and going to character 0 on the next line highlights the entire line
-      assert range.start.line == 1
-      assert range.start.character == 4
-
-      assert range.end.line == 2
-      assert range.end.character == 0
-    end
-
-    test "converts a position that is a line and a column handling emojis", %{state: state} do
-      source = ~q[
-      defmodule MyModule do
-        def foo do
-          "🎸hello"
-        end
-      end
-      ]t
-
-      source_file = source_file(source)
-      diagnostic = compiler_diagnostic(message: "Hoo boy, this is a mess", position: {3, 10})
-
-      {:ok, state} = State.add(state, diagnostic, source_file.uri)
-
-      assert [%Diagnostic{} = proto_diagnostic] =
-               State.get(state, SourceFile.Path.to_uri(diagnostic.file))
-
-      assert proto_diagnostic.message == "Hoo boy, this is a mess"
-      range = proto_diagnostic.range
-
-      # Starting at 0 and going to character 0 on the next line highlights the entire line
-      assert range.start.line == 2
-      assert range.start.character == 7
-
-      assert range.end.line == 3
-      assert range.end.character == 0
-    end
+    assert diagnostic.compiler_name == "Mix"
+    assert diagnostic.message == error.message
   end
 
   describe "clear_all_flushed/1" do
     test "it should not clear a dirty open file", %{state: state} do
       source_file = source_file("hello") |> change_with("hello2")
 
-      {:ok, state} =
-        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
       assert ^old_diagnostics = State.get(state, source_file.uri)
     end
 
-    test "it should not clear a script file even if it is clean", %{state: state} do
-      script_file_path = Path.join([Project.root_path(project()), "test", "*.exs"])
+    test "it should not clear a script file even if it is clean", %{
+      state: state,
+      project: project
+    } do
+      script_file_path = Path.join([Project.root_path(project), "test", "*.exs"])
       source_file = source_file("assert f() == 0", script_file_path)
 
-      {:ok, state} =
-        State.add(state, compiler_diagnostic(message: "undefined function f/0"), source_file.uri)
+      {:ok, state} = State.add(state, compiler_diagnostic(message: "undefined function f/0"))
 
       old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
@@ -174,8 +101,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is just open", %{state: state} do
       source_file = source_file("hello")
 
-      {:ok, state} =
-        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
@@ -186,8 +112,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is closed", %{state: state} do
       source_file = source_file("hello")
 
-      {:ok, state} =
-        State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
+      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       :ok = SourceFile.Store.close(source_file.uri)
 

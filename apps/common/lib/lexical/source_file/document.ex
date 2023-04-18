@@ -5,6 +5,7 @@ defmodule Lexical.SourceFile.Document do
   alias Lexical.SourceFile.Line
   alias Lexical.SourceFile.LineParser
 
+  use Lexical.StructAccess
   import Line
 
   @default_starting_index 1

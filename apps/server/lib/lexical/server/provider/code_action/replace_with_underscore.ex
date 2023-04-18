@@ -6,11 +6,11 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   alias Lexical.Protocol.Requests.CodeAction
   alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
   alias Lexical.Protocol.Types.Diagnostic
-  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Edit
 
   @spec apply(CodeAction.t(), Env.t()) :: [CodeActionReply.t()]
   def apply(%CodeAction{} = code_action, %Env{} = env) do
@@ -43,14 +43,15 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
       {:ok, []} ->
         :error
 
-      {:ok, text_edits} ->
-        text_edits = Enum.map(text_edits, &adjust_line_number(&1, line_number))
+      {:ok, edits} ->
+        edits = Enum.map(edits, &adjust_line_number(&1, line_number))
+        document_edits = SourceFile.DocumentEdits.new(source_file, edits)
 
         reply =
           CodeActionResult.new(
             title: "Rename to _#{variable_name}",
             kind: :quick_fix,
-            edit: Workspace.Edit.new(changes: %{source_file.uri => text_edits})
+            edit: Workspace.Edit.new(changes: %{source_file.uri => document_edits})
           )
 
         {:ok, reply}
@@ -79,7 +80,7 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
     {:ok, diagnostic.range.start.line}
   end
 
-  defp adjust_line_number(%TextEdit{} = text_edit, line_number) do
+  defp adjust_line_number(%Edit{} = text_edit, line_number) do
     text_edit
     |> put_in([:range, :start, :line], line_number)
     |> put_in([:range, :end, :line], line_number)

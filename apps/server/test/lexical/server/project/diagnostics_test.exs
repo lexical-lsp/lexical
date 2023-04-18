@@ -104,11 +104,8 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
-      range = diagnostic.range
-      assert range.start.line == 3
-      assert range.start.character == 0
-      assert range.end.line == 4
-      assert range.end.character == 0
+      assert %Compiler.Diagnostic{} = diagnostic
+      assert diagnostic.position == {4, 1}
     end
   end
 end

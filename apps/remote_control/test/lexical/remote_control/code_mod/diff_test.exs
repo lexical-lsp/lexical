@@ -1,21 +1,20 @@
 defmodule Lexical.RemoteControl.CodeMod.DiffTest do
-  alias Lexical.Protocol.Types.Position
-  alias Lexical.Protocol.Types.Range
-  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl.CodeMod.Diff
+  alias Lexical.SourceFile.Edit
+  alias Lexical.SourceFile.Position
+  alias Lexical.SourceFile.Range
 
   import Diff
 
   use Lexical.Test.CodeMod.Case
 
   def edit(start_line, start_code_unit, end_line, end_code_unit, replacement) do
-    TextEdit.new(
-      new_text: replacement,
-      range:
-        Range.new(
-          start: Position.new(character: start_code_unit, line: start_line),
-          end: Position.new(character: end_code_unit, line: end_line)
-        )
+    Edit.new(
+      replacement,
+      Range.new(
+        Position.new(start_line, start_code_unit),
+        Position.new(end_line, end_code_unit)
+      )
     )
   end
 
@@ -35,7 +34,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "hello"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 0, 0, 2, "")
+      assert edit == edit(1, 1, 1, 3, "")
       assert_edited(orig, final)
     end
 
@@ -44,7 +43,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "heyello"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 2, 0, 2, "ye")
+      assert edit == edit(1, 3, 1, 3, "ye")
       assert_edited(orig, final)
     end
 
@@ -53,7 +52,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "heo"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 2, 0, 4, "")
+      assert edit == edit(1, 3, 1, 5, "")
       assert_edited(orig, final)
     end
 
@@ -64,7 +63,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       # this is collapsed into a single edit of an
       # insert that spans the delete and the insert
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 3, 0, 5, "vetica went")
+      assert edit == edit(1, 4, 1, 6, "vetica went")
       assert_edited(orig, final)
     end
 
@@ -73,8 +72,8 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "hellothe"
 
       assert [e1, e2] = diff(orig, final)
-      assert e1 == edit(0, 9, 0, 11, "")
-      assert e2 == edit(0, 5, 0, 6, "")
+      assert e1 == edit(1, 10, 1, 12, "")
+      assert e2 == edit(1, 6, 1, 7, "")
     end
   end
 
@@ -100,7 +99,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "hello"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 0, 2, 0, "")
+      assert edit == edit(1, 1, 3, 1, "")
       assert_edited(orig, final)
     end
 
@@ -109,7 +108,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "he\n\n ye\n\nllo"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 2, 0, 2, "\n\n ye\n\n")
+      assert edit == edit(1, 3, 1, 3, "\n\n ye\n\n")
       assert_edited(orig, final)
     end
 
@@ -126,7 +125,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = "hellogoodbye"
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 5, 3, 0, "")
+      assert edit == edit(1, 6, 4, 1, "")
       assert_edited(orig, final)
     end
 
@@ -165,7 +164,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
         |> String.trim()
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(2, 0, 4, 0, "")
+      assert edit == edit(3, 1, 5, 1, "")
       assert_edited(orig, final)
     end
   end
@@ -176,7 +175,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = ~S[{"🎸", "after"}]
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 7, 0, 9, "")
+      assert edit == edit(1, 10, 1, 12, "")
       assert_edited(orig, final)
     end
 
@@ -185,7 +184,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = ~S[🎸🎺🎸]
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 2, 0, 2, "🎺")
+      assert edit == edit(1, 5, 1, 5, "🎺")
       assert_edited(orig, final)
     end
 
@@ -194,7 +193,7 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
       final = ~S[🎸🎸]
 
       assert [edit] = diff(orig, final)
-      assert edit == edit(0, 2, 0, 6, "")
+      assert edit == edit(1, 5, 1, 13, "")
       assert_edited(orig, final)
     end
 

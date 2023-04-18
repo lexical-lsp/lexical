@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Definition do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Location
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
   alias Lexical.Text
@@ -20,7 +21,9 @@ defmodule Lexical.Server.CodeIntelligence.Definition do
 
     with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
          {:ok, text} <- SourceFile.fetch_text_at(source_file, line) do
-      {:ok, {source_file, to_precise_range(text, line, column)}}
+      range = to_precise_range(text, line, column)
+
+      {:ok, Location.new(range, source_file)}
     else
       _ ->
         {:error, "Could not open source file or fetch line text: #{inspect(file_path)}"}

@@ -1,6 +1,6 @@
 defmodule Lexical.Protocol.Requests do
+  alias Lexical.Proto
   alias Lexical.Protocol.LspTypes
-  alias Lexical.Protocol.Proto
   alias Lexical.Protocol.Types
 
   # Client -> Server request

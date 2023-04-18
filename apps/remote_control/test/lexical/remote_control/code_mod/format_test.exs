@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       |> Keyword.get(:file_path, file_path(project))
       |> maybe_uri()
 
-    Format.text_edits(project, source_file(file_uri, text))
+    Format.edits(project, source_file(file_uri, text))
   end
 
   def maybe_uri(path_or_uri) when is_binary(path_or_uri), do: SourceFile.Path.to_uri(path_or_uri)

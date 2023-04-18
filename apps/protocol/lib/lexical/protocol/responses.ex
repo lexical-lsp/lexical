@@ -1,5 +1,5 @@
 defmodule Lexical.Protocol.Responses do
-  alias Lexical.Protocol.Proto
+  alias Lexical.Proto
   alias Lexical.Protocol.Types
 
   defmodule InitializeResult do
