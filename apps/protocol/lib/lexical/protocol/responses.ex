@@ -14,6 +14,12 @@ defmodule Lexical.Protocol.Responses do
     defresponse optional(list_of(Types.Location))
   end
 
+  defmodule GoToDefinition do
+    use Proto
+
+    defresponse optional(Types.Location)
+  end
+
   defmodule Formatting do
     use Proto
 
