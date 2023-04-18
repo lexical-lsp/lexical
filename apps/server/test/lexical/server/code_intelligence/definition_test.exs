@@ -121,7 +121,8 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
       ...>   end
       ...> end
 
-    when we want to jump to the definition of `MultiArity.sum/3`, we will always go to the `sum/2`
+    When we want to jump to the definition of `MultiArity.sum/3`,
+    we will always go to the `MultiArity.sum/2`
     """
     @tag :skip
     test "it can't find the right arity function definition", %{project: project} do
