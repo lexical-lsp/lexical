@@ -13,7 +13,7 @@ defmodule Lexical.Server.CodeIntelligence.Definition do
     parse_location(maybe_location, source_file)
   end
 
-  def parse_location(%ElixirSense.Location{} = location, source_file) do
+  defp parse_location(%ElixirSense.Location{} = location, source_file) do
     %{file: file, line: line, column: column} = location
     file_path = file || source_file.path
     uri = SourceFile.Path.ensure_uri(file_path)
@@ -27,7 +27,7 @@ defmodule Lexical.Server.CodeIntelligence.Definition do
     end
   end
 
-  def parse_location(nil, _) do
+  defp parse_location(nil, _) do
     {:ok, nil}
   end
 
