@@ -161,6 +161,7 @@ defmodule Lexical.SourceFile.StoreTest do
       assert {:ok, _} = SourceFile.Store.open_temporary(ctx.uri, 100)
       Process.sleep(101)
       refute SourceFile.Store.open?(ctx.uri)
+      assert SourceFile.Store.fetch(ctx.uri) == {:error, :not_open}
     end
 
     test "the extension is extended on subsequent access", ctx do
