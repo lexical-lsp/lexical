@@ -104,6 +104,26 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
       assert definition_line == ~S[  defmacro «print_hello» do]
     end
 
+    @doc """
+    This is a limitation of the ElixirSense.
+    It doesn't support finding the multiple arity definition when making remote call
+    currently, it will always return the first definition.
+
+    ## Example
+
+      iex> defmodule MultiArity do
+      ...>   def sum(a, b) do
+      ...>     a + b
+      ...>   end
+      ...>
+      ...>   def sum(a, b, c) do
+      ...>     a + b + c
+      ...>   end
+      ...> end
+
+    when we want to jump to the definition of `MultiArity.sum/3`, we will always go to the `sum/2`
+    """
+    @tag :skip
     test "it can't find the right arity function definition", %{project: project} do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
@@ -114,13 +134,10 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
           end
         end
         ]
-      # credo:disable-for-next-line Credo.Check.Design.TagTODO
-      # TODO: this is a limitation of elixir_sense
-      # can be fixed when we have a tracer
-      # when function is imported, it also has the issue
+
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
-      assert definition_line == ~S[  def «sum»(a, b) do]
+      assert definition_line == ~S[  def «sum»(a, b, c) do]
       assert referenced_uri =~ "navigations/lib/multi_arity.ex"
     end
   end
@@ -177,8 +194,16 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
       assert definition_line == ~S[  def «greet»(name) do]
     end
 
+    @doc """
+    This is a limitation of the ElixirSense.
+    like the `subject_module` below, it can't find the correct definition of `hello_func_in_using/0`
+    when the definition module aliased by `use` or `import`,
+    currently, it will go to the `use MyDefinition` line
+    """
+    @tag :skip
     test "it can't find the correct definition when func defined in the quote block", %{
-      project: project
+      project: project,
+      uri: referenced_uri
     } do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
@@ -189,14 +214,8 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
           end
         end
         ]
-      {:ok, referenced_uri, definition_line} = definition(project, subject_module)
-
-      # credo:disable-for-next-line Credo.Check.Design.TagTODO
-      # TODO: this is wrong, it should go to the definition in the quote block
-      # but it goes to the `use` keyword in the caller module
-      # it can be fixed when we have a tracer, the tracer event kind will be `local_function`
-      assert definition_line == ~S[  «use» MyDefinition]
-      assert referenced_uri =~ "navigations/lib/my_module.ex"
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
+      assert definition_line == ~S[  def «hello_func_in_using» do]
     end
   end
 
@@ -253,15 +272,22 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
       assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
+    @doc """
+    This is a limitation of the ElixirSense.
+    like the `subject_module` below, it can't find the correct definition of `String.to_integer/1`,
+    currently, it will always return `{:ok, nil}`
+    """
+    @tag :skip
     test "can't find the definition when calling a Elixir std module function",
          %{project: project} do
       subject_module = ~q[
         String.to_integer|("1")
       ]
 
-      # credo:disable-for-next-line Credo.Check.Design.TagTODO
-      # TODO: this should be fixed when we have a call tracer
-      {:ok, nil} = definition(project, subject_module)
+      {:ok, uri, definition_line} = definition(project, subject_module)
+
+      assert uri =~ "lib/elixir/lib/string.ex"
+      assert definition_line =~ ~S[  def «to_integer»(string) when is_binary(string) do]
     end
 
     test "find the definition when calling a erlang module", %{project: project} do
