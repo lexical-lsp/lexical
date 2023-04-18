@@ -16,7 +16,7 @@ defmodule Lexical.SourceFile.Store do
 
     @type t :: %__MODULE__{}
     def new do
-      :ets.new(@table_name, [:named_table, :set, :protected, write_concurrency: true])
+      :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
 
       %__MODULE__{}
     end
