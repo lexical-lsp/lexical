@@ -32,7 +32,8 @@ defmodule Common.MixProject do
 
   defp deps do
     [
-      {:stream_data, "~> 0.5", only: [:test], runtime: false}
+      {:stream_data, "~> 0.5", only: [:test], runtime: false},
+      {:patch, "~> 0.12", only: [:test], optional: true, runtime: false}
     ]
   end
 end

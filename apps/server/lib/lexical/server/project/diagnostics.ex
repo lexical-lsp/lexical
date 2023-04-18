@@ -1,15 +1,7 @@
 defmodule Lexical.Server.Project.Diagnostics do
   defmodule State do
-    alias Lexical.Math
     alias Lexical.Project
-    alias Lexical.Protocol.Types.Diagnostic
-    alias Lexical.Protocol.Types.Position
-    alias Lexical.Protocol.Types.Range
-    alias Lexical.Ranged
     alias Lexical.SourceFile
-    alias Lexical.SourceFile.Position, as: ExPosition
-    alias Lexical.SourceFile.Range, as: ExRange
-    alias Lexical.Text
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
@@ -49,124 +41,42 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
-    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic, source_file_uri) do
-      with {:ok, lsp_diagnostic} <- to_protocol(diagnostic, source_file_uri) do
-        file_diagnostics =
-          Map.update(
-            state.diagnostics_by_uri,
-            source_file_uri,
-            [lsp_diagnostic],
-            &[lsp_diagnostic | &1]
-          )
+    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
+      source_uri = SourceFile.Path.to_uri(diagnostic.file)
 
-        {:ok, %{state | diagnostics_by_uri: file_diagnostics}}
-      end
-    end
+      diagnostics_by_uri =
+        Map.update(state.diagnostics_by_uri, source_uri, [diagnostic], fn diagnostics ->
+          [diagnostic | diagnostics]
+        end)
 
-    def add(%__MODULE__{} = state, not_a_diagnostic, %SourceFile{} = source_file) do
-      Logger.error("Invalid diagnostic #{inspect(not_a_diagnostic)} in #{source_file.path}")
-      {:ok, state}
+      {:ok, %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}}
     end
 
     def add(%__MODULE__{} = state, %Mix.Error{} = error) do
       project_uri = state.project.mix_exs_uri
 
-      with {:ok, lsp_diagnostic} <- to_protocol(error, project_uri) do
-        file_diagnostics =
-          Map.update(
-            state.diagnostics_by_uri,
-            project_uri,
-            [lsp_diagnostic],
-            &[lsp_diagnostic | &1]
-          )
+      compiler_diagnostic = %Compiler.Diagnostic{
+        file: project_uri,
+        message: error.message,
+        position: 1,
+        severity: :error,
+        compiler_name: "Mix"
+      }
 
-        {:ok, %{state | diagnostics_by_uri: file_diagnostics}}
-      end
-    end
+      file_diagnostics =
+        Map.update(
+          state.diagnostics_by_uri,
+          project_uri,
+          [compiler_diagnostic],
+          &[compiler_diagnostic | &1]
+        )
 
-    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
-      source_uri = SourceFile.Path.to_uri(diagnostic.file)
-
-      with {:ok, lsp_diagnostic} <- to_protocol(diagnostic, source_uri) do
-        diagnostics_by_uri =
-          Map.update(state.diagnostics_by_uri, source_uri, [lsp_diagnostic], fn diagnostics ->
-            [lsp_diagnostic | diagnostics]
-          end)
-
-        {:ok, %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}}
-      end
+      {:ok, %__MODULE__{state | diagnostics_by_uri: file_diagnostics}}
     end
 
     def add(%__MODULE__{} = state, other) do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
       {:ok, state}
-    end
-
-    defp to_protocol(%Compiler.Diagnostic{} = diagnostic, %SourceFile{} = source_file) do
-      proto_diagnostic = %Diagnostic{
-        message: diagnostic.message,
-        range: position_to_range(source_file, diagnostic.position),
-        severity: diagnostic.severity,
-        source: "Elixir"
-      }
-
-      {:ok, proto_diagnostic}
-    end
-
-    defp to_protocol(%Compiler.Diagnostic{} = diagnostic, source_uri)
-         when is_binary(source_uri) do
-      with {:ok, source_file} <- SourceFile.Store.open_temporary(source_uri) do
-        to_protocol(diagnostic, source_file)
-      end
-    end
-
-    defp to_protocol(%Mix.Error{} = diagnostic, _) do
-      proto_diagnoatic = %Diagnostic{
-        message: diagnostic.message,
-        range:
-          Range.new(
-            start: Position.new(line: 0, character: 0),
-            end: Position.new(line: 1, character: 0)
-          ),
-        severity: :error,
-        source: "Mix"
-      }
-
-      {:ok, proto_diagnoatic}
-    end
-
-    defp position_to_range(%SourceFile{} = source_file, {line_number, column}) do
-      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
-      column = max(column, 1)
-      to_lsp_range(line_number, column, source_file)
-    end
-
-    defp position_to_range(source_file, line_number) when is_integer(line_number) do
-      line_number = Math.clamp(line_number, 1, SourceFile.size(source_file))
-
-      with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number) do
-        column = Text.count_leading_spaces(line_text) + 1
-        to_lsp_range(line_number, column, source_file)
-      end
-    end
-
-    defp to_lsp_range(line_number, column, source_file) do
-      elixir_range =
-        ExRange.new(
-          ExPosition.new(line_number, column),
-          ExPosition.new(line_number + 1, 1)
-        )
-
-      case Ranged.Lsp.from_native(elixir_range, source_file) do
-        {:ok, range} ->
-          range
-
-        _error ->
-          Range.new(
-            start: Position.new(line: line_number, character: 0),
-            end: Position.new(line: line_number + 1, character: 0)
-          )
-      end
     end
 
     defp keep_diagnostics?(%SourceFile{} = source_file) do
@@ -183,7 +93,6 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.Format
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
-  alias Lexical.Protocol.Types.Diagnostic
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Transport
@@ -242,7 +151,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
-        case State.add(state, diagnostic, uri) do
+        case State.add(state, diagnostic) do
           {:ok, new_state} ->
             new_state
 
@@ -272,11 +181,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   defp publish_diagnostics(%State{} = state) do
     Enum.each(state.diagnostics_by_uri, fn {uri, diagnostic_list} ->
-      notification =
-        PublishDiagnostics.new(
-          uri: uri,
-          diagnostics: diagnostic_list
-        )
+      notification = PublishDiagnostics.new(uri: uri, diagnostics: diagnostic_list)
 
       Transport.write(notification)
     end)

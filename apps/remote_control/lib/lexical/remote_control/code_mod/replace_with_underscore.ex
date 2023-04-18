@@ -4,22 +4,22 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
   alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.SourceFile
 
-  @spec text_edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
+  @spec edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, [TextEdit.t()]} | :error
-  def text_edits(%SourceFile{} = source_file, line_number, variable_name) do
+  def edits(%SourceFile{} = source_file, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
     with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
-      {:ok, to_text_edits(line_text, transformed_text)}
+      {:ok, to_edits(line_text, transformed_text)}
     end
   end
 
-  defp to_text_edits(orig_text, fixed_text) do
+  defp to_edits(orig_text, fixed_text) do
     orig_text
     |> Diff.diff(fixed_text)
-    |> Enum.filter(&(&1.new_text == "_"))
+    |> Enum.filter(&(&1.text == "_"))
   end
 
   defp ensure_atom(variable_name) when is_binary(variable_name) do

@@ -66,6 +66,10 @@ defmodule Lexical.CodeUnit do
     do_count_utf16(binary, 0)
   end
 
+  def count(:utf8, binary) do
+    do_count_utf8(binary, 0)
+  end
+
   # Private
 
   # UTF-16
@@ -85,6 +89,19 @@ defmodule Lexical.CodeUnit do
       |> div(2)
 
     do_count_utf16(rest, count + increment)
+  end
+
+  defp do_count_utf8(<<>>, count) do
+    count
+  end
+
+  defp do_count_utf8(<<c, rest::binary>>, count) when c < 128 do
+    do_count_utf8(rest, count + 1)
+  end
+
+  defp do_count_utf8(<<c::utf8, rest::binary>>, count) do
+    increment = byte_size(<<c::utf8>>)
+    do_count_utf8(rest, count + increment)
   end
 
   defp do_utf16_offset(_, 0, offset) do

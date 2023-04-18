@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Provider.Queue do
   defmodule State do
-    alias Lexical.Protocol.Proto.LspTypes.ResponseError
+    alias Lexical.Proto.Convert
+    alias Lexical.Proto.LspTypes.ResponseError
     alias Lexical.Protocol.Requests
-    alias Lexical.Protocol.Response
     alias Lexical.Server.Provider.Env
     alias Lexical.Server.Provider.Handlers
     alias Lexical.Server.Provider.Queue
@@ -20,7 +20,7 @@ defmodule Lexical.Server.Provider.Queue do
     @spec add(t, Requests.request(), Env.t()) :: {:ok, t} | :error
     def add(%__MODULE__{} = state, request, env) do
       with {:ok, handler_module} <- Handlers.for_request(request),
-           {:ok, req} <- convert_to_elixir(request) do
+           {:ok, req} <- Convert.to_native(request) do
         task = %Task{} = as_task(request, fn -> handler_module.handle(req, env) end)
         request_id = to_string(request.id)
 
@@ -138,17 +138,9 @@ defmodule Lexical.Server.Provider.Queue do
     end
 
     defp write_reply(response) do
-      with {:ok, lsp_response} <- Response.to_lsp(response) do
+      with {:ok, lsp_response} <- Convert.to_lsp(response) do
         Transport.write(lsp_response)
       end
-    end
-
-    defp convert_to_elixir(%struct_module{} = struct) do
-      struct_module.to_elixir(struct)
-    end
-
-    defp convert_to_elixir(other) do
-      {:ok, other}
     end
   end
 

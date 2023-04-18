@@ -91,7 +91,7 @@ defmodule Lexical.Server.State do
     {:ok, state}
   end
 
-  def apply(%__MODULE__{} = state, %DidChange{lsp: event}) do
+  def apply(%__MODULE__{} = state, %DidChange{lsp: event} = did_change) do
     uri = event.text_document.uri
     version = event.text_document.version
 

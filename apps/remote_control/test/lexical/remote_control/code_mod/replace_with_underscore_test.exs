@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
   def apply_code_mod(original_text, _ast, options) do
     variable = Keyword.get(options, :variable, :unused)
     source_file = SourceFile.new("file:///file.ex", original_text, 0)
-    ReplaceWithUnderscore.text_edits(source_file, 1, variable)
+    ReplaceWithUnderscore.edits(source_file, 1, variable)
   end
 
   describe "fixes in parameters" do

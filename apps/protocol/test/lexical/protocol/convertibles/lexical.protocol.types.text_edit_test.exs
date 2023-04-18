@@ -1,0 +1,60 @@
+defmodule Lexical.Protocol.Convertibles.TextEditTest do
+  use Lexical.Test.Protocol.ConvertibleSupport
+
+  describe "to_lsp/2)" do
+    setup [:with_an_open_file]
+
+    test "leaves text edits alone", %{uri: uri} do
+      native_text_edit = Types.TextEdit.new(new_text: "hi", range: valid_range(:lsp))
+      assert {:ok, ^native_text_edit} = to_lsp(native_text_edit, uri)
+    end
+
+    test "converts native positions in text edits", %{uri: uri} do
+      text_edit =
+        Types.TextEdit.new(
+          new_text: "hi",
+          range: range(:lsp, valid_position(:native), valid_position(:lsp))
+        )
+
+      assert %SourceFile.Position{} = text_edit.range.start
+      assert {:ok, converted} = to_lsp(text_edit, uri)
+      assert %Types.Position{} = converted.range.start
+    end
+
+    test "converts native ranges in text edits", %{uri: uri} do
+      text_edit = Types.TextEdit.new(new_text: "hi", range: valid_range(:native))
+      assert %SourceFile.Range{} = text_edit.range
+
+      assert {:ok, converted} = to_lsp(text_edit, uri)
+      assert %Types.Range{} = converted.range
+      assert %Types.Position{} = converted.range.start
+      assert %Types.Position{} = converted.range.end
+    end
+  end
+
+  describe "to_native/2" do
+    setup [:with_an_open_file]
+
+    test "converts to edits", %{uri: uri} do
+      text_edit = Types.TextEdit.new(new_text: "Hi", range: valid_range(:lsp))
+
+      {:ok, converted} = to_native(text_edit, uri)
+
+      assert %SourceFile.Edit{} = converted
+      assert %SourceFile.Range{} = converted.range
+      assert %SourceFile.Position{} = converted.range.start
+      assert %SourceFile.Position{} = converted.range.end
+      assert "Hi" == converted.text
+    end
+
+    test "fails conversion gracefully", %{uri: uri} do
+      edit =
+        Types.TextEdit.new(
+          new_text: "hi",
+          range: range(:lsp, position(:lsp, -1, 0), valid_position(:lsp))
+        )
+
+      assert {:error, {:invalid_range, _}} = to_native(edit, uri)
+    end
+  end
+end

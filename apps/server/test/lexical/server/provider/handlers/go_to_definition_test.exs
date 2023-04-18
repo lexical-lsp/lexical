@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
+  alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.GoToDefinition
   alias Lexical.RemoteControl
   alias Lexical.Server
@@ -6,8 +7,9 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Location
 
-  import Lexical.Protocol.Proto.Fixtures.LspProtocol
+  import Lexical.Proto.Fixtures.LspProtocol
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.Fixtures
 
@@ -47,7 +49,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
 
     with {:ok, _} <- SourceFile.Store.open_temporary(uri),
          {:ok, req} <- build(GoToDefinition, params) do
-      GoToDefinition.to_elixir(req)
+      Convert.to_native(req)
     end
   end
 
@@ -62,13 +64,13 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
       uses_file_path = file_path(project, Path.join("lib", "uses.ex"))
       {:ok, request} = build_request(uses_file_path, 4, 17)
 
-      {:reply, %{result: %{range: range, uri: uri}}} = handle(request, project)
+      {:reply, %{result: %Location{} = location}} = handle(request, project)
 
-      assert range.start.line == 14
-      assert range.start.character == 6
-      assert range.end.line == 14
-      assert range.end.character == 11
-      assert uri == referenced_uri
+      assert location.range.start.line == 15
+      assert location.range.start.character == 7
+      assert location.range.end.line == 15
+      assert location.range.end.character == 12
+      assert Location.uri(location) == referenced_uri
     end
   end
 end

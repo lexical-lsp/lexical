@@ -9,8 +9,8 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   require Logger
   @type formatter_function :: (String.t() -> any) | nil
 
-  @spec text_edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
-  def text_edits(%Project{} = project, %SourceFile{} = document) do
+  @spec edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
+  def edits(%Project{} = project, %SourceFile{} = document) do
     with :ok <- Build.compile_source_file(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)

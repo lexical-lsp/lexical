@@ -1,6 +1,6 @@
 defmodule Lexical.Protocol.ResponseTest do
-  alias Lexical.Protocol.Proto
-  alias Lexical.Protocol.Response
+  alias Lexical.Proto
+  alias Lexical.Proto.Convert
   alias Lexical.Protocol.Types
   alias Lexical.SourceFile
 
@@ -44,7 +44,7 @@ defmodule Lexical.Protocol.ResponseTest do
       body = TextDocumentAndPosition.new(text_document: identifier, placement: elixir_position)
       response = PositionContainer.new(15, body)
 
-      assert {:ok, lsp_response} = Response.to_lsp(response)
+      assert {:ok, lsp_response} = Convert.to_lsp(response)
       assert lsp_response.id == 15
       assert lsp_response.result.text_document == identifier
       assert %Types.Position{} = _position = lsp_response.result.placement
@@ -69,7 +69,7 @@ defmodule Lexical.Protocol.ResponseTest do
         )
 
       response = Locations.new(5, [location])
-      assert {:ok, lsp_response} = Response.to_lsp(response)
+      assert {:ok, lsp_response} = Convert.to_lsp(response)
       assert lsp_response.id == 5
       assert [%Types.Location{} = _lsp_location] = lsp_response.result
     end

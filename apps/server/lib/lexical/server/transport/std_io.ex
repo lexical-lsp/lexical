@@ -21,6 +21,13 @@ defmodule Lexical.Server.Transport.StdIO do
 
   def write(io_device \\ :stdio, payload)
 
+  def write(io_device, %_{} = payload) do
+    with {:ok, lsp} <- Lexical.Proto.Convert.to_lsp(payload),
+         {:ok, json} <- Jason.encode(lsp) do
+      write(io_device, json)
+    end
+  end
+
   def write(io_device, %{} = payload) do
     with {:ok, encoded} <- Jason.encode(payload) do
       write(io_device, encoded)

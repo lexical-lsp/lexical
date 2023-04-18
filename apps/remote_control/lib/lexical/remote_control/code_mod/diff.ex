@@ -1,19 +1,19 @@
 defmodule Lexical.RemoteControl.CodeMod.Diff do
   alias Lexical.CodeUnit
-  alias Lexical.Protocol.Types.Position
-  alias Lexical.Protocol.Types.Range
-  alias Lexical.Protocol.Types.TextEdit
+  alias Lexical.SourceFile.Edit
+  alias Lexical.SourceFile.Position
+  alias Lexical.SourceFile.Range
 
   @spec diff(String.t(), String.t()) :: [TextEdit.t()]
   def diff(source, dest) do
     source
     |> String.myers_difference(dest)
-    |> to_text_edits()
+    |> to_edits()
   end
 
-  defp to_text_edits(difference) do
+  defp to_edits(difference) do
     {_, {current_line, prev_lines}} =
-      Enum.reduce(difference, {{0, 0}, {[], []}}, fn
+      Enum.reduce(difference, {{starting_line(), starting_character()}, {[], []}}, fn
         {diff_type, diff_string}, {position, edits} ->
           apply_diff(diff_type, position, diff_string, edits)
       end)
@@ -31,15 +31,15 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
   # insert rather than ""
   # It's a small optimization, but it was in the original
   defp collapse(
-         %TextEdit{
-           new_text: "",
+         %Edit{
+           text: "",
            range: %Range{
              end: %Position{character: same_character, line: same_line}
            }
          } = delete_edit,
          [
-           %TextEdit{
-             new_text: insert_text,
+           %Edit{
+             text: insert_text,
              range:
                %Range{
                  start: %Position{character: same_character, line: same_line}
@@ -49,11 +49,11 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
          ]
        )
        when byte_size(insert_text) > 0 do
-    collapsed_edit = %TextEdit{delete_edit | new_text: insert_text}
+    collapsed_edit = %Edit{delete_edit | text: insert_text}
     [collapsed_edit | rest]
   end
 
-  defp collapse(%TextEdit{} = edit, edits) do
+  defp collapse(%Edit{} = edit, edits) do
     [edit | edits]
   end
 
@@ -80,7 +80,7 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
   for ending <- ["\r\n", "\r", "\n"] do
     defp advance(<<unquote(ending), rest::binary>>, {line, _unit}, {current_line, prev_lines}) do
       edits = {[], [current_line | prev_lines]}
-      advance(rest, {line + 1, 0}, edits)
+      advance(rest, {line + 1, starting_character()}, edits)
     end
   end
 
@@ -89,18 +89,20 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
   end
 
   defp advance(<<c::utf8, rest::binary>>, {line, unit}, edits) do
-    increment = CodeUnit.count(:utf16, <<c::utf8>>)
+    increment = CodeUnit.count(:utf8, <<c::utf8>>)
     advance(rest, {line, unit + increment}, edits)
   end
 
   defp edit(text, start_line, start_unit, end_line, end_unit) do
-    TextEdit.new(
-      new_text: text,
-      range:
-        Range.new(
-          start: Position.new(line: start_line, character: start_unit),
-          end: Position.new(line: end_line, character: end_unit)
-        )
+    Edit.new(
+      text,
+      Range.new(
+        Position.new(start_line, start_unit),
+        Position.new(end_line, end_unit)
+      )
     )
   end
+
+  defp starting_line, do: 1
+  defp starting_character, do: 1
 end
