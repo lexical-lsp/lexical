@@ -125,7 +125,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     we will always go to the `MultiArity.sum/2`
     """
     @tag :skip
-    test "it can't find the right arity function definition", %{project: project} do
+    test "find the right arity function definition", %{project: project} do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
           alias MultiArity
@@ -202,7 +202,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     currently, it will go to the `use MyDefinition` line
     """
     @tag :skip
-    test "it can't find the correct definition when func defined in the quote block", %{
+    test "find the correct definition when func defined in the quote block", %{
       project: project,
       uri: referenced_uri
     } do
@@ -279,7 +279,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     currently, it will always return `{:ok, nil}`
     """
     @tag :skip
-    test "can't find the definition when calling a Elixir std module function",
+    test "find the definition when calling a Elixir std module function",
          %{project: project} do
       subject_module = ~q[
         String.to_integer|("1")
