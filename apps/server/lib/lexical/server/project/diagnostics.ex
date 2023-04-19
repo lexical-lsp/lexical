@@ -38,7 +38,7 @@ defmodule Lexical.Server.Project.Diagnostics do
         Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
           with true <- SourceFile.Store.open?(uri),
                {:ok, %SourceFile{} = source_file} <- SourceFile.Store.fetch(uri),
-               true <- source_file.dirty? or test_file?(source_file) do
+               true <- source_file.dirty? or script_file?(source_file) do
             {uri, diagnostics}
           else
             _ ->
@@ -169,8 +169,10 @@ defmodule Lexical.Server.Project.Diagnostics do
       end
     end
 
-    defp test_file?(source_file) do
-      String.ends_with?(source_file.path, "_test.exs")
+    defp script_file?(source_file) do
+      # The script file refers to test files, or Ecto migration files, and so on.
+      # When running `MIX_ENV mix compile` to compile the project, they will not be compiled.
+      String.ends_with?(source_file.path, ".exs")
     end
   end
 

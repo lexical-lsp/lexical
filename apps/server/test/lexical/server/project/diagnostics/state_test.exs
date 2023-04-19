@@ -160,9 +160,9 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       assert [_] = diagnostics
     end
 
-    test "it should not clear a test file even if it is clean", %{state: state} do
-      test_file_path = Path.join([Project.root_path(project()), "test", "project_test.exs"])
-      source_file = source_file("assert f() == 0", test_file_path)
+    test "it should not clear a script file even if it is clean", %{state: state} do
+      script_file_path = Path.join([Project.root_path(project()), "test", "*.exs"])
+      source_file = source_file("assert f() == 0", script_file_path)
 
       {:ok, state} =
         State.add(state, compiler_diagnostic(message: "undefined function f/0"), source_file.uri)
