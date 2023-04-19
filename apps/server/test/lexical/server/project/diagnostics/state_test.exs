@@ -22,8 +22,8 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     Path.join([Project.root_path(project()), "lib", "project.ex"])
   end
 
-  def source_file(contents \\ "") do
-    file_uri = SourceFile.Path.to_uri(existing_file_path())
+  def source_file(contents \\ "", file_path \\ existing_file_path()) do
+    file_uri = SourceFile.Path.to_uri(file_path)
 
     with :ok <- SourceFile.Store.open(file_uri, contents, 0),
          {:ok, source_file} <- SourceFile.Store.fetch(file_uri) do
@@ -157,6 +157,19 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
 
+      assert [_] = diagnostics
+    end
+
+    test "it should not clear a test file even if it is clean", %{state: state} do
+      test_file_path = Path.join([Project.root_path(project()), "test", "project_test.exs"])
+      source_file = source_file("assert f() == 0", test_file_path)
+
+      {:ok, state} =
+        State.add(state, compiler_diagnostic(message: "undefined function f/0"), source_file.uri)
+
+      state = State.clear_all_flushed(state)
+
+      diagnostics = State.get(state, source_file.uri)
       assert [_] = diagnostics
     end
 

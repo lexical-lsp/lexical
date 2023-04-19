@@ -38,7 +38,7 @@ defmodule Lexical.Server.Project.Diagnostics do
         Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
           with true <- SourceFile.Store.open?(uri),
                {:ok, %SourceFile{} = source_file} <- SourceFile.Store.fetch(uri),
-               true <- source_file.dirty? do
+               true <- source_file.dirty? or test_file?(source_file) do
             {uri, diagnostics}
           else
             _ ->
@@ -167,6 +167,10 @@ defmodule Lexical.Server.Project.Diagnostics do
             end: Position.new(line: line_number + 1, character: 0)
           )
       end
+    end
+
+    defp test_file?(source_file) do
+      String.ends_with?(source_file.path, "_test.exs")
     end
   end
 
