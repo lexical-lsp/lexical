@@ -154,10 +154,9 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       {:ok, state} =
         State.add(state, compiler_diagnostic(message: "The code is awful"), source_file.uri)
 
+      old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
-      diagnostics = State.get(state, source_file.uri)
-
-      assert [_] = diagnostics
+      assert ^old_diagnostics = State.get(state, source_file.uri)
     end
 
     test "it should not clear a script file even if it is clean", %{state: state} do
@@ -167,10 +166,9 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       {:ok, state} =
         State.add(state, compiler_diagnostic(message: "undefined function f/0"), source_file.uri)
 
+      old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
-
-      diagnostics = State.get(state, source_file.uri)
-      assert [_] = diagnostics
+      assert ^old_diagnostics = State.get(state, source_file.uri)
     end
 
     test "it should clear a file's diagnostics if it is just open", %{state: state} do
