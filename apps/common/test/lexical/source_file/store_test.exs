@@ -90,6 +90,11 @@ defmodule Lexical.SourceFile.StoreTest do
       assert {:error, :not_open} = SourceFile.Store.fetch(uri())
     end
 
+    test "can be saved" do
+      assert :ok = SourceFile.Store.save(uri())
+      assert {:ok, %{dirty?: false}} = SourceFile.Store.fetch(uri())
+    end
+
     test "can have its content changed" do
       event =
         build_change(
