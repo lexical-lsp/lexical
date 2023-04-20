@@ -1,20 +1,21 @@
 defmodule Lexical.RemoteControl.CodeMod.Format do
   alias Lexical.Project
-  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.DocumentEdits
 
   require Logger
+
   @type formatter_function :: (String.t() -> any) | nil
 
-  @spec edits(Project.t(), SourceFile.t()) :: {:ok, [TextEdit.t()]} | {:error, any}
+  @spec edits(Project.t(), SourceFile.t()) :: {:ok, DocumentEdits.t()} | {:error, any}
   def edits(%Project{} = project, %SourceFile{} = document) do
     with :ok <- Build.compile_source_file(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
-      {:ok, edits}
+      {:ok, DocumentEdits.new(document, edits)}
     end
   end
 

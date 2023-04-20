@@ -1,25 +1,28 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
-  alias Lexical.Protocol.Types.TextEdit
   alias Lexical.RemoteControl.CodeMod.Ast
   alias Lexical.RemoteControl.CodeMod.Diff
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.DocumentEdits
+  alias Lexical.SourceFile.Edit
 
   @spec edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
-          {:ok, [TextEdit.t()]} | :error
+          {:ok, DocumentEdits.t()} | :error
   def edits(%SourceFile{} = source_file, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
     with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
-      {:ok, to_edits(line_text, transformed_text)}
+      edits = to_edits(line_number, line_text, transformed_text)
+
+      {:ok, DocumentEdits.new(source_file, edits)}
     end
   end
 
-  defp to_edits(orig_text, fixed_text) do
-    orig_text
-    |> Diff.diff(fixed_text)
-    |> Enum.filter(&(&1.text == "_"))
+  defp to_edits(line_number, orig_text, fixed_text) do
+    for %Edit{text: "_"} = edit <- Diff.diff(orig_text, fixed_text) do
+      adjust_line_number(edit, line_number)
+    end
   end
 
   defp ensure_atom(variable_name) when is_binary(variable_name) do
@@ -74,5 +77,11 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
       nil -> :error
       other -> {:ok, other}
     end
+  end
+
+  defp adjust_line_number(%Edit{} = text_edit, line_number) do
+    text_edit
+    |> put_in([:range, :start, :line], line_number)
+    |> put_in([:range, :end, :line], line_number)
   end
 end
