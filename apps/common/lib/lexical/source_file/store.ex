@@ -34,7 +34,7 @@ defmodule Lexical.SourceFile.Store do
       case ets_fetch(uri, :sources) do
         {:ok, source_file} ->
           source_file = SourceFile.mark_clean(source_file)
-          ets_put(:sources, uri, source_file)
+          ets_put(uri, :sources, source_file)
           {:ok, store}
 
         :error ->
