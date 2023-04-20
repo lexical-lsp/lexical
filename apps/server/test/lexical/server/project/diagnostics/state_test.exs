@@ -22,7 +22,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     Path.join([Project.root_path(project()), "lib", "project.ex"])
   end
 
-  def source_file(contents \\ "", file_path \\ existing_file_path()) do
+  def source_file(contents, file_path \\ existing_file_path()) do
     file_uri = SourceFile.Path.to_uri(file_path)
 
     with :ok <- SourceFile.Store.open(file_uri, contents, 0),
