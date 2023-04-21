@@ -86,17 +86,16 @@ defmodule Lexical.RemoteControl do
   def stop(%Project{} = project) do
     node = node_name(project)
     :ok = :rpc.call(node, :init, :stop, [])
-    :ok = :net_kernel.monitor_nodes(true, [node_type: :visible])
+    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
 
     receive do
       {:nodedown, ^node, _} ->
         :ok
     after
       5_000 ->
-        Logger.warn("Node #{inspect node} did not go down after 5 seconds")
+        Logger.warn("Node #{inspect(node)} did not go down after 5 seconds")
         {:error, :timeout}
     end
-
   end
 
   def call(%Project{} = project, m, f, a \\ []) do
