@@ -85,8 +85,8 @@ defmodule Lexical.RemoteControl do
 
   def stop(%Project{} = project) do
     node = node_name(project)
-    :ok = :rpc.call(node, System, :stop, [])
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
+    :ok = :rpc.call(node, System, :stop, [])
 
     receive do
       {:nodedown, ^node, _} ->
