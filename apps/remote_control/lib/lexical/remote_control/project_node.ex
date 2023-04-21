@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     options = state[:options]
 
     cmd =
-      "elixir -pa #{options[:paths]} --name #{options[:name]} --cookie #{options[:cookie]} --no-halt"
+      "elixir -pa #{options[:paths]} --name #{options[:name]} --cookie #{options[:cookie]} --no-halt -e 'Node.connect(#{inspect Node.self()})'"
 
     case System.shell(cmd) do
       {_, 0} ->

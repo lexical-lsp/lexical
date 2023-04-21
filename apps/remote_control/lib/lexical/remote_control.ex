@@ -26,8 +26,10 @@ defmodule Lexical.RemoteControl do
     paths = format_prepending_paths(glob_paths())
     start_options = [paths: paths, name: Atom.to_string(node), cookie: Node.get_cookie()]
 
+    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
+
     with {:ok, _} <- ProjectNode.start_link(start_options),
-         :ok <- wait_until_connected(node),
+         :ok <- wait_until_be_connected(),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -40,18 +42,14 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  def wait_until_connected(node, timeout \\ 5_000)
-
-  def wait_until_connected(_node, timeout) when timeout <= 0 do
-    {:error, :timeout}
-  end
-
-  def wait_until_connected(node, timeout) do
-    if Node.connect(node) do
-      :ok
-    else
-      Process.sleep(200)
-      wait_until_connected(node, timeout - 200)
+  def wait_until_be_connected(timeout \\ 5_000) do
+    receive do
+      {:nodeup, _, _} ->
+        :ok
+    after
+      timeout ->
+        Logger.warn("The Server Node did not be connected after 5 seconds")
+        {:error, :timeout}
     end
   end
 
