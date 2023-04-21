@@ -7,36 +7,27 @@ defmodule Lexical.RemoteControl do
 
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.ProjectNode
+  require Logger
 
   @allowed_apps ~w(common path_glob remote_control elixir_sense)a
 
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
 
-  @localhost_charlist '127.0.0.1'
-
   def start_link(%Project{} = project, project_listener) do
     :ok = ensure_epmd_started()
     entropy = :rand.uniform(65_536)
-
     start_net_kernel(project, entropy)
-
-    node_name = String.to_charlist("#{Project.name(project)}")
-    {:ok, paths} = system_paths(project)
-
-    erl_args =
-      erl_args([
-        "-hosts #{@localhost_charlist}",
-        "-setcookie #{Node.get_cookie()}",
-        "-sbwt none",
-        "-path #{paths}",
-        "-noshell"
-      ])
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
     remote_control_config = Application.get_all_env(:remote_control)
 
-    with {:ok, node} <- :slave.start_link(@localhost_charlist, node_name, erl_args),
-         :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
+    node = node_name(project)
+    paths = format_prepending_paths(glob_paths())
+    start_options = [paths: paths, name: Atom.to_string(node), cookie: Node.get_cookie()]
+
+    with {:ok, _} <- ProjectNode.start_link(start_options),
+         :ok <- wait_until_connected(node),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -46,6 +37,21 @@ defmodule Lexical.RemoteControl do
          :ok <- ensure_apps_started(node, apps_to_start) do
       supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
       {:ok, node, supervisor_pid}
+    end
+  end
+
+  def wait_until_connected(node, timeout \\ 5_000)
+
+  def wait_until_connected(_node, timeout) when timeout <= 0 do
+    {:error, :timeout}
+  end
+
+  def wait_until_connected(node, timeout) do
+    if Node.connect(node) do
+      :ok
+    else
+      Process.sleep(200)
+      wait_until_connected(node, timeout - 200)
     end
   end
 
@@ -78,9 +84,19 @@ defmodule Lexical.RemoteControl do
   end
 
   def stop(%Project{} = project) do
-    project
-    |> node_name()
-    |> :slave.stop()
+    node = node_name(project)
+    :ok = :rpc.call(node, :init, :stop, [])
+    :ok = :net_kernel.monitor_nodes(true, [node_type: :visible])
+
+    receive do
+      {:nodedown, ^node, _} ->
+        :ok
+    after
+      5_000 ->
+        Logger.warn("Node #{inspect node} did not go down after 5 seconds")
+        {:error, :timeout}
+    end
+
   end
 
   def call(%Project{} = project, m, f, a \\ []) do
@@ -115,12 +131,6 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  defp erl_args(arg_list) do
-    arg_list
-    |> Enum.join(" ")
-    |> String.to_charlist()
-  end
-
   def system_paths(%Project{} = project) do
     old_cwd = File.cwd!()
     root_path = Project.root_path(project)
@@ -129,7 +139,7 @@ defmodule Lexical.RemoteControl do
       with :ok <- File.cd(root_path),
            {:ok, elixir} <- elixir_executable(project),
            {:ok, paths} <- elixir_code_paths(project, elixir) do
-        {:ok, format_paths(paths)}
+        {:ok, format_prepending_paths(paths)}
       end
 
     File.cd(old_cwd)
@@ -172,8 +182,8 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  defp format_paths(paths_as_charlists) do
-    Enum.map_join(paths_as_charlists, " ", &Path.expand/1)
+  defp format_prepending_paths(paths_as_charlists) do
+    Enum.map_join(paths_as_charlists, " -pa ", &Path.expand/1)
   end
 
   defp elixir_code_paths(%Project{} = project, elixir_executable) do
