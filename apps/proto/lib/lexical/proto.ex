@@ -9,8 +9,8 @@ defmodule Lexical.Proto do
       import Lexical.Proto.TypeFunctions
       import Proto.Alias, only: [defalias: 1]
       import Proto.Enum, only: [defenum: 1]
-      import Proto.Notification, only: [defnotification: 2, defnotification: 3]
-      import Proto.Request, only: [defrequest: 3]
+      import Proto.Notification, only: [defnotification: 1, defnotification: 2]
+      import Proto.Request, only: [defrequest: 2]
       import Proto.Response, only: [defresponse: 1]
       import Proto.Type, only: [deftype: 1]
     end
