@@ -66,6 +66,11 @@ defmodule Lexical.RemoteControl do
     :persistent_term.put({__MODULE__, :project}, project)
   end
 
+  def halt(%Project{} = project) do
+    node = node_name(project)
+    :rpc.call(node, System, :halt, [])
+  end
+
   def stop(%Project{} = project) do
     node = node_name(project)
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
@@ -77,7 +82,7 @@ defmodule Lexical.RemoteControl do
     after
       5_000 ->
         Logger.warn("Node #{inspect(node)} did not go down after 5 seconds")
-        :rpc.call(node, System, :halt, [])
+        halt(project)
         {:error, :timeout}
     end
   end

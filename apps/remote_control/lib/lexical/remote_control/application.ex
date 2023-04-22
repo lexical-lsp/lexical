@@ -17,7 +17,7 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.Build.CaptureServer
         ]
       else
-        [Lexical.RemoteControl.ProjectNodeSupervisor]
+        []
       end
 
     # See https://hexdocs.pm/elixir/Supervisor.html

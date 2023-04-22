@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl
+  require Logger
 
   defmodule State do
     defstruct [:project, :paths, :cookie, boot_timeout: 5_000]
