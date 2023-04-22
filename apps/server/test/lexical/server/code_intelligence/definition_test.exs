@@ -32,6 +32,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   end
 
   setup_all do
+    start_supervised!(Lexical.RemoteControl.ProjectNodeSupervisor)
     start_supervised!(Lexical.SourceFile.Store)
 
     project = project(:navigations)

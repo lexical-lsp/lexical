@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   require Logger
 
   defmodule State do
-    defstruct [:project, :paths, :cookie, boot_timeout: 5_000]
+    defstruct [:project, :paths, :cookie]
 
     def new(project) do
       paths = format_prepending_paths(RemoteControl.glob_paths())
@@ -21,7 +21,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   use GenServer
 
-  def wait_until_started(project, timeout \\ 5_000) do
+  def wait_until_started(project, boot_timeout \\ 5_000) do
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
 
     {:ok, node_pid} =
@@ -34,9 +34,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
       {:nodeup, _, _} ->
         {:ok, node_pid}
     after
-      timeout ->
-        Logger.warn("The Server Node did not be connected after #{timeout / 1000} seconds")
-        {:error, :timeout}
+      boot_timeout ->
+        Logger.warn("The Server Node did not be connected after #{boot_timeout / 1000} seconds")
+        {:error, :boot_timeout}
     end
   end
 
