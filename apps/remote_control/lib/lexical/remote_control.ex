@@ -20,20 +20,12 @@ defmodule Lexical.RemoteControl do
     start_net_kernel(project, entropy)
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
-    remote_control_config = Application.get_all_env(:remote_control)
-
     node = node_name(project)
 
-    with {:ok, _} <- ProjectNode.wait_until_started(project),
-         :ok <-
-           :rpc.call(node, RemoteControl.Bootstrap, :init, [
-             project,
-             project_listener,
-             remote_control_config
-           ]),
+    with {:ok, _} <- ProjectNode.wait_until_started(project, project_listener),
          :ok <- ensure_apps_started(node, apps_to_start) do
       # supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
-      supervisor_pid = Process.whereis(Lexical.RemoteControl.ProjectNodeSupervisor)
+      supervisor_pid = Process.whereis(RemoteControl.ProjectNodeSupervisor)
       {:ok, node, supervisor_pid}
     end
   end

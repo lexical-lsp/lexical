@@ -21,7 +21,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   use GenServer
 
-  def wait_until_started(project, boot_timeout \\ 5_000) do
+  def wait_until_started(project, project_listener, boot_timeout \\ 5_000) do
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
 
     {:ok, node_pid} =
@@ -30,12 +30,27 @@ defmodule Lexical.RemoteControl.ProjectNode do
         {RemoteControl.ProjectNode, project}
       )
 
+    node = RemoteControl.node_name(project)
+    remote_control_config = Application.get_all_env(:remote_control)
+
+    with :ok <- wait_until(boot_timeout),
+         :ok <-
+           :rpc.call(node, RemoteControl.Bootstrap, :init, [
+             project,
+             project_listener,
+             remote_control_config
+           ]) do
+      {:ok, node_pid}
+    end
+  end
+
+  defp wait_until(timeout) do
     receive do
       {:nodeup, _, _} ->
-        {:ok, node_pid}
+        :ok
     after
-      boot_timeout ->
-        Logger.warn("The Server Node did not be connected after #{boot_timeout / 1000} seconds")
+      timeout ->
+        Logger.warn("The project node did not start after #{timeout / 1000} seconds")
         {:error, :boot_timeout}
     end
   end
@@ -54,7 +69,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
     {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
 
     cmd =
-      "#{elixir_executable} --name #{name} -pa #{state.paths} --cookie #{state.cookie} --no-halt -e 'Node.connect(#{inspect(Node.self())})'"
+      "#{elixir_executable} --name #{name} -pa #{state.paths} --cookie #{state.cookie} --no-halt " <>
+        "-e 'Node.connect(#{inspect(Node.self())})' "
 
     case System.shell(cmd) do
       {_, 0} ->
