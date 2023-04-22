@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   def init(options) do
-    wait_boot = options[:wait_boot] || 5_000
+    boot_timeout = Keyword.get(options, :boot_timeout, 5000)
     send(self(), :start_remote_control)
     {:ok, %{options: options, wait_boot: wait_boot}}
   end
