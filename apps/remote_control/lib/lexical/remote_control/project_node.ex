@@ -1,21 +1,38 @@
 defmodule Lexical.RemoteControl.ProjectNode do
+  alias Lexical.RemoteControl
+
+  defmodule State do
+    defstruct [:project, :paths, :cookie, boot_timeout: 5_000]
+
+    def new(project) do
+      paths = format_prepending_paths(RemoteControl.glob_paths())
+      cookie = Node.get_cookie()
+
+      struct!(__MODULE__, paths: paths, cookie: cookie, project: project)
+    end
+
+    defp format_prepending_paths(paths_as_charlists) do
+      Enum.map_join(paths_as_charlists, " -pa ", &Path.expand/1)
+    end
+  end
+
   use GenServer
 
-  def start_link(options) do
-    GenServer.start_link(__MODULE__, options, [])
+  def start_link(project) do
+    state = State.new(project)
+    GenServer.start_link(__MODULE__, state, [])
   end
 
-  def init(options) do
-    boot_timeout = Keyword.get(options, :boot_timeout, 5000)
-    send(self(), :start_remote_control)
-    {:ok, %{options: options, boot_timeout: boot_timeout}}
+  def init(state) do
+    {:ok, state, {:continue, :start_remote_control}}
   end
 
-  def handle_info(:start_remote_control, state) do
-    options = state[:options]
+  def handle_continue(:start_remote_control, state) do
+    name = RemoteControl.node_name(state.project)
+    {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
 
     cmd =
-      "elixir -pa #{options[:paths]} --name #{options[:name]} --cookie #{options[:cookie]} --no-halt -e 'Node.connect(#{inspect Node.self()})'"
+      "#{elixir_executable} --name #{name} -pa #{state.paths} --cookie #{state.cookie} --no-halt -e 'Node.connect(#{inspect(Node.self())})'"
 
     case System.shell(cmd) do
       {_, 0} ->

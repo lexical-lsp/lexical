@@ -23,13 +23,10 @@ defmodule Lexical.RemoteControl do
     remote_control_config = Application.get_all_env(:remote_control)
 
     node = node_name(project)
-    paths = format_prepending_paths(glob_paths())
-    start_options = [paths: paths, name: Atom.to_string(node), cookie: Node.get_cookie()]
-
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
 
-    with {:ok, _} <- ProjectNode.start_link(start_options),
-         :ok <- wait_until_be_connected(),
+    with {:ok, _} <- ProjectNode.start_link(project),
+         :ok <- wait_for_connection(),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -42,7 +39,7 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  def wait_until_be_connected(timeout \\ 5_000) do
+  defp wait_for_connection(timeout \\ 5_000) do
     receive do
       {:nodeup, _, _} ->
         :ok
@@ -102,7 +99,7 @@ defmodule Lexical.RemoteControl do
     |> :erpc.call(m, f, a)
   end
 
-  defp node_name(%Project{} = project) do
+  def node_name(%Project{} = project) do
     :"#{Project.name(project)}@127.0.0.1"
   end
 
@@ -128,22 +125,7 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  def system_paths(%Project{} = project) do
-    old_cwd = File.cwd!()
-    root_path = Project.root_path(project)
-
-    result =
-      with :ok <- File.cd(root_path),
-           {:ok, elixir} <- elixir_executable(project),
-           {:ok, paths} <- elixir_code_paths(project, elixir) do
-        {:ok, format_prepending_paths(paths)}
-      end
-
-    File.cd(old_cwd)
-    result
-  end
-
-  defp elixir_executable(%Project{} = project) do
+  def elixir_executable(%Project{} = project) do
     root_path = Project.root_path(project)
 
     path_result =
@@ -176,20 +158,6 @@ defmodule Lexical.RemoteControl do
 
       executable when is_binary(executable) ->
         {:ok, executable}
-    end
-  end
-
-  defp format_prepending_paths(paths_as_charlists) do
-    Enum.map_join(paths_as_charlists, " -pa ", &Path.expand/1)
-  end
-
-  defp elixir_code_paths(%Project{} = project, elixir_executable) do
-    root_path = Project.root_path(project)
-    command = ~w[--eval IO.inspect(:code.get_path())]
-
-    with {output, 0} <- System.cmd(elixir_executable, command, cd: root_path),
-         {evaluated, _} <- Code.eval_string(output) do
-      {:ok, evaluated}
     end
   end
 
