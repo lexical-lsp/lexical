@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   def init(options) do
     boot_timeout = Keyword.get(options, :boot_timeout, 5000)
     send(self(), :start_remote_control)
-    {:ok, %{options: options, wait_boot: wait_boot}}
+    {:ok, %{options: options, boot_timeout: boot_timeout}}
   end
 
   def handle_info(:start_remote_control, state) do
