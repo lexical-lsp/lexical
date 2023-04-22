@@ -64,6 +64,11 @@ defmodule Lexical.BuildTest do
     {:ok, project: project}
   end
 
+  setup_all do
+    start_supervised!(Lexical.RemoteControl.ProjectNodeSupervisor)
+    :ok
+  end
+
   describe "compiling a project" do
     test "sends a message when complete " do
       {:ok, project} = with_project(:project_metadata)

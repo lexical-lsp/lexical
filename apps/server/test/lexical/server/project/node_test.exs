@@ -12,6 +12,8 @@ defmodule Lexical.Server.Project.NodeTest do
   setup do
     project = project()
 
+    {:ok, _} = start_supervised(Lexical.RemoteControl.ProjectNodeSupervisor)
+
     {:ok, _} =
       start_supervised(
         {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}

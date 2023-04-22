@@ -16,7 +16,28 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
   end
 
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
+
   use GenServer
+
+  def wait_until_started(project, timeout \\ 5_000) do
+    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
+
+    {:ok, node_pid} =
+      DynamicSupervisor.start_child(
+        ProjectNodeSupervisor,
+        {RemoteControl.ProjectNode, project}
+      )
+
+    receive do
+      {:nodeup, _, _} ->
+        {:ok, node_pid}
+    after
+      timeout ->
+        Logger.warn("The Server Node did not be connected after #{timeout / 1000} seconds")
+        {:error, :timeout}
+    end
+  end
 
   def start_link(project) do
     state = State.new(project)

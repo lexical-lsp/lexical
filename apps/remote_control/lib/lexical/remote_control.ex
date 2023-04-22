@@ -23,10 +23,8 @@ defmodule Lexical.RemoteControl do
     remote_control_config = Application.get_all_env(:remote_control)
 
     node = node_name(project)
-    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
 
-    with {:ok, _} <- ProjectNode.start_link(project),
-         :ok <- wait_for_connection(),
+    with {:ok, _} <- ProjectNode.wait_until_started(project),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -34,19 +32,9 @@ defmodule Lexical.RemoteControl do
              remote_control_config
            ]),
          :ok <- ensure_apps_started(node, apps_to_start) do
-      supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
+      # supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
+      supervisor_pid = Process.whereis(Lexical.RemoteControl.ProjectNodeSupervisor)
       {:ok, node, supervisor_pid}
-    end
-  end
-
-  defp wait_for_connection(timeout \\ 5_000) do
-    receive do
-      {:nodeup, _, _} ->
-        :ok
-    after
-      timeout ->
-        Logger.warn("The Server Node did not be connected after 5 seconds")
-        {:error, :timeout}
     end
   end
 
@@ -89,6 +77,7 @@ defmodule Lexical.RemoteControl do
     after
       5_000 ->
         Logger.warn("Node #{inspect(node)} did not go down after 5 seconds")
+        :rpc.call(node, System, :halt, [])
         {:error, :timeout}
     end
   end
