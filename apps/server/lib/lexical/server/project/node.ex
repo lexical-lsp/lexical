@@ -108,7 +108,6 @@ defmodule Lexical.Server.Project.Node do
          {:ok, node, supervisor_pid} <- RemoteControl.start_link(project, dispatch_pid) do
       Process.monitor(supervisor_pid)
       Node.monitor(node, true)
-      trigger_build(project)
       {:ok, State.new(project, node, supervisor_pid)}
     end
   end
