@@ -5,7 +5,7 @@ defmodule Lexical.Proto.Request do
 
   import TypeFunctions, only: [optional: 1, literal: 1]
 
-  defmacro defrequest(method, access, types) do
+  defmacro defrequest(method, types) do
     CompileMetadata.add_request_module(__CALLER__.module)
     # id is optional so we can resuse the parse function. If it's required,
     # it will go in the pattern match for the params, which won't work.
@@ -23,7 +23,7 @@ defmodule Lexical.Proto.Request do
 
     quote location: :keep do
       defmodule LSP do
-        unquote(Message.build({:request, :lsp}, method, access, lsp_types, param_names))
+        unquote(Message.build({:request, :lsp}, method, lsp_types, param_names))
 
         def new(opts \\ []) do
           opts
@@ -36,7 +36,7 @@ defmodule Lexical.Proto.Request do
       alias Lexical.Protocol.Types
 
       unquote(
-        Message.build({:request, :elixir}, method, access, elixir_types, param_names,
+        Message.build({:request, :elixir}, method, elixir_types, param_names,
           include_parse?: false
         )
       )

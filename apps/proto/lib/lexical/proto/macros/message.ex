@@ -9,7 +9,7 @@ defmodule Lexical.Proto.Macros.Message do
 
   alias Lexical.SourceFile
 
-  def build(meta_type, method, access, types, param_names, opts \\ []) do
+  def build(meta_type, method, types, param_names, opts \\ []) do
     parse_fn =
       if Keyword.get(opts, :include_parse?, true) do
         Parse.build(types)
@@ -36,10 +36,6 @@ defmodule Lexical.Proto.Macros.Message do
 
       def __meta__(:param_names) do
         unquote(param_names)
-      end
-
-      def __meta__(:access) do
-        unquote(access)
       end
     end
   end

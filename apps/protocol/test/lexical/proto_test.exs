@@ -346,10 +346,9 @@ defmodule Lexical.ProtoTest do
       use Proto
 
       defnotification "textDocument/somethingHappened",
-                      :exlusive,
-                      line: integer(),
-                      notice_message: string(),
-                      column: integer()
+        line: integer(),
+        notice_message: string(),
+        column: integer()
     end
 
     test "parse fills out the notification" do
@@ -392,8 +391,7 @@ defmodule Lexical.ProtoTest do
       use Proto
 
       defnotification "notif/withTextDoc",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier
+        text_document: Types.TextDocument.Identifier
     end
 
     test "to_native fills out the source file", ctx do
@@ -407,9 +405,8 @@ defmodule Lexical.ProtoTest do
       use Proto
 
       defnotification "notif/WithPos",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier,
-                      position: Types.Position
+        text_document: Types.TextDocument.Identifier,
+        position: Types.Position
     end
 
     test "to_native fills out a position", ctx do
@@ -433,9 +430,8 @@ defmodule Lexical.ProtoTest do
       use Proto
 
       defnotification "notif/WithPos",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier,
-                      range: Types.Range
+        text_document: Types.TextDocument.Identifier,
+        range: Types.Range
     end
 
     test "to_native fills out a range", ctx do
@@ -466,13 +462,13 @@ defmodule Lexical.ProtoTest do
     defmodule Req do
       use Proto
 
-      defrequest "something", :exclusive, line: integer(), error_message: string()
+      defrequest "something", line: integer(), error_message: string()
     end
 
     defmodule TextDocReq do
       use Proto
 
-      defrequest "textDoc", :exclusive, text_document: Types.TextDocument.Identifier
+      defrequest "textDoc", text_document: Types.TextDocument.Identifier
     end
 
     test "parse fills out the request" do
@@ -521,7 +517,7 @@ defmodule Lexical.ProtoTest do
     defmodule PositionReq do
       use Proto
 
-      defrequest "posReq", :exclusive,
+      defrequest "posReq",
         text_document: Types.TextDocument.Identifier,
         position: Types.Position
     end
@@ -547,7 +543,7 @@ defmodule Lexical.ProtoTest do
     defmodule RangeReq do
       use Proto
 
-      defrequest "rangeReq", :exclusive,
+      defrequest "rangeReq",
         text_document: Types.TextDocument.Identifier,
         range: Types.Range
     end

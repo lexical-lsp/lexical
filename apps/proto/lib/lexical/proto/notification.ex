@@ -2,7 +2,7 @@ defmodule Lexical.Proto.Notification do
   alias Lexical.Proto.CompileMetadata
   alias Lexical.Proto.Macros.Message
 
-  defmacro defnotification(method, access, types \\ []) do
+  defmacro defnotification(method, types \\ []) do
     CompileMetadata.add_notification_module(__CALLER__.module)
 
     jsonrpc_types = [
@@ -17,7 +17,7 @@ defmodule Lexical.Proto.Notification do
 
     quote location: :keep do
       defmodule LSP do
-        unquote(Message.build({:notification, :lsp}, method, access, lsp_types, param_names))
+        unquote(Message.build({:notification, :lsp}, method, lsp_types, param_names))
 
         def new(opts \\ []) do
           opts
@@ -27,7 +27,7 @@ defmodule Lexical.Proto.Notification do
       end
 
       unquote(
-        Message.build({:notification, :elixir}, method, access, elixir_types, param_names,
+        Message.build({:notification, :elixir}, method, elixir_types, param_names,
           include_parse?: false
         )
       )
