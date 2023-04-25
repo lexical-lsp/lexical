@@ -68,6 +68,12 @@ jobs:
           restore-keys: |
             plt-cache-
 
+      # Step: Check that the checked in code has already been formatted.
+      # This step fails if something was found unformatted.
+      # Customize this step as desired.
+      - name: Check Formatting
+        run: mix format --check-formatted
+
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
       - name: Install dependencies
@@ -76,18 +82,14 @@ jobs:
       - name: Compile
         run: mix compile
 
-      # Step: Check that the checked in code has already been formatted.
-      # This step fails if something was found unformatted.
-      # Customize this step as desired.
-      - name: Check Formatting
-        run: mix format --check-formatted
-
       # Step: Run credo static code analysis
       - name: Credo static analysis
         run: mix credo
 
       - name: Run dialyzer
-        run: MIX_ENV=dev mix dialyzer
+        run: |
+          mix compile.protocols
+          mix dialyzer
 
       # Step: Execute the tests.
       - name: Run tests
