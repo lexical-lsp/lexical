@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
+  alias Lexical.Protocol.Types.Completion.List, as: CompletionList
   use Lexical.Test.Server.CompletionCase
 
   describe "excluding modules from lexical dependencies" do
@@ -40,8 +41,13 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
   end
 
   describe "ignoring things" do
-    test "single character contexts have no completions", %{project: project} do
-      assert [] = complete(project, "def my_thing() d|")
+    test "return empty items and mark is_incomplete when single character contexts", %{
+      project: project
+    } do
+      assert complete(project, "def my_thing() d|") == %CompletionList{
+               is_incomplete: true,
+               items: []
+             }
     end
   end
 
