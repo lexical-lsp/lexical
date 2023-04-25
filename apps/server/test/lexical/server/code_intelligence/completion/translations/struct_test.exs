@@ -37,7 +37,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert completion.kind == :struct
     end
 
-    test "should complete module aliases after %", %{project: project} do
+    test "should complete module aliases and ends with {} after %", %{project: project} do
       source = ~q[
         defmodule TestModule do
         alias Project.Structs.User
@@ -48,6 +48,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert [completion] = complete(project, source)
 
       assert completion.insert_text == "User{}"
+      assert completion.kind == :struct
+    end
+
+    test "should complete, but not add curlies when last word not contains %", %{project: project} do
+      source = ~q[
+        defmodule TestModule do
+        alias Project.Structs.User
+
+        Us|
+      ]
+
+      assert [completion] = complete(project, source)
+
+      assert completion.insert_text == "User"
       assert completion.kind == :struct
     end
 
