@@ -184,19 +184,7 @@ defmodule Lexical.RemoteControl.Build.State do
     RemoteControl.Mix.in_project(fn _ ->
       Mix.Task.clear()
 
-      if connected_to_internet?() do
-        Mix.Task.run("local.hex", ~w(--force --if-missing))
-        Mix.Task.run("local.rebar", ~w(--force --if-missing))
-        Mix.Task.run("deps.get")
-      else
-        Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
-      end
-
-      Mix.Task.run("deps.safe_compile")
-
-      if force? do
-        Mix.Task.run("clean")
-      end
+      prepare_for_project_build(force?)
 
       compile_fun = fn ->
         Mix.Task.clear()
@@ -217,6 +205,23 @@ defmodule Lexical.RemoteControl.Build.State do
           Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)
       end
     end)
+  end
+
+  defp prepare_for_project_build(false = _force?) do
+    :ok
+  end
+
+  defp prepare_for_project_build(true = _force?) do
+    if connected_to_internet?() do
+      Mix.Task.run("local.hex", ~w(--force --if-missing))
+      Mix.Task.run("local.rebar", ~w(--force --if-missing))
+      Mix.Task.run("deps.get")
+    else
+      Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
+    end
+
+    Mix.Task.run("deps.safe_compile")
+    Mix.Task.run("clean")
   end
 
   defp safe_compile(%SourceFile{} = source_file) do
