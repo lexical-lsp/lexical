@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.TextDocument.ContentChangeEvent do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule TextDocumentContentChangeEvent do
     use Proto
@@ -15,5 +14,5 @@ defmodule Lexical.Protocol.Types.TextDocument.ContentChangeEvent do
   end
 
   use Proto
-  defalias one_of([Parent.TextDocumentContentChangeEvent, Parent.TextDocumentContentChangeEvent1])
+  defalias one_of([TextDocumentContentChangeEvent, TextDocumentContentChangeEvent1])
 end
