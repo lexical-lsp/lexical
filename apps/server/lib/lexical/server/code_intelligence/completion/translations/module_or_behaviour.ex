@@ -44,7 +44,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       end
 
     completion_kind =
-      if defines_struct? do
+      if add_curlies? do
         :struct
       else
         :module
