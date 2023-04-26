@@ -22,7 +22,7 @@ defmodule Lexical.Server.Project.Supervisor do
       {Diagnostics, project},
       {Intelligence, project},
       {ProjectNodeSupervisor, project},
-      {Node, project},
+      {Node, project}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
