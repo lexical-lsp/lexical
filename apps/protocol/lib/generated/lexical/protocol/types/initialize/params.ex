@@ -2,7 +2,7 @@
 defmodule Lexical.Protocol.Types.Initialize.Params do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
+  # alias __MODULE__, as: Parent
 
   defmodule ClientInfo1 do
     use Proto
@@ -12,7 +12,7 @@ defmodule Lexical.Protocol.Types.Initialize.Params do
   use Proto
 
   deftype capabilities: Types.ClientCapabilities,
-          client_info: optional(Parent.ClientInfo1),
+          # client_info: optional(Parent.ClientInfo1),
           initialization_options: optional(any()),
           locale: optional(string()),
           process_id: one_of([integer(), nil]),
