@@ -70,5 +70,5 @@ defmodule Lexical.Completion.Builder do
   @callback plain_text(String.t(), item_opts) :: translated_item()
 
   @callback fallback(any, any) :: any
-  @callback boost(binary(), 0..10) :: binary()
+  @callback boost(String.t(), 0..10) :: String.t()
 end
