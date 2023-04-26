@@ -1,12 +1,12 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
+  alias Lexical.Document
   alias Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore
-  alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case
 
   def apply_code_mod(original_text, _ast, options) do
     variable = Keyword.get(options, :variable, :unused)
-    source_file = SourceFile.new("file:///file.ex", original_text, 0)
+    source_file = Document.new("file:///file.ex", original_text, 0)
 
     with {:ok, document_edits} <- ReplaceWithUnderscore.edits(source_file, 1, variable) do
       {:ok, document_edits.edits}
@@ -27,21 +27,21 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
     test "applied to a pattern match in params" do
       {:ok, result} =
         ~q[
-          def my_func(%SourceFile{} = unused) do
+          def my_func(%Document{} = unused) do
         ]
         |> modify()
 
-      assert result == "def my_func(%SourceFile{} = _unused) do"
+      assert result == "def my_func(%Document{} = _unused) do"
     end
 
     test "applied to a pattern match preceding a struct in params" do
       {:ok, result} =
         ~q[
-          def my_func(unused = %SourceFile{}) do
+          def my_func(unused = %Document{}) do
         ]
         |> modify()
 
-      assert result == "def my_func(_unused = %SourceFile{}) do"
+      assert result == "def my_func(_unused = %Document{}) do"
     end
 
     test "applied prior to a map" do

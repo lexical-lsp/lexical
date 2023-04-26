@@ -1,5 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Completion.Translatable
+  alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
@@ -8,8 +10,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Server.CodeIntelligence.Completion.Builder
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position
 
   require InsertTextFormat
   require Logger
@@ -22,12 +22,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     [".", "@", "&", "%", "^", ":", "!", "-", "~"]
   end
 
-  @spec complete(Project.t(), SourceFile.t(), Position.t(), Completion.Context.t()) :: [
+  @spec complete(Project.t(), Document.t(), Position.t(), Completion.Context.t()) :: [
           Completion.Item
         ]
   def complete(
         %Project{} = project,
-        %SourceFile{} = document,
+        %Document{} = document,
         %Position{} = position,
         %Completion.Context{} = context
       ) do

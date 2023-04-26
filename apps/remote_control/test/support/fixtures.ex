@@ -1,6 +1,6 @@
 defmodule Lexical.Test.Fixtures do
+  alias Lexical.Document
   alias Lexical.Project
-  alias Lexical.SourceFile
 
   use ExUnit.CaseTemplate
 
@@ -14,7 +14,7 @@ defmodule Lexical.Test.Fixtures do
     [Path.dirname(__ENV__.file), "..", "fixtures", to_string(project_name)]
     |> Path.join()
     |> Path.expand()
-    |> Lexical.SourceFile.Path.to_uri()
+    |> Lexical.Document.Path.to_uri()
     |> Project.new()
   end
 
@@ -32,6 +32,6 @@ defmodule Lexical.Test.Fixtures do
   def file_uri(%Project{} = project, relative_path) do
     project
     |> file_path(relative_path)
-    |> SourceFile.Path.ensure_uri()
+    |> Document.Path.ensure_uri()
   end
 end

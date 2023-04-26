@@ -1,4 +1,4 @@
-defmodule Lexical.SourceFile.Path do
+defmodule Lexical.Document.Path do
   @file_scheme "file"
 
   def ensure_uri("file://" <> _ = uri), do: uri

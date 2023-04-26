@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
+  alias Lexical.Document
+  alias Lexical.Document.Location
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.CodeIntelligence.Definition
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Location
-  alias Lexical.SourceFile.Position
 
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
@@ -17,7 +17,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     uri =
       project
       |> file_path(Path.join("lib", "my_definition.ex"))
-      |> SourceFile.Path.ensure_uri()
+      |> Document.Path.ensure_uri()
 
     %{uri: uri}
   end
@@ -25,19 +25,19 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   defp subject_module_uri(project) do
     project
     |> file_path(Path.join("lib", "my_module.ex"))
-    |> SourceFile.Path.ensure_uri()
+    |> Document.Path.ensure_uri()
   end
 
   defp subject_module(project, content) do
     uri = subject_module_uri(project)
 
-    with :ok <- SourceFile.Store.open(uri, content, 1) do
-      SourceFile.Store.fetch(uri)
+    with :ok <- Document.Store.open(uri, content, 1) do
+      Document.Store.fetch(uri)
     end
   end
 
   setup_all do
-    start_supervised!(Lexical.SourceFile.Store)
+    start_supervised!(Lexical.Document.Store)
 
     project = project(:navigations)
     {:ok, _, _} = RemoteControl.start_link(project, self())
@@ -57,7 +57,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
 
     # NOTE: We need to make sure every tests start with fresh caller content file
     on_exit(fn ->
-      :ok = SourceFile.Store.close(uri)
+      :ok = Document.Store.close(uri)
     end)
   end
 
@@ -326,7 +326,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   end
 
   defp definition_line(source_file, range) do
-    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, range.start.line) do
+    with {:ok, line_text} <- Document.fetch_text_at(source_file, range.start.line) do
       graphemes = String.graphemes(line_text)
       {text_before_range, range_text, text_after_range} = extract_range(graphemes, range)
       marked_text = mark_range(range_text)

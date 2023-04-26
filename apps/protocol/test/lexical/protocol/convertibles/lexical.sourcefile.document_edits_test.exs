@@ -1,12 +1,12 @@
-defmodule Lexical.Convertible.SourceFile.DocumentEditsTest do
+defmodule Lexical.Convertible.Document.ChangesTest do
   use Lexical.Test.Protocol.ConvertibleSupport
 
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
     test "converts to a list of text edits", %{uri: uri, source_file: source_file} do
-      edit = SourceFile.Edit.new("hi", valid_range(:native))
-      document_edits = SourceFile.DocumentEdits.new(source_file, [edit])
+      edit = Document.Edit.new("hi", valid_range(:native))
+      document_edits = Document.Changes.new(source_file, [edit])
 
       assert {:ok, [%Types.TextEdit{}]} = to_lsp(document_edits, uri)
     end
@@ -18,12 +18,12 @@ defmodule Lexical.Convertible.SourceFile.DocumentEditsTest do
       {:ok, _uri, source_file} = open_file("file:///other.ex", "several\nlines\nhere")
 
       edit =
-        SourceFile.Edit.new(
+        Document.Edit.new(
           "hi",
           range(:native, position(:native, 2, 1), position(:native, 2, 3))
         )
 
-      document_edits = SourceFile.DocumentEdits.new(source_file, [edit])
+      document_edits = Document.Changes.new(source_file, [edit])
 
       assert {:ok, [%Types.TextEdit{}]} = to_lsp(document_edits, uri)
     end

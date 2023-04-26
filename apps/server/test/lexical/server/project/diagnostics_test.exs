@@ -1,9 +1,9 @@
 defmodule Lexical.Server.Project.DiagnosticsTest do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
-  alias Lexical.SourceFile
   alias Mix.Task.Compiler
 
   use ExUnit.Case
@@ -15,7 +15,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
   setup do
     project = project()
 
-    {:ok, _} = start_supervised(Lexical.SourceFile.Store)
+    {:ok, _} = start_supervised(Lexical.Document.Store)
     {:ok, _} = start_supervised({Project.Dispatch, project})
     {:ok, _} = start_supervised({Project.Diagnostics, project})
 
@@ -24,7 +24,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
 
   def diagnostic(file_path, opts \\ []) do
     defaults = [
-      file: SourceFile.Path.ensure_path(file_path),
+      file: Document.Path.ensure_path(file_path),
       severity: :error,
       message: "stuff broke",
       position: 1,
@@ -47,8 +47,8 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
 
   defp open_file(project, contents) do
     uri = file_uri(project, "lib/project.ex")
-    :ok = SourceFile.Store.open(uri, contents, 0)
-    {:ok, source_file} = SourceFile.Store.fetch(uri)
+    :ok = Document.Store.open(uri, contents, 0)
+    {:ok, source_file} = Document.Store.fetch(uri)
     source_file
   end
 
@@ -66,7 +66,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}
 
-      SourceFile.Store.get_and_update(source_file.uri, &SourceFile.mark_clean/1)
+      Document.Store.get_and_update(source_file.uri, &Document.mark_clean/1)
 
       Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
@@ -84,7 +84,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}, 500
 
-      SourceFile.Store.close(source_file.uri)
+      Document.Store.close(source_file.uri)
       Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}

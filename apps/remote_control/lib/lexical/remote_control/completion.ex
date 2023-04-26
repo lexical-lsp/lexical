@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Completion do
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Completion.Result
-  alias Lexical.SourceFile.Position
 
   def elixir_sense_expand(source, %Position{} = position) do
     # Add one to both the line and character, because elixir sense

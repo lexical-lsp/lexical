@@ -1,4 +1,4 @@
-defmodule Lexical.SourceFile do
+defmodule Lexical.Document do
   @moduledoc """
   A representation of a LSP text document
 
@@ -7,15 +7,15 @@ defmodule Lexical.SourceFile do
   provide functionality for fetching lines, applying changes, and tracking versions.
   """
   alias Lexical.Convertible
-  alias Lexical.SourceFile.Document
-  alias Lexical.SourceFile.Edit
-  alias Lexical.SourceFile.Line
-  alias Lexical.SourceFile.Position
-  alias Lexical.SourceFile.Range
+  alias Lexical.Document.Edit
+  alias Lexical.Document.Line
+  alias Lexical.Document.Lines
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
 
-  import Lexical.SourceFile.Line
+  import Lexical.Document.Line
 
-  alias __MODULE__.Path, as: SourceFilePath
+  alias __MODULE__.Path, as: DocumentPath
 
   @derive {Inspect, only: [:path, :version, :dirty?, :document]}
 
@@ -26,7 +26,7 @@ defmodule Lexical.SourceFile do
           uri: String.t(),
           version: version(),
           dirty?: boolean,
-          document: Document.t(),
+          document: Lines.t(),
           path: String.t()
         }
 
@@ -40,13 +40,13 @@ defmodule Lexical.SourceFile do
   """
   @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
   def new(maybe_uri, text, version) do
-    uri = SourceFilePath.ensure_uri(maybe_uri)
+    uri = DocumentPath.ensure_uri(maybe_uri)
 
     %__MODULE__{
       uri: uri,
       version: version,
-      document: Document.new(text),
-      path: SourceFilePath.from_uri(uri)
+      document: Lines.new(text),
+      path: DocumentPath.from_uri(uri)
     }
   end
 
@@ -55,7 +55,7 @@ defmodule Lexical.SourceFile do
   """
   @spec size(t) :: non_neg_integer()
   def size(%__MODULE__{} = source) do
-    Document.size(source.document)
+    Lines.size(source.document)
   end
 
   @doc """
@@ -90,7 +90,7 @@ defmodule Lexical.SourceFile do
 
   @spec fetch_line_at(t, version()) :: {:ok, Line.t()} | :error
   def fetch_line_at(%__MODULE__{} = source, line_number) do
-    case Document.fetch_line(source.document, line_number) do
+    case Lines.fetch_line(source.document, line_number) do
       {:ok, line} -> {:ok, line}
       _ -> :error
     end
@@ -143,7 +143,7 @@ defmodule Lexical.SourceFile do
   # private
 
   defp line_count(%__MODULE__{} = source) do
-    Document.size(source.document)
+    Lines.size(source.document)
   end
 
   defp apply_change(
@@ -168,13 +168,13 @@ defmodule Lexical.SourceFile do
     new_document =
       new_lines_iodata
       |> IO.iodata_to_binary()
-      |> Document.new()
+      |> Lines.new()
 
     {:ok, %__MODULE__{source | document: new_document}}
   end
 
   defp apply_change(%__MODULE__{} = source, %Edit{range: nil} = edit) do
-    {:ok, %__MODULE__{source | document: Document.new(edit.text)}}
+    {:ok, %__MODULE__{source | document: Lines.new(edit.text)}}
   end
 
   defp apply_change(%__MODULE__{} = source, %Edit{range: %Range{}} = edit) do
@@ -213,7 +213,7 @@ defmodule Lexical.SourceFile do
   end
 
   defp apply_valid_edits(%__MODULE__{} = source, edit_text, start_pos, end_pos) do
-    Document.reduce(source.document, [], fn line() = line, acc ->
+    Lines.reduce(source.document, [], fn line() = line, acc ->
       case edit_action(line, edit_text, start_pos, end_pos) do
         :drop ->
           acc
@@ -269,7 +269,7 @@ defmodule Lexical.SourceFile do
   end
 
   defp to_iodata(%__MODULE__{} = source) do
-    Document.to_iodata(source.document)
+    Lines.to_iodata(source.document)
   end
 
   # defp increment_version(%__MODULE__{} = source) do

@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.Build do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build.State
-  alias Lexical.SourceFile
 
   require Logger
   use GenServer
@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.Build do
     RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile, force?}])
   end
 
-  def compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
+  def compile_source_file(%Project{} = project, %Document{} = source_file) do
     unless Path.absname(source_file.path) == "mix.exs" do
       RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, source_file}])
     end
@@ -24,7 +24,7 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   # this is for testing
-  def force_compile_source_file(%Project{} = project, %SourceFile{} = source_file) do
+  def force_compile_source_file(%Project{} = project, %Document{} = source_file) do
     unless Path.absname(source_file.path) == "mix.exs" do
       RemoteControl.call(project, GenServer, :call, [
         __MODULE__,
@@ -61,7 +61,7 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   @impl GenServer
-  def handle_call({:force_compile_file, %SourceFile{} = source_file}, _from, %State{} = state) do
+  def handle_call({:force_compile_file, %Document{} = source_file}, _from, %State{} = state) do
     State.compile_file(state.project, source_file)
     {:reply, :ok, state}
   end
@@ -73,7 +73,7 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   @impl GenServer
-  def handle_cast({:compile_file, %SourceFile{} = source_file}, %State{} = state) do
+  def handle_cast({:compile_file, %Document{} = source_file}, %State{} = state) do
     new_state = State.on_file_compile(state, source_file)
     {:noreply, new_state}
   end

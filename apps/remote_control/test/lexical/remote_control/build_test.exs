@@ -1,9 +1,9 @@
 defmodule Lexical.BuildTest do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
-  alias Lexical.SourceFile
   alias Mix.Task.Compiler.Diagnostic
 
   import Messages
@@ -14,7 +14,7 @@ defmodule Lexical.BuildTest do
   def compile_source_file(%Project{} = project, file_path \\ nil, source_code) do
     uri =
       if is_binary(file_path) do
-        SourceFile.Path.to_uri(file_path)
+        Document.Path.to_uri(file_path)
       else
         sequence = System.unique_integer([:monotonic, :positive])
 
@@ -22,10 +22,10 @@ defmodule Lexical.BuildTest do
         |> Project.root_path()
         |> Path.join(to_string(sequence))
         |> Path.join("file.exs")
-        |> SourceFile.Path.to_uri()
+        |> Document.Path.to_uri()
       end
 
-    source = SourceFile.new(uri, source_code, 0)
+    source = Document.new(uri, source_code, 0)
     Build.force_compile_source_file(project, source)
   end
 

@@ -1,9 +1,9 @@
-defmodule Lexical.SourceFile.Document do
+defmodule Lexical.Document.Lines do
   @moduledoc """
   A hyper-optimized, line-based backing store for text documents
   """
-  alias Lexical.SourceFile.Line
-  alias Lexical.SourceFile.LineParser
+  alias Lexical.Document.Line
+  alias Lexical.Document.LineParser
 
   use Lexical.StructAccess
   import Line
@@ -70,20 +70,20 @@ defmodule Lexical.SourceFile.Document do
   end
 end
 
-defimpl Inspect, for: Lexical.SourceFile.Document do
-  alias Lexical.SourceFile.Document
-  alias Lexical.SourceFile.Line
+defimpl Inspect, for: Lexical.Document.Lines do
+  alias Lexical.Document.Lines
+  alias Lexical.Document.Line
 
   import Inspect.Algebra
   import Line
 
-  def inspect(%Document{lines: {}}) do
-    concat([empty(), "%Document<empty>"])
+  def inspect(%Lines{lines: {}}) do
+    concat([empty(), "%Lines<empty>"])
   end
 
   def inspect(document, opts) do
     document_body =
-      case Document.fetch_line(document, 1) do
+      case Lines.fetch_line(document, 1) do
         {:ok, line(text: text)} ->
           concat(empty(), to_doc(text <> "...", opts))
 
@@ -92,7 +92,7 @@ defimpl Inspect, for: Lexical.SourceFile.Document do
       end
 
     line_or_lines =
-      if Document.size(document) == 1 do
+      if Lines.size(document) == 1 do
         "line"
       else
         "lines"
@@ -100,11 +100,11 @@ defimpl Inspect, for: Lexical.SourceFile.Document do
 
     concat([
       empty(),
-      "%Document<",
+      "%Lines<",
       document_body,
       "(",
       space(
-        to_doc(Document.size(document), opts),
+        to_doc(Lines.size(document), opts),
         line_or_lines
       ),
       ")>"
@@ -112,30 +112,30 @@ defimpl Inspect, for: Lexical.SourceFile.Document do
   end
 end
 
-defimpl Enumerable, for: Lexical.SourceFile.Document do
-  alias Lexical.SourceFile.Document
+defimpl Enumerable, for: Lexical.Document.Lines do
+  alias Lexical.Document.Lines
 
-  def count(%Document{} = document) do
-    {:ok, Document.size(document)}
+  def count(%Lines{} = document) do
+    {:ok, Lines.size(document)}
   end
 
-  def member?(%Document{}, _) do
-    {:error, Document}
+  def member?(%Lines{}, _) do
+    {:error, Lines}
   end
 
-  def reduce(%Document{} = document, acc, fun) do
+  def reduce(%Lines{} = document, acc, fun) do
     tuple_reduce({0, tuple_size(document.lines), document.lines}, acc, fun)
   end
 
-  def slice(%Document{} = document) do
-    {:ok, Document.size(document), fn start, len -> do_slice(document, start, len) end}
+  def slice(%Lines{} = document) do
+    {:ok, Lines.size(document), fn start, len -> do_slice(document, start, len) end}
   end
 
-  defp do_slice(%Document{} = document, start, 1) do
+  defp do_slice(%Lines{} = document, start, 1) do
     [elem(document.lines, start)]
   end
 
-  defp do_slice(%Document{} = document, start, length) do
+  defp do_slice(%Lines{} = document, start, length) do
     Enum.map(start..(start + length - 1), &elem(document.lines, &1))
   end
 

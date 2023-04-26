@@ -1,11 +1,11 @@
 # defmodule Lexical.Server.Provider.Handlers.FindReferences do
 #   alias Lexical.Build
-#   alias Lexical.Tracer
+#   alias Lexical.Document
 #   alias Lexical.Protocol.Requests.FindReferences
 #   alias Lexical.Protocol.Responses
 #   alias Lexical.Protocol.Types.Location
 #   alias Lexical.Ranged
-#   alias Lexical.SourceFile
+#   alias Lexical.Tracer
 
 #   require Logger
 
@@ -19,7 +19,7 @@
 #     Build.with_lock(fn ->
 #       references =
 #         source_file
-#         |> SourceFile.to_string()
+#         |> Document.to_string()
 #         |> ElixirSense.references(pos.line, character, trace)
 #         |> Enum.reduce([], fn reference, acc ->
 #           case build_reference(reference, source_file) do
@@ -42,7 +42,7 @@
 #     with {:ok, source_file} <- get_source_file(elixir_sense_reference, current_source_file),
 #          {:ok, elixir_range} <- Ranged.Native.from_lsp(elixir_sense_reference, source_file),
 #          {:ok, ls_range} <- Ranged.Lsp.from_native(elixir_range, source_file) do
-#       uri = SourceFile.Path.ensure_uri(source_file.uri)
+#       uri = Document.Path.ensure_uri(source_file.uri)
 #       {:ok, Location.new(uri: uri, range: ls_range)}
 #     end
 #   end
@@ -52,6 +52,6 @@
 #   end
 
 #   defp get_source_file(%{uri: uri}, _) do
-#     SourceFile.Store.open_temporary(uri)
+#     Document.Store.open_temporary(uri)
 #   end
 # end

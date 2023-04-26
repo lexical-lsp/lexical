@@ -1,16 +1,16 @@
-defmodule Lexical.SourceFileTest do
+defmodule Lexical.DocumentTest do
+  alias Lexical.Document
   alias Lexical.Protocol.Types.Position
   alias Lexical.Protocol.Types.Range
   alias Lexical.Protocol.Types.TextEdit
-  alias Lexical.SourceFile
 
   use ExUnit.Case
   use ExUnitProperties
 
-  import Lexical.SourceFile, except: [to_string: 1]
+  import Lexical.Document, except: [to_string: 1]
 
-  def text(%Lexical.SourceFile{} = source) do
-    SourceFile.to_string(source)
+  def text(%Lexical.Document{} = source) do
+    Document.to_string(source)
   end
 
   def with_a_simple_module(_) do

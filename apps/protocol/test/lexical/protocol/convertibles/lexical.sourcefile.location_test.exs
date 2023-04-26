@@ -5,7 +5,7 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
     setup [:with_an_open_file]
 
     test "converts a location with a native range", %{uri: uri} do
-      location = SourceFile.Location.new(valid_range(:native), uri)
+      location = Document.Location.new(valid_range(:native), uri)
 
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == uri
@@ -15,7 +15,7 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
     end
 
     test "converts a location with a source file", %{uri: uri, source_file: source_file} do
-      location = SourceFile.Location.new(valid_range(:native), source_file)
+      location = Document.Location.new(valid_range(:native), source_file)
 
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == source_file.uri
@@ -28,7 +28,7 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
       other_uri = "file:///other.ex"
       {:ok, _, _doc} = open_file(other_uri, "goodbye")
 
-      location = SourceFile.Location.new(valid_range(:native), other_uri)
+      location = Document.Location.new(valid_range(:native), other_uri)
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == other_uri
     end
@@ -38,7 +38,7 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
     setup [:with_an_open_file]
 
     test "leaves the location alone", %{uri: uri} do
-      location = SourceFile.Location.new(valid_range(:native), uri)
+      location = Document.Location.new(valid_range(:native), uri)
 
       assert {:ok, converted} = to_native(location, uri)
       assert location == converted

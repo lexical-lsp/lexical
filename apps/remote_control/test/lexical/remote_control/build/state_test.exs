@@ -1,12 +1,11 @@
 defmodule Lexical.RemoteControl.Build.StateTest do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.State
-  alias Lexical.SourceFile
 
   import Lexical.Test.Fixtures
-
   import Testing.EventualAssertions
   use ExUnit.Case, async: false
   use Patch
@@ -25,9 +24,9 @@ defmodule Lexical.RemoteControl.Build.StateTest do
       |> Project.root_path()
       |> Path.join(to_string(sequence))
       |> Path.join(filename)
-      |> SourceFile.Path.to_uri()
+      |> Document.Path.to_uri()
 
-    SourceFile.new(uri, source_code, 0)
+    Document.new(uri, source_code, 0)
   end
 
   def with_project_state(project_name) do

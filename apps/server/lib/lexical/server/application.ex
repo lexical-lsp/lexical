@@ -10,7 +10,7 @@ defmodule Lexical.Server.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Lexical.SourceFile.Store,
+      Lexical.Document.Store,
       Lexical.Server,
       {DynamicSupervisor, name: Lexical.Server.Project.Supervisor.dynamic_supervisor_name()},
       Provider.Queue.Supervisor.child_spec(),

@@ -1,10 +1,10 @@
 defmodule Lexical.RemoteControl.Build.State do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
-  alias Lexical.SourceFile
 
   import Build.CaptureIO
   import Messages
@@ -92,7 +92,7 @@ defmodule Lexical.RemoteControl.Build.State do
     end)
   end
 
-  def on_file_compile(%__MODULE__{} = state, %SourceFile{} = source_file) do
+  def on_file_compile(%__MODULE__{} = state, %Document{} = source_file) do
     %__MODULE__{
       state
       | uri_to_source_and_edit_time:
@@ -100,7 +100,7 @@ defmodule Lexical.RemoteControl.Build.State do
     }
   end
 
-  def compile_file(%Project{} = project, %SourceFile{} = source_file) do
+  def compile_file(%Project{} = project, %Document{} = source_file) do
     Build.with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
 
@@ -224,7 +224,7 @@ defmodule Lexical.RemoteControl.Build.State do
     Mix.Task.run("clean")
   end
 
-  defp safe_compile(%SourceFile{} = source_file) do
+  defp safe_compile(%Document{} = source_file) do
     old_modules = ModuleMappings.modules_in_file(source_file.path)
 
     compile = fn ->
@@ -265,8 +265,8 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  defp compile_code(%SourceFile{} = source_file) do
-    source_string = SourceFile.to_string(source_file)
+  defp compile_code(%Document{} = source_file) do
+    source_string = Document.to_string(source_file)
     parser_options = [file: source_file.path] ++ parser_options()
 
     with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
@@ -310,7 +310,7 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  defp ensure_file(diagnostics, %SourceFile{} = source_file) do
+  defp ensure_file(diagnostics, %Document{} = source_file) do
     Enum.map(diagnostics, &Map.put(&1, :file, source_file.path))
   end
 

@@ -1,4 +1,6 @@
 defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
+  alias Lexical.Document
+  alias Lexical.Document.Location
   alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.GoToDefinition
   alias Lexical.RemoteControl
@@ -6,8 +8,6 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Location
 
   import Lexical.Proto.Fixtures.LspProtocol
   import Lexical.RemoteControl.Api.Messages
@@ -16,7 +16,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   use ExUnit.Case, async: false
 
   setup_all do
-    start_supervised(SourceFile.Store)
+    start_supervised(Document.Store)
     project = project(:navigations)
 
     {:ok, _} =
@@ -36,18 +36,18 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
 
   defp with_referenced_file(%{project: project}) do
     path = file_path(project, Path.join("lib", "my_definition.ex"))
-    %{uri: SourceFile.Path.ensure_uri(path)}
+    %{uri: Document.Path.ensure_uri(path)}
   end
 
   def build_request(path, line, char) do
-    uri = SourceFile.Path.ensure_uri(path)
+    uri = Document.Path.ensure_uri(path)
 
     params = [
       text_document: [uri: uri],
       position: [line: line, character: char]
     ]
 
-    with {:ok, _} <- SourceFile.Store.open_temporary(uri),
+    with {:ok, _} <- Document.Store.open_temporary(uri),
          {:ok, req} <- build(GoToDefinition, params) do
       Convert.to_native(req)
     end

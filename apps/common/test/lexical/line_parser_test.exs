@@ -1,7 +1,7 @@
-defmodule Lexical.SourceFile.LineParserTest do
-  alias Lexical.SourceFile.LineParser
+defmodule Lexical.Document.LineParserTest do
+  alias Lexical.Document.LineParser
 
-  import Lexical.SourceFile.Line
+  import Lexical.Document.Line
   use ExUnit.Case
   use ExUnitProperties
 

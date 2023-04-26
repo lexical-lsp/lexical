@@ -1,7 +1,7 @@
 defmodule Lexical.Server.Project.Diagnostics do
   defmodule State do
+    alias Lexical.Document
     alias Lexical.Project
-    alias Lexical.SourceFile
     alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
@@ -28,8 +28,8 @@ defmodule Lexical.Server.Project.Diagnostics do
     def clear_all_flushed(%__MODULE__{} = state) do
       cleared =
         Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
-          with true <- SourceFile.Store.open?(uri),
-               {:ok, %SourceFile{} = source_file} <- SourceFile.Store.fetch(uri),
+          with true <- Document.Store.open?(uri),
+               {:ok, %Document{} = source_file} <- Document.Store.fetch(uri),
                true <- keep_diagnostics?(source_file) do
             {uri, diagnostics}
           else
@@ -42,7 +42,7 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
 
     def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
-      source_uri = SourceFile.Path.to_uri(diagnostic.file)
+      source_uri = Document.Path.to_uri(diagnostic.file)
 
       diagnostics_by_uri =
         Map.update(state.diagnostics_by_uri, source_uri, [diagnostic], fn diagnostics ->
@@ -79,7 +79,7 @@ defmodule Lexical.Server.Project.Diagnostics do
       state
     end
 
-    defp keep_diagnostics?(%SourceFile{} = source_file) do
+    defp keep_diagnostics?(%Document{} = source_file) do
       # Keep any diagnostics for script files, which aren't compiled)
       # or dirty files, which have been modified after compilation has occurrend
       source_file.dirty? or script_file?(source_file)
@@ -90,13 +90,13 @@ defmodule Lexical.Server.Project.Diagnostics do
     end
   end
 
+  alias Lexical.Document
   alias Lexical.Format
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Transport
-  alias Lexical.SourceFile
   alias Mix.Task.Compiler
 
   import Messages

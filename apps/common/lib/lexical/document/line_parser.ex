@@ -1,4 +1,4 @@
-defmodule Lexical.SourceFile.LineParser do
+defmodule Lexical.Document.LineParser do
   @moduledoc """
   A parser that parses a binary into `Line` records.any()
 
@@ -12,7 +12,7 @@ defmodule Lexical.SourceFile.LineParser do
   each byte is greater than 0 and less than 128. UTF-16 files won't be marked as ascii, which
   allows us to skip a lot of byte conversions later in the process.
   """
-  import Lexical.SourceFile.Line
+  import Lexical.Document.Line
 
   # it's important that "\r\n" comes before \r here, otherwise the generated pattern
   # matches won't match.

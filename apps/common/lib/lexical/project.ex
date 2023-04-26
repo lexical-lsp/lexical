@@ -5,7 +5,7 @@ defmodule Lexical.Project do
   This struct contains all the information required to build a project and interrogate its configuration,
   as well as business logic for how to change its attributes.
   """
-  alias Lexical.SourceFile
+  alias Lexical.Document
 
   defstruct root_uri: nil,
             mix_exs_uri: nil,
@@ -65,7 +65,7 @@ defmodule Lexical.Project do
   end
 
   def root_path(%__MODULE__{} = project) do
-    SourceFile.Path.from_uri(project.root_uri)
+    Document.Path.from_uri(project.root_uri)
   end
 
   @spec project_path(t) :: Path.t() | nil
@@ -74,7 +74,7 @@ defmodule Lexical.Project do
   end
 
   def project_path(%__MODULE__{} = project) do
-    SourceFile.Path.from_uri(project.root_uri)
+    Document.Path.from_uri(project.root_uri)
   end
 
   @doc """
@@ -86,7 +86,7 @@ defmodule Lexical.Project do
   end
 
   def mix_exs_path(%__MODULE__{mix_exs_uri: mix_exs_uri}) do
-    SourceFile.Path.from_uri(mix_exs_uri)
+    Document.Path.from_uri(mix_exs_uri)
   end
 
   @spec change_environment_variables(t, map() | nil) ::
@@ -156,11 +156,11 @@ defmodule Lexical.Project do
   defp maybe_set_root_uri(%__MODULE__{} = project, "file://" <> _ = root_uri) do
     root_path =
       root_uri
-      |> SourceFile.Path.absolute_from_uri()
+      |> Document.Path.absolute_from_uri()
       |> Path.expand()
 
     if File.exists?(root_path) do
-      expanded_uri = SourceFile.Path.to_uri(root_path)
+      expanded_uri = Document.Path.to_uri(root_path)
       %__MODULE__{project | root_uri: expanded_uri}
     else
       project
@@ -176,7 +176,7 @@ defmodule Lexical.Project do
     if mix_exs_exists?(possible_mix_exs_path) do
       %__MODULE__{
         project
-        | mix_exs_uri: SourceFile.Path.to_uri(possible_mix_exs_path),
+        | mix_exs_uri: Document.Path.to_uri(possible_mix_exs_path),
           mix_project?: true
       }
     else

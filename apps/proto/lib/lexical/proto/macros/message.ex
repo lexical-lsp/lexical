@@ -1,4 +1,6 @@
 defmodule Lexical.Proto.Macros.Message do
+  alias Lexical.Document
+
   alias Lexical.Proto.Macros.{
     Access,
     Meta,
@@ -6,8 +8,6 @@ defmodule Lexical.Proto.Macros.Message do
     Struct,
     Typespec
   }
-
-  alias Lexical.SourceFile
 
   def build(meta_type, method, types, param_names, opts \\ []) do
     parse_fn =
@@ -44,13 +44,13 @@ defmodule Lexical.Proto.Macros.Message do
     message_types
     |> Enum.reduce(message_types, fn
       {:text_document, _}, types ->
-        Keyword.put(types, :source_file, quote(do: SourceFile))
+        Keyword.put(types, :source_file, quote(do: Document))
 
       {:position, _}, types ->
-        Keyword.put(types, :position, quote(do: SourceFile.Position))
+        Keyword.put(types, :position, quote(do: Document.Position))
 
       {:range, _}, types ->
-        Keyword.put(types, :range, quote(do: SourceFile.Range))
+        Keyword.put(types, :range, quote(do: Document.Range))
 
       _, types ->
         types

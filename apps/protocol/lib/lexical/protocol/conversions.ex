@@ -8,18 +8,18 @@ defmodule Lexical.Protocol.Conversions do
   are the same in both utf-8 and utf-16, since they reference characters and not bytes.
   """
   alias Lexical.CodeUnit
+  alias Lexical.Document
+  alias Lexical.Document.Line
+  alias Lexical.Document.Lines
+  alias Lexical.Document.Position, as: ElixirPosition
+  alias Lexical.Document.Range, as: ElixirRange
   alias Lexical.Math
   alias Lexical.Protocol.Types.Position, as: LSPosition
   alias Lexical.Protocol.Types.Range, as: LSRange
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Document
-  alias Lexical.SourceFile.Line
-  alias Lexical.SourceFile.Position, as: ElixirPosition
-  alias Lexical.SourceFile.Range, as: ElixirRange
 
   import Line
 
-  def to_elixir(%LSRange{} = ls_range, %SourceFile{} = source) do
+  def to_elixir(%LSRange{} = ls_range, %Document{} = source) do
     with {:ok, start_pos} <- to_elixir(ls_range.start, source.document),
          {:ok, end_pos} <- to_elixir(ls_range.end, source.document) do
       {:ok, %ElixirRange{start: start_pos, end: end_pos}}
@@ -29,7 +29,7 @@ defmodule Lexical.Protocol.Conversions do
     end
   end
 
-  def to_elixir(%LSPosition{} = position, %SourceFile{} = source_file) do
+  def to_elixir(%LSPosition{} = position, %Document{} = source_file) do
     to_elixir(position, source_file.document)
   end
 
@@ -41,8 +41,8 @@ defmodule Lexical.Protocol.Conversions do
     {:error, {:invalid_position, position}}
   end
 
-  def to_elixir(%LSPosition{} = position, %Document{} = document) do
-    document_size = Document.size(document)
+  def to_elixir(%LSPosition{} = position, %Lines{} = document) do
+    document_size = Lines.size(document)
     # we need to handle out of bounds line numbers, because it's possible to build a document
     # by starting with an empty document and appending to the beginning of it, with a start range of
     # {0, 0} and and end range of {1, 0} (replace the first line)
@@ -61,7 +61,7 @@ defmodule Lexical.Protocol.Conversions do
         {:ok, ElixirPosition.new(document_line_number, 1)}
 
       true ->
-        with {:ok, line} <- Document.fetch_line(document, document_line_number),
+        with {:ok, line} <- Lines.fetch_line(document, document_line_number),
              {:ok, elixir_character} <- extract_elixir_character(position, line) do
           {:ok, ElixirPosition.new(document_line_number, elixir_character)}
         end
@@ -83,7 +83,7 @@ defmodule Lexical.Protocol.Conversions do
     {:ok, range}
   end
 
-  def to_lsp(%ElixirRange{} = ex_range, %SourceFile{} = source) do
+  def to_lsp(%ElixirRange{} = ex_range, %Document{} = source) do
     with {:ok, start_pos} <- to_lsp(ex_range.start, source.document),
          {:ok, end_pos} <- to_lsp(ex_range.end, source.document) do
       {:ok, %LSRange{start: start_pos, end: end_pos}}
@@ -94,20 +94,20 @@ defmodule Lexical.Protocol.Conversions do
     {:ok, ls_range}
   end
 
-  def to_lsp(%LSRange{} = ls_range, %SourceFile{} = source_file) do
+  def to_lsp(%LSRange{} = ls_range, %Document{} = source_file) do
     with {:ok, start_pos} <- to_lsp(ls_range.start, source_file),
          {:ok, end_pos} <- to_lsp(ls_range.end, source_file) do
       {:ok, LSRange.new(start: start_pos, end: end_pos)}
     end
   end
 
-  def to_lsp(%ElixirPosition{} = position, %SourceFile{} = source_file) do
+  def to_lsp(%ElixirPosition{} = position, %Document{} = source_file) do
     to_lsp(position, source_file.document)
   end
 
-  def to_lsp(%ElixirPosition{} = position, %Document{} = document) do
+  def to_lsp(%ElixirPosition{} = position, %Lines{} = document) do
     elixir_character = position.character
-    document_size = Document.size(document)
+    document_size = Lines.size(document)
     document_line_number = Math.clamp(position.line, 1, document_size)
 
     cond do
@@ -121,7 +121,7 @@ defmodule Lexical.Protocol.Conversions do
         {:ok, LSPosition.new(line: document_size, character: 0)}
 
       true ->
-        with {:ok, line} <- Document.fetch_line(document, position.line),
+        with {:ok, line} <- Lines.fetch_line(document, position.line),
              {:ok, lsp_character} <- extract_lsp_character(position, line) do
           ls_pos =
             LSPosition.new(

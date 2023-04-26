@@ -2,6 +2,8 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   @moduledoc """
   A code action that prefixes unused variables with an underscore
   """
+  alias Lexical.Document
+  alias Lexical.Document.Changes
   alias Lexical.Project
   alias Lexical.Protocol.Requests.CodeAction
   alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
@@ -9,8 +11,6 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.DocumentEdits
 
   @spec apply(CodeAction.t(), Env.t()) :: [CodeActionResult.t()]
   def apply(%CodeAction{} = code_action, %Env{} = env) do
@@ -30,7 +30,7 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
 
   defp build_code_action(
          %Project{} = project,
-         %SourceFile{} = source_file,
+         %Document{} = source_file,
          line_number,
          variable_name
        ) do
@@ -43,7 +43,7 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
       {:ok, []} ->
         :error
 
-      {:ok, %DocumentEdits{} = document_edits} ->
+      {:ok, %Changes{} = document_edits} ->
         reply =
           CodeActionResult.new(
             title: "Rename to _#{variable_name}",

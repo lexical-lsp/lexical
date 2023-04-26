@@ -1,25 +1,25 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Completion.Environment
+  alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.Project
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position
 
   defstruct [:project, :document, :prefix, :suffix, :position, :words, :zero_based_character]
 
   @type t :: %__MODULE__{
           project: Lexical.Project.t(),
-          document: Lexical.SourceFile.t(),
+          document: Lexical.Document.t(),
           prefix: String.t(),
           suffix: String.t(),
-          position: Lexical.SourceFile.Position.t(),
+          position: Lexical.Document.Position.t(),
           words: [String.t()],
           zero_based_character: non_neg_integer()
         }
 
   @behaviour Environment
 
-  def new(%Project{} = project, %SourceFile{} = document, %Position{} = cursor_position) do
-    case SourceFile.fetch_text_at(document, cursor_position.line) do
+  def new(%Project{} = project, %Document{} = document, %Position{} = cursor_position) do
+    case Document.fetch_text_at(document, cursor_position.line) do
       {:ok, line} ->
         zero_based_character = cursor_position.character - 1
         graphemes = String.graphemes(line)
@@ -101,14 +101,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   defp cursor_context(%__MODULE__{} = env) do
-    with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line) do
+    with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line) do
       fragment = String.slice(line, 0..(env.zero_based_character - 1))
       {:ok, line, Code.Fragment.cursor_context(fragment)}
     end
   end
 
   defp surround_context(%__MODULE__{} = env) do
-    with {:ok, line} <- SourceFile.fetch_text_at(env.document, env.position.line),
+    with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line),
          %{context: _} = context <-
            Code.Fragment.surround_context(line, {1, env.zero_based_character}) do
       {:ok, line, context}

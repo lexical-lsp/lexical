@@ -38,7 +38,7 @@ defmodule Lexical.Protocol.Convertibles.PositionTest do
     setup [:with_an_open_file]
 
     test "converts valid positions", %{uri: uri} do
-      assert {:ok, %SourceFile.Position{} = pos} =
+      assert {:ok, %Document.Position{} = pos} =
                :lsp
                |> position(1, 0)
                |> to_native(uri)
@@ -53,7 +53,7 @@ defmodule Lexical.Protocol.Convertibles.PositionTest do
       }
 
       assert {:ok, converted} = to_native(nested, uri)
-      assert %SourceFile.Position{} = converted.inner.position
+      assert %Document.Position{} = converted.inner.position
     end
 
     test "leaves native positions alone", %{uri: uri} do

@@ -1,7 +1,9 @@
 defmodule Lexical.Convertible.Helpers do
+  alias Lexical.Document
+
   def apply(%{} = map, func, context_document) do
     Enum.reduce_while(map, [], fn {key, value}, acc ->
-      context_document = Lexical.DocumentContainer.context_document(value, context_document)
+      context_document = Document.Container.context_document(value, context_document)
 
       case func.(value, context_document) do
         {:ok, native} ->
@@ -16,7 +18,7 @@ defmodule Lexical.Convertible.Helpers do
   def apply(enumerable, func, context_document) do
     result =
       Enum.reduce_while(enumerable, [], fn elem, acc ->
-        context_document = Lexical.DocumentContainer.context_document(elem, context_document)
+        context_document = Document.Container.context_document(elem, context_document)
 
         case func.(elem, context_document) do
           {:ok, native} ->
@@ -38,7 +40,7 @@ defmodule Lexical.Convertible.Helpers do
 end
 
 defprotocol Lexical.Convertible do
-  alias Lexical.DocumentContainer
+  alias Lexical.Document
 
   @fallback_to_any true
 
@@ -52,13 +54,13 @@ defprotocol Lexical.Convertible do
   @doc """
   Converts the structure to a native implementation
   """
-  @spec to_native(t, DocumentContainer.maybe_context_document()) :: native_response()
+  @spec to_native(t, Document.Container.maybe_context_document()) :: native_response()
   def to_native(t, context_document)
 
   @doc """
   Converts the native representation to a LSP compatible struct
   """
-  @spec to_lsp(t, DocumentContainer.maybe_context_document()) :: lsp_response()
+  @spec to_lsp(t, Document.Container.maybe_context_document()) :: lsp_response()
   def to_lsp(t, context_document)
 end
 
@@ -108,11 +110,11 @@ end
 
 defimpl Lexical.Convertible, for: Any do
   alias Lexical.Convertible
-  alias Lexical.DocumentContainer
+  alias Lexical.Document
   alias Lexical.Convertible.Helpers
 
   def to_native(%_struct_module{} = struct, context_document) do
-    context_document = DocumentContainer.context_document(struct, context_document)
+    context_document = Document.Container.context_document(struct, context_document)
 
     result =
       struct
@@ -133,7 +135,7 @@ defimpl Lexical.Convertible, for: Any do
   end
 
   def to_lsp(%_struct_module{} = struct, context_document) do
-    context_document = DocumentContainer.context_document(struct, context_document)
+    context_document = Document.Container.context_document(struct, context_document)
 
     result =
       struct

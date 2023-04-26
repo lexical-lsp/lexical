@@ -1,10 +1,10 @@
 defmodule Lexical.ProtoTest do
+  alias Lexical.Document
   alias Lexical.Proto
   alias Lexical.Proto.Convert
   alias Lexical.Proto.Fixtures.LspProtocol
   alias Lexical.Proto.LspTypes
   alias Lexical.Protocol.Types
-  alias Lexical.SourceFile
 
   import LspProtocol
 
@@ -333,8 +333,8 @@ defmodule Lexical.ProtoTest do
     """
 
     file_uri = "file:///file.ex"
-    {:ok, _} = start_supervised(SourceFile.Store)
-    SourceFile.Store.open(file_uri, source_file, 1)
+    {:ok, _} = start_supervised(Document.Store)
+    Document.Store.open(file_uri, source_file, 1)
 
     {:ok, uri: file_uri}
   end
@@ -408,7 +408,7 @@ defmodule Lexical.ProtoTest do
       assert {:ok, params} = params_for(Notif.WithTextDoc.LSP, text_document: [uri: ctx.uri])
       assert {:ok, notif} = Notif.WithTextDoc.parse(params)
       assert {:ok, notif} = Convert.to_native(notif)
-      assert %SourceFile{} = notif.source_file
+      assert %Document{} = notif.source_file
     end
 
     defmodule Notif.WithPos.Params do
@@ -434,8 +434,8 @@ defmodule Lexical.ProtoTest do
       assert {:ok, notif} = Notif.WithPos.parse(params)
       assert {:ok, notif} = Convert.to_native(notif)
 
-      assert %SourceFile{} = notif.source_file
-      assert %SourceFile.Position{} = notif.position
+      assert %Document{} = notif.source_file
+      assert %Document.Position{} = notif.position
 
       assert notif.position.line == 1
       assert notif.position.character == 1
@@ -467,8 +467,8 @@ defmodule Lexical.ProtoTest do
       assert {:ok, notif} = Notif.WithRange.parse(params)
       assert {:ok, notif} = Convert.to_native(notif)
 
-      assert %SourceFile{} = notif.source_file
-      assert %SourceFile.Range{} = notif.range
+      assert %Document{} = notif.source_file
+      assert %Document.Range{} = notif.range
       assert notif.range.start.line == 1
       assert notif.range.start.character == 1
       assert notif.range.end.line == 1
@@ -542,7 +542,7 @@ defmodule Lexical.ProtoTest do
       assert {:ok, ex_req} = Convert.to_native(req)
 
       assert %TextDocReq{} = ex_req
-      assert %SourceFile{} = ex_req.source_file
+      assert %Document{} = ex_req.source_file
     end
 
     defmodule PositionReq.Params do
@@ -572,8 +572,8 @@ defmodule Lexical.ProtoTest do
 
       assert {:ok, ex_req} = Convert.to_native(req)
 
-      assert %SourceFile.Position{} = ex_req.position
-      assert %SourceFile{} = ex_req.source_file
+      assert %Document.Position{} = ex_req.position
+      assert %Document{} = ex_req.source_file
     end
 
     defmodule RangeReq.Params do
@@ -600,9 +600,9 @@ defmodule Lexical.ProtoTest do
       assert {:ok, req} = Convert.to_native(req)
 
       assert req.range ==
-               SourceFile.Range.new(
-                 SourceFile.Position.new(1, 1),
-                 SourceFile.Position.new(1, 6)
+               Document.Range.new(
+                 Document.Position.new(1, 1),
+                 Document.Position.new(1, 6)
                )
     end
   end

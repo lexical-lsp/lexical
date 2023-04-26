@@ -1,8 +1,8 @@
 defmodule Lexical.Protocol.ConversionsTest do
+  alias Lexical.Document
+  alias Lexical.Document.Position, as: ExPosition
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types.Position, as: LSPosition
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position, as: ExPosition
 
   use ExUnit.Case
 
@@ -15,7 +15,7 @@ defmodule Lexical.Protocol.ConversionsTest do
   end
 
   defp doc(text) do
-    SourceFile.new("file:///file.ex", text, 0)
+    Document.new("file:///file.ex", text, 0)
   end
 
   describe "to_elixir/2 for positions" do

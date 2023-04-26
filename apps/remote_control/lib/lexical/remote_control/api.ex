@@ -1,11 +1,12 @@
 defmodule Lexical.RemoteControl.Api do
+  alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Position
+
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build
@@ -15,13 +16,13 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, :code, :all_available)
   end
 
-  def format(%Project{} = project, %SourceFile{} = source_file) do
+  def format(%Project{} = project, %Document{} = source_file) do
     RemoteControl.call(project, CodeMod.Format, :edits, [project, source_file])
   end
 
   def replace_with_underscore(
         %Project{} = project,
-        %SourceFile{} = source_file,
+        %Document{} = source_file,
         line_number,
         variable_name
       ) do
@@ -32,8 +33,8 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
-  def complete(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
-    source_string = SourceFile.to_string(source_file)
+  def complete(%Project{} = project, %Document{} = source_file, %Position{} = position) do
+    source_string = Document.to_string(source_file)
     complete(project, source_string, position)
   end
 
@@ -46,7 +47,7 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
-  def definition(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
+  def definition(%Project{} = project, %Document{} = source_file, %Position{} = position) do
     RemoteControl.call(project, CodeIntelligence.Definition, :definition, [
       source_file,
       position

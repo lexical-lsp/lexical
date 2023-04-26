@@ -1,21 +1,21 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
+  alias Lexical.Document
+  alias Lexical.Document.Changes
+  alias Lexical.Document.Edit
   alias Lexical.RemoteControl.CodeMod.Ast
   alias Lexical.RemoteControl.CodeMod.Diff
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.DocumentEdits
-  alias Lexical.SourceFile.Edit
 
-  @spec edits(SourceFile.t(), non_neg_integer(), String.t() | atom) ::
-          {:ok, DocumentEdits.t()} | :error
-  def edits(%SourceFile{} = source_file, line_number, variable_name) do
+  @spec edits(Document.t(), non_neg_integer(), String.t() | atom) ::
+          {:ok, Changes.t()} | :error
+  def edits(%Document{} = source_file, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
-    with {:ok, line_text} <- SourceFile.fetch_text_at(source_file, line_number),
+    with {:ok, line_text} <- Document.fetch_text_at(source_file, line_number),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
       edits = to_edits(line_number, line_text, transformed_text)
 
-      {:ok, DocumentEdits.new(source_file, edits)}
+      {:ok, Changes.new(source_file, edits)}
     end
   end
 

@@ -1,8 +1,8 @@
 defmodule Lexical.Project.Diagnostics.StateTest do
+  alias Lexical.Document
+  alias Lexical.Document.Edit
   alias Lexical.Project
   alias Lexical.Server.Project.Diagnostics.State
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Edit
   alias Mix.Task.Compiler
 
   import Lexical.Test.Fixtures
@@ -10,7 +10,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   use Lexical.Test.CodeMod.Case
 
   setup do
-    {:ok, _} = start_supervised(Lexical.SourceFile.Store)
+    {:ok, _} = start_supervised(Lexical.Document.Store)
 
     project = project()
     state = State.new(project)
@@ -22,10 +22,10 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   end
 
   def source_file(contents, file_path \\ existing_file_path()) do
-    file_uri = SourceFile.Path.to_uri(file_path)
+    file_uri = Document.Path.to_uri(file_path)
 
-    with :ok <- SourceFile.Store.open(file_uri, contents, 0),
-         {:ok, source_file} <- SourceFile.Store.fetch(file_uri) do
+    with :ok <- Document.Store.open(file_uri, contents, 0),
+         {:ok, source_file} <- Document.Store.fetch(file_uri) do
       source_file
     end
   end
@@ -34,9 +34,9 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     changes = [Edit.new(content)]
 
     {:ok, source_file} =
-      SourceFile.Store.get_and_update(
+      Document.Store.get_and_update(
         source_file.uri,
-        &SourceFile.apply_content_changes(&1, 2, changes)
+        &Document.apply_content_changes(&1, 2, changes)
       )
 
     source_file
@@ -59,7 +59,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
     state = State.add(state, diagnostic)
 
-    assert [%Compiler.Diagnostic{}] = State.get(state, SourceFile.Path.to_uri(diagnostic.file))
+    assert [%Compiler.Diagnostic{}] = State.get(state, Document.Path.to_uri(diagnostic.file))
   end
 
   test "it allows you to add a mix error", %{state: state, project: project} do
@@ -67,7 +67,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     assert state = State.add(state, error)
 
     [%Compiler.Diagnostic{} = diagnostic] =
-      State.get(state, SourceFile.Path.to_uri(project.mix_exs_uri))
+      State.get(state, Document.Path.to_uri(project.mix_exs_uri))
 
     assert diagnostic.compiler_name == "Mix"
     assert diagnostic.message == error.message
@@ -114,7 +114,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
       state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
-      :ok = SourceFile.Store.close(source_file.uri)
+      :ok = Document.Store.close(source_file.uri)
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)

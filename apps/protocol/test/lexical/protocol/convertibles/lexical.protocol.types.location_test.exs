@@ -5,7 +5,7 @@ defmodule Lexical.Protocol.Types.Convertibles.LocationTest do
     setup [:with_an_open_file]
 
     test "converts a native location", %{uri: uri} do
-      native_loc = SourceFile.Location.new(valid_range(:native), uri)
+      native_loc = Document.Location.new(valid_range(:native), uri)
 
       assert {:ok, %Types.Location{} = converted} = to_lsp(native_loc, uri)
 
@@ -18,7 +18,7 @@ defmodule Lexical.Protocol.Types.Convertibles.LocationTest do
     test "uses the location's uri", %{uri: uri} do
       other_uri = "file:///other.ex"
 
-      native_loc = SourceFile.Location.new(valid_range(:native), other_uri)
+      native_loc = Document.Location.new(valid_range(:native), other_uri)
       assert {:ok, %Types.Location{} = converted} = to_lsp(native_loc, uri)
 
       assert converted.uri == other_uri
@@ -57,24 +57,24 @@ defmodule Lexical.Protocol.Types.Convertibles.LocationTest do
     test "converts an lsp location", %{uri: uri} do
       lsp_loc = Types.Location.new(range: valid_range(:lsp), uri: uri)
 
-      assert {:ok, %SourceFile.Location{} = converted} = to_native(lsp_loc, uri)
+      assert {:ok, %Document.Location{} = converted} = to_native(lsp_loc, uri)
 
       assert converted.uri == uri
-      assert %SourceFile.Range{} = converted.range
-      assert %SourceFile.Position{} = converted.range.start
-      assert %SourceFile.Position{} = converted.range.end
+      assert %Document.Range{} = converted.range
+      assert %Document.Position{} = converted.range.start
+      assert %Document.Position{} = converted.range.end
     end
 
     test "uses the location's uri", %{uri: uri} do
       other_uri = "file:///other.ex"
       lsp_loc = Types.Location.new(range: valid_range(:lsp), uri: other_uri)
 
-      assert {:ok, %SourceFile.Location{} = converted} = to_native(lsp_loc, uri)
+      assert {:ok, %Document.Location{} = converted} = to_native(lsp_loc, uri)
 
       assert converted.uri == uri
-      assert %SourceFile.Range{} = converted.range
-      assert %SourceFile.Position{} = converted.range.start
-      assert %SourceFile.Position{} = converted.range.end
+      assert %Document.Range{} = converted.range
+      assert %Document.Position{} = converted.range.start
+      assert %Document.Position{} = converted.range.end
     end
   end
 end

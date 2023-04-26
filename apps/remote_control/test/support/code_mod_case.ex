@@ -1,6 +1,7 @@
 defmodule Lexical.Test.CodeMod.Case do
-  alias Lexical.SourceFile
+  alias Lexical.Document
   alias Lexical.Test.CodeSigil
+
   use ExUnit.CaseTemplate
 
   using do
@@ -34,9 +35,9 @@ defmodule Lexical.Test.CodeMod.Case do
   end
 
   def apply_edits(original, text_edits, opts) do
-    source_file = SourceFile.new("file:///file.ex", original, 0)
-    {:ok, edited_source_file} = SourceFile.apply_content_changes(source_file, 1, text_edits)
-    edited_source = SourceFile.to_string(edited_source_file)
+    source_file = Document.new("file:///file.ex", original, 0)
+    {:ok, edited_source_file} = Document.apply_content_changes(source_file, 1, text_edits)
+    edited_source = Document.to_string(edited_source_file)
 
     if Keyword.get(opts, :trim, true) do
       String.trim(edited_source)
