@@ -52,7 +52,10 @@ jobs:
         env:
           cache-name: cache-elixir-deps
         with:
-          path: deps
+          path: |
+            deps
+            _build
+
           key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.cache-name }}-
@@ -61,12 +64,15 @@ jobs:
         id: cache-plt
         uses: actions/cache@v3
         with:
-          path: |
-            _build/dev/*.plt
-            _build/dev/*.plt.hash
-          key: plt-cache-${{steps.set_mix_lock_hash.outputs.mix_lock_hash}}
-          restore-keys: |
-            plt-cache-
+          path: "priv/plts"
+          key: ${{ matrix.otp }}-${{ matrix.elixir}}-plts-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
+
+      # Step: Download project dependencies. If unchanged, uses
+      # the cached version.
+      - name: Install and compile dependencies
+        run: |
+          mix deps.get
+          mix deps.compile
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
@@ -74,10 +80,6 @@ jobs:
       - name: Check Formatting
         run: mix format --check-formatted
 
-      # Step: Download project dependencies. If unchanged, uses
-      # the cached version.
-      - name: Install dependencies
-        run: mix deps.get
 
       - name: Compile
         run: mix compile
@@ -85,6 +87,12 @@ jobs:
       # Step: Run credo static code analysis
       - name: Credo static analysis
         run: mix credo
+
+      - name: Maybe create plt files
+        if: steps.cache-plt.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p priv/plts
+          mix dialyzer --plt
 
       - name: Run dialyzer
         run: |

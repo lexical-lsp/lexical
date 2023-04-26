@@ -12,7 +12,7 @@ defmodule Lexical.MixProject do
       docs: docs(),
       name: "Lexical",
       consolidate_protocols: Mix.env() != :test,
-      dialyzer: [plt_add_deps: :apps_direct, plt_add_apps: [:wx, :mix, :ex_unit, :compiler]]
+      dialyzer: dialyzer()
     ]
   end
 
@@ -21,6 +21,15 @@ defmodule Lexical.MixProject do
       {:ex_doc, "~> 0.29.1", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test]},
       {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_core_path: "priv/plts",
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+      plt_add_deps: :apps_direct,
+      plt_add_apps: [:wx, :mix, :ex_unit, :compiler]
     ]
   end
 
