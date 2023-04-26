@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Namespace.Release do
   """
   use Mix.Task
   @release_files ~w(start.script lexical.rel)
-  @apps_to_rewrite ~w(remote_control common common_protocol server protocol proto)
+  @apps_to_rewrite ~w(remote_control common server protocol proto)
 
   def run(_) do
     release = Mix.Release.from_config!(:lexical, Mix.Project.config(), [])
