@@ -1,13 +1,13 @@
 defmodule Lexical.Protocol.Requests do
+  alias Lexical.Proto
   alias Lexical.Protocol.LspTypes
-  alias Lexical.Protocol.Proto
   alias Lexical.Protocol.Types
 
   # Client -> Server request
   defmodule Initialize do
     use Proto
 
-    defrequest "initialize", :shared,
+    defrequest "initialize",
       capabilities: optional(Types.ClientCapabilities),
       client_info: optional(LspTypes.ClientInfo),
       initialization_options: optional(any()),
@@ -22,19 +22,19 @@ defmodule Lexical.Protocol.Requests do
   defmodule Cancel do
     use Proto
 
-    defrequest "$/cancelRequest", :exclusive, id: one_of([string(), integer()])
+    defrequest "$/cancelRequest", id: one_of([string(), integer()])
   end
 
   defmodule Shutdown do
     use Proto
 
-    defrequest "shutdown", :exclusive, []
+    defrequest "shutdown", []
   end
 
   defmodule FindReferences do
     use Proto
 
-    defrequest "textDocument/references", :exclusive,
+    defrequest "textDocument/references",
       position: Types.Position,
       text_document: Types.TextDocument.Identifier
   end
@@ -42,7 +42,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule GoToDefinition do
     use Proto
 
-    defrequest "textDocument/definition", :exclusive,
+    defrequest "textDocument/definition",
       text_document: Types.TextDocument.Identifier,
       position: Types.Position
   end
@@ -50,7 +50,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule Formatting do
     use Proto
 
-    defrequest "textDocument/formatting", :exclusive,
+    defrequest "textDocument/formatting",
       options: Types.Formatting.Options,
       text_document: Types.TextDocument.Identifier
   end
@@ -58,7 +58,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule CodeAction do
     use Proto
 
-    defrequest "textDocument/codeAction", :exclusive,
+    defrequest "textDocument/codeAction",
       context: Types.CodeAction.Context,
       range: Types.Range,
       text_document: Types.TextDocument.Identifier
@@ -67,7 +67,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule Completion do
     use Proto
 
-    defrequest "textDocument/completion", :exclusive,
+    defrequest "textDocument/completion",
       text_document: Types.TextDocument.Identifier,
       position: Types.Position,
       context: Types.Completion.Context
@@ -78,7 +78,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule RegisterCapability do
     use Proto
 
-    defrequest "client/registerCapability", :shared,
+    defrequest "client/registerCapability",
       registrations: optional(list_of(LspTypes.Registration))
   end
 

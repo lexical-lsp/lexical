@@ -1,7 +1,8 @@
-defmodule Lexical.Protocol.ProtoTest do
-  alias Lexical.Protocol.Proto
-  alias Lexical.Protocol.Proto.Fixtures.LspProtocol
-  alias Lexical.Protocol.Proto.LspTypes
+defmodule Lexical.ProtoTest do
+  alias Lexical.Proto
+  alias Lexical.Proto.Convert
+  alias Lexical.Proto.Fixtures.LspProtocol
+  alias Lexical.Proto.LspTypes
   alias Lexical.Protocol.Types
   alias Lexical.SourceFile
 
@@ -345,10 +346,9 @@ defmodule Lexical.Protocol.ProtoTest do
       use Proto
 
       defnotification "textDocument/somethingHappened",
-                      :exlusive,
-                      line: integer(),
-                      notice_message: string(),
-                      column: integer()
+        line: integer(),
+        notice_message: string(),
+        column: integer()
     end
 
     test "parse fills out the notification" do
@@ -375,12 +375,12 @@ defmodule Lexical.Protocol.ProtoTest do
       refute notif.notice_message
     end
 
-    test "to_elixir fills out the elixir fields" do
+    test "to_native fills out the elixir fields" do
       assert {:ok, params} =
                params_for(Notif, line: 3, column: 5, notice_message: "This went wrong")
 
       assert {:ok, notif} = Notif.parse(params)
-      assert {:ok, notif} = Notif.to_elixir(notif)
+      assert {:ok, notif} = Convert.to_native(notif)
 
       assert notif.line == 3
       assert notif.column == 5
@@ -391,14 +391,13 @@ defmodule Lexical.Protocol.ProtoTest do
       use Proto
 
       defnotification "notif/withTextDoc",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier
+        text_document: Types.TextDocument.Identifier
     end
 
-    test "to_elixir fills out the source file", ctx do
+    test "to_native fills out the source file", ctx do
       assert {:ok, params} = params_for(Notif.WithTextDoc.LSP, text_document: [uri: ctx.uri])
       assert {:ok, notif} = Notif.WithTextDoc.parse(params)
-      assert {:ok, notif} = Notif.WithTextDoc.to_elixir(notif)
+      assert {:ok, notif} = Convert.to_native(notif)
       assert %SourceFile{} = notif.source_file
     end
 
@@ -406,12 +405,11 @@ defmodule Lexical.Protocol.ProtoTest do
       use Proto
 
       defnotification "notif/WithPos",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier,
-                      position: Types.Position
+        text_document: Types.TextDocument.Identifier,
+        position: Types.Position
     end
 
-    test "to_elixir fills out a position", ctx do
+    test "to_native fills out a position", ctx do
       assert {:ok, params} =
                params_for(Notif.WithPos.LSP,
                  text_document: [uri: ctx.uri],
@@ -419,7 +417,7 @@ defmodule Lexical.Protocol.ProtoTest do
                )
 
       assert {:ok, notif} = Notif.WithPos.parse(params)
-      assert {:ok, notif} = Notif.WithPos.to_elixir(notif)
+      assert {:ok, notif} = Convert.to_native(notif)
 
       assert %SourceFile{} = notif.source_file
       assert %SourceFile.Position{} = notif.position
@@ -432,12 +430,11 @@ defmodule Lexical.Protocol.ProtoTest do
       use Proto
 
       defnotification "notif/WithPos",
-                      :exclusive,
-                      text_document: Types.TextDocument.Identifier,
-                      range: Types.Range
+        text_document: Types.TextDocument.Identifier,
+        range: Types.Range
     end
 
-    test "to_elixir fills out a range", ctx do
+    test "to_native fills out a range", ctx do
       assert {:ok, params} =
                params_for(Notif.WithRange.LSP,
                  text_document: [uri: ctx.uri],
@@ -448,7 +445,7 @@ defmodule Lexical.Protocol.ProtoTest do
                )
 
       assert {:ok, notif} = Notif.WithRange.parse(params)
-      assert {:ok, notif} = Notif.WithRange.to_elixir(notif)
+      assert {:ok, notif} = Convert.to_native(notif)
 
       assert %SourceFile{} = notif.source_file
       assert %SourceFile.Range{} = notif.range
@@ -465,13 +462,13 @@ defmodule Lexical.Protocol.ProtoTest do
     defmodule Req do
       use Proto
 
-      defrequest "something", :exclusive, line: integer(), error_message: string()
+      defrequest "something", line: integer(), error_message: string()
     end
 
     defmodule TextDocReq do
       use Proto
 
-      defrequest "textDoc", :exclusive, text_document: Types.TextDocument.Identifier
+      defrequest "textDoc", text_document: Types.TextDocument.Identifier
     end
 
     test "parse fills out the request" do
@@ -499,19 +496,19 @@ defmodule Lexical.Protocol.ProtoTest do
       assert req.lsp.error_message == "borked"
     end
 
-    test "to_elixir fills out the base request" do
+    test "to_native fills out the base request" do
       assert {:ok, params} = params_for(Req, id: 3, line: 9, error_message: "borked")
       assert {:ok, req} = Req.parse(params)
-      assert {:ok, req} = Req.to_elixir(req)
+      assert {:ok, req} = Convert.to_native(req)
 
       assert req.line == 9
       assert req.error_message == "borked"
     end
 
-    test "to_elixir fills out a source file", ctx do
+    test "to_native fills out a source file", ctx do
       assert {:ok, params} = params_for(TextDocReq.LSP, text_document: [uri: ctx.uri])
       assert {:ok, req} = TextDocReq.parse(params)
-      assert {:ok, ex_req} = TextDocReq.to_elixir(req)
+      assert {:ok, ex_req} = Convert.to_native(req)
 
       assert %TextDocReq{} = ex_req
       assert %SourceFile{} = ex_req.source_file
@@ -520,12 +517,12 @@ defmodule Lexical.Protocol.ProtoTest do
     defmodule PositionReq do
       use Proto
 
-      defrequest "posReq", :exclusive,
+      defrequest "posReq",
         text_document: Types.TextDocument.Identifier,
         position: Types.Position
     end
 
-    test "to_elixir fills out a position", ctx do
+    test "to_native fills out a position", ctx do
       assert {:ok, params} =
                params_for(PositionReq.LSP,
                  text_document: [uri: ctx.uri],
@@ -537,7 +534,7 @@ defmodule Lexical.Protocol.ProtoTest do
       refute req.position
       refute req.source_file
 
-      assert {:ok, ex_req} = PositionReq.to_elixir(req)
+      assert {:ok, ex_req} = Convert.to_native(req)
 
       assert %SourceFile.Position{} = ex_req.position
       assert %SourceFile{} = ex_req.source_file
@@ -546,12 +543,12 @@ defmodule Lexical.Protocol.ProtoTest do
     defmodule RangeReq do
       use Proto
 
-      defrequest "rangeReq", :exclusive,
+      defrequest "rangeReq",
         text_document: Types.TextDocument.Identifier,
         range: Types.Range
     end
 
-    test "to_elixir fills out a range", ctx do
+    test "to_native fills out a range", ctx do
       assert {:ok, params} =
                params_for(RangeReq.LSP,
                  text_document: [uri: ctx.uri],
@@ -559,7 +556,7 @@ defmodule Lexical.Protocol.ProtoTest do
                )
 
       assert {:ok, req} = RangeReq.parse(params)
-      assert {:ok, req} = RangeReq.to_elixir(req)
+      assert {:ok, req} = Convert.to_native(req)
 
       assert req.range ==
                SourceFile.Range.new(

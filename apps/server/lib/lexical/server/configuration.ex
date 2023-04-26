@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Configuration do
   alias Lexical.Project
+  alias Lexical.Proto.LspTypes.Registration
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
-  alias Lexical.Protocol.Proto.LspTypes.Registration
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Requests.RegisterCapability
   alias Lexical.Protocol.Types.ClientCapabilities

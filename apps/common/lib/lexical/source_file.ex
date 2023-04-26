@@ -6,8 +6,9 @@ defmodule Lexical.SourceFile do
   All language server documents are represented and backed by source files, which
   provide functionality for fetching lines, applying changes, and tracking versions.
   """
-  alias Lexical.Ranged
+  alias Lexical.Convertible
   alias Lexical.SourceFile.Document
+  alias Lexical.SourceFile.Edit
   alias Lexical.SourceFile.Line
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
@@ -95,7 +96,7 @@ defmodule Lexical.SourceFile do
     end
   end
 
-  @spec apply_content_changes(t, pos_integer(), [map]) ::
+  @spec apply_content_changes(t, pos_integer(), [Convertible.t()]) ::
           {:ok, t} | change_application_error()
   def apply_content_changes(%__MODULE__{version: current_version}, new_version, _)
       when new_version <= current_version do
@@ -141,6 +142,10 @@ defmodule Lexical.SourceFile do
     Document.size(source.document)
   end
 
+  defp apply_change(%__MODULE__{} = source, nil, new_text) do
+    {:ok, %__MODULE__{source | document: Document.new(new_text)}}
+  end
+
   defp apply_change(
          %__MODULE__{} = source,
          %Range{start: %Position{} = start_pos, end: %Position{} = end_pos},
@@ -168,41 +173,35 @@ defmodule Lexical.SourceFile do
     {:ok, %__MODULE__{source | document: new_document}}
   end
 
-  defp apply_change(%__MODULE__{} = source, %{range: nil, text: new_text}) do
-    {:ok, %__MODULE__{source | document: Document.new(new_text)}}
+  defp apply_change(%__MODULE__{} = source, %Edit{range: nil} = edit) do
+    {:ok, %__MODULE__{source | document: Document.new(edit.text)}}
   end
 
-  defp apply_change(%__MODULE__{} = source, %{range: range, new_text: text}) do
-    apply_change(source, %{range: range, text: text})
-  end
-
-  defp apply_change(
-         %__MODULE__{} = source,
-         %{
-           range:
-             %{
-               start: %{line: start_line, character: start_char},
-               end: %{line: end_line, character: end_char}
-             } = range,
-           text: new_text
-         }
-       )
-       when start_line >= 0 and start_char >= 0 and end_line >= 0 and end_char >= 0 do
-    case Ranged.Native.from_lsp(range, source) do
-      {:ok, ex_range} ->
-        apply_change(source, ex_range, new_text)
-
-      _ ->
-        {:error, {:invalid_range, range}}
+  defp apply_change(%__MODULE__{} = source, %Edit{range: %Range{}} = edit) do
+    if valid_edit?(edit) do
+      apply_change(source, edit.range, edit.text)
+    else
+      {:error, {:invalid_range, edit.range}}
     end
   end
 
-  defp apply_change(%__MODULE__{}, %{range: invalid_range}) do
-    {:error, {:invalid_range, invalid_range}}
+  defp apply_change(%__MODULE__{} = source, %{range: range, text: text}) do
+    with {:ok, native_range} <- Convertible.to_native(range, source) do
+      apply_change(source, Edit.new(text, native_range))
+    end
   end
 
-  defp apply_change(%__MODULE__{} = source, %{text: new_text}) do
-    {:ok, %__MODULE__{source | document: Document.new(new_text)}}
+  defp apply_change(%__MODULE__{} = source, convertable_edit) do
+    with {:ok, edit} <- Convertible.to_native(convertable_edit, source) do
+      apply_change(source, edit)
+    end
+  end
+
+  defp valid_edit?(%Edit{
+         range: %Range{start: %Position{} = start_pos, end: %Position{} = end_pos}
+       }) do
+    start_pos.line >= 0 and start_pos.character >= 0 and end_pos.line >= 0 and
+      end_pos.character >= 0
   end
 
   defp append_to_end(%__MODULE__{} = source, edit_text) do

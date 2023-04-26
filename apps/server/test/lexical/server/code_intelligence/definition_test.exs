@@ -1,20 +1,25 @@
 defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.Server.CodeIntelligence
+  alias Lexical.Server.CodeIntelligence.Definition
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Location
   alias Lexical.SourceFile.Position
 
-  import Lexical.Test.Fixtures
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
+  import Lexical.Test.Fixtures
   import Messages
 
   use ExUnit.Case, async: false
 
   defp with_referenced_file(%{project: project}) do
-    path = file_path(project, Path.join("lib", "my_definition.ex"))
-    %{uri: SourceFile.Path.ensure_uri(path)}
+    uri =
+      project
+      |> file_path(Path.join("lib", "my_definition.ex"))
+      |> SourceFile.Path.ensure_uri()
+
+    %{uri: uri}
   end
 
   defp subject_module_uri(project) do
@@ -249,7 +254,8 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
             @|b
           end
         end
-        ]
+      ]
+
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
       assert definition_line =~ ~S[«@b» 2]
@@ -268,6 +274,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
           end
         end
       ]
+
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
       assert definition_line =~ ~S[«a» = 1]
@@ -312,10 +319,10 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     position = caller_position(subject_module)
 
     with {:ok, subject_module_file} <- subject_module(project, strip_cursor(subject_module)),
-         {:ok, {source_file, range}} <-
-           CodeIntelligence.Definition.definition(project, subject_module_file, position),
-         {:ok, definition_line} <- definition_line(source_file, range) do
-      {:ok, source_file.uri, definition_line}
+         {:ok, %Location{} = location} <-
+           Definition.definition(project, subject_module_file, position),
+         {:ok, definition_line} <- definition_line(location.source_file, location.range) do
+      {:ok, location.source_file.uri, definition_line}
     end
   end
 

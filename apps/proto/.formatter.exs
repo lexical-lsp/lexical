@@ -2,9 +2,9 @@
 proto_dsl = [
   defalias: 1,
   defenum: 1,
+  defnotification: 1,
   defnotification: 2,
-  defnotification: 3,
-  defrequest: 3,
+  defrequest: 2,
   defresponse: 1,
   deftype: 1
 ]

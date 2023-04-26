@@ -3,6 +3,7 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
   alias Lexical.Protocol.Responses
   alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
+  alias Lexical.SourceFile.DocumentEdits
 
   require Logger
 
@@ -10,8 +11,8 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
     document = request.source_file
 
     case RemoteControl.Api.format(env.project, document) do
-      {:ok, text_edits} ->
-        response = Responses.Formatting.new(request.id, text_edits)
+      {:ok, %DocumentEdits{} = document_edits} ->
+        response = Responses.Formatting.new(request.id, document_edits)
         Logger.info("Response #{inspect(response)}")
         {:reply, response}
 

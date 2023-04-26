@@ -1,5 +1,6 @@
 defmodule Lexical.SourceFile.StoreTest do
   alias Lexical.SourceFile
+  alias Lexical.SourceFile.Edit
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
   use ExUnit.Case
@@ -54,7 +55,7 @@ defmodule Lexical.SourceFile.StoreTest do
       |> Keyword.get(:range)
       |> build_range()
 
-    %{text: text, range: range}
+    Edit.new(text, range)
   end
 
   describe "a clean store" do
