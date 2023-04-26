@@ -1,6 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.Server.CodeIntelligence.Definition
   alias Lexical.SourceFile
   alias Lexical.SourceFile.Location
@@ -37,10 +38,10 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   end
 
   setup_all do
-    start_supervised!(Lexical.RemoteControl.ProjectNodeSupervisor)
     start_supervised!(Lexical.SourceFile.Store)
 
     project = project(:navigations)
+    {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->

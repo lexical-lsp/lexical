@@ -1,8 +1,21 @@
 defmodule Lexical.RemoteControl.ProjectNodeSupervisor do
+  alias Lexical.Project
+  alias Lexical.RemoteControl.ProjectNode
   use DynamicSupervisor
 
-  def start_link(init_arg) do
-    DynamicSupervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  def child_spec(project) do
+    %{
+      id: {__MODULE__, Project.name(project)},
+      start: {__MODULE__, :start_link, [project]}
+    }
+  end
+
+  def start_link(project) do
+    DynamicSupervisor.start_link(__MODULE__, project, name: __MODULE__)
+  end
+
+  def start_project_node(%Project{} = project) do
+    DynamicSupervisor.start_child(__MODULE__, {ProjectNode, project})
   end
 
   @impl true

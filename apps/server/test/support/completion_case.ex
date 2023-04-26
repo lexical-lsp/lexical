@@ -23,7 +23,6 @@ defmodule Lexical.Test.Server.CompletionCase do
         {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}
       )
 
-    {:ok, _} = start_supervised(Lexical.RemoteControl.ProjectNodeSupervisor)
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
     Dispatch.register(project, [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)

@@ -23,12 +23,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   def wait_until_started(project, project_listener, boot_timeout \\ 5_000) do
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
-
-    {:ok, node_pid} =
-      DynamicSupervisor.start_child(
-        ProjectNodeSupervisor,
-        {RemoteControl.ProjectNode, project}
-      )
+    {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
 
     node = RemoteControl.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
