@@ -8,8 +8,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     def new(project) do
       paths = format_prepending_paths(RemoteControl.glob_paths())
       cookie = Node.get_cookie()
-
-      struct!(__MODULE__, paths: paths, cookie: cookie, project: project)
+      %__MODULE__{paths: paths, cookie: cookie, project: project}
     end
 
     defp format_prepending_paths(paths_as_charlists) do
