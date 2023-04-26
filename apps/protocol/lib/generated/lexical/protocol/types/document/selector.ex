@@ -3,5 +3,5 @@ defmodule Lexical.Protocol.Types.Document.Selector do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
   use Proto
-  defalias list_of(one_of([Types.TextDocument.Filter, Types.Notebook.Cell.TextDocument.Filter]))
+  defalias list_of(Types.Document.Filter)
 end

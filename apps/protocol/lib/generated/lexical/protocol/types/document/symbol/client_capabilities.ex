@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.Document.Symbol.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule SymbolKind do
     use Proto
@@ -19,6 +18,8 @@ defmodule Lexical.Protocol.Types.Document.Symbol.ClientCapabilities do
   deftype dynamic_registration: optional(boolean()),
           hierarchical_document_symbol_support: optional(boolean()),
           label_support: optional(boolean()),
-          symbol_kind: optional(Parent.SymbolKind),
-          tag_support: optional(Parent.TagSupport)
+          symbol_kind:
+            optional(Lexical.Protocol.Types.Document.Symbol.ClientCapabilities.SymbolKind),
+          tag_support:
+            optional(Lexical.Protocol.Types.Document.Symbol.ClientCapabilities.TagSupport)
 end
