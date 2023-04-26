@@ -80,13 +80,12 @@ jobs:
       - name: Check Formatting
         run: mix format --check-formatted
 
-
-      - name: Compile
-        run: mix compile
-
       # Step: Run credo static code analysis
       - name: Credo static analysis
         run: mix credo
+
+      - name: Compile
+        run: mix compile
 
       - name: Maybe create plt files
         if: steps.cache-plt.outputs.cache-hit != 'true'
