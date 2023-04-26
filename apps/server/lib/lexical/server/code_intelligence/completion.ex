@@ -67,7 +67,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         ]
 
       String.length(Env.last_word(env)) == 1 ->
-        []
+        Completion.List.new(items: [], is_incomplete: true)
 
       true ->
         project
