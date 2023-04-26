@@ -7,8 +7,8 @@ defmodule Lexical.SourceFile.Range do
   defstruct start: nil, end: nil
 
   @type t :: %__MODULE__{
-          start: non_neg_integer(),
-          end: non_neg_integer()
+          start: Position.t(),
+          end: Position.t()
         }
 
   use Lexical.StructAccess

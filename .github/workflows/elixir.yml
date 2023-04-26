@@ -39,6 +39,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set Variables
+        id: set_mix_lock_hash
+        run: |
+          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
+          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
+
       # Step: Define how to cache deps. Restores existing cache if present.
       - name: Cache deps
         id: cache-deps
@@ -46,18 +52,27 @@ jobs:
         env:
           cache-name: cache-elixir-deps
         with:
-          path: deps
+          path: |
+            deps
+            _build
+
           key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.cache-name }}-
 
+      - name: Cache dialyzer plt files
+        id: cache-plt
+        uses: actions/cache@v3
+        with:
+          path: "priv/plts"
+          key: ${{ matrix.otp }}-${{ matrix.elixir}}-plts-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
+
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Compile
-        run: mix compile
+      - name: Install and compile dependencies
+        run: |
+          mix deps.get
+          mix deps.compile
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
@@ -68,6 +83,20 @@ jobs:
       # Step: Run credo static code analysis
       - name: Credo static analysis
         run: mix credo
+
+      - name: Compile
+        run: mix compile
+
+      - name: Maybe create plt files
+        if: steps.cache-plt.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p priv/plts
+          mix dialyzer --plt
+
+      - name: Run dialyzer
+        run: |
+          mix compile.protocols
+          mix dialyzer
 
       # Step: Execute the tests.
       - name: Run tests

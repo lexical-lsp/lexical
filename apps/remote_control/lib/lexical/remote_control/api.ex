@@ -40,7 +40,7 @@ defmodule Lexical.RemoteControl.Api do
   def complete(%Project{} = project, source_string, %Position{} = position) do
     Logger.info("Completion for #{inspect(position)}")
 
-    RemoteControl.call(project, Lexical.RemoteControl.Completion, :elixir_sense_expand, [
+    RemoteControl.call(project, RemoteControl.Completion, :elixir_sense_expand, [
       source_string,
       position
     ])

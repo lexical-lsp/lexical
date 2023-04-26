@@ -21,15 +21,15 @@ defmodule Lexical.SourceFile do
 
   defstruct [:uri, :path, :version, dirty?: false, document: nil]
 
+  @type version :: non_neg_integer()
   @type t :: %__MODULE__{
           uri: String.t(),
-          version: pos_integer(),
+          version: version(),
           dirty?: boolean,
           document: Document.t(),
           path: String.t()
         }
 
-  @type version :: pos_integer()
   @type change_application_error :: {:error, {:invalid_range, map()}}
 
   # public
@@ -38,7 +38,7 @@ defmodule Lexical.SourceFile do
   Creates a new source fie from a uri or path, the source code
   as a binary and the vewrsion.
   """
-  @spec new(Lexical.path() | Lexical.uri(), String.t(), pos_integer) :: t
+  @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
   def new(maybe_uri, text, version) do
     uri = SourceFilePath.ensure_uri(maybe_uri)
 
@@ -96,7 +96,7 @@ defmodule Lexical.SourceFile do
     end
   end
 
-  @spec apply_content_changes(t, pos_integer(), [Convertible.t()]) ::
+  @spec apply_content_changes(t, version(), [Convertible.t() | nil]) ::
           {:ok, t} | change_application_error()
   def apply_content_changes(%__MODULE__{version: current_version}, new_version, _)
       when new_version <= current_version do
@@ -109,14 +109,18 @@ defmodule Lexical.SourceFile do
 
   def apply_content_changes(%__MODULE__{} = source, version, changes) when is_list(changes) do
     result =
-      Enum.reduce_while(changes, source, fn change, source ->
-        case apply_change(source, change) do
-          {:ok, new_source} ->
-            {:cont, new_source}
+      Enum.reduce_while(changes, source, fn
+        nil, source ->
+          {:cont, source}
 
-          error ->
-            {:halt, error}
-        end
+        change, source ->
+          case apply_change(source, change) do
+            {:ok, new_source} ->
+              {:cont, new_source}
+
+            error ->
+              {:halt, error}
+          end
       end)
 
     case result do
@@ -140,10 +144,6 @@ defmodule Lexical.SourceFile do
 
   defp line_count(%__MODULE__{} = source) do
     Document.size(source.document)
-  end
-
-  defp apply_change(%__MODULE__{} = source, nil, new_text) do
-    {:ok, %__MODULE__{source | document: Document.new(new_text)}}
   end
 
   defp apply_change(

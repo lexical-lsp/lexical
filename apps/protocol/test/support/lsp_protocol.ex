@@ -165,10 +165,9 @@ defmodule Lexical.Proto.Fixtures.LspProtocol do
           error -> {:halt, error}
         end
       end)
-      |> Map.new()
 
     case list_elements do
-      %{} = elements -> {:ok, elements}
+      %{} = elements -> {:ok, Map.new(elements)}
       error -> error
     end
   end

@@ -4,8 +4,8 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
   alias Lexical.SourceFile.Position
   alias Lexical.SourceFile.Range
 
-  @spec diff(String.t(), String.t()) :: [TextEdit.t()]
-  def diff(source, dest) do
+  @spec diff(String.t(), String.t()) :: [Edit.t()]
+  def diff(source, dest) when is_binary(source) and is_binary(dest) do
     source
     |> String.myers_difference(dest)
     |> to_edits()
@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
     advance(rest, {line, unit + increment}, edits)
   end
 
-  defp edit(text, start_line, start_unit, end_line, end_unit) do
+  defp edit(text, start_line, start_unit, end_line, end_unit) when is_binary(text) do
     Edit.new(
       text,
       Range.new(

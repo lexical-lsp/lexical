@@ -16,9 +16,9 @@ defmodule Lexical.Proto.Macros.Message do
       end
 
     quote do
-      unquote(Access.build())
       unquote(Struct.build(types))
       unquote(Typespec.build())
+      unquote(Access.build())
       unquote(parse_fn)
       unquote(Meta.build(types))
 

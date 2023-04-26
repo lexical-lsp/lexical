@@ -7,21 +7,20 @@ defmodule Lexical.SourceFile.Store do
   """
   defmodule State do
     alias Lexical.SourceFile
-    alias Lexical.SourceFile.Store
     require Logger
 
     defstruct temporary_open_refs: %{}
+    @type t :: %__MODULE__{}
 
     @table_name SourceFile.Store
 
-    @type t :: %__MODULE__{}
     def new do
       :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
 
       %__MODULE__{}
     end
 
-    @spec fetch(Store.uri()) :: {:ok, t()} | {:error, :not_open}
+    @spec fetch(Lexical.uri()) :: {:ok, SourceFile.t()} | {:error, :not_open}
     def fetch(uri) do
       case ets_fetch(uri, :any) do
         {:ok, _} = success -> success
@@ -29,7 +28,7 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
-    @spec save(t, Store.uri()) :: {:ok, t()} | {:error, :not_open}
+    @spec save(t, Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
       case ets_fetch(uri, :sources) do
         {:ok, source_file} ->
@@ -42,7 +41,7 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
-    @spec open(t, Store.uri(), String.t(), pos_integer()) :: {:ok, t} | {:error, :already_open}
+    @spec open(t, Lexical.uri(), String.t(), pos_integer()) :: {:ok, t} | {:error, :already_open}
     def open(%__MODULE__{} = store, uri, text, version) do
       case ets_fetch(uri, :sources) do
         {:ok, _} ->
@@ -55,10 +54,12 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
+    @spec open?(Lexical.uri()) :: boolean
     def open?(uri) do
       ets_has_key?(uri, :any)
     end
 
+    @spec close(t(), Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
     def close(%__MODULE__{} = store, uri) do
       case ets_pop(uri, :sources) do
         nil ->
@@ -87,6 +88,8 @@ defmodule Lexical.SourceFile.Store do
       end
     end
 
+    @spec open_temporarily(t(), Lexical.uri() | Path.t(), timeout()) ::
+            {:ok, SourceFile.t(), t()} | {:error, term()}
     def open_temporarily(%__MODULE__{} = store, path_or_uri, timeout) do
       uri = SourceFile.Path.ensure_uri(path_or_uri)
       path = SourceFile.Path.ensure_path(path_or_uri)
@@ -195,48 +198,52 @@ defmodule Lexical.SourceFile.Store do
 
   @type t :: %State{}
 
-  @type uri :: String.t()
   @type updater :: (SourceFile.t() -> {:ok, SourceFile.t()} | {:error, any()})
 
   use GenServer
 
-  @spec fetch(uri()) :: {:ok, SourceFile.t()} | :error
+  @spec fetch(Lexical.uri()) :: {:ok, SourceFile.t()} | {:error, :not_open}
   def fetch(uri) do
     State.fetch(uri)
   end
 
-  @spec save(uri()) :: :ok | {:error, :not_open}
+  @spec save(Lexical.uri()) :: :ok | {:error, :not_open}
   def save(uri) do
     GenServer.call(__MODULE__, {:save, uri})
   end
 
-  @spec open?(uri()) :: boolean()
+  @spec open?(Lexical.uri()) :: boolean()
   def open?(uri) do
     State.open?(uri)
   end
 
-  @spec open(uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
+  @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
   def open(uri, text, version) do
     GenServer.call(__MODULE__, {:open, uri, text, version})
   end
 
+  @spec open_temporary(Lexical.uri() | Path.t()) ::
+          {:ok, SourceFile.t()} | {:error, term()}
+
+  @spec open_temporary(Lexical.uri() | Path.t(), timeout()) ::
+          {:ok, SourceFile.t()} | {:error, term()}
   def open_temporary(uri, timeout \\ 5000) do
     ProcessCache.trans(uri, 50, fn ->
       GenServer.call(__MODULE__, {:open_temporarily, uri, timeout})
     end)
   end
 
-  @spec close(uri()) :: :ok | {:error, :not_open}
+  @spec close(Lexical.uri()) :: :ok | {:error, :not_open}
   def close(uri) do
     GenServer.call(__MODULE__, {:close, uri})
   end
 
-  @spec get_and_update(uri(), updater()) :: {:ok, SourceFile.t()} | {:error, any()}
+  @spec get_and_update(Lexical.uri(), updater()) :: {:ok, SourceFile.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
     GenServer.call(__MODULE__, {:get_and_update, uri, update_fn})
   end
 
-  @spec update(uri(), updater()) :: :ok | {:error, any()}
+  @spec update(Lexical.uri(), updater()) :: :ok | {:error, any()}
   def update(uri, update_fn) do
     GenServer.call(__MODULE__, {:update, uri, update_fn})
   end
