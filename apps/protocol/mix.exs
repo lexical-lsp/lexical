@@ -30,10 +30,11 @@ defmodule Lexical.Protocol.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:jason, "~> 1.4", optional: true},
       {:common, in_umbrella: true},
-      {:proto, in_umbrella: true},
-      {:common_protocol, in_umbrella: true}
+      {:common_protocol, in_umbrella: true},
+      {:jason, "~> 1.4", optional: true},
+      {:patch, "~> 0.12", only: [:test]},
+      {:proto, in_umbrella: true}
     ]
   end
 end
