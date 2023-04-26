@@ -61,7 +61,7 @@ defmodule Lexical.CodeUnit do
   @doc """
   Counts the number of utf16 code units in the binary
   """
-  @spec count(:utf16, binary) :: non_neg_integer
+  @spec count(:utf16 | :utf8, binary()) :: non_neg_integer
   def count(:utf16, binary) do
     do_count_utf16(binary, 0)
   end

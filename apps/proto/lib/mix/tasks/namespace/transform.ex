@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Namespace.Transform do
     ebin_path = Path.dirname(old_path)
     new_beam_path = Path.join(ebin_path, "#{module_name}.beam")
 
-    with :ok <- File.write(new_beam_path, binary, [:ibnary, :raw]) do
+    with :ok <- File.write(new_beam_path, binary, [:binary, :raw]) do
       unless old_path == new_beam_path do
         # avoids deleting modules that did not get a new name
         # e.g. Elixir.Mix.Task.. etc

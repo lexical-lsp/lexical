@@ -20,6 +20,8 @@ defmodule Lexical.Server do
     Requests.Shutdown
   ]
 
+  @dialyzer {:nowarn_function, apply_to_state: 2}
+
   @spec response_complete(Requests.request(), Responses.response()) :: :ok
   def response_complete(request, response) do
     GenServer.call(__MODULE__, {:response_complete, request, response})

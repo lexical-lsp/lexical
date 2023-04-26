@@ -27,3 +27,5 @@ erl_crash.dump
 lexical.log
 
 lexical_debug
+
+priv/plts

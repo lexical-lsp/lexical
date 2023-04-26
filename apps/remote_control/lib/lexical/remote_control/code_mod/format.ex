@@ -30,8 +30,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     end
   end
 
-  @spec formatter_for(Project.t(), String.t()) ::
-          {:ok, formatter_function, keyword()} | {:error, :no_formatter_available}
+  @spec formatter_for(Project.t(), String.t()) :: {:ok, formatter_function}
   defp formatter_for(%Project{} = project, uri_or_path) do
     path = SourceFile.Path.ensure_path(uri_or_path)
     formatter_function = formatter_for_file(project, path)

@@ -12,7 +12,7 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   alias Lexical.SourceFile
   alias Lexical.SourceFile.DocumentEdits
 
-  @spec apply(CodeAction.t(), Env.t()) :: [CodeActionReply.t()]
+  @spec apply(CodeAction.t(), Env.t()) :: [CodeActionResult.t()]
   def apply(%CodeAction{} = code_action, %Env{} = env) do
     source_file = code_action.source_file
     diagnostics = get_in(code_action, [:context, :diagnostics]) || []

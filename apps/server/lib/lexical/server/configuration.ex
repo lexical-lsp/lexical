@@ -15,6 +15,7 @@ defmodule Lexical.Server.Configuration do
             dialyzer_enabled?: false
 
   @type t :: %__MODULE__{}
+  @dialyzer {:nowarn_function, maybe_enable_dialyzer: 2}
 
   @spec new(Lexical.uri(), map()) :: t
   def new(root_uri, %ClientCapabilities{} = client_capabilities) do
@@ -23,10 +24,14 @@ defmodule Lexical.Server.Configuration do
     %__MODULE__{support: support, project: project}
   end
 
-  @spec default(t) ::
+  @spec default(t | nil) ::
           {:ok, t}
-          | {:ok, t, Requests.RegisterCapabilities.t()}
+          | {:ok, t, Requests.RegisterCapability.t()}
           | {:restart, Logger.level(), String.t()}
+  def default(nil) do
+    {:ok, default_config()}
+  end
+
   def default(%__MODULE__{} = config) do
     apply_config_change(config, default_config())
   end

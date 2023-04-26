@@ -1,17 +1,27 @@
 defmodule Lexical.SourceFile.Edit do
+  alias Lexical.SourceFile.Range
+  alias Lexical.StructAccess
+
   defstruct [:text, :range]
 
   @type t :: %__MODULE__{
           text: String.t(),
-          range: Lexical.SourceFile.Range.t() | nil
+          range: Range.t() | nil
         }
 
-  @spec new(String.t(), Range.t()) :: t
+  use StructAccess
+
+  @spec new(String.t(), Range.t() | nil) :: t
   @spec new(String.t()) :: t
+  def new(text) when is_binary(text) do
+    %__MODULE__{text: text}
+  end
 
-  use Lexical.StructAccess
-
-  def new(text, range \\ nil) do
+  def new(text, %Range{} = range) do
     %__MODULE__{text: text, range: range}
+  end
+
+  def new(text, nil) when is_binary(text) do
+    %__MODULE__{text: text}
   end
 end

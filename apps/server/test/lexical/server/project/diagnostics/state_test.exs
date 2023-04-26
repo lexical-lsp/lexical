@@ -57,14 +57,14 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   test "it allows you to add a global diagnostic", %{state: state} do
     diagnostic = compiler_diagnostic(message: "This code is awful")
 
-    assert {:ok, state} = State.add(state, diagnostic)
+    state = State.add(state, diagnostic)
 
     assert [%Compiler.Diagnostic{}] = State.get(state, SourceFile.Path.to_uri(diagnostic.file))
   end
 
   test "it allows you to add a mix error", %{state: state, project: project} do
     error = %Mix.Error{message: "bad stuff"}
-    assert {:ok, state} = State.add(state, error)
+    assert state = State.add(state, error)
 
     [%Compiler.Diagnostic{} = diagnostic] =
       State.get(state, SourceFile.Path.to_uri(project.mix_exs_uri))
@@ -77,7 +77,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should not clear a dirty open file", %{state: state} do
       source_file = source_file("hello") |> change_with("hello2")
 
-      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
@@ -91,7 +91,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       script_file_path = Path.join([Project.root_path(project), "test", "*.exs"])
       source_file = source_file("assert f() == 0", script_file_path)
 
-      {:ok, state} = State.add(state, compiler_diagnostic(message: "undefined function f/0"))
+      state = State.add(state, compiler_diagnostic(message: "undefined function f/0"))
 
       old_diagnostics = State.get(state, source_file.uri)
       state = State.clear_all_flushed(state)
@@ -101,7 +101,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is just open", %{state: state} do
       source_file = source_file("hello")
 
-      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, source_file.uri)
@@ -112,7 +112,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is closed", %{state: state} do
       source_file = source_file("hello")
 
-      {:ok, state} = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       :ok = SourceFile.Store.close(source_file.uri)
 

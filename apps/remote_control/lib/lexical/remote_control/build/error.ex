@@ -393,10 +393,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     {line, column}
   end
 
-  defp message_info_to_binary(message_info, token) when is_binary(message_info) do
-    message_info <> token
-  end
-
   defp message_info_to_binary({header, footer}, token) do
     header <> token <> footer
   end
