@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.FoldingRange.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule FoldingRange do
     use Proto
@@ -17,8 +16,8 @@ defmodule Lexical.Protocol.Types.FoldingRange.ClientCapabilities do
   use Proto
 
   deftype dynamic_registration: optional(boolean()),
-          folding_range: optional(Parent.FoldingRange),
-          folding_range_kind: optional(Parent.FoldingRangeKind),
+          folding_range: optional(FoldingRange),
+          folding_range_kind: optional(FoldingRangeKind),
           line_folding_only: optional(boolean()),
           range_limit: optional(integer())
 end

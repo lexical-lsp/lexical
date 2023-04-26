@@ -23,11 +23,6 @@ defmodule Lexical.Proto.LspTypes do
     deftype code: ErrorCodes, message: string(), data: optional(any())
   end
 
-  defmodule ClientInfo do
-    use Proto
-    deftype name: string(), version: optional(string())
-  end
-
   defmodule TraceValue do
     use Proto
     defenum off: "off", messages: "messages", verbose: "verbose"

@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.SemanticTokens.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule Full do
     use Proto
@@ -16,9 +15,7 @@ defmodule Lexical.Protocol.Types.SemanticTokens.ClientCapabilities do
 
   defmodule Requests do
     use Proto
-
-    deftype full: optional(one_of([boolean(), Parent.Full])),
-            range: optional(one_of([boolean(), Parent.Range]))
+    deftype full: optional(one_of([boolean(), Full])), range: optional(one_of([boolean(), Range]))
   end
 
   use Proto
@@ -28,7 +25,7 @@ defmodule Lexical.Protocol.Types.SemanticTokens.ClientCapabilities do
           formats: list_of(Types.TokenFormat),
           multiline_token_support: optional(boolean()),
           overlapping_token_support: optional(boolean()),
-          requests: Parent.Requests,
+          requests: Requests,
           server_cancel_support: optional(boolean()),
           token_modifiers: list_of(string()),
           token_types: list_of(string())

@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.Workspace.Symbol.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule ResolveSupport do
     use Proto
@@ -22,7 +21,7 @@ defmodule Lexical.Protocol.Types.Workspace.Symbol.ClientCapabilities do
   use Proto
 
   deftype dynamic_registration: optional(boolean()),
-          resolve_support: optional(Parent.ResolveSupport),
-          symbol_kind: optional(Parent.SymbolKind),
-          tag_support: optional(Parent.TagSupport)
+          resolve_support: optional(ResolveSupport),
+          symbol_kind: optional(SymbolKind),
+          tag_support: optional(TagSupport)
 end

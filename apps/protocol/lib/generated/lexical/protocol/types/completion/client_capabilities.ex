@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.Completion.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule CompletionItem do
     use Proto
@@ -11,12 +10,12 @@ defmodule Lexical.Protocol.Types.Completion.ClientCapabilities do
             deprecated_support: optional(boolean()),
             documentation_format: optional(list_of(Types.Markup.Kind)),
             insert_replace_support: optional(boolean()),
-            insert_text_mode_support: optional(Parent.InsertTextModeSupport),
+            insert_text_mode_support: optional(InsertTextModeSupport),
             label_details_support: optional(boolean()),
             preselect_support: optional(boolean()),
-            resolve_support: optional(Parent.ResolveSupport),
+            resolve_support: optional(ResolveSupport),
             snippet_support: optional(boolean()),
-            tag_support: optional(Parent.TagSupport)
+            tag_support: optional(TagSupport)
   end
 
   defmodule CompletionItemKind do
@@ -46,9 +45,9 @@ defmodule Lexical.Protocol.Types.Completion.ClientCapabilities do
 
   use Proto
 
-  deftype completion_item: optional(Parent.CompletionItem),
-          completion_item_kind: optional(Parent.CompletionItemKind),
-          completion_list: optional(Parent.CompletionList),
+  deftype completion_item: optional(CompletionItem),
+          completion_item_kind: optional(CompletionItemKind),
+          completion_list: optional(CompletionList),
           context_support: optional(boolean()),
           dynamic_registration: optional(boolean()),
           insert_text_mode: optional(Types.InsertTextMode)

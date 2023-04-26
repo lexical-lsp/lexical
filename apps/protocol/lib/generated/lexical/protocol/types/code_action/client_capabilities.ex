@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.CodeAction.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule CodeActionKind do
     use Proto
@@ -11,7 +10,7 @@ defmodule Lexical.Protocol.Types.CodeAction.ClientCapabilities do
 
   defmodule CodeActionLiteralSupport do
     use Proto
-    deftype code_action_kind: Parent.CodeActionKind
+    deftype code_action_kind: CodeActionKind
   end
 
   defmodule ResolveSupport do
@@ -21,11 +20,11 @@ defmodule Lexical.Protocol.Types.CodeAction.ClientCapabilities do
 
   use Proto
 
-  deftype code_action_literal_support: optional(Parent.CodeActionLiteralSupport),
+  deftype code_action_literal_support: optional(CodeActionLiteralSupport),
           data_support: optional(boolean()),
           disabled_support: optional(boolean()),
           dynamic_registration: optional(boolean()),
           honors_change_annotations: optional(boolean()),
           is_preferred_support: optional(boolean()),
-          resolve_support: optional(Parent.ResolveSupport)
+          resolve_support: optional(ResolveSupport)
 end

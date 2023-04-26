@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.Workspace.Edit.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule ChangeAnnotationSupport do
     use Proto
@@ -11,7 +10,7 @@ defmodule Lexical.Protocol.Types.Workspace.Edit.ClientCapabilities do
 
   use Proto
 
-  deftype change_annotation_support: optional(Parent.ChangeAnnotationSupport),
+  deftype change_annotation_support: optional(ChangeAnnotationSupport),
           document_changes: optional(boolean()),
           failure_handling: optional(Types.FailureHandling.Kind),
           normalizes_line_endings: optional(boolean()),
