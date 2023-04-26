@@ -77,3 +77,4 @@ jobs:
           tag: ${{ steps.short-sha.outputs.result }}
           name: ${{ steps.timestamp.outputs.result }}
           makeLatest: true
+          generateReleaseNotes: true
