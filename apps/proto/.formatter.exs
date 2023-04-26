@@ -4,7 +4,6 @@ proto_dsl = [
   defenum: 1,
   defnotification: 1,
   defnotification: 2,
-  defrequest: 1,
   defrequest: 2,
   defresponse: 1,
   deftype: 1

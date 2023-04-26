@@ -2,22 +2,8 @@ defmodule Lexical.Proto.Notification do
   alias Lexical.Proto.CompileMetadata
   alias Lexical.Proto.Macros.Message
 
-  defmacro defnotification(method) do
-    do_defnotification(method, [], __CALLER__)
-  end
-
-  defmacro defnotification(method, params_module_ast) do
-    params_module =
-      params_module_ast
-      |> Macro.expand(__CALLER__)
-      |> Code.ensure_compiled!()
-
-    types = params_module.__meta__(:raw_types)
-    do_defnotification(method, types, __CALLER__)
-  end
-
-  defp do_defnotification(method, types, caller) do
-    CompileMetadata.add_notification_module(caller.module)
+  defmacro defnotification(method, types \\ []) do
+    CompileMetadata.add_notification_module(__CALLER__.module)
 
     jsonrpc_types = [
       jsonrpc: quote(do: literal("2.0")),
@@ -26,8 +12,8 @@ defmodule Lexical.Proto.Notification do
 
     param_names = Keyword.keys(types)
     lsp_types = Keyword.merge(jsonrpc_types, types)
-    elixir_types = Message.generate_elixir_types(caller.module, lsp_types)
-    lsp_module_name = Module.concat(caller.module, LSP)
+    elixir_types = Message.generate_elixir_types(__CALLER__.module, lsp_types)
+    lsp_module_name = Module.concat(__CALLER__.module, LSP)
 
     quote location: :keep do
       defmodule LSP do
@@ -56,7 +42,7 @@ defmodule Lexical.Proto.Notification do
         struct(__MODULE__, lsp: LSP.new(opts), method: unquote(method), jsonrpc: "2.0")
       end
 
-      defimpl Jason.Encoder, for: unquote(caller.module) do
+      defimpl Jason.Encoder, for: unquote(__CALLER__.module) do
         def encode(notification, opts) do
           Jason.Encoder.encode(notification.lsp, opts)
         end
