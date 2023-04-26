@@ -24,27 +24,31 @@ defmodule Mix.Tasks.Lsp.DataModel.TypeAlias do
     %__MODULE__{type_alias | type: Type.resolve(type_alias.type, data_model)}
   end
 
-  def build_definition(%__MODULE__{name: "LSP" <> _}, _, _) do
+  def build_definition(%__MODULE__{name: "LSP" <> _}, _, _, _) do
     :skip
   end
 
-  def build_definition(%__MODULE__{type: %Base{}}, _, _) do
+  def build_definition(%__MODULE__{type: %Base{}}, _, _, _) do
     :skip
   end
 
   def build_definition(
         %__MODULE__{} = type_alias,
         %Mappings{} = mappings,
-        %DataModel{} = data_model
+        %DataModel{} = data_model,
+        _container_module
       ) do
     with {:ok, destination_module} <- Mappings.fetch_destination_module(mappings, type_alias.name) do
-      type = Type.to_protocol(type_alias.type, data_model, mappings)
+      type = Type.to_protocol(type_alias.type, data_model, mappings, destination_module)
       object_literals = Type.collect_object_literals(type_alias.type, data_model)
       types_module = Mappings.types_module(mappings)
       proto_module = Mappings.proto_module(mappings)
 
       literal_definitions =
-        Enum.map(object_literals, &ObjectLiteral.build_definition(&1, data_model, mappings))
+        Enum.map(
+          object_literals,
+          &ObjectLiteral.build_definition(&1, data_model, mappings, destination_module)
+        )
 
       type_module_alias =
         case references(type_alias) do

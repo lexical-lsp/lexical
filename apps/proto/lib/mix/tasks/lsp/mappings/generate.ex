@@ -114,7 +114,8 @@ defmodule Mix.Tasks.Lsp.Mappings.Generate do
   defp do_mapping(%struct_module{} = structure, %Mappings{} = mappings, %DataModel{} = data_model) do
     with {:ok, %Mapping{}} <- Mappings.fetch(mappings, structure.name),
          {:ok, destination_module} <- Mappings.fetch_destination_module(mappings, structure.name),
-         {:ok, definition_ast} <- struct_module.build_definition(structure, mappings, data_model) do
+         {:ok, definition_ast} <-
+           struct_module.build_definition(structure, mappings, data_model, destination_module) do
       {:ok, file_for(destination_module), definition_ast}
     end
   end
