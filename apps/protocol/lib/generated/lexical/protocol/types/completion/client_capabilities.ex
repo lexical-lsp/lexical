@@ -3,21 +3,6 @@ defmodule Lexical.Protocol.Types.Completion.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
 
-  defmodule CompletionItem do
-    use Proto
-
-    deftype commit_characters_support: optional(boolean()),
-            deprecated_support: optional(boolean()),
-            documentation_format: optional(list_of(Types.Markup.Kind)),
-            insert_replace_support: optional(boolean()),
-            insert_text_mode_support: optional(InsertTextModeSupport),
-            label_details_support: optional(boolean()),
-            preselect_support: optional(boolean()),
-            resolve_support: optional(ResolveSupport),
-            snippet_support: optional(boolean()),
-            tag_support: optional(TagSupport)
-  end
-
   defmodule CompletionItemKind do
     use Proto
     deftype value_set: optional(list_of(Types.Completion.Item.Kind))
@@ -41,6 +26,21 @@ defmodule Lexical.Protocol.Types.Completion.ClientCapabilities do
   defmodule TagSupport do
     use Proto
     deftype value_set: list_of(Types.Completion.Item.Tag)
+  end
+
+  defmodule CompletionItem do
+    use Proto
+
+    deftype commit_characters_support: optional(boolean()),
+            deprecated_support: optional(boolean()),
+            documentation_format: optional(list_of(Types.Markup.Kind)),
+            insert_replace_support: optional(boolean()),
+            insert_text_mode_support: optional(InsertTextModeSupport),
+            label_details_support: optional(boolean()),
+            preselect_support: optional(boolean()),
+            resolve_support: optional(ResolveSupport),
+            snippet_support: optional(boolean()),
+            tag_support: optional(TagSupport)
   end
 
   use Proto

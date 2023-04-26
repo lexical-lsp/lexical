@@ -11,7 +11,7 @@ defmodule Lexical.Protocol.Types.Initialize.Params do
   use Proto
 
   deftype capabilities: Types.ClientCapabilities,
-          client_info: optional(ClientInfo1),
+          # client_info: optional(ClientInfo1),
           initialization_options: optional(any()),
           locale: optional(string()),
           process_id: one_of([integer(), nil]),
