@@ -139,4 +139,10 @@ defmodule Mix.Tasks.Lsp.Mappings do
     current_dir = Path.dirname(__ENV__.file)
     Path.join([current_dir, @import_filename])
   end
+
+  defimpl Inspect, for: __MODULE__ do
+    def inspect(_, _) do
+      "#Mappings<>"
+    end
+  end
 end

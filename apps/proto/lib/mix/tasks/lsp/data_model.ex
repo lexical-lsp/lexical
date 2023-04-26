@@ -122,4 +122,10 @@ defmodule Mix.Tasks.Lsp.DataModel do
       Jason.decode(file_contents)
     end
   end
+
+  defimpl Inspect, for: __MODULE__ do
+    def inspect(_data_model, _opts) do
+      "#DataModel<>"
+    end
+  end
 end
