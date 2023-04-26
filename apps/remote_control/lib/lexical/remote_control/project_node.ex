@@ -1,23 +1,18 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl
+  alias Lexical.Project
   require Logger
 
   defmodule State do
     defstruct [:project, :paths, :cookie]
 
-    def new(project) do
-      paths = format_prepending_paths(RemoteControl.glob_paths())
+    def new(%Project{} = project) do
       cookie = Node.get_cookie()
-      %__MODULE__{paths: paths, cookie: cookie, project: project}
-    end
-
-    defp format_prepending_paths(paths_as_charlists) do
-      Enum.map_join(paths_as_charlists, " -pa ", &Path.expand/1)
+      %__MODULE__{project: project, paths: RemoteControl.glob_paths(), cookie: cookie}
     end
   end
 
   alias Lexical.RemoteControl.ProjectNodeSupervisor
-
   use GenServer
 
   def wait_until_started(project, project_listener, boot_timeout \\ 5_000) do
@@ -63,7 +58,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
 
     cmd =
-      "#{elixir_executable} --name #{name} -pa #{state.paths} --cookie #{state.cookie} --no-halt " <>
+      "#{elixir_executable} --name #{name} #{path_append_arguments(state)} --cookie #{state.cookie} --no-halt " <>
         "-e 'Node.connect(#{inspect(Node.self())})' "
 
     case System.shell(cmd) do
@@ -73,5 +68,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
       _ ->
         {:stop, :boot_failed, state}
     end
+  end
+
+  def path_append_arguments(%State{} = state) do
+    Enum.map(state.paths, fn path ->
+      expanded_path = Path.expand(path)
+      "-pa #{expanded_path} "
+    end)
+    |> IO.iodata_to_binary()
   end
 end
