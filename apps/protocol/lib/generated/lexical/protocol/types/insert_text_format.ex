@@ -2,5 +2,5 @@
 defmodule Lexical.Protocol.Types.InsertTextFormat do
   alias Lexical.Proto
   use Proto
-  defenum(plain_text: 1, snippet: 2)
+  defenum plain_text: 1, snippet: 2
 end
