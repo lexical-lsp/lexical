@@ -2,7 +2,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Completion.Translatable
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.Protocol.Types.Completion.List, as: CompletionList
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
@@ -68,7 +67,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         ]
 
       String.length(Env.last_word(env)) == 1 ->
-        CompletionList.new(items: [], is_incomplete: true)
+        Completion.List.new(items: [], is_incomplete: true)
 
       true ->
         project
