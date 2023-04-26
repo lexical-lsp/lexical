@@ -5,8 +5,22 @@ defmodule Lexical.Proto.Request do
 
   import TypeFunctions, only: [optional: 1, literal: 1]
 
-  defmacro defrequest(method, types) do
-    CompileMetadata.add_request_module(__CALLER__.module)
+  defmacro defrequest(method) do
+    do_defrequest(method, [], __CALLER__)
+  end
+
+  defmacro defrequest(method, params_module_ast) do
+    params_module =
+      params_module_ast
+      |> Macro.expand(__CALLER__)
+      |> Code.ensure_compiled!()
+
+    types = params_module.__meta__(:raw_types)
+    do_defrequest(method, types, __CALLER__)
+  end
+
+  defp do_defrequest(method, types, caller) do
+    CompileMetadata.add_request_module(caller.module)
     # id is optional so we can resuse the parse function. If it's required,
     # it will go in the pattern match for the params, which won't work.
 
@@ -17,9 +31,9 @@ defmodule Lexical.Proto.Request do
     ]
 
     lsp_types = Keyword.merge(jsonrpc_types, types)
-    elixir_types = Message.generate_elixir_types(__CALLER__.module, lsp_types)
+    elixir_types = Message.generate_elixir_types(caller.module, lsp_types)
     param_names = Keyword.keys(types)
-    lsp_module_name = Module.concat(__CALLER__.module, LSP)
+    lsp_module_name = Module.concat(caller.module, LSP)
 
     quote location: :keep do
       defmodule LSP do
@@ -52,7 +66,7 @@ defmodule Lexical.Proto.Request do
         struct(__MODULE__, lsp: raw, id: raw.id, method: unquote(method), jsonrpc: "2.0")
       end
 
-      defimpl Jason.Encoder, for: unquote(__CALLER__.module) do
+      defimpl Jason.Encoder, for: unquote(caller.module) do
         def encode(request, opts) do
           Jason.Encoder.encode(request.lsp, opts)
         end

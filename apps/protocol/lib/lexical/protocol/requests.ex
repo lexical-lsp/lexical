@@ -1,76 +1,54 @@
 defmodule Lexical.Protocol.Requests do
   alias Lexical.Proto
-  alias Lexical.Protocol.LspTypes
   alias Lexical.Protocol.Types
 
   # Client -> Server request
   defmodule Initialize do
     use Proto
 
-    defrequest "initialize",
-      capabilities: optional(Types.ClientCapabilities),
-      client_info: optional(LspTypes.ClientInfo),
-      initialization_options: optional(any()),
-      locale: optional(string()),
-      process_id: optional(integer()),
-      root_path: optional(string()),
-      root_uri: optional(uri()),
-      trace: optional(Types.TraceValues),
-      workspace_folders: optional(list_of(Types.Workspace.Folder))
+    defrequest "initialize", Types.Initialize.Params
   end
 
   defmodule Cancel do
     use Proto
 
-    defrequest "$/cancelRequest", id: one_of([string(), integer()])
+    defrequest "$/cancelRequest", Types.Cancel.Params
   end
 
   defmodule Shutdown do
     use Proto
 
-    defrequest "shutdown", []
+    defrequest "shutdown"
   end
 
   defmodule FindReferences do
     use Proto
 
-    defrequest "textDocument/references",
-      position: Types.Position,
-      text_document: Types.TextDocument.Identifier
+    defrequest "textDocument/references", Types.Reference.Params
   end
 
   defmodule GoToDefinition do
     use Proto
 
-    defrequest "textDocument/definition",
-      text_document: Types.TextDocument.Identifier,
-      position: Types.Position
+    defrequest "textDocument/definition", Types.Definition.Params
   end
 
   defmodule Formatting do
     use Proto
 
-    defrequest "textDocument/formatting",
-      options: Types.Formatting.Options,
-      text_document: Types.TextDocument.Identifier
+    defrequest "textDocument/formatting", Types.Document.Formatting.Params
   end
 
   defmodule CodeAction do
     use Proto
 
-    defrequest "textDocument/codeAction",
-      context: Types.CodeAction.Context,
-      range: Types.Range,
-      text_document: Types.TextDocument.Identifier
+    defrequest "textDocument/codeAction", Types.CodeAction.Params
   end
 
   defmodule Completion do
     use Proto
 
-    defrequest "textDocument/completion",
-      text_document: Types.TextDocument.Identifier,
-      position: Types.Position,
-      context: Types.Completion.Context
+    defrequest "textDocument/completion", Types.Completion.Params
   end
 
   # Server -> Client requests
@@ -78,8 +56,7 @@ defmodule Lexical.Protocol.Requests do
   defmodule RegisterCapability do
     use Proto
 
-    defrequest "client/registerCapability",
-      registrations: optional(list_of(LspTypes.Registration))
+    defrequest "client/registerCapability", Types.Registration.Params
   end
 
   use Proto, decoders: :requests

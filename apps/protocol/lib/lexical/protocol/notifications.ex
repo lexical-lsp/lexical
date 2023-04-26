@@ -16,69 +16,56 @@ defmodule Lexical.Protocol.Notifications do
   defmodule Cancel do
     use Proto
 
-    defnotification "$/cancelRequest", id: integer()
+    defnotification "$/cancelRequest", Types.Cancel.Params
   end
 
   defmodule DidOpen do
     use Proto
 
-    defnotification "textDocument/didOpen", text_document: Types.TextDocument.Item
+    defnotification "textDocument/didOpen", Types.DidOpenTextDocument.Params
   end
 
   defmodule DidClose do
     use Proto
 
-    defnotification "textDocument/didClose", text_document: Types.TextDocument.Identifier
+    defnotification "textDocument/didClose", Types.DidCloseTextDocument.Params
   end
 
   defmodule DidChange do
     use Proto
 
-    defnotification "textDocument/didChange",
-      text_document: Types.TextDocument.Versioned.Identifier,
-      content_changes:
-        list_of(
-          one_of([
-            Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent,
-            Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent1
-          ])
-        )
+    defnotification "textDocument/didChange", Types.DidChangeTextDocument.Params
   end
 
   defmodule DidChangeConfiguration do
     use Proto
 
-    defnotification "workspace/didChangeConfiguration", settings: map_of(any())
+    defnotification "workspace/didChangeConfiguration", Types.DidChangeConfiguration.Params
   end
 
   defmodule DidChangeWatchedFiles do
     use Proto
 
-    defnotification "workspace/didChangeWatchedFiles", changes: list_of(Types.FileEvent)
+    defnotification "workspace/didChangeWatchedFiles", Types.DidChangeWatchedFiles.Params
   end
 
   defmodule DidSave do
     use Proto
 
-    defnotification "textDocument/didSave", text_document: Types.TextDocument.Identifier
+    defnotification "textDocument/didSave", Types.DidSaveTextDocument.Params
   end
 
   defmodule PublishDiagnostics do
     use Proto
 
-    defnotification "textDocument/publishDiagnostics",
-      uri: string(),
-      version: optional(integer()),
-      diagnostics: list_of(Types.Diagnostic)
+    defnotification "textDocument/publishDiagnostics", Types.PublishDiagnostics.Params
   end
 
   defmodule LogMessage do
     use Proto
     require Types.Message.Type
 
-    defnotification "window/logMessage",
-      message: string(),
-      type: Types.Message.Type
+    defnotification "window/logMessage", Types.LogMessage.Params
 
     for type <- [:error, :warning, :info, :log] do
       def unquote(type)(message) do
@@ -91,9 +78,7 @@ defmodule Lexical.Protocol.Notifications do
     use Proto
     require Types.Message.Type
 
-    defnotification "window/showMessage",
-      message: string(),
-      type: Types.Message.Type
+    defnotification "window/showMessage", Types.ShowMessage.Params
 
     for type <- [:error, :warning, :info, :log] do
       def unquote(type)(message) do

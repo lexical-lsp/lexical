@@ -342,13 +342,18 @@ defmodule Lexical.ProtoTest do
   describe "notifications" do
     setup [:with_source_file_store]
 
+    defmodule Notif.Params do
+      use Proto
+
+      deftype line: integer(),
+              notice_message: string(),
+              column: integer()
+    end
+
     defmodule Notif do
       use Proto
 
-      defnotification "textDocument/somethingHappened",
-        line: integer(),
-        notice_message: string(),
-        column: integer()
+      defnotification "textDocument/somethingHappened", Notif.Params
     end
 
     test "parse fills out the notification" do
@@ -387,11 +392,16 @@ defmodule Lexical.ProtoTest do
       assert notif.notice_message == "This went wrong"
     end
 
+    defmodule Notif.WithTextDoc.Params do
+      use Proto
+
+      deftype text_document: Types.TextDocument.Identifier
+    end
+
     defmodule Notif.WithTextDoc do
       use Proto
 
-      defnotification "notif/withTextDoc",
-        text_document: Types.TextDocument.Identifier
+      defnotification "notif/withTextDoc", Notif.WithTextDoc.Params
     end
 
     test "to_native fills out the source file", ctx do
@@ -401,12 +411,17 @@ defmodule Lexical.ProtoTest do
       assert %SourceFile{} = notif.source_file
     end
 
+    defmodule Notif.WithPos.Params do
+      use Proto
+
+      deftype text_document: Types.TextDocument.Identifier,
+              position: Types.Position
+    end
+
     defmodule Notif.WithPos do
       use Proto
 
-      defnotification "notif/WithPos",
-        text_document: Types.TextDocument.Identifier,
-        position: Types.Position
+      defnotification "notif/WithPos", Notif.WithPos.Params
     end
 
     test "to_native fills out a position", ctx do
@@ -426,12 +441,17 @@ defmodule Lexical.ProtoTest do
       assert notif.position.character == 1
     end
 
+    defmodule Notif.WithRange.Params do
+      use Proto
+
+      deftype text_document: Types.TextDocument.Identifier,
+              range: Types.Range
+    end
+
     defmodule Notif.WithRange do
       use Proto
 
-      defnotification "notif/WithPos",
-        text_document: Types.TextDocument.Identifier,
-        range: Types.Range
+      defnotification "notif/WithRange", Notif.WithRange.Params
     end
 
     test "to_native fills out a range", ctx do
@@ -459,16 +479,27 @@ defmodule Lexical.ProtoTest do
   describe "requests" do
     setup [:with_source_file_store]
 
+    defmodule Req.Params do
+      use Proto
+
+      deftype line: integer(), error_message: string()
+    end
+
     defmodule Req do
       use Proto
 
-      defrequest "something", line: integer(), error_message: string()
+      defrequest "something", Req.Params
+    end
+
+    defmodule TextDocReq.Params do
+      use Proto
+      deftype text_document: Types.TextDocument.Identifier
     end
 
     defmodule TextDocReq do
       use Proto
 
-      defrequest "textDoc", text_document: Types.TextDocument.Identifier
+      defrequest "textDoc", TextDocReq.Params
     end
 
     test "parse fills out the request" do
@@ -514,12 +545,17 @@ defmodule Lexical.ProtoTest do
       assert %SourceFile{} = ex_req.source_file
     end
 
+    defmodule PositionReq.Params do
+      use Proto
+
+      deftype text_document: Types.TextDocument.Identifier,
+              position: Types.Position
+    end
+
     defmodule PositionReq do
       use Proto
 
-      defrequest "posReq",
-        text_document: Types.TextDocument.Identifier,
-        position: Types.Position
+      defrequest "posReq", PositionReq.Params
     end
 
     test "to_native fills out a position", ctx do
@@ -540,12 +576,17 @@ defmodule Lexical.ProtoTest do
       assert %SourceFile{} = ex_req.source_file
     end
 
+    defmodule RangeReq.Params do
+      use Proto
+
+      deftype text_document: Types.TextDocument.Identifier,
+              range: Types.Range
+    end
+
     defmodule RangeReq do
       use Proto
 
-      defrequest "rangeReq",
-        text_document: Types.TextDocument.Identifier,
-        range: Types.Range
+      defrequest "rangeReq", RangeReq.Params
     end
 
     test "to_native fills out a range", ctx do

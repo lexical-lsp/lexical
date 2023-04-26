@@ -11,6 +11,10 @@ defmodule Lexical.Proto.Macros.Meta do
       def __meta__(:types) do
         %{unquote_splicing(opts)}
       end
+
+      def __meta__(:raw_types) do
+        unquote(Macro.escape(opts))
+      end
     end
   end
 
