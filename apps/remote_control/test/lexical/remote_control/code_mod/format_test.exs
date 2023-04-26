@@ -54,6 +54,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   end
 
   def with_real_project(%{project: project}) do
+    {:ok, _} = start_supervised({RemoteControl.ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
     on_exit(fn ->
