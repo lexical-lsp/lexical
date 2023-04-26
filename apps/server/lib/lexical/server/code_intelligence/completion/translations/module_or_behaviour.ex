@@ -18,7 +18,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     detail = builder.fallback(module.summary, module.name)
     struct_reference? = Env.struct_reference?(env)
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
-    add_curlies? = defines_struct? and not String.contains?(env.suffix, "{")
+
+    add_curlies? =
+      defines_struct? and String.contains?(Env.last_word(env), "%") and
+        not String.contains?(env.suffix, "{")
 
     {insert_text, detail_label} =
       cond do
@@ -41,7 +44,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       end
 
     completion_kind =
-      if defines_struct? do
+      if add_curlies? do
         :struct
       else
         :module
