@@ -1,5 +1,5 @@
-defmodule Lexical.SourceFile.Edit do
-  alias Lexical.SourceFile.Range
+defmodule Lexical.Document.Edit do
+  alias Lexical.Document.Range
   alias Lexical.StructAccess
 
   defstruct [:text, :range]

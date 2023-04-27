@@ -18,14 +18,13 @@ defmodule Lexical.Protocol.Convertibles.EditTest do
     end
 
     test "converts with no range", %{uri: uri} do
-      assert {:ok, %Types.TextEdit{new_text: "hi"}} = to_lsp(SourceFile.Edit.new("hi"), uri)
+      assert {:ok, %Types.TextEdit{new_text: "hi"}} = to_lsp(Document.Edit.new("hi"), uri)
     end
 
     test "converts with a filled in range", %{uri: uri} do
       ex_range = range(:native, valid_position(:native), position(:native, 1, 3))
 
-      assert {:ok, %Types.TextEdit{} = text_edit} =
-               to_lsp(SourceFile.Edit.new("hi", ex_range), uri)
+      assert {:ok, %Types.TextEdit{} = text_edit} = to_lsp(Document.Edit.new("hi", ex_range), uri)
 
       assert text_edit.new_text == "hi"
       assert %Types.Range{} = range = text_edit.range
@@ -42,14 +41,14 @@ defmodule Lexical.Protocol.Convertibles.EditTest do
     test "converts a text edit with no range", %{uri: uri} do
       proto_edit = Types.TextEdit.new(new_text: "hi", range: nil)
 
-      assert {:ok, %SourceFile.Edit{} = edit} = to_native(proto_edit, uri)
+      assert {:ok, %Document.Edit{} = edit} = to_native(proto_edit, uri)
 
       assert edit.text == "hi"
       assert edit.range == nil
     end
 
     test "leaves native text edits alone", %{uri: uri} do
-      native_text_edit = SourceFile.Edit.new("hi", valid_range(:native))
+      native_text_edit = Document.Edit.new("hi", valid_range(:native))
 
       assert {:ok, ^native_text_edit} = to_native(native_text_edit, uri)
     end

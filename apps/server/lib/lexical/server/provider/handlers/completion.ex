@@ -10,7 +10,7 @@ defmodule Lexical.Server.Provider.Handlers.Completion do
     completions =
       CodeIntelligence.Completion.complete(
         env.project,
-        request.source_file,
+        request.document,
         request.position,
         request.context
       )

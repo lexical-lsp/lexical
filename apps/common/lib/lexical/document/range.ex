@@ -1,8 +1,8 @@
-defmodule Lexical.SourceFile.Range do
+defmodule Lexical.Document.Range do
   @moduledoc """
   A range in a document
   """
-  alias Lexical.SourceFile.Position
+  alias Lexical.Document.Position
 
   defstruct start: nil, end: nil
 

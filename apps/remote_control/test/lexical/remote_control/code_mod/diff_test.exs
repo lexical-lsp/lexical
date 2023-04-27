@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.CodeMod.DiffTest do
+  alias Lexical.Document.Edit
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeMod.Diff
-  alias Lexical.SourceFile.Edit
-  alias Lexical.SourceFile.Position
-  alias Lexical.SourceFile.Range
 
   import Diff
 

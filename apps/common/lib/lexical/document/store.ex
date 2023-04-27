@@ -1,4 +1,4 @@
-defmodule Lexical.SourceFile.Store do
+defmodule Lexical.Document.Store do
   @moduledoc """
   A backing store for source file documents
 
@@ -6,13 +6,13 @@ defmodule Lexical.SourceFile.Store do
   immediately by querying the ETS table, while writes go through a GenServer process (which is the owner of the ETS table).
   """
   defmodule State do
-    alias Lexical.SourceFile
+    alias Lexical.Document
     require Logger
 
     defstruct temporary_open_refs: %{}
     @type t :: %__MODULE__{}
 
-    @table_name SourceFile.Store
+    @table_name Document.Store
 
     def new do
       :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
@@ -20,7 +20,7 @@ defmodule Lexical.SourceFile.Store do
       %__MODULE__{}
     end
 
-    @spec fetch(Lexical.uri()) :: {:ok, SourceFile.t()} | {:error, :not_open}
+    @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
     def fetch(uri) do
       case ets_fetch(uri, :any) do
         {:ok, _} = success -> success
@@ -31,9 +31,9 @@ defmodule Lexical.SourceFile.Store do
     @spec save(t, Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
       case ets_fetch(uri, :sources) do
-        {:ok, source_file} ->
-          source_file = SourceFile.mark_clean(source_file)
-          ets_put(uri, :sources, source_file)
+        {:ok, document} ->
+          document = Document.mark_clean(document)
+          ets_put(uri, :sources, document)
           {:ok, store}
 
         :error ->
@@ -48,8 +48,8 @@ defmodule Lexical.SourceFile.Store do
           {:error, :already_open}
 
         :error ->
-          source_file = SourceFile.new(uri, text, version)
-          ets_put(uri, :sources, source_file)
+          document = Document.new(uri, text, version)
+          ets_put(uri, :sources, document)
           {:ok, store}
       end
     end
@@ -65,14 +65,14 @@ defmodule Lexical.SourceFile.Store do
         nil ->
           {:error, :not_open}
 
-        _source_file ->
+        _document ->
           {:ok, store}
       end
     end
 
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, source_file} <- fetch(uri),
-           {:ok, updated_source} <- updater_fn.(source_file) do
+      with {:ok, document} <- fetch(uri),
+           {:ok, updated_source} <- updater_fn.(document) do
         ets_put(uri, :sources, updated_source)
 
         {:ok, updated_source, store}
@@ -89,13 +89,13 @@ defmodule Lexical.SourceFile.Store do
     end
 
     @spec open_temporarily(t(), Lexical.uri() | Path.t(), timeout()) ::
-            {:ok, SourceFile.t(), t()} | {:error, term()}
+            {:ok, Document.t(), t()} | {:error, term()}
     def open_temporarily(%__MODULE__{} = store, path_or_uri, timeout) do
-      uri = SourceFile.Path.ensure_uri(path_or_uri)
-      path = SourceFile.Path.ensure_path(path_or_uri)
+      uri = Document.Path.ensure_uri(path_or_uri)
+      path = Document.Path.ensure_path(path_or_uri)
 
       with {:ok, contents} <- File.read(path) do
-        source_file = SourceFile.new(uri, contents, 0)
+        document = Document.new(uri, contents, 0)
         ref = schedule_unload(uri, timeout)
 
         new_refs =
@@ -103,10 +103,10 @@ defmodule Lexical.SourceFile.Store do
           |> maybe_cancel_old_ref(uri)
           |> Map.put(uri, ref)
 
-        ets_put(uri, :temp, source_file)
+        ets_put(uri, :temp, document)
         new_store = %__MODULE__{store | temporary_open_refs: new_refs}
 
-        {:ok, source_file, new_store}
+        {:ok, document, new_store}
       end
     end
 
@@ -193,16 +193,16 @@ defmodule Lexical.SourceFile.Store do
     defp type_selector(type), do: type
   end
 
+  alias Lexical.Document
   alias Lexical.ProcessCache
-  alias Lexical.SourceFile
 
   @type t :: %State{}
 
-  @type updater :: (SourceFile.t() -> {:ok, SourceFile.t()} | {:error, any()})
+  @type updater :: (Document.t() -> {:ok, Document.t()} | {:error, any()})
 
   use GenServer
 
-  @spec fetch(Lexical.uri()) :: {:ok, SourceFile.t()} | {:error, :not_open}
+  @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
   def fetch(uri) do
     State.fetch(uri)
   end
@@ -223,10 +223,10 @@ defmodule Lexical.SourceFile.Store do
   end
 
   @spec open_temporary(Lexical.uri() | Path.t()) ::
-          {:ok, SourceFile.t()} | {:error, term()}
+          {:ok, Document.t()} | {:error, term()}
 
   @spec open_temporary(Lexical.uri() | Path.t(), timeout()) ::
-          {:ok, SourceFile.t()} | {:error, term()}
+          {:ok, Document.t()} | {:error, term()}
   def open_temporary(uri, timeout \\ 5000) do
     ProcessCache.trans(uri, 50, fn ->
       GenServer.call(__MODULE__, {:open_temporarily, uri, timeout})
@@ -238,7 +238,7 @@ defmodule Lexical.SourceFile.Store do
     GenServer.call(__MODULE__, {:close, uri})
   end
 
-  @spec get_and_update(Lexical.uri(), updater()) :: {:ok, SourceFile.t()} | {:error, any()}
+  @spec get_and_update(Lexical.uri(), updater()) :: {:ok, Document.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
     GenServer.call(__MODULE__, {:get_and_update, uri, update_fn})
   end
@@ -279,12 +279,12 @@ defmodule Lexical.SourceFile.Store do
   def handle_call({:open_temporarily, uri, timeout_ms}, _, %State{} = state) do
     {reply, new_state} =
       with {:error, :not_open} <- State.fetch(uri),
-           {:ok, source_file, new_state} <- State.open_temporarily(state, uri, timeout_ms) do
-        {{:ok, source_file}, new_state}
+           {:ok, document, new_state} <- State.open_temporarily(state, uri, timeout_ms) do
+        {{:ok, document}, new_state}
       else
-        {:ok, source_file} ->
+        {:ok, document} ->
           new_state = State.extend_timeout(state, uri, timeout_ms)
-          {{:ok, source_file}, new_state}
+          {{:ok, document}, new_state}
 
         error ->
           {error, state}

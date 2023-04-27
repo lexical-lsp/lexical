@@ -1,13 +1,11 @@
 defmodule Lexical.Test.Server.CompletionCase do
-  use ExUnit.CaseTemplate
-
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
   alias Lexical.RemoteControl
   alias Lexical.Server
   alias Lexical.Server.CodeIntelligence.Completion
   alias Lexical.Server.Project.Dispatch
-  alias Lexical.SourceFile
   alias Lexical.Test.CodeSigil
 
   use ExUnit.CaseTemplate
@@ -47,10 +45,10 @@ defmodule Lexical.Test.Server.CompletionCase do
 
     document =
       file_path
-      |> SourceFile.Path.ensure_uri()
-      |> SourceFile.new(text, 0)
+      |> Document.Path.ensure_uri()
+      |> Document.new(text, 0)
 
-    position = %SourceFile.Position{line: line, character: column}
+    position = %Document.Position{line: line, character: column}
 
     context =
       if is_binary(trigger_character) do

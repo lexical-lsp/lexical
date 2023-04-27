@@ -6,7 +6,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
   require Logger
 
   def handle(%GoToDefinition{} = request, env) do
-    case Definition.definition(env.project, request.source_file, request.position) do
+    case Definition.definition(env.project, request.document, request.position) do
       {:ok, native_location} ->
         {:reply, Responses.GoToDefinition.new(request.id, native_location)}
 

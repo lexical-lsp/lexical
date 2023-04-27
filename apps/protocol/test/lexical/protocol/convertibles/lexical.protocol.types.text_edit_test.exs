@@ -16,14 +16,14 @@ defmodule Lexical.Protocol.Convertibles.TextEditTest do
           range: range(:lsp, valid_position(:native), valid_position(:lsp))
         )
 
-      assert %SourceFile.Position{} = text_edit.range.start
+      assert %Document.Position{} = text_edit.range.start
       assert {:ok, converted} = to_lsp(text_edit, uri)
       assert %Types.Position{} = converted.range.start
     end
 
     test "converts native ranges in text edits", %{uri: uri} do
       text_edit = Types.TextEdit.new(new_text: "hi", range: valid_range(:native))
-      assert %SourceFile.Range{} = text_edit.range
+      assert %Document.Range{} = text_edit.range
 
       assert {:ok, converted} = to_lsp(text_edit, uri)
       assert %Types.Range{} = converted.range
@@ -40,10 +40,10 @@ defmodule Lexical.Protocol.Convertibles.TextEditTest do
 
       {:ok, converted} = to_native(text_edit, uri)
 
-      assert %SourceFile.Edit{} = converted
-      assert %SourceFile.Range{} = converted.range
-      assert %SourceFile.Position{} = converted.range.start
-      assert %SourceFile.Position{} = converted.range.end
+      assert %Document.Edit{} = converted
+      assert %Document.Range{} = converted.range
+      assert %Document.Position{} = converted.range.start
+      assert %Document.Position{} = converted.range.end
       assert "Hi" == converted.text
     end
 

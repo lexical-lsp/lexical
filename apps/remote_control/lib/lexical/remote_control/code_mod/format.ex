@@ -1,38 +1,38 @@
 defmodule Lexical.RemoteControl.CodeMod.Format do
+  alias Lexical.Document
+  alias Lexical.Document.Changes
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Diff
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.DocumentEdits
 
   require Logger
 
   @type formatter_function :: (String.t() -> any) | nil
 
-  @spec edits(Project.t(), SourceFile.t()) :: {:ok, DocumentEdits.t()} | {:error, any}
-  def edits(%Project{} = project, %SourceFile{} = document) do
-    with :ok <- Build.compile_source_file(project, document),
+  @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
+  def edits(%Project{} = project, %Document{} = document) do
+    with :ok <- Build.compile_document(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
-      {:ok, DocumentEdits.new(document, edits)}
+      {:ok, Changes.new(document, edits)}
     end
   end
 
-  defp do_format(%Project{} = project, %SourceFile{} = document) do
+  defp do_format(%Project{} = project, %Document{} = document) do
     project_path = Project.project_path(project)
 
     with :ok <- check_current_directory(document, project_path),
          {:ok, formatter} <- formatter_for(project, document.path) do
       document
-      |> SourceFile.to_string()
+      |> Document.to_string()
       |> formatter.()
     end
   end
 
   @spec formatter_for(Project.t(), String.t()) :: {:ok, formatter_function}
   defp formatter_for(%Project{} = project, uri_or_path) do
-    path = SourceFile.Path.ensure_path(uri_or_path)
+    path = Document.Path.ensure_path(uri_or_path)
     formatter_function = formatter_for_file(project, path)
     wrapped_formatter_function = wrap_with_try_catch(formatter_function)
     {:ok, wrapped_formatter_function}
@@ -49,7 +49,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     end
   end
 
-  defp check_current_directory(%SourceFile{} = document, project_path) do
+  defp check_current_directory(%Document{} = document, project_path) do
     if subdirectory?(document.path, parent: project_path) do
       :ok
     else

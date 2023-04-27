@@ -1,29 +1,29 @@
 defmodule Lexical.Server.CodeIntelligence.Definition do
+  alias Lexical.Document
+  alias Lexical.Document.Location
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.Location
-  alias Lexical.SourceFile.Position
-  alias Lexical.SourceFile.Range
   alias Lexical.Text
 
   require Logger
 
-  def definition(%Project{} = project, %SourceFile{} = source_file, %Position{} = position) do
-    maybe_location = RemoteControl.Api.definition(project, source_file, position)
-    parse_location(maybe_location, source_file)
+  def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
+    maybe_location = RemoteControl.Api.definition(project, document, position)
+    parse_location(maybe_location, document)
   end
 
-  defp parse_location(%ElixirSense.Location{} = location, source_file) do
+  defp parse_location(%ElixirSense.Location{} = location, document) do
     %{file: file, line: line, column: column} = location
-    file_path = file || source_file.path
-    uri = SourceFile.Path.ensure_uri(file_path)
+    file_path = file || document.path
+    uri = Document.Path.ensure_uri(file_path)
 
-    with {:ok, source_file} <- SourceFile.Store.open_temporary(uri),
-         {:ok, text} <- SourceFile.fetch_text_at(source_file, line) do
+    with {:ok, document} <- Document.Store.open_temporary(uri),
+         {:ok, text} <- Document.fetch_text_at(document, line) do
       range = to_precise_range(text, line, column)
 
-      {:ok, Location.new(range, source_file)}
+      {:ok, Location.new(range, document)}
     else
       _ ->
         {:error, "Could not open source file or fetch line text: #{inspect(file_path)}"}

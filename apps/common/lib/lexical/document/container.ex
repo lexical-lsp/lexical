@@ -1,17 +1,17 @@
-defprotocol Lexical.DocumentContainer do
-  alias Lexical.SourceFile
+defprotocol Lexical.Document.Container do
+  alias Lexical.Document
   @fallback_to_any true
-  @type maybe_context_document :: SourceFile.t() | nil
+  @type maybe_context_document :: Document.t() | nil
 
   @spec context_document(t, maybe_context_document()) :: maybe_context_document()
   def context_document(t, parent_context_document)
 end
 
-defimpl Lexical.DocumentContainer, for: Any do
-  alias Lexical.SourceFile
+defimpl Lexical.Document.Container, for: Any do
+  alias Lexical.Document
 
-  def context_document(%{source_file: %SourceFile{} = source_file}, _) do
-    source_file
+  def context_document(%{document: %Document{} = document}, _) do
+    document
   end
 
   def context_document(%{lsp: lsp_request}, parent_context_document) do
@@ -19,8 +19,8 @@ defimpl Lexical.DocumentContainer, for: Any do
   end
 
   def context_document(%{text_document: %{uri: uri}}, parent_context_document) do
-    case SourceFile.Store.fetch(uri) do
-      {:ok, source_file} -> source_file
+    case Document.Store.fetch(uri) do
+      {:ok, document} -> document
       _ -> parent_context_document
     end
   end

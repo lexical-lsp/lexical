@@ -22,7 +22,7 @@ defmodule Lexical.Protocol.Types.Convertibles.PositionTest do
     test "converts lsp ranges", %{uri: uri} do
       proto_range = valid_position(:lsp)
 
-      assert {:ok, %SourceFile.Position{}} = to_native(proto_range, uri)
+      assert {:ok, %Document.Position{}} = to_native(proto_range, uri)
     end
 
     test "leaves native ranges alone", %{uri: uri} do

@@ -1,4 +1,4 @@
-defmodule Lexical.SourceFile.Position do
+defmodule Lexical.Document.Position do
   defstruct [:line, :character]
 
   @type t :: %__MODULE__{

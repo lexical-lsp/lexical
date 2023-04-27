@@ -1,15 +1,15 @@
-defmodule Lexical.SourceFile.DocumentTest do
-  alias Lexical.SourceFile.Document
-  alias Lexical.SourceFile.Line
+defmodule Lexical.Document.LinesTest do
+  alias Lexical.Document.Line
+  alias Lexical.Document.Lines
 
   use ExUnit.Case, async: true
   use ExUnitProperties
 
   import Line
 
-  describe "Document Enumerable" do
+  describe "Lines Enumerable" do
     test "it should be able to be fetched by line number" do
-      d = Document.new("hello\nthere\npeople")
+      d = Lines.new("hello\nthere\npeople")
       assert line(text: "hello") = Enum.at(d, 0)
       assert line(text: "there") = Enum.at(d, 1)
       assert line(text: "people") = Enum.at(d, 2)
@@ -30,7 +30,7 @@ defmodule Lexical.SourceFile.DocumentTest do
       document =
         elements
         |> IO.iodata_to_binary()
-        |> Document.new()
+        |> Lines.new()
 
       for line(text: text, ending: ending) <- document do
         assert String.valid?(text)
@@ -50,8 +50,8 @@ defmodule Lexical.SourceFile.DocumentTest do
               )
           ) do
       original_binary = List.to_string(elements)
-      document = Document.new(original_binary)
-      assert Document.to_string(document) == original_binary
+      document = Lines.new(original_binary)
+      assert Lines.to_string(document) == original_binary
     end
   end
 
@@ -60,8 +60,8 @@ defmodule Lexical.SourceFile.DocumentTest do
       line_count = Enum.count(elements)
       original_binary = elements |> Enum.join("\n") |> IO.iodata_to_binary()
 
-      document = Document.new(original_binary)
-      assert Document.size(document) == line_count
+      document = Lines.new(original_binary)
+      assert Lines.size(document) == line_count
     end
   end
 end

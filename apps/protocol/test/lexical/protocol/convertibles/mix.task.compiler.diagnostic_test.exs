@@ -6,7 +6,7 @@ defmodule Lexical.Convertibles.Mix.Task.Compiler.DiagnosticTest do
 
   defp compiler_diagnostic(file_path, position) do
     %Compiler.Diagnostic{
-      file: SourceFile.Path.ensure_path(file_path),
+      file: Document.Path.ensure_path(file_path),
       position: position,
       severity: :error,
       message: "Broken!",
