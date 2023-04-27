@@ -18,10 +18,10 @@ defmodule Lexical.RemoteControl.Build.State do
 
   def on_tick(%__MODULE__{} = state) do
     compiled_uris =
-      for {uri, {source_file, edit_time}} <- state.uri_to_source_and_edit_time,
+      for {uri, {document, edit_time}} <- state.uri_to_source_and_edit_time,
           should_compile?(edit_time) do
-        Logger.debug("On-type compiling #{source_file.path}")
-        compile_file(state.project, source_file)
+        Logger.debug("On-type compiling #{document.path}")
+        compile_file(state.project, document)
         uri
       end
 
@@ -92,19 +92,19 @@ defmodule Lexical.RemoteControl.Build.State do
     end)
   end
 
-  def on_file_compile(%__MODULE__{} = state, %Document{} = source_file) do
+  def on_file_compile(%__MODULE__{} = state, %Document{} = document) do
     %__MODULE__{
       state
       | uri_to_source_and_edit_time:
-          Map.put(state.uri_to_source_and_edit_time, source_file.uri, {source_file, now()})
+          Map.put(state.uri_to_source_and_edit_time, document.uri, {document, now()})
     }
   end
 
-  def compile_file(%Project{} = project, %Document{} = source_file) do
+  def compile_file(%Project{} = project, %Document{} = document) do
     Build.with_lock(fn ->
-      RemoteControl.notify_listener(file_compile_requested(uri: source_file.uri))
+      RemoteControl.notify_listener(file_compile_requested(uri: document.uri))
 
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile(source_file) end)
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile(document) end)
 
       elapsed_ms = to_ms(elapsed_us)
 
@@ -115,7 +115,7 @@ defmodule Lexical.RemoteControl.Build.State do
               file_compiled(
                 status: :success,
                 project: project,
-                uri: source_file.uri,
+                uri: document.uri,
                 elapsed_ms: elapsed_ms
               )
 
@@ -126,7 +126,7 @@ defmodule Lexical.RemoteControl.Build.State do
               file_compiled(
                 status: :error,
                 project: project,
-                uri: source_file.uri,
+                uri: document.uri,
                 elapsed_ms: elapsed_ms
               )
 
@@ -136,7 +136,7 @@ defmodule Lexical.RemoteControl.Build.State do
       diagnostics =
         file_diagnostics(
           project: project,
-          uri: source_file.uri,
+          uri: document.uri,
           diagnostics: List.wrap(diagnostics)
         )
 
@@ -224,11 +224,11 @@ defmodule Lexical.RemoteControl.Build.State do
     Mix.Task.run("clean")
   end
 
-  defp safe_compile(%Document{} = source_file) do
-    old_modules = ModuleMappings.modules_in_file(source_file.path)
+  defp safe_compile(%Document{} = document) do
+    old_modules = ModuleMappings.modules_in_file(document.path)
 
     compile = fn ->
-      case RemoteControl.Mix.in_project(fn _ -> compile_code(source_file) end) do
+      case RemoteControl.Mix.in_project(fn _ -> compile_code(document) end) do
         {:ok, result} -> result
         other -> other
       end
@@ -238,14 +238,14 @@ defmodule Lexical.RemoteControl.Build.State do
       {captured_messages, {:error, {meta, message_info, token}}} ->
         errors = Build.Error.parse_error_to_diagnostics(meta, message_info, token)
         diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        diagnostics = ensure_file(errors ++ diagnostics, source_file)
+        diagnostics = ensure_file(errors ++ diagnostics, document)
 
         {:error, diagnostics}
 
       {captured_messages, {:exception, exception, stack, quoted_ast}} ->
         error = Build.Error.error_to_diagnostic(exception, stack, quoted_ast)
         diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        diagnostics = ensure_file([error | diagnostics], source_file)
+        diagnostics = ensure_file([error | diagnostics], document)
 
         {:error, diagnostics}
 
@@ -259,26 +259,26 @@ defmodule Lexical.RemoteControl.Build.State do
         diagnostics =
           captured_warnings
           |> Build.Error.message_to_diagnostic()
-          |> ensure_file(source_file)
+          |> ensure_file(document)
 
         {:ok, diagnostics}
     end
   end
 
-  defp compile_code(%Document{} = source_file) do
-    source_string = Document.to_string(source_file)
-    parser_options = [file: source_file.path] ++ parser_options()
+  defp compile_code(%Document{} = document) do
+    source_string = Document.to_string(document)
+    parser_options = [file: document.path] ++ parser_options()
 
     with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
       try do
         # If we're compiling a mix.exs file, the after compile callback from
         # `use Mix.Project` will blow up if we add the same project to the project stack
         # twice. Preemptively popping it prevents that error from occurring.
-        if Path.basename(source_file.path) == "mix.exs" do
+        if Path.basename(document.path) == "mix.exs" do
           Mix.ProjectStack.pop()
         end
 
-        Code.compile_quoted(quoted_ast, source_file.path)
+        Code.compile_quoted(quoted_ast, document.path)
       rescue
         exception ->
           {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
@@ -310,8 +310,8 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  defp ensure_file(diagnostics, %Document{} = source_file) do
-    Enum.map(diagnostics, &Map.put(&1, :file, source_file.path))
+  defp ensure_file(diagnostics, %Document{} = document) do
+    Enum.map(diagnostics, &Map.put(&1, :file, document.path))
   end
 
   defp to_ms(microseconds) do

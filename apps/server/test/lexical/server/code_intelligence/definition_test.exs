@@ -320,13 +320,13 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     with {:ok, subject_module_file} <- subject_module(project, strip_cursor(subject_module)),
          {:ok, %Location{} = location} <-
            Definition.definition(project, subject_module_file, position),
-         {:ok, definition_line} <- definition_line(location.source_file, location.range) do
-      {:ok, location.source_file.uri, definition_line}
+         {:ok, definition_line} <- definition_line(location.document, location.range) do
+      {:ok, location.document.uri, definition_line}
     end
   end
 
-  defp definition_line(source_file, range) do
-    with {:ok, line_text} <- Document.fetch_text_at(source_file, range.start.line) do
+  defp definition_line(document, range) do
+    with {:ok, line_text} <- Document.fetch_text_at(document, range.start.line) do
       graphemes = String.graphemes(line_text)
       {text_before_range, range_text, text_after_range} = extract_range(graphemes, range)
       marked_text = mark_range(range_text)

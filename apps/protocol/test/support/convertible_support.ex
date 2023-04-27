@@ -26,8 +26,8 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
       end
 
       def with_an_open_file(_) do
-        {:ok, uri, source_file} = open_file(open_file_contents())
-        {:ok, source_file: source_file, uri: uri}
+        {:ok, uri, document} = open_file(open_file_contents())
+        {:ok, document: document, uri: uri}
       end
 
       def valid_range(:native) do

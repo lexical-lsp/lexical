@@ -48,8 +48,8 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
   defp open_file(project, contents) do
     uri = file_uri(project, "lib/project.ex")
     :ok = Document.Store.open(uri, contents, 0)
-    {:ok, source_file} = Document.Store.fetch(uri)
-    source_file
+    {:ok, document} = Document.Store.fetch(uri)
+    document
   end
 
   describe "clearing diagnostics on compile" do
@@ -58,15 +58,15 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     test "it clears a file's diagnostics if it's not dirty", %{
       project: project
     } do
-      source_file = open_file(project, "defmodule Foo")
+      document = open_file(project, "defmodule Foo")
 
       file_diagnostics_message =
-        file_diagnostics(diagnostics: [diagnostic(source_file.uri)], uri: source_file.uri)
+        file_diagnostics(diagnostics: [diagnostic(document.uri)], uri: document.uri)
 
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}
 
-      Document.Store.get_and_update(source_file.uri, &Document.mark_clean/1)
+      Document.Store.get_and_update(document.uri, &Document.mark_clean/1)
 
       Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
@@ -76,22 +76,22 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     test "it clears a file's diagnostics if it has been closed", %{
       project: project
     } do
-      source_file = open_file(project, "defmodule Foo")
+      document = open_file(project, "defmodule Foo")
 
       file_diagnostics_message =
-        file_diagnostics(diagnostics: [diagnostic(source_file.uri)], uri: source_file.uri)
+        file_diagnostics(diagnostics: [diagnostic(document.uri)], uri: document.uri)
 
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}, 500
 
-      Document.Store.close(source_file.uri)
+      Document.Store.close(document.uri)
       Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
 
     test "it adds a diagnostic to the last line if they're out of bounds", %{project: project} do
-      source_file = open_file(project, "defmodule Dummy do\n  .\nend\n")
+      document = open_file(project, "defmodule Dummy do\n  .\nend\n")
       # only 3 lines in the file, but elixir compiler gives us a line number of 4
       diagnostic =
         diagnostic("lib/project.ex",
@@ -99,7 +99,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
           message: "missing terminator: end (for \"do\" starting at line 1)"
         )
 
-      file_diagnostics_message = file_diagnostics(diagnostics: [diagnostic], uri: source_file.uri)
+      file_diagnostics_message = file_diagnostics(diagnostics: [diagnostic], uri: document.uri)
 
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500

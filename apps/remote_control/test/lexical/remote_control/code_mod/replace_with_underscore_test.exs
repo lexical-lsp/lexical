@@ -6,9 +6,9 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
 
   def apply_code_mod(original_text, _ast, options) do
     variable = Keyword.get(options, :variable, :unused)
-    source_file = Document.new("file:///file.ex", original_text, 0)
+    document = Document.new("file:///file.ex", original_text, 0)
 
-    with {:ok, document_edits} <- ReplaceWithUnderscore.edits(source_file, 1, variable) do
+    with {:ok, document_edits} <- ReplaceWithUnderscore.edits(document, 1, variable) do
       {:ok, document_edits.edits}
     end
   end

@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       |> Keyword.get(:file_path, file_path(project))
       |> maybe_uri()
 
-    with {:ok, document_edits} <- Format.edits(project, source_file(file_uri, text)) do
+    with {:ok, document_edits} <- Format.edits(project, document(file_uri, text)) do
       {:ok, document_edits.edits}
     end
   end
@@ -27,7 +27,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   def maybe_uri(path_or_uri) when is_binary(path_or_uri), do: Document.Path.to_uri(path_or_uri)
   def maybe_uri(not_binary), do: not_binary
 
-  def source_file(file_uri, text) do
+  def document(file_uri, text) do
     Document.new(file_uri, text, 1)
   end
 
@@ -64,7 +64,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   end
 
   def with_patched_build(_) do
-    patch(Build, :compile_source_file, fn _, _ -> :ok end)
+    patch(Build, :compile_document, fn _, _ -> :ok end)
     :ok
   end
 

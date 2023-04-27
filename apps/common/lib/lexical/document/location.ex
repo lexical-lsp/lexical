@@ -2,20 +2,20 @@ defmodule Lexical.Document.Location do
   alias Lexical.Document
   alias Lexical.Document.Range
 
-  defstruct [:range, :source_file, :uri]
+  defstruct [:range, :document, :uri]
 
   use Lexical.StructAccess
 
-  def new(%Range{} = range, %Document{} = source_file) do
-    %__MODULE__{range: range, source_file: source_file}
+  def new(%Range{} = range, %Document{} = document) do
+    %__MODULE__{range: range, document: document}
   end
 
   def new(%Range{} = range, uri) when is_binary(uri) do
     %__MODULE__{range: range, uri: uri}
   end
 
-  def uri(%__MODULE__{source_file: %Document{} = source_file}) do
-    source_file.uri
+  def uri(%__MODULE__{document: %Document{} = document}) do
+    document.uri
   end
 
   def uri(%__MODULE__{} = location) do

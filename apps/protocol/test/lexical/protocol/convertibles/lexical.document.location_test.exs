@@ -14,11 +14,11 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
       assert %Types.Position{} = converted.range.end
     end
 
-    test "converts a location with a source file", %{uri: uri, source_file: source_file} do
-      location = Document.Location.new(valid_range(:native), source_file)
+    test "converts a location with a source file", %{uri: uri, document: document} do
+      location = Document.Location.new(valid_range(:native), document)
 
       assert {:ok, converted} = to_lsp(location, uri)
-      assert converted.uri == source_file.uri
+      assert converted.uri == document.uri
       assert %Types.Range{} = converted.range
       assert %Types.Position{} = converted.range.start
       assert %Types.Position{} = converted.range.end

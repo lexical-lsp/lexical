@@ -7,7 +7,7 @@ defmodule Lexical.Protocol.ResponseTest do
   use ExUnit.Case
 
   def with_open_document(_) do
-    source_file = """
+    document = """
     defmodule MyTest do
       def add(a, b), do: a + b
     end
@@ -15,7 +15,7 @@ defmodule Lexical.Protocol.ResponseTest do
 
     file_uri = "file:///file.ex"
     {:ok, _} = start_supervised(Document.Store)
-    Document.Store.open(file_uri, source_file, 1)
+    Document.Store.open(file_uri, document, 1)
 
     {:ok, uri: file_uri}
   end

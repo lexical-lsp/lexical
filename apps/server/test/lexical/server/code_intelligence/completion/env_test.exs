@@ -13,11 +13,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     project = project()
     {line, column} = cursor_position(text)
     stripped_text = context_before_cursor(text)
-    source_file = Document.new("file://foo.ex", stripped_text, 0)
+    document = Document.new("file://foo.ex", stripped_text, 0)
 
     position = Document.Position.new(line, column)
 
-    {:ok, env} = new(project, source_file, position)
+    {:ok, env} = new(project, document, position)
 
     env
   end

@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     :ok
   end
 
-  def source_file(%State{} = state, filename \\ "file.ex", source_code) do
+  def document(%State{} = state, filename \\ "file.ex", source_code) do
     sequence = System.unique_integer([:monotonic, :positive])
 
     uri =
@@ -50,7 +50,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     {:ok, state: state}
   end
 
-  def with_a_valid_source_file(%{state: state}) do
+  def with_a_valid_document(%{state: state}) do
     source = ~S[
       defmodule Testing.ValidSource do
         def add(a, b) do
@@ -59,26 +59,26 @@ defmodule Lexical.RemoteControl.Build.StateTest do
       end
     ]
 
-    source_file = source_file(state, source)
-    {:ok, source_file: source_file}
+    document = document(state, source)
+    {:ok, document: document}
   end
 
   describe "throttled compilation" do
-    setup [:with_metadata_project, :with_a_valid_source_file]
+    setup [:with_metadata_project, :with_a_valid_document]
 
-    test "it doesn't compile immediately", %{state: state, source_file: source_file} do
+    test "it doesn't compile immediately", %{state: state, document: document} do
       new_state =
         state
-        |> State.on_file_compile(source_file)
+        |> State.on_file_compile(document)
         |> State.on_tick()
 
-      assert State.compile_scheduled?(new_state, source_file.uri)
+      assert State.compile_scheduled?(new_state, document.uri)
     end
 
-    test "it compiles after a timeout", %{state: state, source_file: source_file} do
-      state = State.on_file_compile(state, source_file)
+    test "it compiles after a timeout", %{state: state, document: document} do
+      state = State.on_file_compile(state, document)
 
-      refute_eventually State.compile_scheduled?(State.on_tick(state), source_file.uri), 500
+      refute_eventually State.compile_scheduled?(State.on_tick(state), document.uri), 500
     end
   end
 end

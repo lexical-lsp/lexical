@@ -10,8 +10,8 @@ end
 defimpl Lexical.Document.Container, for: Any do
   alias Lexical.Document
 
-  def context_document(%{source_file: %Document{} = source_file}, _) do
-    source_file
+  def context_document(%{document: %Document{} = document}, _) do
+    document
   end
 
   def context_document(%{lsp: lsp_request}, parent_context_document) do
@@ -20,7 +20,7 @@ defimpl Lexical.Document.Container, for: Any do
 
   def context_document(%{text_document: %{uri: uri}}, parent_context_document) do
     case Document.Store.fetch(uri) do
-      {:ok, source_file} -> source_file
+      {:ok, document} -> document
       _ -> parent_context_document
     end
   end

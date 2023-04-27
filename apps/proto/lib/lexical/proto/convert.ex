@@ -25,7 +25,7 @@ defmodule Lexical.Proto.Convert do
     with {:ok, native_request} <- Convertible.to_native(request_or_notification, context_document) do
       updated_request =
         case Map.merge(original_request, Map.from_struct(native_request)) do
-          %_{source_file: _} = updated -> Map.put(updated, :source_file, context_document)
+          %_{document: _} = updated -> Map.put(updated, :document, context_document)
           updated -> updated
         end
 

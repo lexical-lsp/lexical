@@ -31,9 +31,9 @@ defmodule Lexical.Document.Store do
     @spec save(t, Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
       case ets_fetch(uri, :sources) do
-        {:ok, source_file} ->
-          source_file = Document.mark_clean(source_file)
-          ets_put(uri, :sources, source_file)
+        {:ok, document} ->
+          document = Document.mark_clean(document)
+          ets_put(uri, :sources, document)
           {:ok, store}
 
         :error ->
@@ -48,8 +48,8 @@ defmodule Lexical.Document.Store do
           {:error, :already_open}
 
         :error ->
-          source_file = Document.new(uri, text, version)
-          ets_put(uri, :sources, source_file)
+          document = Document.new(uri, text, version)
+          ets_put(uri, :sources, document)
           {:ok, store}
       end
     end
@@ -65,14 +65,14 @@ defmodule Lexical.Document.Store do
         nil ->
           {:error, :not_open}
 
-        _source_file ->
+        _document ->
           {:ok, store}
       end
     end
 
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, source_file} <- fetch(uri),
-           {:ok, updated_source} <- updater_fn.(source_file) do
+      with {:ok, document} <- fetch(uri),
+           {:ok, updated_source} <- updater_fn.(document) do
         ets_put(uri, :sources, updated_source)
 
         {:ok, updated_source, store}
@@ -95,7 +95,7 @@ defmodule Lexical.Document.Store do
       path = Document.Path.ensure_path(path_or_uri)
 
       with {:ok, contents} <- File.read(path) do
-        source_file = Document.new(uri, contents, 0)
+        document = Document.new(uri, contents, 0)
         ref = schedule_unload(uri, timeout)
 
         new_refs =
@@ -103,10 +103,10 @@ defmodule Lexical.Document.Store do
           |> maybe_cancel_old_ref(uri)
           |> Map.put(uri, ref)
 
-        ets_put(uri, :temp, source_file)
+        ets_put(uri, :temp, document)
         new_store = %__MODULE__{store | temporary_open_refs: new_refs}
 
-        {:ok, source_file, new_store}
+        {:ok, document, new_store}
       end
     end
 
@@ -279,12 +279,12 @@ defmodule Lexical.Document.Store do
   def handle_call({:open_temporarily, uri, timeout_ms}, _, %State{} = state) do
     {reply, new_state} =
       with {:error, :not_open} <- State.fetch(uri),
-           {:ok, source_file, new_state} <- State.open_temporarily(state, uri, timeout_ms) do
-        {{:ok, source_file}, new_state}
+           {:ok, document, new_state} <- State.open_temporarily(state, uri, timeout_ms) do
+        {{:ok, document}, new_state}
       else
-        {:ok, source_file} ->
+        {:ok, document} ->
           new_state = State.extend_timeout(state, uri, timeout_ms)
-          {{:ok, source_file}, new_state}
+          {{:ok, document}, new_state}
 
         error ->
           {error, state}

@@ -8,7 +8,7 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
   require Logger
 
   def handle(%Requests.Formatting{} = request, %Env{} = env) do
-    document = request.source_file
+    document = request.document
 
     case RemoteControl.Api.format(env.project, document) do
       {:ok, %Changes{} = document_edits} ->

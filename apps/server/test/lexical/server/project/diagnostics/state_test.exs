@@ -21,25 +21,25 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     Path.join([Project.root_path(project()), "lib", "project.ex"])
   end
 
-  def source_file(contents, file_path \\ existing_file_path()) do
+  def document(contents, file_path \\ existing_file_path()) do
     file_uri = Document.Path.to_uri(file_path)
 
     with :ok <- Document.Store.open(file_uri, contents, 0),
-         {:ok, source_file} <- Document.Store.fetch(file_uri) do
-      source_file
+         {:ok, document} <- Document.Store.fetch(file_uri) do
+      document
     end
   end
 
-  def change_with(source_file, content) do
+  def change_with(document, content) do
     changes = [Edit.new(content)]
 
-    {:ok, source_file} =
+    {:ok, document} =
       Document.Store.get_and_update(
-        source_file.uri,
+        document.uri,
         &Document.apply_content_changes(&1, 2, changes)
       )
 
-    source_file
+    document
   end
 
   def compiler_diagnostic(opts \\ []) do
@@ -75,13 +75,13 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
   describe "clear_all_flushed/1" do
     test "it should not clear a dirty open file", %{state: state} do
-      source_file = source_file("hello") |> change_with("hello2")
+      document = document("hello") |> change_with("hello2")
 
       state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
-      old_diagnostics = State.get(state, source_file.uri)
+      old_diagnostics = State.get(state, document.uri)
       state = State.clear_all_flushed(state)
-      assert ^old_diagnostics = State.get(state, source_file.uri)
+      assert ^old_diagnostics = State.get(state, document.uri)
     end
 
     test "it should not clear a script file even if it is clean", %{
@@ -89,35 +89,35 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       project: project
     } do
       script_file_path = Path.join([Project.root_path(project), "test", "*.exs"])
-      source_file = source_file("assert f() == 0", script_file_path)
+      document = document("assert f() == 0", script_file_path)
 
       state = State.add(state, compiler_diagnostic(message: "undefined function f/0"))
 
-      old_diagnostics = State.get(state, source_file.uri)
+      old_diagnostics = State.get(state, document.uri)
       state = State.clear_all_flushed(state)
-      assert ^old_diagnostics = State.get(state, source_file.uri)
+      assert ^old_diagnostics = State.get(state, document.uri)
     end
 
     test "it should clear a file's diagnostics if it is just open", %{state: state} do
-      source_file = source_file("hello")
+      document = document("hello")
 
       state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
       state = State.clear_all_flushed(state)
-      diagnostics = State.get(state, source_file.uri)
+      diagnostics = State.get(state, document.uri)
 
       assert diagnostics == []
     end
 
     test "it should clear a file's diagnostics if it is closed", %{state: state} do
-      source_file = source_file("hello")
+      document = document("hello")
 
       state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
-      :ok = Document.Store.close(source_file.uri)
+      :ok = Document.Store.close(document.uri)
 
       state = State.clear_all_flushed(state)
-      diagnostics = State.get(state, source_file.uri)
+      diagnostics = State.get(state, document.uri)
 
       assert diagnostics == []
     end

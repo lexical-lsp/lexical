@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
   def edits(%Project{} = project, %Document{} = document) do
-    with :ok <- Build.compile_source_file(project, document),
+    with :ok <- Build.compile_document(project, document),
          {:ok, unformatted, formatted} <- do_format(project, document) do
       edits = Diff.diff(unformatted, formatted)
       {:ok, Changes.new(document, edits)}

@@ -29,8 +29,8 @@ defmodule Lexical.Server.Project.Diagnostics do
       cleared =
         Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
           with true <- Document.Store.open?(uri),
-               {:ok, %Document{} = source_file} <- Document.Store.fetch(uri),
-               true <- keep_diagnostics?(source_file) do
+               {:ok, %Document{} = document} <- Document.Store.fetch(uri),
+               true <- keep_diagnostics?(document) do
             {uri, diagnostics}
           else
             _ ->
@@ -79,14 +79,14 @@ defmodule Lexical.Server.Project.Diagnostics do
       state
     end
 
-    defp keep_diagnostics?(%Document{} = source_file) do
+    defp keep_diagnostics?(%Document{} = document) do
       # Keep any diagnostics for script files, which aren't compiled)
       # or dirty files, which have been modified after compilation has occurrend
-      source_file.dirty? or script_file?(source_file)
+      document.dirty? or script_file?(document)
     end
 
-    defp script_file?(source_file) do
-      Path.extname(source_file.path) == ".exs"
+    defp script_file?(document) do
+      Path.extname(document.path) == ".exs"
     end
   end
 

@@ -10,46 +10,46 @@ defmodule Lexical.RemoteControl.Api do
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build
-  defdelegate compile_source_file(project, source_file), to: Build
+  defdelegate compile_document(project, document), to: Build
 
   def list_modules(%Project{} = project) do
     RemoteControl.call(project, :code, :all_available)
   end
 
-  def format(%Project{} = project, %Document{} = source_file) do
-    RemoteControl.call(project, CodeMod.Format, :edits, [project, source_file])
+  def format(%Project{} = project, %Document{} = document) do
+    RemoteControl.call(project, CodeMod.Format, :edits, [project, document])
   end
 
   def replace_with_underscore(
         %Project{} = project,
-        %Document{} = source_file,
+        %Document{} = document,
         line_number,
         variable_name
       ) do
     RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :edits, [
-      source_file,
+      document,
       line_number,
       variable_name
     ])
   end
 
-  def complete(%Project{} = project, %Document{} = source_file, %Position{} = position) do
-    source_string = Document.to_string(source_file)
-    complete(project, source_string, position)
+  def complete(%Project{} = project, %Document{} = document, %Position{} = position) do
+    document_string = Document.to_string(document)
+    complete(project, document_string, position)
   end
 
-  def complete(%Project{} = project, source_string, %Position{} = position) do
+  def complete(%Project{} = project, document_string, %Position{} = position) do
     Logger.info("Completion for #{inspect(position)}")
 
     RemoteControl.call(project, RemoteControl.Completion, :elixir_sense_expand, [
-      source_string,
+      document_string,
       position
     ])
   end
 
-  def definition(%Project{} = project, %Document{} = source_file, %Position{} = position) do
+  def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
     RemoteControl.call(project, CodeIntelligence.Definition, :definition, [
-      source_file,
+      document,
       position
     ])
   end

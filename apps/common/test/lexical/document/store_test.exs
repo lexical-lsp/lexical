@@ -108,8 +108,8 @@ defmodule Lexical.Document.StoreTest do
         )
 
       assert {:ok, doc} =
-               Document.Store.get_and_update(uri(), fn source_file ->
-                 Document.apply_content_changes(source_file, 2, [
+               Document.Store.get_and_update(uri(), fn document ->
+                 Document.apply_content_changes(document, 2, [
                    event
                  ])
                end)

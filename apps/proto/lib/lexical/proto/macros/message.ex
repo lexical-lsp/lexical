@@ -44,7 +44,7 @@ defmodule Lexical.Proto.Macros.Message do
     message_types
     |> Enum.reduce(message_types, fn
       {:text_document, _}, types ->
-        Keyword.put(types, :source_file, quote(do: Document))
+        Keyword.put(types, :document, quote(do: Document))
 
       {:position, _}, types ->
         Keyword.put(types, :position, quote(do: Document.Position))

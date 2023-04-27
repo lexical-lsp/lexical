@@ -10,7 +10,7 @@
 #   require Logger
 
 #   def handle(%FindReferences{} = request, _) do
-#     source_file = request.source_file
+#     document = request.document
 #     pos = request.position
 #     trace = Tracer.get_trace()
 #     # elixir_ls uses 1 based columns, so add 1 here.
@@ -18,11 +18,11 @@
 
 #     Build.with_lock(fn ->
 #       references =
-#         source_file
+#         document
 #         |> Document.to_string()
 #         |> ElixirSense.references(pos.line, character, trace)
 #         |> Enum.reduce([], fn reference, acc ->
-#           case build_reference(reference, source_file) do
+#           case build_reference(reference, document) do
 #             {:ok, location} ->
 #               [location | acc]
 
@@ -38,20 +38,20 @@
 #     end)
 #   end
 
-#   defp build_reference(%{range: _, uri: _} = elixir_sense_reference, current_source_file) do
-#     with {:ok, source_file} <- get_source_file(elixir_sense_reference, current_source_file),
-#          {:ok, elixir_range} <- Ranged.Native.from_lsp(elixir_sense_reference, source_file),
-#          {:ok, ls_range} <- Ranged.Lsp.from_native(elixir_range, source_file) do
-#       uri = Document.Path.ensure_uri(source_file.uri)
+#   defp build_reference(%{range: _, uri: _} = elixir_sense_reference, current_document) do
+#     with {:ok, document} <- get_document(elixir_sense_reference, current_document),
+#          {:ok, elixir_range} <- Ranged.Native.from_lsp(elixir_sense_reference, document),
+#          {:ok, ls_range} <- Ranged.Lsp.from_native(elixir_range, document) do
+#       uri = Document.Path.ensure_uri(document.uri)
 #       {:ok, Location.new(uri: uri, range: ls_range)}
 #     end
 #   end
 
-#   defp get_source_file(%{uri: nil}, current_source_file) do
-#     {:ok, current_source_file}
+#   defp get_document(%{uri: nil}, current_document) do
+#     {:ok, current_document}
 #   end
 
-#   defp get_source_file(%{uri: uri}, _) do
+#   defp get_document(%{uri: uri}, _) do
 #     Document.Store.open_temporary(uri)
 #   end
 # end

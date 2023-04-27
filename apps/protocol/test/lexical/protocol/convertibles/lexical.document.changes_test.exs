@@ -4,9 +4,9 @@ defmodule Lexical.Convertible.Document.ChangesTest do
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
-    test "converts to a list of text edits", %{uri: uri, source_file: source_file} do
+    test "converts to a list of text edits", %{uri: uri, document: document} do
       edit = Document.Edit.new("hi", valid_range(:native))
-      document_edits = Document.Changes.new(source_file, [edit])
+      document_edits = Document.Changes.new(document, [edit])
 
       assert {:ok, [%Types.TextEdit{}]} = to_lsp(document_edits, uri)
     end
@@ -15,7 +15,7 @@ defmodule Lexical.Convertible.Document.ChangesTest do
       # make a file with a couple lines and place a range on something other than the first line,
       # the default file only has one line so if this succeeds, we will ensure that we're using
       # the document edits' file.
-      {:ok, _uri, source_file} = open_file("file:///other.ex", "several\nlines\nhere")
+      {:ok, _uri, document} = open_file("file:///other.ex", "several\nlines\nhere")
 
       edit =
         Document.Edit.new(
@@ -23,7 +23,7 @@ defmodule Lexical.Convertible.Document.ChangesTest do
           range(:native, position(:native, 2, 1), position(:native, 2, 3))
         )
 
-      document_edits = Document.Changes.new(source_file, [edit])
+      document_edits = Document.Changes.new(document, [edit])
 
       assert {:ok, [%Types.TextEdit{}]} = to_lsp(document_edits, uri)
     end

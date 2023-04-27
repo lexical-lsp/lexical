@@ -7,15 +7,15 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
 
   @spec edits(Document.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, Changes.t()} | :error
-  def edits(%Document{} = source_file, line_number, variable_name) do
+  def edits(%Document{} = document, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
-    with {:ok, line_text} <- Document.fetch_text_at(source_file, line_number),
+    with {:ok, line_text} <- Document.fetch_text_at(document, line_number),
          {:ok, line_ast} <- Ast.from(line_text),
          {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
       edits = to_edits(line_number, line_text, transformed_text)
 
-      {:ok, Changes.new(source_file, edits)}
+      {:ok, Changes.new(document, edits)}
     end
   end
 

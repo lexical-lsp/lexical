@@ -3,8 +3,8 @@ defmodule Lexical.RemoteControl.CodeMod.Ast do
 
   @type t :: any()
 
-  def from(%Document{} = source_file) do
-    source_file
+  def from(%Document{} = document) do
+    document
     |> Document.to_string()
     |> from()
   end

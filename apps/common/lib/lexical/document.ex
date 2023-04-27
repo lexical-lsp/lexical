@@ -2,7 +2,7 @@ defmodule Lexical.Document do
   @moduledoc """
   A representation of a LSP text document
 
-  A source file is the fundamental data structure of the Lexical language server.
+  A document is the fundamental data structure of the Lexical language server.
   All language server documents are represented and backed by source files, which
   provide functionality for fetching lines, applying changes, and tracking versions.
   """
@@ -17,16 +17,16 @@ defmodule Lexical.Document do
 
   alias __MODULE__.Path, as: DocumentPath
 
-  @derive {Inspect, only: [:path, :version, :dirty?, :document]}
+  @derive {Inspect, only: [:path, :version, :dirty?, :lines]}
 
-  defstruct [:uri, :path, :version, dirty?: false, document: nil]
+  defstruct [:uri, :path, :version, dirty?: false, lines: nil]
 
   @type version :: non_neg_integer()
   @type t :: %__MODULE__{
           uri: String.t(),
           version: version(),
           dirty?: boolean,
-          document: Lines.t(),
+          lines: Lines.t(),
           path: String.t()
         }
 
@@ -35,7 +35,7 @@ defmodule Lexical.Document do
   # public
 
   @doc """
-  Creates a new source fie from a uri or path, the source code
+  Creates a new document from a uri or path, the source code
   as a binary and the vewrsion.
   """
   @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
@@ -45,7 +45,7 @@ defmodule Lexical.Document do
     %__MODULE__{
       uri: uri,
       version: version,
-      document: Lines.new(text),
+      lines: Lines.new(text),
       path: DocumentPath.from_uri(uri)
     }
   end
@@ -54,25 +54,25 @@ defmodule Lexical.Document do
   Returns the number of lines in the document
   """
   @spec size(t) :: non_neg_integer()
-  def size(%__MODULE__{} = source) do
-    Lines.size(source.document)
+  def size(%__MODULE__{} = document) do
+    Lines.size(document.lines)
   end
 
   @doc """
-  Marks the source file as dirty
+  Marks the document file as dirty
   """
   @spec mark_dirty(t) :: t
-  def mark_dirty(%__MODULE__{} = source) do
-    %__MODULE__{source | dirty?: true}
+  def mark_dirty(%__MODULE__{} = document) do
+    %__MODULE__{document | dirty?: true}
   end
 
   @doc """
-  Marks the source file as clean
+  Marks the document file as clean
   """
 
   @spec mark_clean(t) :: t
-  def mark_clean(%__MODULE__{} = source) do
-    %__MODULE__{source | dirty?: false}
+  def mark_clean(%__MODULE__{} = document) do
+    %__MODULE__{document | dirty?: false}
   end
 
   @doc """
@@ -81,16 +81,16 @@ defmodule Lexical.Document do
   Returns {:ok, text} if the line exists, and :error if it doesn't
   """
   @spec fetch_text_at(t, version()) :: {:ok, String.t()} | :error
-  def fetch_text_at(%__MODULE__{} = source, line_number) do
-    case fetch_line_at(source, line_number) do
+  def fetch_text_at(%__MODULE__{} = document, line_number) do
+    case fetch_line_at(document, line_number) do
       {:ok, line(text: text)} -> {:ok, text}
       _ -> :error
     end
   end
 
   @spec fetch_line_at(t, version()) :: {:ok, Line.t()} | :error
-  def fetch_line_at(%__MODULE__{} = source, line_number) do
-    case Lines.fetch_line(source.document, line_number) do
+  def fetch_line_at(%__MODULE__{} = document, line_number) do
+    case Lines.fetch_line(document.lines, line_number) do
       {:ok, line} -> {:ok, line}
       _ -> :error
     end
@@ -103,20 +103,20 @@ defmodule Lexical.Document do
     {:error, :invalid_version}
   end
 
-  def apply_content_changes(%__MODULE__{} = source, _, []) do
-    {:ok, source}
+  def apply_content_changes(%__MODULE__{} = document, _, []) do
+    {:ok, document}
   end
 
-  def apply_content_changes(%__MODULE__{} = source, version, changes) when is_list(changes) do
+  def apply_content_changes(%__MODULE__{} = document, version, changes) when is_list(changes) do
     result =
-      Enum.reduce_while(changes, source, fn
-        nil, source ->
-          {:cont, source}
+      Enum.reduce_while(changes, document, fn
+        nil, document ->
+          {:cont, document}
 
-        change, source ->
-          case apply_change(source, change) do
-            {:ok, new_source} ->
-              {:cont, new_source}
+        change, document ->
+          case apply_change(document, change) do
+            {:ok, new_document} ->
+              {:cont, new_document}
 
             error ->
               {:halt, error}
@@ -124,30 +124,30 @@ defmodule Lexical.Document do
       end)
 
     case result do
-      %__MODULE__{} = source ->
-        source = mark_dirty(%__MODULE__{source | version: version})
+      %__MODULE__{} = document ->
+        document = mark_dirty(%__MODULE__{document | version: version})
 
-        {:ok, source}
+        {:ok, document}
 
       error ->
         error
     end
   end
 
-  def to_string(%__MODULE__{} = source) do
-    source
+  def to_string(%__MODULE__{} = document) do
+    document
     |> to_iodata()
     |> IO.iodata_to_binary()
   end
 
   # private
 
-  defp line_count(%__MODULE__{} = source) do
-    Lines.size(source.document)
+  defp line_count(%__MODULE__{} = document) do
+    Lines.size(document.lines)
   end
 
   defp apply_change(
-         %__MODULE__{} = source,
+         %__MODULE__{} = document,
          %Range{start: %Position{} = start_pos, end: %Position{} = end_pos},
          new_text
        ) do
@@ -155,14 +155,14 @@ defmodule Lexical.Document do
 
     new_lines_iodata =
       cond do
-        start_line > line_count(source) ->
-          append_to_end(source, new_text)
+        start_line > line_count(document) ->
+          append_to_end(document, new_text)
 
         start_line < 1 ->
-          prepend_to_beginning(source, new_text)
+          prepend_to_beginning(document, new_text)
 
         true ->
-          apply_valid_edits(source, new_text, start_pos, end_pos)
+          apply_valid_edits(document, new_text, start_pos, end_pos)
       end
 
     new_document =
@@ -170,30 +170,30 @@ defmodule Lexical.Document do
       |> IO.iodata_to_binary()
       |> Lines.new()
 
-    {:ok, %__MODULE__{source | document: new_document}}
+    {:ok, %__MODULE__{document | lines: new_document}}
   end
 
-  defp apply_change(%__MODULE__{} = source, %Edit{range: nil} = edit) do
-    {:ok, %__MODULE__{source | document: Lines.new(edit.text)}}
+  defp apply_change(%__MODULE__{} = document, %Edit{range: nil} = edit) do
+    {:ok, %__MODULE__{document | lines: Lines.new(edit.text)}}
   end
 
-  defp apply_change(%__MODULE__{} = source, %Edit{range: %Range{}} = edit) do
+  defp apply_change(%__MODULE__{} = document, %Edit{range: %Range{}} = edit) do
     if valid_edit?(edit) do
-      apply_change(source, edit.range, edit.text)
+      apply_change(document, edit.range, edit.text)
     else
       {:error, {:invalid_range, edit.range}}
     end
   end
 
-  defp apply_change(%__MODULE__{} = source, %{range: range, text: text}) do
-    with {:ok, native_range} <- Convertible.to_native(range, source) do
-      apply_change(source, Edit.new(text, native_range))
+  defp apply_change(%__MODULE__{} = document, %{range: range, text: text}) do
+    with {:ok, native_range} <- Convertible.to_native(range, document) do
+      apply_change(document, Edit.new(text, native_range))
     end
   end
 
-  defp apply_change(%__MODULE__{} = source, convertable_edit) do
-    with {:ok, edit} <- Convertible.to_native(convertable_edit, source) do
-      apply_change(source, edit)
+  defp apply_change(%__MODULE__{} = document, convertable_edit) do
+    with {:ok, edit} <- Convertible.to_native(convertable_edit, document) do
+      apply_change(document, edit)
     end
   end
 
@@ -204,16 +204,16 @@ defmodule Lexical.Document do
       end_pos.character >= 0
   end
 
-  defp append_to_end(%__MODULE__{} = source, edit_text) do
-    [to_iodata(source), edit_text]
+  defp append_to_end(%__MODULE__{} = document, edit_text) do
+    [to_iodata(document), edit_text]
   end
 
-  defp prepend_to_beginning(%__MODULE__{} = source, edit_text) do
-    [edit_text, to_iodata(source)]
+  defp prepend_to_beginning(%__MODULE__{} = document, edit_text) do
+    [edit_text, to_iodata(document)]
   end
 
-  defp apply_valid_edits(%__MODULE__{} = source, edit_text, start_pos, end_pos) do
-    Lines.reduce(source.document, [], fn line() = line, acc ->
+  defp apply_valid_edits(%__MODULE__{} = document, edit_text, start_pos, end_pos) do
+    Lines.reduce(document.lines, [], fn line() = line, acc ->
       case edit_action(line, edit_text, start_pos, end_pos) do
         :drop ->
           acc
@@ -268,11 +268,7 @@ defmodule Lexical.Document do
     binary_part(text, start_index, length)
   end
 
-  defp to_iodata(%__MODULE__{} = source) do
-    Lines.to_iodata(source.document)
+  defp to_iodata(%__MODULE__{} = document) do
+    Lines.to_iodata(document.lines)
   end
-
-  # defp increment_version(%__MODULE__{} = source) do
-  #   %__MODULE__{source | version: source.version + 1}
-  # end
 end

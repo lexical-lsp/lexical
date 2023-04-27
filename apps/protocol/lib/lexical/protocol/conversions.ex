@@ -19,9 +19,9 @@ defmodule Lexical.Protocol.Conversions do
 
   import Line
 
-  def to_elixir(%LSRange{} = ls_range, %Document{} = source) do
-    with {:ok, start_pos} <- to_elixir(ls_range.start, source.document),
-         {:ok, end_pos} <- to_elixir(ls_range.end, source.document) do
+  def to_elixir(%LSRange{} = ls_range, %Document{} = doc) do
+    with {:ok, start_pos} <- to_elixir(ls_range.start, doc.lines),
+         {:ok, end_pos} <- to_elixir(ls_range.end, doc.lines) do
       {:ok, %ElixirRange{start: start_pos, end: end_pos}}
     else
       _ ->
@@ -29,8 +29,8 @@ defmodule Lexical.Protocol.Conversions do
     end
   end
 
-  def to_elixir(%LSPosition{} = position, %Document{} = source_file) do
-    to_elixir(position, source_file.document)
+  def to_elixir(%LSPosition{} = position, %Document{} = document) do
+    to_elixir(position, document.lines)
   end
 
   def to_elixir(%ElixirPosition{} = position, _) do
@@ -41,34 +41,34 @@ defmodule Lexical.Protocol.Conversions do
     {:error, {:invalid_position, position}}
   end
 
-  def to_elixir(%LSPosition{} = position, %Lines{} = document) do
-    document_size = Lines.size(document)
+  def to_elixir(%LSPosition{} = position, %Lines{} = lines) do
+    line_count = Lines.size(lines)
     # we need to handle out of bounds line numbers, because it's possible to build a document
     # by starting with an empty document and appending to the beginning of it, with a start range of
     # {0, 0} and and end range of {1, 0} (replace the first line)
-    document_line_number = Math.clamp(position.line, 0, document_size) + document.starting_index
+    document_line_number = Math.clamp(position.line, 0, line_count) + lines.starting_index
     ls_character = position.character
 
     cond do
-      document_line_number == document_size and ls_character == 0 ->
+      document_line_number == line_count and ls_character == 0 ->
         # allow a line one more than the document size, as long as the character is 0.
         # that means we're operating on the last line of the document
         {:ok, ElixirPosition.new(document_line_number, 1)}
 
-      position.line >= document_size ->
+      position.line >= line_count ->
         # they've specified something outside of the document clamp it down so they can append at the
         # end
         {:ok, ElixirPosition.new(document_line_number, 1)}
 
       true ->
-        with {:ok, line} <- Lines.fetch_line(document, document_line_number),
+        with {:ok, line} <- Lines.fetch_line(lines, document_line_number),
              {:ok, elixir_character} <- extract_elixir_character(position, line) do
           {:ok, ElixirPosition.new(document_line_number, elixir_character)}
         end
     end
   end
 
-  def to_elixir(%{range: %{start: start_pos, end: end_pos}}, _source_file) do
+  def to_elixir(%{range: %{start: start_pos, end: end_pos}}, _document) do
     # this is actually an elixir sense range... note that it's a bare map with
     # column keys rather than character keys.
     %{line: start_line, column: start_col} = start_pos
@@ -83,9 +83,9 @@ defmodule Lexical.Protocol.Conversions do
     {:ok, range}
   end
 
-  def to_lsp(%ElixirRange{} = ex_range, %Document{} = source) do
-    with {:ok, start_pos} <- to_lsp(ex_range.start, source.document),
-         {:ok, end_pos} <- to_lsp(ex_range.end, source.document) do
+  def to_lsp(%ElixirRange{} = ex_range, %Document{} = doc) do
+    with {:ok, start_pos} <- to_lsp(ex_range.start, doc.lines),
+         {:ok, end_pos} <- to_lsp(ex_range.end, doc.lines) do
       {:ok, %LSRange{start: start_pos, end: end_pos}}
     end
   end
@@ -94,39 +94,39 @@ defmodule Lexical.Protocol.Conversions do
     {:ok, ls_range}
   end
 
-  def to_lsp(%LSRange{} = ls_range, %Document{} = source_file) do
-    with {:ok, start_pos} <- to_lsp(ls_range.start, source_file),
-         {:ok, end_pos} <- to_lsp(ls_range.end, source_file) do
+  def to_lsp(%LSRange{} = ls_range, %Document{} = document) do
+    with {:ok, start_pos} <- to_lsp(ls_range.start, document),
+         {:ok, end_pos} <- to_lsp(ls_range.end, document) do
       {:ok, LSRange.new(start: start_pos, end: end_pos)}
     end
   end
 
-  def to_lsp(%ElixirPosition{} = position, %Document{} = source_file) do
-    to_lsp(position, source_file.document)
+  def to_lsp(%ElixirPosition{} = position, %Document{} = document) do
+    to_lsp(position, document.lines)
   end
 
-  def to_lsp(%ElixirPosition{} = position, %Lines{} = document) do
+  def to_lsp(%ElixirPosition{} = position, %Lines{} = lines) do
     elixir_character = position.character
-    document_size = Lines.size(document)
-    document_line_number = Math.clamp(position.line, 1, document_size)
+    line_count = Lines.size(lines)
+    document_line_number = Math.clamp(position.line, 1, line_count)
 
     cond do
-      position.line == document_size + 1 and elixir_character == 1 ->
+      position.line == line_count + 1 and elixir_character == 1 ->
         # allow a line one more than the document size, as long as the character is 0.
         # that means we're operating on the last line of the document
 
         {:ok, LSPosition.new(line: document_line_number, character: 0)}
 
-      position.line > document_size ->
-        {:ok, LSPosition.new(line: document_size, character: 0)}
+      position.line > line_count ->
+        {:ok, LSPosition.new(line: line_count, character: 0)}
 
       true ->
-        with {:ok, line} <- Lines.fetch_line(document, position.line),
+        with {:ok, line} <- Lines.fetch_line(lines, position.line),
              {:ok, lsp_character} <- extract_lsp_character(position, line) do
           ls_pos =
             LSPosition.new(
               character: lsp_character,
-              line: position.line - document.starting_index
+              line: position.line - lines.starting_index
             )
 
           {:ok, ls_pos}

@@ -2,8 +2,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.Document
   alias Lexical.Document.Position
 
-  def definition(%Document{} = source_file, %Position{} = position) do
-    source_file
+  def definition(%Document{} = document, %Position{} = position) do
+    document
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
   end
