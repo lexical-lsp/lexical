@@ -1,7 +1,7 @@
 # This file's contents are auto-generated. Do not edit.
-defmodule Lexical.Protocol.Types.Location do
+defmodule Lexical.Protocol.Types.ShowMessage.Params do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
   use Proto
-  deftype range: Types.Range, uri: string()
+  deftype message: string(), type: Types.Message.Type
 end

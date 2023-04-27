@@ -1,6 +1,6 @@
 # This file's contents are auto-generated. Do not edit.
-defmodule Lexical.Protocol.Types.Diagnostic.Tag do
+defmodule Lexical.Protocol.Types.Cancel.Params do
   alias Lexical.Proto
   use Proto
-  defenum unnecessary: 1, deprecated: 2
+  deftype id: one_of([integer(), string()])
 end

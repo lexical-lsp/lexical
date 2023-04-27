@@ -16,9 +16,14 @@ defmodule Mix.Tasks.Lsp.DataModel.Property do
     %__MODULE__{property | type: Type.resolve(property.type, data_model)}
   end
 
-  def to_protocol(%__MODULE__{} = property, %DataModel{} = data_model, %Mappings{} = mappings) do
+  def to_protocol(
+        %__MODULE__{} = property,
+        %DataModel{} = data_model,
+        %Mappings{} = mappings,
+        container_module
+      ) do
     underscored = property.name |> Macro.underscore() |> String.to_atom()
-    type_call = Type.to_protocol(property.type, data_model, mappings)
+    type_call = Type.to_protocol(property.type, data_model, mappings, container_module)
 
     if property.required? do
       quote(do: {unquote(underscored), unquote(type_call)})

@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.ServerCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule Workspace do
     use Proto
@@ -136,6 +135,6 @@ defmodule Lexical.Protocol.Types.ServerCapabilities do
                 Types.TypeHierarchy.Registration.Options
               ])
             ),
-          workspace: optional(Parent.Workspace),
+          workspace: optional(Lexical.Protocol.Types.ServerCapabilities.Workspace),
           workspace_symbol_provider: optional(one_of([boolean(), Types.Workspace.Symbol.Options]))
 end

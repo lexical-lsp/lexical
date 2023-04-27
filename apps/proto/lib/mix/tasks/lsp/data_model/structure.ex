@@ -19,14 +19,15 @@ defmodule Mix.Tasks.Lsp.DataModel.Structure do
     }
   end
 
-  def to_protocol(%__MODULE__{} = structure, _, %Mappings{} = _mappings) do
+  def to_protocol(%__MODULE__{} = structure, _, %Mappings{} = _mappings, _container_module) do
     quote(do: unquote(structure.module))
   end
 
   def build_definition(
         %__MODULE__{} = structure,
         %Mappings{} = mappings,
-        %DataModel{} = data_model
+        %DataModel{} = data_model,
+        _container_module
       ) do
     with {:ok, destination_module} <- Mappings.fetch_destination_module(mappings, structure.name) do
       NumberingContext.new()
@@ -36,12 +37,15 @@ defmodule Mix.Tasks.Lsp.DataModel.Structure do
       object_literals = Type.collect_object_literals(structure, data_model)
 
       literal_definitions =
-        Enum.map(object_literals, &ObjectLiteral.build_definition(&1, data_model, mappings))
+        Enum.map(
+          object_literals,
+          &ObjectLiteral.build_definition(&1, data_model, mappings, destination_module)
+        )
 
       protocol_properties =
         structure.properties
         |> Enum.sort_by(& &1.name)
-        |> Enum.map(&Property.to_protocol(&1, data_model, mappings))
+        |> Enum.map(&Property.to_protocol(&1, data_model, mappings, destination_module))
 
       type_module_alias =
         case references(structure) do

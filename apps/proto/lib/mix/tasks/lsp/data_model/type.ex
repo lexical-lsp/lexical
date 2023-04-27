@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       base
     end
 
-    def to_protocol(%__MODULE__{} = type, %DataModel{} = _data_model, _) do
+    def to_protocol(%__MODULE__{} = type, %DataModel{}, _mappings, _container_module) do
       case type.type_name do
         "string" -> quote(do: string())
         "integer" -> quote(do: integer())
@@ -49,9 +49,12 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
     def to_protocol(
           %__MODULE__{} = type,
           %DataModel{} = data_model,
-          %Mappings{} = mappings
+          %Mappings{} = mappings,
+          container_module
         ) do
-      element_protocol = Type.to_protocol(type.element_type, data_model, mappings)
+      element_protocol =
+        Type.to_protocol(type.element_type, data_model, mappings, container_module)
+
       quote(do: list_of(unquote(element_protocol)))
     end
 
@@ -78,9 +81,12 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
     def to_protocol(
           %__MODULE__{} = type,
           %DataModel{} = data_model,
-          %Mappings{} = mappings
+          %Mappings{} = mappings,
+          container_module
         ) do
-      types = Enum.map(type.item_types, &Type.to_protocol(&1, data_model, mappings))
+      types =
+        Enum.map(type.item_types, &Type.to_protocol(&1, data_model, mappings, container_module))
+
       quote(do: tuple_of(unquote(types)))
     end
 
@@ -116,7 +122,8 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
     def to_protocol(
           %__MODULE__{} = type,
           %DataModel{} = data_model,
-          %Mappings{} = mappings
+          %Mappings{} = mappings,
+          _container_module
         ) do
       case DataModel.fetch!(data_model, type.reference) do
         %Enumeration{} = enumeration ->
@@ -160,8 +167,15 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       or_type
     end
 
-    def to_protocol(%__MODULE__{} = type, %DataModel{} = data_model, %Mappings{} = mappings) do
-      subtypes = Enum.map(type.subtypes, &Type.to_protocol(&1, data_model, mappings))
+    def to_protocol(
+          %__MODULE__{} = type,
+          %DataModel{} = data_model,
+          %Mappings{} = mappings,
+          container_module
+        ) do
+      subtypes =
+        Enum.map(type.subtypes, &Type.to_protocol(&1, data_model, mappings, container_module))
+
       quote(do: one_of(unquote(subtypes)))
     end
 
@@ -181,7 +195,7 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       base_name = Macro.camelize(parent_name)
 
       module =
-        case NumberingContext.get_and_increment(base_name) do
+        case NumberingContext.get_and_increment({parent_name, base_name}) do
           0 -> Module.concat([base_name])
           sequence -> Module.concat(["#{base_name}#{sequence}"])
         end
@@ -211,15 +225,16 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       literal
     end
 
-    def to_protocol(%__MODULE__{} = literal, %DataModel{}, %Mappings{}) do
+    def to_protocol(%__MODULE__{} = literal, %DataModel{}, %Mappings{}, container_module) do
       module = module(literal)
-      quote(do: unquote(module))
+      quote(do: unquote(Module.concat(container_module, module)))
     end
 
     def build_definition(
           %__MODULE__{} = literal,
           %DataModel{} = data_model,
-          %Mappings{} = mappings
+          %Mappings{} = mappings,
+          container_module
         ) do
       resolved = resolve(literal, data_model)
       module = module(literal)
@@ -227,7 +242,7 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       properties =
         resolved.properties
         |> Enum.sort_by(& &1.name)
-        |> Enum.map(&Property.to_protocol(&1, data_model, mappings))
+        |> Enum.map(&Property.to_protocol(&1, data_model, mappings, container_module))
 
       quote do
         defmodule unquote(module) do
@@ -258,7 +273,7 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       literal
     end
 
-    def to_protocol(%__MODULE__{} = type, %DataModel{}, %Mappings{}) do
+    def to_protocol(%__MODULE__{} = type, %DataModel{}, %Mappings{}, _container_module) do
       quote(do: literal(unquote(type.value)))
     end
 
@@ -288,9 +303,10 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
     def to_protocol(
           %__MODULE__{} = type,
           %DataModel{} = data_model,
-          %Mappings{} = mappings
+          %Mappings{} = mappings,
+          container_module
         ) do
-      value_type = Type.to_protocol(type.value_type, data_model, mappings)
+      value_type = Type.to_protocol(type.value_type, data_model, mappings, container_module)
       quote(do: map_of(unquote(value_type)))
     end
 
@@ -341,24 +357,25 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
     type_module.resolve(type, data_model)
   end
 
-  def to_protocol(%{reference: "LSPAny"}, _, _) do
+  def to_protocol(%{reference: "LSPAny"}, _, _, _) do
     quote(do: any())
   end
 
-  def to_protocol(%{reference: "LSPObject"}, _, _) do
+  def to_protocol(%{reference: "LSPObject"}, _, _, _) do
     quote(do: map_of(any()))
   end
 
-  def to_protocol(%{reference: "LSPArray"}, _, _) do
+  def to_protocol(%{reference: "LSPArray"}, _, _, _) do
     quote(do: list_of(any()))
   end
 
   def to_protocol(
         %type_module{} = type,
         %DataModel{} = data_model,
-        %Mappings{} = mappings
+        %Mappings{} = mappings,
+        container_module
       ) do
-    type_module.to_protocol(type, data_model, mappings)
+    type_module.to_protocol(type, data_model, mappings, container_module)
   end
 
   def collect_object_literals(type, %DataModel{} = data_model) do
