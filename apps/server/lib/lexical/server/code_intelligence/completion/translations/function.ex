@@ -45,7 +45,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
         [:deprecated]
       end
 
-    builder.snippet(insert_text,
+    builder.snippet(env, insert_text,
       detail: detail,
       kind: :function,
       label: label,

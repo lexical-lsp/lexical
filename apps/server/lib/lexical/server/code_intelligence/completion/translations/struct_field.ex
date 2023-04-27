@@ -9,8 +9,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
     :skip
   end
 
-  def translate(%Result.StructField{} = struct_field, builder, %Env{}) do
-    builder.plain_text(struct_field.name,
+  def translate(%Result.StructField{} = struct_field, builder, %Env{} = env) do
+    builder.plain_text(env, struct_field.name,
       detail: struct_field.name,
       label: struct_field.name,
       kind: :field
