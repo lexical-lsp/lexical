@@ -46,7 +46,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   def start_link(project) do
     state = State.new(project)
-    GenServer.start_link(__MODULE__, state, [])
+    GenServer.start_link(__MODULE__, state, name: name(project))
   end
 
   def init(state) do
@@ -61,13 +61,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
       "#{elixir_executable} --name #{name} #{path_append_arguments(state)} --cookie #{state.cookie} --no-halt " <>
         "-e 'Node.connect(#{inspect(Node.self())})' "
 
-    case System.shell(cmd) do
-      {_, 0} ->
-        {:noreply, state}
+    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
+    spawn(fn -> System.shell(cmd) end)
+    {:noreply, state}
+  end
 
-      _ ->
-        {:stop, :boot_failed, state}
-    end
+  def handle_info(msg, state) do
+    "Received unexpected message #{inspect(msg)}" |> dbg()
+    {:noreply, state}
   end
 
   def path_append_arguments(%State{} = state) do
@@ -76,5 +77,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
       "-pa #{expanded_path} "
     end)
     |> IO.iodata_to_binary()
+  end
+
+  def name(%Project{} = project) do
+    :"#{Project.name(project)}::node_process"
   end
 end
