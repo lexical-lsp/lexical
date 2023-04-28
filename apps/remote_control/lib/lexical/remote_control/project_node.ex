@@ -4,7 +4,16 @@ defmodule Lexical.RemoteControl.ProjectNode do
   require Logger
 
   defmodule State do
-    defstruct [:project, :node, :paths, :cookie, :stopped_by, :stop_timeout]
+    defstruct [
+      :project,
+      :node,
+      :paths,
+      :cookie,
+      :stopped_by,
+      :stop_timeout,
+      :started_by,
+      :status
+    ]
 
     def new(%Project{} = project) do
       cookie = Node.get_cookie()
@@ -21,6 +30,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | stopped_by: from, stop_timeout: stop_timeout}
     end
 
+    def set_started_by(state, from) do
+      %{state | started_by: from}
+    end
+
+    def set_started(state) do
+      %{state | status: :started}
+    end
+
     def node_name(%Project{} = project) do
       :"#{Project.name(project)}@127.0.0.1"
     end
@@ -29,14 +46,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
-  def wait_until_started(project, project_listener, boot_timeout \\ 5_000) do
-    :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
-    {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
-
+  def wait_until_started(project, project_listener) do
     node = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
-    with :ok <- wait_until(boot_timeout),
+    {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
+
+    with :ok <- start(project),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -47,18 +63,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
   end
 
-  defp wait_until(timeout) do
-    receive do
-      {:nodeup, _, _} ->
-        :ok
-    after
-      timeout ->
-        Logger.warn("The project node did not start after #{timeout / 1000} seconds")
-        {:error, :boot_timeout}
-    end
+  @start_timeout 5_000
+
+  def start(project) do
+    project |> name() |> GenServer.call(:start, @start_timeout + 500)
   end
 
   @stop_timeout 1_000
+
   def stop(project, stop_timeout \\ @stop_timeout) do
     project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 500)
   end
@@ -78,11 +90,11 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl GenServer
   def init(state) do
-    {:ok, state, {:continue, :start_remote_control}}
+    {:ok, state}
   end
 
   @impl true
-  def handle_continue(:start_remote_control, state) do
+  def handle_call(:start, from, state) do
     {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
 
     cmd =
@@ -90,7 +102,10 @@ defmodule Lexical.RemoteControl.ProjectNode do
         "-e 'Node.connect(#{inspect(Node.self())})' "
 
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
+    Process.send_after(self(), :maybe_start_timeout, @start_timeout)
     spawn(fn -> System.shell(cmd) end)
+
+    state = State.set_started_by(state, from)
     {:noreply, state}
   end
 
@@ -99,6 +114,23 @@ defmodule Lexical.RemoteControl.ProjectNode do
     state = State.set_stopped_by(state, from, stop_timeout)
     :rpc.call(state.node, System, :stop, [])
     {:noreply, state, stop_timeout}
+  end
+
+  @impl true
+  def handle_info({:nodeup, _node, _}, state) do
+    GenServer.reply(state.started_by, :ok)
+    {:noreply, State.set_started(state)}
+  end
+
+  @impl true
+  def handle_info(:maybe_start_timeout, %{status: status} = state) when status != :started do
+    GenServer.reply(state.started_by, {:error, :start_timeout})
+    {:stop, :shutdown, state}
+  end
+
+  @impl true
+  def handle_info(:maybe_start_timeout, state) do
+    {:noreply, state}
   end
 
   @impl true
@@ -116,7 +148,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_info(msg, state) do
-    "Received unexpected message #{inspect(msg)}"
+    Logger.warn("Received unexpected message #{inspect(msg)}")
     {:noreply, state}
   end
 
