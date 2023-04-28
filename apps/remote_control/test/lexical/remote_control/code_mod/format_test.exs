@@ -1,11 +1,11 @@
 # credo:disable-for-this-file Credo.Check.Readability.RedundantBlankLines
 defmodule Lexical.RemoteControl.CodeMod.FormatTest do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Format
-  alias Lexical.SourceFile
 
   use Lexical.Test.CodeMod.Case
   use Patch
@@ -19,16 +19,16 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       |> Keyword.get(:file_path, file_path(project))
       |> maybe_uri()
 
-    with {:ok, document_edits} <- Format.edits(project, source_file(file_uri, text)) do
+    with {:ok, document_edits} <- Format.edits(project, document(file_uri, text)) do
       {:ok, document_edits.edits}
     end
   end
 
-  def maybe_uri(path_or_uri) when is_binary(path_or_uri), do: SourceFile.Path.to_uri(path_or_uri)
+  def maybe_uri(path_or_uri) when is_binary(path_or_uri), do: Document.Path.to_uri(path_or_uri)
   def maybe_uri(not_binary), do: not_binary
 
-  def source_file(file_uri, text) do
-    SourceFile.new(file_uri, text, 1)
+  def document(file_uri, text) do
+    Document.new(file_uri, text, 1)
   end
 
   def file_path(project) do
@@ -65,7 +65,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   end
 
   def with_patched_build(_) do
-    patch(Build, :compile_source_file, fn _, _ -> :ok end)
+    patch(Build, :compile_document, fn _, _ -> :ok end)
     :ok
   end
 

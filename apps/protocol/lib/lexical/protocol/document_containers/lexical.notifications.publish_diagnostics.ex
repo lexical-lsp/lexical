@@ -1,11 +1,11 @@
-defimpl Lexical.DocumentContainer, for: Lexical.Protocol.Notifications.PublishDiagnostics do
+defimpl Lexical.Document.Container, for: Lexical.Protocol.Notifications.PublishDiagnostics do
+  alias Lexical.Document
   alias Lexical.Protocol.Notifications.PublishDiagnostics
-  alias Lexical.SourceFile
   require Logger
 
   def context_document(%PublishDiagnostics{uri: uri} = publish, context_document)
       when is_binary(uri) do
-    case SourceFile.Store.open_temporary(publish.uri) do
+    case Document.Store.open_temporary(publish.uri) do
       {:ok, source_doc} ->
         source_doc
 

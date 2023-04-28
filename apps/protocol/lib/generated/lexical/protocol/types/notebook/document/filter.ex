@@ -1,7 +1,6 @@
 # This file's contents are auto-generated. Do not edit.
 defmodule Lexical.Protocol.Types.Notebook.Document.Filter do
   alias Lexical.Proto
-  alias __MODULE__, as: Parent
 
   defmodule NotebookDocumentFilter do
     use Proto
@@ -21,8 +20,8 @@ defmodule Lexical.Protocol.Types.Notebook.Document.Filter do
   use Proto
 
   defalias one_of([
-             Parent.NotebookDocumentFilter,
-             Parent.NotebookDocumentFilter1,
-             Parent.NotebookDocumentFilter2
+             Lexical.Protocol.Types.Notebook.Document.Filter.NotebookDocumentFilter,
+             Lexical.Protocol.Types.Notebook.Document.Filter.NotebookDocumentFilter1,
+             Lexical.Protocol.Types.Notebook.Document.Filter.NotebookDocumentFilter2
            ])
 end

@@ -1,4 +1,6 @@
 defmodule Lexical.Server.State do
+  alias Lexical.Document
+
   alias Lexical.Protocol.Notifications.{
     DidChange,
     DidChangeConfiguration,
@@ -21,7 +23,6 @@ defmodule Lexical.Server.State do
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
   alias Lexical.Server.Transport
-  alias Lexical.SourceFile
 
   require CodeAction.Kind
   require Logger
@@ -97,12 +98,12 @@ defmodule Lexical.Server.State do
     uri = event.text_document.uri
     version = event.text_document.version
 
-    case SourceFile.Store.get_and_update(
+    case Document.Store.get_and_update(
            uri,
-           &SourceFile.apply_content_changes(&1, version, event.content_changes)
+           &Document.apply_content_changes(&1, version, event.content_changes)
          ) do
       {:ok, updated_source} ->
-        Api.compile_source_file(state.configuration.project, updated_source)
+        Api.compile_document(state.configuration.project, updated_source)
         {:ok, state}
 
       error ->
@@ -114,7 +115,7 @@ defmodule Lexical.Server.State do
     %TextDocument.Item{text: text, uri: uri, version: version} =
       text_document = event.text_document
 
-    case SourceFile.Store.open(uri, text, version) do
+    case Document.Store.open(uri, text, version) do
       :ok ->
         Logger.info("opened #{uri}")
         {:ok, state}
@@ -128,7 +129,7 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{} = state, %DidClose{lsp: event}) do
     uri = event.text_document.uri
 
-    case SourceFile.Store.close(uri) do
+    case Document.Store.close(uri) do
       :ok ->
         {:ok, state}
 
@@ -141,7 +142,7 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{} = state, %DidSave{lsp: event}) do
     uri = event.text_document.uri
 
-    case SourceFile.Store.save(uri) do
+    case Document.Store.save(uri) do
       :ok ->
         Api.schedule_compile(state.configuration.project, false)
         {:ok, state}

@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Lsp.DataModel.Enumeration do
     }
   end
 
-  def to_protocol(%__MODULE__{} = enumeration, _, _) do
+  def to_protocol(%__MODULE__{} = enumeration, _, _, _) do
     module_name = Module.concat([enumeration.name])
     quote(do: unquote(module_name))
   end
@@ -34,7 +34,8 @@ defmodule Mix.Tasks.Lsp.DataModel.Enumeration do
   def build_definition(
         %__MODULE__{} = enumeration,
         %Mappings{} = mappings,
-        %DataModel{}
+        %DataModel{},
+        _container_module
       ) do
     proto_module = Mappings.proto_module(mappings)
 

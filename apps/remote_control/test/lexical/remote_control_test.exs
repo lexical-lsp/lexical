@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControlTest do
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.SourceFile
 
   use ExUnit.Case
   use Testing.EventualAssertions
@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControlTest do
       subapp_project =
         [fixtures_path(), "umbrella", "apps", "first"]
         |> Path.join()
-        |> SourceFile.Path.to_uri()
+        |> Document.Path.to_uri()
         |> Project.new()
 
       start_project(subapp_project)

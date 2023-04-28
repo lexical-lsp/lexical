@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.CodeMod.Diff do
   alias Lexical.CodeUnit
-  alias Lexical.SourceFile.Edit
-  alias Lexical.SourceFile.Position
-  alias Lexical.SourceFile.Range
+  alias Lexical.Document.Edit
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
 
   @spec diff(String.t(), String.t()) :: [Edit.t()]
   def diff(source, dest) when is_binary(source) and is_binary(dest) do

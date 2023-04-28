@@ -2,6 +2,8 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   @moduledoc """
   A code action that prefixes unused variables with an underscore
   """
+  alias Lexical.Document
+  alias Lexical.Document.Changes
   alias Lexical.Project
   alias Lexical.Protocol.Requests.CodeAction
   alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
@@ -9,17 +11,15 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
-  alias Lexical.SourceFile
-  alias Lexical.SourceFile.DocumentEdits
 
   @spec apply(CodeAction.t(), Env.t()) :: [CodeActionResult.t()]
   def apply(%CodeAction{} = code_action, %Env{} = env) do
-    source_file = code_action.source_file
+    document = code_action.document
     diagnostics = get_in(code_action, [:context, :diagnostics]) || []
 
     Enum.flat_map(diagnostics, fn %Diagnostic{} = diagnostic ->
       with {:ok, variable_name, line_number} <- extract_variable_and_line(diagnostic),
-           {:ok, reply} <- build_code_action(env.project, source_file, line_number, variable_name) do
+           {:ok, reply} <- build_code_action(env.project, document, line_number, variable_name) do
         [reply]
       else
         _ ->
@@ -30,25 +30,25 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
 
   defp build_code_action(
          %Project{} = project,
-         %SourceFile{} = source_file,
+         %Document{} = document,
          line_number,
          variable_name
        ) do
     case RemoteControl.Api.replace_with_underscore(
            project,
-           source_file,
+           document,
            line_number,
            variable_name
          ) do
       {:ok, []} ->
         :error
 
-      {:ok, %DocumentEdits{} = document_edits} ->
+      {:ok, %Changes{} = document_edits} ->
         reply =
           CodeActionResult.new(
             title: "Rename to _#{variable_name}",
             kind: :quick_fix,
-            edit: Workspace.Edit.new(changes: %{source_file.uri => document_edits})
+            edit: Workspace.Edit.new(changes: %{document.uri => document_edits})
           )
 
         {:ok, reply}

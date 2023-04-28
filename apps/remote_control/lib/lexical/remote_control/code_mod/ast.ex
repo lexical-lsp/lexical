@@ -1,11 +1,11 @@
 defmodule Lexical.RemoteControl.CodeMod.Ast do
-  alias Lexical.SourceFile
+  alias Lexical.Document
 
   @type t :: any()
 
-  def from(%SourceFile{} = source_file) do
-    source_file
-    |> SourceFile.to_string()
+  def from(%Document{} = document) do
+    document
+    |> Document.to_string()
     |> from()
   end
 

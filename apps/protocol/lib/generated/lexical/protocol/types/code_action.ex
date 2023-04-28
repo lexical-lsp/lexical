@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.CodeAction do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule Disabled do
     use Proto
@@ -14,7 +13,7 @@ defmodule Lexical.Protocol.Types.CodeAction do
   deftype command: optional(Types.Command),
           data: optional(any()),
           diagnostics: optional(list_of(Types.Diagnostic)),
-          disabled: optional(Parent.Disabled),
+          disabled: optional(Lexical.Protocol.Types.CodeAction.Disabled),
           edit: optional(Types.Workspace.Edit),
           is_preferred: optional(boolean()),
           kind: optional(Types.CodeAction.Kind),

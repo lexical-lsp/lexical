@@ -13,6 +13,7 @@ defmodule Lexical.Protocol.Types.PublishDiagnostics.ClientCapabilities do
   deftype code_description_support: optional(boolean()),
           data_support: optional(boolean()),
           related_information: optional(boolean()),
-          tag_support: optional(TagSupport),
+          tag_support:
+            optional(Lexical.Protocol.Types.PublishDiagnostics.ClientCapabilities.TagSupport),
           version_support: optional(boolean())
 end

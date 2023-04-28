@@ -1,7 +1,6 @@
 # This file's contents are auto-generated. Do not edit.
 defmodule Lexical.Protocol.Types.TextDocument.Filter do
   alias Lexical.Proto
-  alias __MODULE__, as: Parent
 
   defmodule TextDocumentFilter do
     use Proto
@@ -21,8 +20,8 @@ defmodule Lexical.Protocol.Types.TextDocument.Filter do
   use Proto
 
   defalias one_of([
-             Parent.TextDocumentFilter,
-             Parent.TextDocumentFilter1,
-             Parent.TextDocumentFilter2
+             Lexical.Protocol.Types.TextDocument.Filter.TextDocumentFilter,
+             Lexical.Protocol.Types.TextDocument.Filter.TextDocumentFilter1,
+             Lexical.Protocol.Types.TextDocument.Filter.TextDocumentFilter2
            ])
 end

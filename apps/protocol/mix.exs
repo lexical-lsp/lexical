@@ -31,7 +31,6 @@ defmodule Lexical.Protocol.MixProject do
   defp deps do
     [
       {:common, in_umbrella: true},
-      {:common_protocol, in_umbrella: true},
       {:jason, "~> 1.4", optional: true},
       {:patch, "~> 0.12", only: [:test]},
       {:proto, in_umbrella: true}

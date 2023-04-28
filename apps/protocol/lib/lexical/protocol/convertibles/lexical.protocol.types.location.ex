@@ -1,8 +1,8 @@
 defimpl Lexical.Convertible, for: Lexical.Protocol.Types.Location do
-  alias Lexical.DocumentContainer
+  alias Lexical.Document
+  alias Lexical.Document.Container
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types
-  alias Lexical.SourceFile
 
   def to_lsp(%Types.Location{} = location, context_document) do
     with {:ok, range} <- Conversions.to_lsp(location.range, context_document) do
@@ -11,10 +11,10 @@ defimpl Lexical.Convertible, for: Lexical.Protocol.Types.Location do
   end
 
   def to_native(%Types.Location{} = location, context_document) do
-    context_document = DocumentContainer.context_document(location, context_document)
+    context_document = Container.context_document(location, context_document)
 
     with {:ok, range} <- Conversions.to_elixir(location.range, context_document) do
-      {:ok, SourceFile.Location.new(range, context_document.uri)}
+      {:ok, Document.Location.new(range, context_document.uri)}
     end
   end
 end

@@ -1,13 +1,12 @@
 alias Lexical.RemoteControl
-alias Lexical.SourceFile
-alias Lexical.SourceFile.Position
+alias Lexical.Document
+alias Lexical.Document.Position
 
 defmodule Helpers do
-  alias Lexical.Project
+  alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Server.CodeIntelligence
-  alias Lexical.SourceFile.Position
 
   def observer do
     :observer.start()
@@ -19,11 +18,11 @@ defmodule Helpers do
     |> RemoteControl.call(:observer, :start)
   end
 
-  def sf(text) do
-    sf(:lexical, text)
+  def doc(text) do
+    doc(:lexical, text)
   end
 
-  def sf(project, text) do
+  def doc(project, text) do
     root_path =
       project
       |> project()
@@ -31,8 +30,8 @@ defmodule Helpers do
 
     [root_path, "lib", "file.ex"]
     |> Path.join()
-    |> SourceFile.Path.to_uri()
-    |> SourceFile.new(text, 0)
+    |> Document.Path.to_uri()
+    |> Document.new(text, 0)
   end
 
   def pos(line, character) do
@@ -48,13 +47,13 @@ defmodule Helpers do
   def compile_file(project, source) when is_binary(source) do
     project
     |> ensure_project()
-    |> compile_file(sf(source))
+    |> compile_file(doc(source))
   end
 
-  def compile_file(project, %SourceFile{} = source_file) do
+  def compile_file(project, %Document{} = document) do
     project
     |> ensure_project()
-    |> RemoteControl.Api.compile_source_file(source_file)
+    |> RemoteControl.Api.compile_document(document)
   end
 
   def complete(project, source, context \\ nil)
@@ -62,14 +61,14 @@ defmodule Helpers do
   def complete(project, source, context) when is_binary(source) do
     case completion_position(source) do
       {:found, line, character} ->
-        complete(project, sf(source), line, character, context)
+        complete(project, doc(source), line, character, context)
 
       other ->
         other
     end
   end
 
-  def complete(project, %SourceFile{} = source, line, character, context) do
+  def complete(project, %Document{} = source, line, character, context) do
     context =
       if is_nil(context) do
         Completion.Context.new(trigger_kind: nil)
@@ -132,7 +131,7 @@ defmodule Helpers do
           |> String.graphemes()
           |> Enum.find_index(&(&1 == "|"))
 
-        {:halt, {:found, line_number, index}}
+        {:halt, {:found, line_number + 1, index + 1}}
       else
         {:cont, :not_found}
       end

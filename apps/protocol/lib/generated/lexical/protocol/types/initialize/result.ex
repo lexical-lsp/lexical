@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.Initialize.Result do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule ServerInfo do
     use Proto
@@ -10,5 +9,7 @@ defmodule Lexical.Protocol.Types.Initialize.Result do
   end
 
   use Proto
-  deftype capabilities: Types.ServerCapabilities, server_info: optional(Parent.ServerInfo)
+
+  deftype capabilities: Types.ServerCapabilities,
+          server_info: optional(Lexical.Protocol.Types.Initialize.Result.ServerInfo)
 end

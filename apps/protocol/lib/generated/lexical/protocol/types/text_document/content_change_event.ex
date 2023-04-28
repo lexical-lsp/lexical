@@ -14,5 +14,9 @@ defmodule Lexical.Protocol.Types.TextDocument.ContentChangeEvent do
   end
 
   use Proto
-  defalias one_of([TextDocumentContentChangeEvent, TextDocumentContentChangeEvent1])
+
+  defalias one_of([
+             Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent,
+             Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent1
+           ])
 end

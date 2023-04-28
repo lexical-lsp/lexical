@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.SemanticTokens.Options do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule Full do
     use Proto
@@ -16,8 +15,9 @@ defmodule Lexical.Protocol.Types.SemanticTokens.Options do
 
   use Proto
 
-  deftype full: optional(one_of([boolean(), Parent.Full])),
+  deftype full: optional(one_of([boolean(), Lexical.Protocol.Types.SemanticTokens.Options.Full])),
           legend: Types.SemanticTokens.Legend,
-          range: optional(one_of([boolean(), Parent.Range])),
+          range:
+            optional(one_of([boolean(), Lexical.Protocol.Types.SemanticTokens.Options.Range])),
           work_done_progress: optional(boolean())
 end

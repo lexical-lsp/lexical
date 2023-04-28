@@ -2,7 +2,6 @@
 defmodule Lexical.Protocol.Types.General.ClientCapabilities do
   alias Lexical.Proto
   alias Lexical.Protocol.Types
-  alias __MODULE__, as: Parent
 
   defmodule StaleRequestSupport do
     use Proto
@@ -14,5 +13,6 @@ defmodule Lexical.Protocol.Types.General.ClientCapabilities do
   deftype markdown: optional(Types.Markdown.ClientCapabilities),
           position_encodings: optional(list_of(Types.Position.Encoding.Kind)),
           regular_expressions: optional(Types.RegularExpressions.ClientCapabilities),
-          stale_request_support: optional(Parent.StaleRequestSupport)
+          stale_request_support:
+            optional(Lexical.Protocol.Types.General.ClientCapabilities.StaleRequestSupport)
 end

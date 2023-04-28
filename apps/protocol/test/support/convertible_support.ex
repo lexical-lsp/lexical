@@ -1,13 +1,13 @@
 defmodule Lexical.Test.Protocol.ConvertibleSupport do
   alias Lexical.Convertible
-  alias Lexical.SourceFile
+  alias Lexical.Document
 
   use ExUnit.CaseTemplate
 
   using do
     quote do
       alias Lexical.Protocol.Types
-      use Lexical.Test.SourceFileSupport
+      use Lexical.Test.DocumentSupport
 
       def open_file_contents do
         "hello"
@@ -16,18 +16,18 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
       defoverridable open_file_contents: 0
 
       def to_lsp(convertible, uri) do
-        {:ok, doc} = SourceFile.Store.fetch(uri)
+        {:ok, doc} = Document.Store.fetch(uri)
         Convertible.to_lsp(convertible, doc)
       end
 
       def to_native(converible, uri) do
-        {:ok, doc} = SourceFile.Store.fetch(uri)
+        {:ok, doc} = Document.Store.fetch(uri)
         Convertible.to_native(converible, doc)
       end
 
       def with_an_open_file(_) do
-        {:ok, uri, source_file} = open_file(open_file_contents())
-        {:ok, source_file: source_file, uri: uri}
+        {:ok, uri, document} = open_file(open_file_contents())
+        {:ok, document: document, uri: uri}
       end
 
       def valid_range(:native) do
@@ -41,7 +41,7 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
       end
 
       def range(:native, start_pos, end_pos) do
-        SourceFile.Range.new(start_pos, end_pos)
+        Document.Range.new(start_pos, end_pos)
       end
 
       def range(:lsp, start_pos, end_pos) do
@@ -57,7 +57,7 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
       end
 
       def position(:native, line, column) do
-        SourceFile.Position.new(line, column)
+        Document.Position.new(line, column)
       end
 
       def position(:lsp, line, character) do
