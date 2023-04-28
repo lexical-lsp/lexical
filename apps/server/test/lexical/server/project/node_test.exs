@@ -20,10 +20,6 @@ defmodule Lexical.Server.Project.NodeTest do
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
     :ok = Server.Project.Dispatch.register(project, [project_compiled()])
 
-    on_exit(fn ->
-      :ok = RemoteControl.stop(project)
-    end)
-
     {:ok, project: project}
   end
 
