@@ -31,8 +31,6 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
 
     assert_receive project_compiled(), 5000
 
-    on_exit(fn -> RemoteControl.stop(project) end)
-
     {:ok, project: project}
   end
 

@@ -44,10 +44,6 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
-    on_exit(fn ->
-      :ok = RemoteControl.stop(project)
-    end)
-
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
 
