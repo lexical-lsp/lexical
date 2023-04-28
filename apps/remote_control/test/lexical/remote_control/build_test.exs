@@ -38,10 +38,6 @@ defmodule Lexical.BuildTest do
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
-    on_exit(fn ->
-      :ok = RemoteControl.stop(project)
-    end)
-
     {:ok, project}
   end
 

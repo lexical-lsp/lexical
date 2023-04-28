@@ -58,9 +58,27 @@ defmodule Lexical.RemoteControl.ProjectNode do
              project,
              project_listener,
              remote_control_config
-           ]) do
+           ]),
+         :ok <- :rpc.call(node, __MODULE__, :spawn_monitor, [node_pid]) do
       {:ok, node_pid}
     end
+  end
+
+  @doc """
+  This is a simple `half-link` between the node id process on master and the project node
+  If the project node process dies, the project node need to halt the system
+  """
+  def spawn_monitor(node_pid_on_master) do
+    spawn(fn ->
+      Process.monitor(node_pid_on_master)
+
+      receive do
+        {:DOWN, _ref, :process, _pid, _reason} ->
+          System.halt()
+      end
+    end)
+
+    :ok
   end
 
   @start_timeout 5_000
