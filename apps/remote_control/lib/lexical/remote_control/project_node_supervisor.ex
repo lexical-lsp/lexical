@@ -15,7 +15,8 @@ defmodule Lexical.RemoteControl.ProjectNodeSupervisor do
   end
 
   def start_project_node(%Project{} = project) do
-    DynamicSupervisor.start_child(__MODULE__, {ProjectNode, project})
+    # DynamicSupervisor.start_child(__MODULE__, {ProjectNode, project})
+    DynamicSupervisor.start_child(__MODULE__, ProjectNode.child_spec(project))
   end
 
   @impl true
