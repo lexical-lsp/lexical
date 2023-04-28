@@ -46,13 +46,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
-  def wait_until_started(project, project_listener) do
+  def start(project, project_listener) do
     node = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
     {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
 
-    with :ok <- start(project),
+    with :ok <- start_node(project),
          :ok <-
            :rpc.call(node, RemoteControl.Bootstrap, :init, [
              project,
@@ -65,7 +65,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @start_timeout 5_000
 
-  def start(project) do
+  defp start_node(project) do
     project |> name() |> GenServer.call(:start, @start_timeout + 500)
   end
 
