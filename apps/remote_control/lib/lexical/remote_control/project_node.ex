@@ -4,7 +4,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   require Logger
 
   defmodule State do
-    defstruct [:project, :node, :paths, :cookie, :stopped_by, :stop_timeout, :status]
+    defstruct [:project, :node, :paths, :cookie, :stopped_by, :stop_timeout]
 
     def new(%Project{} = project) do
       cookie = Node.get_cookie()
@@ -19,10 +19,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     def set_stopped_by(state, from, stop_timeout) do
       %{state | stopped_by: from, stop_timeout: stop_timeout}
-    end
-
-    def stop(state) do
-      %{state | status: :stopped}
     end
 
     def node_name(%Project{} = project) do
@@ -71,7 +67,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     %{
       id: name(project),
       start: {__MODULE__, :start_link, [project]},
-      restart: :temporary
+      restart: :transient
     }
   end
 
@@ -101,30 +97,21 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @impl true
   def handle_call({:stop, stop_timeout}, from, state) do
     state = State.set_stopped_by(state, from, stop_timeout)
-    Process.send_after(self(), :stop_timeout, state.stop_timeout)
     :rpc.call(state.node, System, :stop, [])
-
-    {:noreply, state}
+    {:noreply, state, stop_timeout}
   end
 
   @impl true
   def handle_info({:nodedown, _, _}, state) do
-    state = State.stop(state)
-
-    # NOTE: when I use `RemoteControl.stop(project, 2_000)`
     GenServer.reply(state.stopped_by, :ok)
-    {:stop, :shutdown, nil}
+    {:stop, :shutdown, state}
   end
 
   @impl true
-  def handle_info(:stop_timeout, %{status: status} = state) when status != :stopped do
-    Node.monitor(state.node, false)
+  def handle_info(:timeout, state) do
     :rpc.call(state.node, System, :halt, [])
-    state = State.stop(state)
-
-    # NOTE: when I use `RemoteControl.stop(project, 1_000)`
     GenServer.reply(state.stopped_by, :ok)
-    {:stop, :shutdown, nil}
+    {:stop, :shutdown, state}
   end
 
   @impl true
