@@ -46,6 +46,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
+  @dialyzer {:nowarn_function, spawn_monitor: 1}
+
   def start(project, project_listener) do
     node = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
