@@ -50,7 +50,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         :module
       end
 
-    builder.plain_text(insert_text,
+    builder.plain_text(env, insert_text,
       label: module.name,
       kind: completion_kind,
       detail: detail <> detail_label

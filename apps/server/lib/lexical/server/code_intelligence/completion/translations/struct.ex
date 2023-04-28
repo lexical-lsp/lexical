@@ -28,7 +28,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
         insert_text
       end
 
-    builder.plain_text(insert_text,
+    builder.plain_text(env, insert_text,
       detail: "#{struct.name} (Struct)",
       kind: :struct,
       label: struct.name

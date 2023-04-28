@@ -1,8 +1,11 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
+  alias Lexical.Completion.Builder
   alias Lexical.Completion.Environment
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
+  alias Lexical.Protocol.Types.Completion
+  alias Lexical.Server.CodeIntelligence.Completion.Env
 
   defstruct [:project, :document, :prefix, :suffix, :position, :words, :zero_based_character]
 
@@ -98,6 +101,40 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   @impl Environment
   def last_word(%__MODULE__{} = env) do
     List.last(env.words)
+  end
+
+  @behaviour Builder
+
+  @impl Builder
+  def snippet(%Env{}, snippet_text, options \\ []) do
+    options
+    |> Keyword.put(:insert_text, snippet_text)
+    |> Keyword.put(:insert_text_format, :snippet)
+    |> Completion.Item.new()
+  end
+
+  @impl Builder
+  def plain_text(%Env{}, insert_text, options \\ []) do
+    options
+    |> Keyword.put(:insert_text, insert_text)
+    |> Completion.Item.new()
+  end
+
+  @impl Builder
+  def fallback(nil, fallback), do: fallback
+  def fallback("", fallback), do: fallback
+  def fallback(detail, _), do: detail
+
+  @impl Builder
+  def boost(text, amount \\ 5)
+
+  def boost(text, amount) when amount in 0..10 do
+    boost_char = ?* - amount
+    IO.iodata_to_binary([boost_char, text])
+  end
+
+  def boost(text, _) do
+    boost(text, 0)
   end
 
   defp cursor_context(%__MODULE__{} = env) do
