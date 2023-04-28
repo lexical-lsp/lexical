@@ -18,6 +18,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Types.CodeAction
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.TextDocument
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
@@ -67,6 +68,7 @@ defmodule Lexical.Server.State do
 
   def apply(%__MODULE__{shutdown_received?: true} = state, %Exit{}) do
     Logger.warn("Received an Exit notification. Halting the server in 150ms")
+    :ok = RemoteControl.stop(state.configuration.project)
     :timer.apply_after(50, System, :halt, [0])
     {:ok, state}
   end
