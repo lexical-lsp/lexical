@@ -68,7 +68,7 @@ defmodule Lexical.Server.State do
 
   def apply(%__MODULE__{shutdown_received?: true} = state, %Exit{}) do
     Logger.warn("Received an Exit notification. Halting the server in 150ms")
-    RemoteControl.halt(state.configuration.project)
+    :ok = RemoteControl.stop(state.configuration.project)
     :timer.apply_after(50, System, :halt, [0])
     {:ok, state}
   end
