@@ -79,7 +79,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
             result
 
           _ ->
-            formatter = &Code.format_string!/2
+            formatter = &Code.format_string!/1
             {formatter, nil}
         end
       else
