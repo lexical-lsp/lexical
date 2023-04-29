@@ -72,6 +72,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @stop_timeout 1_000
 
   def stop(project, stop_timeout \\ @stop_timeout) do
+    "Stopping node #{inspect(Process.whereis(name(project)))} by #{inspect(self())}" |> dbg()
     project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 500)
   end
 

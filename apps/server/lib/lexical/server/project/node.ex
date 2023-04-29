@@ -78,8 +78,7 @@ defmodule Lexical.Server.Project.Node do
     Logger.warn("The node supervisor has died because: #{inspect(reason)}. restarting the node.")
     Node.monitor(state.node, false)
 
-    with :ok <- RemoteControl.stop(state.project),
-         :ok <- delete_build_artifacts(state.project),
+    with :ok <- delete_build_artifacts(state.project),
          {:ok, new_state} <- start_node(state.project) do
       {:noreply, new_state}
     else

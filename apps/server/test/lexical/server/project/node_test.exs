@@ -36,6 +36,7 @@ defmodule Lexical.Server.Project.NodeTest do
   test "the node is restarted when it goes down", %{project: project} do
     node_name = ProjectNode.node_name(project)
     assert :pong = Node.ping(node_name)
+    "test process is #{inspect(self())}" |> dbg()
     :ok = RemoteControl.stop(project)
 
     assert_eventually Node.ping(node_name) == :pong, 750
