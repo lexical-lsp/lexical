@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl do
     |> :erpc.call(m, f, a)
   end
 
-  def node_name(%Project{} = project) do
+  defp node_name(%Project{} = project) do
     :"#{Project.name(project)}@127.0.0.1"
   end
 
