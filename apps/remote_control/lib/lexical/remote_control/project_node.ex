@@ -158,6 +158,11 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
+  def handle_info({_port, {:data, _message}}, state) do
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info(msg, state) do
     Logger.warn("Received unexpected message #{inspect(msg)}")
     {:noreply, state}
