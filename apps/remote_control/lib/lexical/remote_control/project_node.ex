@@ -175,7 +175,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     :"#{Project.name(project)}::node_process"
   end
 
-  defp port_wrapper_executable() do
+  defp port_wrapper_executable do
     Path.join(:code.priv_dir(:remote_control), "port_wrapper.sh")
   end
 end
