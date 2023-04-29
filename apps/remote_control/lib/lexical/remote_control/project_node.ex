@@ -46,8 +46,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
-  @dialyzer {:nowarn_function, spawn_monitor: 1}
-
   def start(project, project_listener) do
     node = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
@@ -60,27 +58,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
              project,
              project_listener,
              remote_control_config
-           ]),
-         :ok <- :rpc.call(node, __MODULE__, :spawn_monitor, [node_pid]) do
+           ]) do
       {:ok, node_pid}
     end
-  end
-
-  @doc """
-  This is a simple `half-link` between the node id process on master and the project node
-  If the project node process dies, the project node need to halt the system
-  """
-  def spawn_monitor(node_pid_on_master) do
-    spawn(fn ->
-      Process.monitor(node_pid_on_master)
-
-      receive do
-        {:DOWN, _ref, :process, _pid, _reason} ->
-          System.halt()
-      end
-    end)
-
-    :ok
   end
 
   @start_timeout 5_000
@@ -115,15 +95,26 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_call(:start, from, state) do
+    port_wrapper = port_wrapper_executable()
     {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
-
-    cmd =
-      "#{elixir_executable} --name #{state.node} #{path_append_arguments(state)} --cookie #{state.cookie} --no-halt " <>
-        "-e 'Node.connect(#{inspect(Node.self())})' "
 
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
     Process.send_after(self(), :maybe_start_timeout, @start_timeout)
-    spawn(fn -> System.shell(cmd) end)
+
+    _port =
+      Port.open({:spawn_executable, port_wrapper},
+        args:
+          [
+            elixir_executable,
+            "--name",
+            state.node,
+            "--cookie",
+            state.cookie,
+            "--no-halt",
+            "-e",
+            "Node.connect(#{inspect(Node.self())})"
+          ] ++ path_append_arguments(state)
+      )
 
     state = State.set_started_by(state, from)
     {:noreply, state}
@@ -175,12 +166,16 @@ defmodule Lexical.RemoteControl.ProjectNode do
   defp path_append_arguments(%State{} = state) do
     Enum.map(state.paths, fn path ->
       expanded_path = Path.expand(path)
-      "-pa #{expanded_path} "
+      ["-pa", "#{expanded_path}"]
     end)
-    |> IO.iodata_to_binary()
+    |> List.flatten()
   end
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::node_process"
+  end
+
+  defp port_wrapper_executable() do
+    Path.join(:code.priv_dir(:remote_control), "port_wrapper.sh")
   end
 end
