@@ -56,8 +56,10 @@ jobs:
 
       - name: Archive release
         run: |
-          zip -r lexical.zip _build/dev/rel/lexical
-          cp lexical.zip lexical-${{ steps.timestamp.outputs.result }}.zip
+          cd _build/dev/rel/lexical
+          zip -r lexical.zip *
+          cp lexical.zip ../../../../lexical.zip
+          cp lexical.zip ../../../../lexical-${{ steps.timestamp.outputs.result }}.zip
 
       - name: Create Git tag for commit
         uses: actions/github-script@v6
