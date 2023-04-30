@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl do
   """
 
   alias Lexical.Project
-  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.ProjectNode
   require Logger
 
@@ -22,10 +21,9 @@ defmodule Lexical.RemoteControl do
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
     node = node_name(project)
 
-    with {:ok, _} <- ProjectNode.start(project, project_listener),
+    with {:ok, node_pid} <- ProjectNode.start(project, project_listener),
          :ok <- ensure_apps_started(node, apps_to_start) do
-      supervisor_pid = :rpc.call(node, Process, :whereis, [RemoteControl.Supervisor])
-      {:ok, node, supervisor_pid}
+      {:ok, node, node_pid}
     end
   end
 
