@@ -158,7 +158,10 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({_port, {:data, _message}}, state) do
+  def handle_info({_port, {:data, message}}, state) do
+    Logger.info("Port: message is is_exception: #{is_exception(message)} or #{is_map(message)}")
+    message = message |> IO.iodata_to_binary() |> String.trim()
+    Logger.info("Port: #{message}")
     {:noreply, state}
   end
 
