@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Change the project dir
 set_up_version_manager() {
     if [ -e $HOME/.asdf ]; then
         VERSION_MANAGER="asdf"
