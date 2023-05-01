@@ -14,6 +14,7 @@ set_up_version_manager() {
 set_up_version_manager
 cd $PROJECT_DIR
 
+# Start the program in the background
 case "$VERSION_MANAGER" in
     asdf)
         asdf env erl exec "$@" &
@@ -25,9 +26,6 @@ case "$VERSION_MANAGER" in
         exec "$@" &
         ;;
 esac
-
-# Start the program in the background
-# exec "$@" &
 pid1=$!
 
 # Silence warnings from here on
