@@ -16,6 +16,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
   defrecord :project_diagnostics, project: nil, diagnostics: []
   defrecord :file_diagnostics, project: nil, uri: nil, diagnostics: []
 
+  defrecord :project_progress, label: nil, message: nil
+
   @type compile_status :: :successful | :error
   @type name_and_arity :: {atom, non_neg_integer}
   @type field_list :: Keyword.t() | [atom]
@@ -58,4 +60,6 @@ defmodule Lexical.RemoteControl.Api.Messages do
             uri: Lexical.uri(),
             diagnostics: diagnostics()
           )
+
+  @type project_progress :: record(:project_progress, label: String.t(), message: String.t() | Integer.t())
 end

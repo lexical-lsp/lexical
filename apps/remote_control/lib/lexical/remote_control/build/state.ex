@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.ModuleMappings
 
   import Build.CaptureIO
+  import Build.Progress
   import Messages
   require Logger
 
@@ -188,7 +189,8 @@ defmodule Lexical.RemoteControl.Build.State do
 
       compile_fun = fn ->
         Mix.Task.clear()
-        Mix.Task.run("compile", mix_compile_opts(force?))
+        prepare_for_project_compile()
+        report_progress "compile", fn -> Mix.Task.run("compile", mix_compile_opts(force?)) end
       end
 
       case compile_fun.() do
@@ -213,15 +215,25 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp prepare_for_project_build(true = _force?) do
     if connected_to_internet?() do
-      Mix.Task.run("local.hex", ~w(--force --if-missing))
-      Mix.Task.run("local.rebar", ~w(--force --if-missing))
-      Mix.Task.run("deps.get")
+      report_progress "local.hex", fn -> Mix.Task.run("local.hex", ~w(--force --if-missing)) end
+
+      report_progress "local.rebar", fn ->
+        Mix.Task.run("local.rebar", ~w(--force --if-missing))
+      end
+
+      report_progress "deps.get", fn -> Mix.Task.run("deps.get") end
     else
       Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
     end
 
-    Mix.Task.run("deps.safe_compile")
+    report_progress "deps.compile", fn -> Mix.Task.run("deps.safe_compile") end
     Mix.Task.run("clean")
+  end
+
+  defp prepare_for_project_compile do
+    total = Enum.count(all_ex_files())
+    RemoteControl.notify_listener(project_progress(label: "compile.prepare", message: total))
+    :ok
   end
 
   defp safe_compile(%Document{} = document) do
