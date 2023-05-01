@@ -101,6 +101,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
     Process.send_after(self(), :maybe_start_timeout, @start_timeout)
 
+    System.put_env("PROJECT_DIR", Project.root_path(state.project))
+
     _port =
       Port.open({:spawn_executable, port_wrapper},
         args:

@@ -23,6 +23,13 @@ defmodule Lexical.RemoteControl do
 
     with {:ok, node_pid} <- ProjectNode.start(project, project_listener),
          :ok <- ensure_apps_started(node, apps_to_start) do
+      erl_version = __MODULE__.call(project, :code, :root_dir, []) |> Path.basename()
+      elixir_version = __MODULE__.call(project, System, :version, [])
+
+      Logger.info(
+        "Started project node #{node} with erl: #{erl_version}, elixir: #{elixir_version}"
+      )
+
       {:ok, node, node_pid}
     end
   end
