@@ -67,7 +67,7 @@ defmodule Lexical.MixProject do
           mix: :load
         ],
         include_executables_for: [:unix],
-        include_erts: false,
+        include_erts: true,
         cookie: "lexical",
         rel_templates_path: "rel/deploy",
         strip_beams: false,

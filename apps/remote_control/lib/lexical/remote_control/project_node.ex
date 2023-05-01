@@ -95,7 +95,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_call(:start, from, state) do
-    port_wrapper = port_wrapper_executable()
+    port_wrapper = port_wrapper_executable(state.project)
     {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
 
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
@@ -183,7 +183,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
     :"#{Project.name(project)}::node_process"
   end
 
-  defp port_wrapper_executable do
+  defp port_wrapper_executable(project) do
+    # Use the project_dir to detect the correct erl version
+    System.put_env("PROJECT_DIR", Project.root_path(project))
     Path.join(:code.priv_dir(:remote_control), "port_wrapper.sh")
   end
 end

@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 
+set_up_version_manager() {
+    if [ -e $HOME/.asdf ]; then
+        VERSION_MANAGER="asdf"
+    elif [ -e $HOME/.rtx ]; then
+        VERSION_MANAGER="rtx"
+    else
+        VERSION_MANAGER="none"
+    fi
+}
+
+set_up_version_manager
+cd $PROJECT_DIR
+
 # Start the program in the background
-exec "$@" &
+case "$VERSION_MANAGER" in
+    asdf)
+        asdf env erl exec "$@" &
+        ;;
+    rtx)
+        rtx env -s bash erl exec "$@" &
+        ;;
+    *)
+        exec "$@" &
+        ;;
+esac
 pid1=$!
 
 # Silence warnings from here on
