@@ -23,7 +23,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "%User{}"
+      assert completion.insert_text == "%User{$1}"
       assert completion.kind == :struct
     end
 
@@ -48,7 +48,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "%User{}"
+      assert completion.insert_text == "%User{$1}"
       assert completion.kind == :struct
     end
 
@@ -91,13 +91,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
     test "when using %, child structs are returned", %{project: project} do
       assert [account, user] = complete(project, "%Project.|", "%")
-      assert account.label == "Structs.Account"
+      assert account.label == "%Structs.Account"
       assert account.detail == "Structs.Account (Struct)"
-      assert account.insert_text == "Structs.Account{}"
+      assert account.insert_text == "Structs.Account{$1}"
 
-      assert user.label == "Structs.User"
+      assert user.label == "%Structs.User"
       assert user.detail == "Structs.User (Struct)"
-      assert user.insert_text == "Structs.User{}"
+      assert user.insert_text == "Structs.User{$1}"
     end
 
     test "it should complete struct fields", %{project: project} do

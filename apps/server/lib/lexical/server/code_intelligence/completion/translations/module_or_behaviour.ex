@@ -47,26 +47,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     add_percent? = not String.contains?(last_word, ".")
 
     insert_text =
-      cond do
-        add_percent? and add_curlies? ->
-          "%" <> module_name <> "{}"
-
-        add_percent? ->
-          "%" <> module_name
-
-        add_curlies? ->
-          module_name <> "{}"
-
-        true ->
-          module_name
+      if add_percent? do
+        "%" <> module_name
+      else
+        module_name
       end
 
-    builder.plain_text(env, insert_text,
-      label: module_name,
+    completion_opts = [
+      label: "%" <> module_name,
       kind: :struct,
       sort_text: module_name,
       detail: module_name <> " (Struct)"
-    )
+    ]
+
+    if add_curlies? do
+      builder.snippet(env, insert_text <> "{$1}", completion_opts)
+    else
+      builder.plain_text(env, insert_text, completion_opts)
+    end
   end
 
   defp module_completion(builder, %Env{} = env, module_name, detail) do
