@@ -2,7 +2,6 @@ defmodule Lexical.Server.Project.Intelligence do
   defmodule State do
     alias Lexical.Format
     alias Lexical.Project
-
     defstruct project: nil, struct_modules: MapSet.new()
 
     def new(%Project{} = project) do
@@ -10,23 +9,56 @@ defmodule Lexical.Server.Project.Intelligence do
     end
 
     def delete_struct_module(%__MODULE__{} = state, module_name) do
-      string_name = Format.module(module_name)
+      module_path = module_path(module_name)
 
-      %__MODULE__{state | struct_modules: MapSet.delete(state.struct_modules, string_name)}
+      struct_modules = MapSet.delete(state.struct_modules, module_path)
+      %__MODULE__{state | struct_modules: struct_modules}
     end
 
     def add_struct_module(%__MODULE__{} = state, module_name) do
-      string_name = Format.module(module_name)
-
-      %__MODULE__{state | struct_modules: MapSet.put(state.struct_modules, string_name)}
+      module_path = module_path(module_name)
+      %__MODULE__{state | struct_modules: MapSet.put(state.struct_modules, module_path)}
     end
 
     def child_defines_struct?(%__MODULE__{} = state, prefix) do
-      Enum.any?(state.struct_modules, &String.starts_with?(&1, prefix))
+      module_path = module_path(prefix)
+      Enum.any?(state.struct_modules, &paths_match?(module_path, &1))
+    end
+
+    def child_struct_modules(%__MODULE__{} = state, prefix) do
+      module_path = module_path(prefix)
+
+      for struct_path <- state.struct_modules,
+          paths_match?(module_path, struct_path) do
+        Enum.join(struct_path, ".")
+      end
     end
 
     def defines_struct?(%__MODULE__{} = state, module_name) do
-      Enum.any?(state.struct_modules, &(&1 == module_name))
+      module_path = module_path(module_name)
+      Enum.any?(state.struct_modules, &(&1 == module_path))
+    end
+
+    defp module_path(module_name) do
+      module_name
+      |> Format.module()
+      |> String.split(".")
+    end
+
+    defp paths_match?([], [_]) do
+      true
+    end
+
+    defp paths_match?([], _) do
+      false
+    end
+
+    defp paths_match?([same | haystack], [same | needle]) do
+      paths_match?(haystack, needle)
+    end
+
+    defp paths_match?(_, _) do
+      false
     end
   end
 
@@ -54,6 +86,12 @@ defmodule Lexical.Server.Project.Intelligence do
     |> GenServer.call({:child_defines_struct?, parent_module})
   end
 
+  def child_struct_modules(%Project{} = project, parent_module) do
+    project
+    |> name()
+    |> GenServer.call({:child_struct_modules, parent_module})
+  end
+
   def child_spec(%Project{} = project) do
     %{
       id: {__MODULE__, Project.name(project)},
@@ -73,6 +111,11 @@ defmodule Lexical.Server.Project.Intelligence do
   @impl GenServer
   def handle_call({:child_defines_struct?, parent_module}, _from, %State{} = state) do
     {:reply, State.child_defines_struct?(state, parent_module), state}
+  end
+
+  @impl GenServer
+  def handle_call({:child_struct_modules, parent_module}, _from, %State{} = state) do
+    {:reply, State.child_struct_modules(state, parent_module), state}
   end
 
   @impl GenServer
