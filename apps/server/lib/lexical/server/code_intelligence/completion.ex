@@ -47,6 +47,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     for result <- local_completions,
         displayable?(project, result),
         applies_to_context?(project, result, context),
+        applies_to_env?(env, result),
         %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Env, env)) do
       item
     end
@@ -94,6 +95,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           {:cont, true}
         end
       end)
+    end
+  end
+
+  defp applies_to_env?(%Env{} = env, %struct_module{} = result) do
+    struct_reference? = Env.struct_reference?(env)
+
+    cond do
+      struct_reference? and struct_module == Result.Struct ->
+        true
+
+      struct_reference? and struct_module == Result.Module ->
+        Intelligence.defines_struct?(env.project, result.full_name) or
+          Intelligence.child_defines_struct?(env.project, result.full_name)
+
+      struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
+        true
+
+      struct_reference? ->
+        false
+
+      true ->
+        true
     end
   end
 

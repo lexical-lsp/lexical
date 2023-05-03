@@ -8,10 +8,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
                |> complete("%Project.Structs.|")
                |> fetch_completion(kind: :struct)
 
-      assert Enum.find(account_and_user, &(&1.label == "User"))
-      account = Enum.find(account_and_user, &(&1.label == "Account"))
+      assert Enum.find(account_and_user, &(&1.label == "%User"))
+      account = Enum.find(account_and_user, &(&1.label == "%Account"))
       assert account
-      assert account.insert_text == "Account{}"
+      assert account.insert_text == "Account{$1}"
       assert account.detail == "Account (Struct)"
     end
 
@@ -72,7 +72,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       ]
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "User{}"
+      assert completion.insert_text == "User{$1}"
       assert completion.kind == :struct
     end
 

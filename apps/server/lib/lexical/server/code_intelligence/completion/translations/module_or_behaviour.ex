@@ -80,6 +80,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     parent_pieces = Enum.take(parent_pieces, length(parent_pieces) - 1)
     local_module_name = Enum.join(parent_pieces, ".")
     local_module_length = String.length(local_module_name)
-    String.slice(child_module, (local_module_length + 1)..-1)
+
+    child_module
+    |> String.slice(local_module_length..-1)
+    |> strip_leading_period()
   end
+
+  defp strip_leading_period(<<".", rest::binary>>), do: rest
+  defp strip_leading_period(string_without_period), do: string_without_period
 end
