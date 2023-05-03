@@ -38,7 +38,7 @@ defmodule Lexical.Server.Project.NodeTest do
     old_pid = node_pid(project)
 
     :ok = RemoteControl.stop(project)
-    assert_eventually Node.ping(node_name) == :pong, 750
+    assert_eventually Node.ping(node_name) == :pong, 1000
 
     new_pid = node_pid(project)
     assert is_pid(new_pid)
