@@ -140,6 +140,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl GenServer
   def init(state) do
+    Process.flag(:trap_exit, true)
     {:ok, state}
   end
 
