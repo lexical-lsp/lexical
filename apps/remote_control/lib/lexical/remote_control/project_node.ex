@@ -27,7 +27,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     @dialyzer {:nowarn_function, start: 3}
 
     def start(%__MODULE__{} = state, paths, from) do
-      port_wrapper = port_wrapper_executable(state.project)
+      port_wrapper = port_wrapper_executable()
       {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
       node_name = :"#{Project.name(state.project)}@127.0.0.1"
 
@@ -43,7 +43,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
           "Node.connect(#{inspect(Node.self())})"
         ] ++ path_append_arguments(paths)
 
-      port = Port.open({:spawn_executable, port_wrapper}, args: args)
+      port =
+        Port.open({:spawn_executable, port_wrapper},
+          args: args,
+          cd: Project.root_path(state.project)
+        )
+
       %{state | port: port, started_by: from}
     end
 
@@ -75,10 +80,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
       |> List.flatten()
     end
 
-    defp port_wrapper_executable(project) do
-      # Use the project_dir to detect the correct erl version
-      System.put_env("PROJECT_DIR", Project.root_path(project))
-
+    defp port_wrapper_executable do
       :remote_control
       |> :code.priv_dir()
       |> Path.join("port_wrapper.sh")

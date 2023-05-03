@@ -11,7 +11,6 @@ set_up_version_manager() {
 }
 
 set_up_version_manager
-cd $PROJECT_DIR
 
 # Start the program in the background
 case "$VERSION_MANAGER" in
