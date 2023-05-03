@@ -26,7 +26,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     @dialyzer {:nowarn_function, start: 3}
 
-    def start(state, paths, from) do
+    def start(%__MODULE__{} = state, paths, from) do
       port_wrapper = port_wrapper_executable(state.project)
       {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
       node_name = :"#{Project.name(state.project)}@127.0.0.1"
@@ -47,23 +47,23 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | port: port, started_by: from}
     end
 
-    def stop(state, from, stop_timeout) do
+    def stop(%__MODULE__{} = state, from, stop_timeout) do
       node_name = :"#{Project.name(state.project)}@127.0.0.1"
       :rpc.call(node_name, System, :stop, [])
       %{state | stopped_by: from, stop_timeout: stop_timeout, status: :stopping}
     end
 
-    def halt(state) do
+    def halt(%__MODULE__{} = state) do
       node_name = :"#{Project.name(state.project)}@127.0.0.1"
       :rpc.call(node_name, System, :halt, [])
       on_nodedown(state)
     end
 
-    def handle_nodeup(state) do
+    def handle_nodeup(%__MODULE__{} = state) do
       %{state | status: :started}
     end
 
-    def on_nodedown(state) do
+    def on_nodedown(%__MODULE__{} = state) do
       %{state | status: :stopped}
     end
 
