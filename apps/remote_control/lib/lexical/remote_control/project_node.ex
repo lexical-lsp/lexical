@@ -67,10 +67,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | status: :stopped}
     end
 
-    def node_name(%Project{} = project) do
-      :"#{Project.name(project)}@127.0.0.1"
-    end
-
     defp path_append_arguments(paths) do
       Enum.map(paths, fn path ->
         expanded_path = Path.expand(path)
