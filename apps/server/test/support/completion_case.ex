@@ -25,7 +25,6 @@ defmodule Lexical.Test.Server.CompletionCase do
     Dispatch.register(project, [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
-
     {:ok, project: project}
   end
 

@@ -55,9 +55,7 @@ defmodule Lexical.RemoteControl do
     :persistent_term.put({__MODULE__, :project}, project)
   end
 
-  def stop(%Project{} = project, stop_timeout \\ 1_000) do
-    ProjectNode.stop(project, stop_timeout)
-  end
+  defdelegate stop(project), to: ProjectNode
 
   def call(%Project{} = project, m, f, a \\ []) do
     project
