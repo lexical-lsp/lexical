@@ -24,6 +24,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
       }
     end
 
+    @dialyzer {:nowarn_function, start: 3}
+
     def start(state, paths, from) do
       port_wrapper = port_wrapper_executable(state.project)
       {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
