@@ -29,19 +29,19 @@ defmodule Lexical.RemoteControl.ProjectNode do
     def start(%__MODULE__{} = state, paths, from) do
       port_wrapper = port_wrapper_executable()
       {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
-      node_name = :"#{Project.name(state.project)}@127.0.0.1"
+      node_name = node_name(state.project)
 
-      args =
-        [
-          elixir_executable,
-          "--name",
-          node_name,
-          "--cookie",
-          state.cookie,
-          "--no-halt",
-          "-e",
-          "Node.connect(#{inspect(Node.self())})"
-        ] ++ path_append_arguments(paths)
+      args = [
+        elixir_executable,
+        "--name",
+        node_name,
+        "--cookie",
+        state.cookie,
+        "--no-halt",
+        "-e",
+        "Node.connect(#{inspect(Node.self())})"
+        | path_append_arguments(paths)
+      ]
 
       port =
         Port.open({:spawn_executable, port_wrapper},
@@ -53,14 +53,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
 
     def stop(%__MODULE__{} = state, from, stop_timeout) do
-      node_name = :"#{Project.name(state.project)}@127.0.0.1"
-      :rpc.call(node_name, System, :stop, [])
+      :rpc.call(node_name(state.project), System, :stop, [])
       %{state | stopped_by: from, stop_timeout: stop_timeout, status: :stopping}
     end
 
     def halt(%__MODULE__{} = state) do
-      node_name = :"#{Project.name(state.project)}@127.0.0.1"
-      :rpc.call(node_name, System, :halt, [])
+      :rpc.call(node_name(state.project), System, :halt, [])
       on_nodedown(state)
     end
 
@@ -72,12 +70,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | status: :stopped}
     end
 
+    def node_name(%Project{} = project) do
+      :"#{Project.name(project)}@127.0.0.1"
+    end
+
     defp path_append_arguments(paths) do
-      Enum.map(paths, fn path ->
-        expanded_path = Path.expand(path)
-        ["-pa", "#{expanded_path}"]
+      Enum.flat_map(paths, fn path ->
+        ["-pa", Path.expand(path)]
       end)
-      |> List.flatten()
     end
 
     defp port_wrapper_executable do
@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   use GenServer
 
   def start(project, project_listener, paths) do
-    node_name = :"#{Project.name(project)}@127.0.0.1"
+    node_name = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
     {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
@@ -105,12 +105,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
            ]) do
       {:ok, node_pid}
     end
-  end
-
-  @start_timeout 5_000
-
-  defp start_node(project, paths) do
-    project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
   end
 
   @stop_timeout 1_000
@@ -130,6 +124,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
   def start_link(%Project{} = project) do
     state = State.new(project)
     GenServer.start_link(__MODULE__, state, name: name(project))
+  end
+
+  @start_timeout 5_000
+
+  defp start_node(project, paths) do
+    project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
   end
 
   @impl GenServer
