@@ -3,10 +3,9 @@ defmodule Lexical.RemoteControl.CompileTracer do
   alias Lexical.RemoteControl.ModuleMappings
 
   import RemoteControl.Api.Messages
-  require Logger
 
-  def trace({:on_module, _, _}, %Macro.Env{} = env) do
-    message = extract_module_updated(env.module)
+  def trace({:on_module, module_binary, filename}, %Macro.Env{} = env) do
+    message = extract_module_updated(env.module, module_binary, filename)
     ModuleMappings.update(env.module, env.file)
     RemoteControl.notify_listener(message)
     :ok
@@ -16,7 +15,16 @@ defmodule Lexical.RemoteControl.CompileTracer do
     :ok
   end
 
-  def extract_module_updated(module) do
+  def extract_module_updated(module, module_binary, filename) do
+    unless Code.ensure_loaded?(module) do
+      erlang_filename =
+        filename
+        |> ensure_filename()
+        |> String.to_charlist()
+
+      :code.load_binary(module, erlang_filename, module_binary)
+    end
+
     functions = module.__info__(:functions)
     macros = module.__info__(:macros)
 
@@ -35,5 +43,14 @@ defmodule Lexical.RemoteControl.CompileTracer do
       macros: macros,
       struct: struct
     )
+  end
+
+  defp ensure_filename(:none) do
+    unique = System.unique_integer([:positive, :monotonic])
+    Path.join(System.tmp_dir(), "file-#{unique}.ex")
+  end
+
+  defp ensure_filename(filename) when is_binary(filename) do
+    filename
   end
 end
