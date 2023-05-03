@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
 
-set_up_version_manager() {
-    if [ -e $HOME/.asdf ]; then
-        VERSION_MANAGER="asdf"
-    elif [ -e $HOME/.rtx ]; then
-        VERSION_MANAGER="rtx"
-    else
-        VERSION_MANAGER="none"
-    fi
-}
-
 readlink_f () {
   cd "$(dirname "$1")" > /dev/null || exit 1
   filename="$(basename "$1")"
@@ -26,16 +16,4 @@ else
   dir=${ELS_INSTALL_PREFIX}
 fi
 
-set_up_version_manager
-
-case "$VERSION_MANAGER" in
-    asdf)
-        asdf env elixir "${dir}/bin/lexical" start
-        ;;
-    rtx)
-        rtx env -s bash elixir "${dir}/bin/lexical" start
-        ;;
-    *)
-        "${dir}/bin/lexical" start
-        ;;
-esac
+exec "${dir}/bin/lexical" start
