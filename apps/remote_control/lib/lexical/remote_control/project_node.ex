@@ -110,7 +110,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @stop_timeout 1_000
 
   def stop(%Project{} = project, stop_timeout \\ @stop_timeout) do
-    project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
+    pid = project |> name() |> Process.whereis()
+
+    if Process.alive?(pid) do
+      GenServer.call(pid, {:stop, stop_timeout}, stop_timeout + 100)
+    else
+      :ok
+    end
   end
 
   def child_spec(%Project{} = project) do
@@ -154,6 +160,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @impl true
   def handle_info({:nodeup, _node, _}, %State{} = state) do
     GenServer.reply(state.started_by, :ok)
+    {pid, _ref} = state.started_by
+    Process.monitor(pid)
     {:noreply, State.handle_nodeup(state)}
   end
 
@@ -170,8 +178,19 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_info({:nodedown, _, _}, %State{} = state) do
-    GenServer.reply(state.stopped_by, :ok)
+    if state.stopped_by do
+      GenServer.reply(state.stopped_by, :ok)
+    end
+
     state = State.on_nodedown(state)
+
+    {:stop, :shutdown, state}
+  end
+
+  @impl true
+  def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
+    # Caller died, normally, the caller is Project.Node
+    state = State.halt(state)
     {:stop, :shutdown, state}
   end
 
