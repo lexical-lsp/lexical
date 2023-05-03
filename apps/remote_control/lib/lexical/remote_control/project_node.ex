@@ -110,13 +110,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @stop_timeout 1_000
 
   def stop(%Project{} = project, stop_timeout \\ @stop_timeout) do
-    pid = project |> name() |> Process.whereis()
-
-    if Process.alive?(pid) do
-      GenServer.call(pid, {:stop, stop_timeout}, stop_timeout + 100)
-    else
-      :ok
-    end
+    project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
   end
 
   def child_spec(%Project{} = project) do
@@ -179,18 +173,15 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_info({:nodedown, _, _}, %State{} = state) do
-    if state.stopped_by do
-      GenServer.reply(state.stopped_by, :ok)
-    end
-
+    GenServer.reply(state.stopped_by, :ok)
     state = State.on_nodedown(state)
-
     {:stop, :shutdown, state}
   end
 
   @impl true
   def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
-    # Caller died, normally, the caller is Project.Node
+    # The launcher has died. Usually, the launcher is Server.Project.Node,
+    # and when it dies, both the process and project node vm should die.
     state = State.halt(state)
     {:stop, :shutdown, state}
   end
