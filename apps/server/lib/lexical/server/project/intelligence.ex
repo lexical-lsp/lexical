@@ -20,23 +20,18 @@ defmodule Lexical.Server.Project.Intelligence do
       %__MODULE__{state | struct_modules: MapSet.put(state.struct_modules, module_path)}
     end
 
-    def child_defines_struct?(%__MODULE__{} = state, prefix) do
+    def descendent_defines_struct?(%__MODULE__{} = state, prefix, %Range{} = range) do
       module_path = module_path(prefix)
-      Enum.any?(state.struct_modules, &paths_match?(module_path, &1))
+      Enum.any?(state.struct_modules, &prefixes_match?(module_path, &1, range))
     end
 
-    def child_struct_modules(%__MODULE__{} = state, prefix) do
+    def descendent_struct_modules(%__MODULE__{} = state, prefix, %Range{} = range) do
       module_path = module_path(prefix)
 
       for struct_path <- state.struct_modules,
-          paths_match?(module_path, struct_path) do
+          prefixes_match?(module_path, struct_path, range) do
         Enum.join(struct_path, ".")
       end
-    end
-
-    def defines_struct?(%__MODULE__{} = state, module_name) do
-      module_path = module_path(module_name)
-      Enum.any?(state.struct_modules, &(&1 == module_path))
     end
 
     defp module_path(module_name) do
@@ -45,19 +40,15 @@ defmodule Lexical.Server.Project.Intelligence do
       |> String.split(".")
     end
 
-    defp paths_match?([], [_]) do
-      true
+    defp prefixes_match?([], remainder, %Range{} = range) do
+      length(remainder) in range
     end
 
-    defp paths_match?([], _) do
-      false
+    defp prefixes_match?([same | haystack], [same | needle], range) do
+      prefixes_match?(haystack, needle, range)
     end
 
-    defp paths_match?([same | haystack], [same | needle]) do
-      paths_match?(haystack, needle)
-    end
-
-    defp paths_match?(_, _) do
+    defp prefixes_match?(_, _, _) do
       false
     end
   end
@@ -75,21 +66,27 @@ defmodule Lexical.Server.Project.Intelligence do
   end
 
   def defines_struct?(%Project{} = project, module_or_name) do
-    project
-    |> name()
-    |> GenServer.call({:defines_struct?, module_or_name})
+    descendent_defines_struct?(project, module_or_name, 0..0)
   end
 
   def child_defines_struct?(%Project{} = project, parent_module) do
-    project
-    |> name()
-    |> GenServer.call({:child_defines_struct?, parent_module})
+    descendent_defines_struct?(project, parent_module, 1..1)
   end
 
   def child_struct_modules(%Project{} = project, parent_module) do
+    descendent_struct_modules(project, parent_module, 1..1)
+  end
+
+  def descendent_struct_modules(%Project{} = project, parent_module, steps) do
     project
     |> name()
-    |> GenServer.call({:child_struct_modules, parent_module})
+    |> GenServer.call({:descendent_struct_modules, parent_module, steps})
+  end
+
+  def descendent_defines_struct?(%Project{} = project, parent_module, steps) do
+    project
+    |> name()
+    |> GenServer.call({:descendent_defines_struct, parent_module, steps})
   end
 
   def child_spec(%Project{} = project) do
@@ -109,18 +106,13 @@ defmodule Lexical.Server.Project.Intelligence do
   end
 
   @impl GenServer
-  def handle_call({:child_defines_struct?, parent_module}, _from, %State{} = state) do
-    {:reply, State.child_defines_struct?(state, parent_module), state}
+  def handle_call({:descendent_defines_struct, parent_module, steps}, _from, %State{} = state) do
+    {:reply, State.descendent_defines_struct?(state, parent_module, steps), state}
   end
 
   @impl GenServer
-  def handle_call({:child_struct_modules, parent_module}, _from, %State{} = state) do
-    {:reply, State.child_struct_modules(state, parent_module), state}
-  end
-
-  @impl GenServer
-  def handle_call({:defines_struct?, parent_module}, _from, %State{} = state) do
-    {:reply, State.defines_struct?(state, parent_module), state}
+  def handle_call({:descendent_struct_modules, parent_module, steps}, _from, %State{} = state) do
+    {:reply, State.descendent_struct_modules(state, parent_module, steps), state}
   end
 
   @impl GenServer

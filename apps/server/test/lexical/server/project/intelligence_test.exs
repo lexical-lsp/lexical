@@ -29,6 +29,19 @@ defmodule Lexical.Server.Project.IntelligenceTest do
     :ok
   end
 
+  describe "defines_struct?/2" do
+    setup [:with_parent_and_children]
+
+    test "returns true if the module defines a struct", %{project: project} do
+      assert Intelligence.defines_struct?(project, "Parent.ChildWithStruct")
+    end
+
+    test "returns false if the module doesn't have a struct", %{project: project} do
+      refute Intelligence.defines_struct?(project, "Parent")
+      refute Intelligence.defines_struct?(project, "Parent.Child")
+    end
+  end
+
   describe "child_defines_struct?/2" do
     setup [:with_parent_and_children]
 

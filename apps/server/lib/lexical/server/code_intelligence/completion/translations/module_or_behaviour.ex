@@ -22,9 +22,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       struct_reference? and defines_struct? ->
         struct_completion(builder, env, module.name)
 
-      struct_reference? and Intelligence.child_defines_struct?(env.project, module.full_name) ->
+      struct_reference? and
+          immediate_descentent_defines_struct?(env.project, module.full_name) ->
         env.project
-        |> Intelligence.child_struct_modules(module.full_name)
+        |> immediate_descendent_struct_modules(module.full_name)
         |> Enum.map(fn child_module_name ->
           local_name = local_module_name(module.full_name, child_module_name)
           struct_completion(builder, env, local_name)
@@ -88,4 +89,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
   defp strip_leading_period(<<".", rest::binary>>), do: rest
   defp strip_leading_period(string_without_period), do: string_without_period
+
+  defp immediate_descentent_defines_struct?(%Lexical.Project{} = project, module_name) do
+    Intelligence.descendent_defines_struct?(project, module_name, 1..2)
+  end
+
+  defp immediate_descendent_struct_modules(%Lexical.Project{} = project, module_name) do
+    Intelligence.descendent_struct_modules(project, module_name, 1..2)
+  end
 end

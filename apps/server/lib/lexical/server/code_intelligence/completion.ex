@@ -106,8 +106,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         true
 
       struct_reference? and struct_module == Result.Module ->
-        Intelligence.defines_struct?(env.project, result.full_name) or
-          Intelligence.child_defines_struct?(env.project, result.full_name)
+        Intelligence.descendent_defines_struct?(env.project, result.full_name, 0..2)
 
       struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
         true
