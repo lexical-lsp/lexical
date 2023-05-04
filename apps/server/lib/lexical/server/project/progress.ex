@@ -47,7 +47,7 @@ defmodule Lexical.Server.Project.Progress do
     {:noreply, new_state}
   end
 
-  defp name(%Project{} = project) do
+  def name(%Project{} = project) do
     :"#{Project.name(project)}::progress"
   end
 end
