@@ -74,8 +74,8 @@ defmodule Lexical.Server.Project.Node do
   end
 
   @impl GenServer
-  def handle_info({:DOWN, _ref, :process, _, reason}, %State{} = state) do
-    Logger.warn("The node supervisor has died because: #{inspect(reason)}. restarting the node.")
+  def handle_info({:nodedown, _}, %State{} = state) do
+    Logger.warn("The node has died. Restarting after deleting the build directory")
 
     with :ok <- delete_build_artifacts(state.project),
          {:ok, new_state} <- start_node(state.project) do
@@ -91,7 +91,7 @@ defmodule Lexical.Server.Project.Node do
   def start_node(%Project{} = project) do
     with dispatch_pid when is_pid(dispatch_pid) <- Process.whereis(Dispatch.name(project)),
          {:ok, node, node_pid} <- RemoteControl.start_link(project, dispatch_pid) do
-      Process.monitor(node_pid)
+      Node.monitor(node, true)
       {:ok, State.new(project, node, node_pid)}
     end
   end

@@ -6,8 +6,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   defmodule State do
     defstruct [
       :project,
-      :node,
-      :paths,
+      :port,
       :cookie,
       :stopped_by,
       :stop_timeout,
@@ -20,41 +19,86 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
       %__MODULE__{
         project: project,
-        node: node_name(project),
-        paths: RemoteControl.glob_paths(),
-        cookie: cookie
+        cookie: cookie,
+        status: :initializing
       }
     end
 
-    def set_stopped_by(state, from, stop_timeout) do
-      %{state | stopped_by: from, stop_timeout: stop_timeout}
+    @dialyzer {:nowarn_function, start: 3}
+
+    def start(%__MODULE__{} = state, paths, from) do
+      port_wrapper = port_wrapper_executable()
+      {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
+      node_name = node_name(state.project)
+
+      args = [
+        elixir_executable,
+        "--name",
+        node_name,
+        "--cookie",
+        state.cookie,
+        "--no-halt",
+        "-e",
+        "Node.connect(#{inspect(Node.self())})"
+        | path_append_arguments(paths)
+      ]
+
+      port =
+        Port.open({:spawn_executable, port_wrapper},
+          args: args,
+          cd: Project.root_path(state.project)
+        )
+
+      %{state | port: port, started_by: from}
     end
 
-    def set_started_by(state, from) do
-      %{state | started_by: from}
+    def stop(%__MODULE__{} = state, from, stop_timeout) do
+      :rpc.call(node_name(state.project), System, :stop, [])
+      %{state | stopped_by: from, stop_timeout: stop_timeout, status: :stopping}
     end
 
-    def set_started(state) do
+    def halt(%__MODULE__{} = state) do
+      :rpc.call(node_name(state.project), System, :halt, [])
+      on_nodedown(state)
+    end
+
+    def handle_nodeup(%__MODULE__{} = state) do
       %{state | status: :started}
+    end
+
+    def on_nodedown(%__MODULE__{} = state) do
+      %{state | status: :stopped}
     end
 
     def node_name(%Project{} = project) do
       :"#{Project.name(project)}@127.0.0.1"
+    end
+
+    defp path_append_arguments(paths) do
+      Enum.flat_map(paths, fn path ->
+        ["-pa", Path.expand(path)]
+      end)
+    end
+
+    defp port_wrapper_executable do
+      :remote_control
+      |> :code.priv_dir()
+      |> Path.join("port_wrapper.sh")
     end
   end
 
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
-  def start(project, project_listener) do
-    node = State.node_name(project)
+  def start(project, project_listener, paths) do
+    node_name = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
     {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
 
-    with :ok <- start_node(project),
+    with :ok <- start_node(project, paths),
          :ok <-
-           :rpc.call(node, RemoteControl.Bootstrap, :init, [
+           :rpc.call(node_name, RemoteControl.Bootstrap, :init, [
              project,
              project_listener,
              remote_control_config
@@ -63,19 +107,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
   end
 
-  @start_timeout 5_000
-
-  defp start_node(project) do
-    project |> name() |> GenServer.call(:start, @start_timeout + 500)
-  end
-
   @stop_timeout 1_000
 
-  def stop(project, stop_timeout \\ @stop_timeout) do
+  def stop(%Project{} = project, stop_timeout \\ @stop_timeout) do
     project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
   end
 
-  def child_spec(project) do
+  def child_spec(%Project{} = project) do
     %{
       id: name(project),
       start: {__MODULE__, :start_link, [project]},
@@ -83,76 +121,74 @@ defmodule Lexical.RemoteControl.ProjectNode do
     }
   end
 
-  def start_link(project) do
+  def start_link(%Project{} = project) do
     state = State.new(project)
     GenServer.start_link(__MODULE__, state, name: name(project))
   end
 
+  @start_timeout 3_000
+
+  defp start_node(project, paths) do
+    project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
+  end
+
   @impl GenServer
   def init(state) do
+    Process.flag(:trap_exit, true)
     {:ok, state}
   end
 
   @impl true
-  def handle_call(:start, from, state) do
-    port_wrapper = port_wrapper_executable(state.project)
-    {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
-
+  def handle_call({:start, paths}, from, %State{} = state) do
     :ok = :net_kernel.monitor_nodes(true, node_type: :visible)
     Process.send_after(self(), :maybe_start_timeout, @start_timeout)
-
-    _port =
-      Port.open({:spawn_executable, port_wrapper},
-        args:
-          [
-            elixir_executable,
-            "--name",
-            state.node,
-            "--cookie",
-            state.cookie,
-            "--no-halt",
-            "-e",
-            "Node.connect(#{inspect(Node.self())})"
-          ] ++ path_append_arguments(state)
-      )
-
-    state = State.set_started_by(state, from)
+    state = State.start(state, paths, from)
     {:noreply, state}
   end
 
   @impl true
-  def handle_call({:stop, stop_timeout}, from, state) do
-    state = State.set_stopped_by(state, from, stop_timeout)
-    :rpc.call(state.node, System, :stop, [])
+  def handle_call({:stop, stop_timeout}, from, %State{} = state) do
+    state = State.stop(state, from, stop_timeout)
     {:noreply, state, stop_timeout}
   end
 
   @impl true
-  def handle_info({:nodeup, _node, _}, state) do
+  def handle_info({:nodeup, _node, _}, %State{} = state) do
     GenServer.reply(state.started_by, :ok)
-    {:noreply, State.set_started(state)}
+    {pid, _ref} = state.started_by
+    Process.monitor(pid)
+    {:noreply, State.handle_nodeup(state)}
   end
 
   @impl true
-  def handle_info(:maybe_start_timeout, %{status: status} = state) when status != :started do
-    GenServer.reply(state.started_by, {:error, :start_timeout})
-    {:stop, :shutdown, state}
-  end
-
-  @impl true
-  def handle_info(:maybe_start_timeout, state) do
+  def handle_info(:maybe_start_timeout, %State{status: :started} = state) do
     {:noreply, state}
   end
 
   @impl true
-  def handle_info({:nodedown, _, _}, state) do
+  def handle_info(:maybe_start_timeout, %State{} = state) do
+    GenServer.reply(state.started_by, {:error, :start_timeout})
+    {:stop, :start_timeout, nil}
+  end
+
+  @impl true
+  def handle_info({:nodedown, _, _}, %State{} = state) do
     GenServer.reply(state.stopped_by, :ok)
+    state = State.on_nodedown(state)
     {:stop, :shutdown, state}
   end
 
   @impl true
-  def handle_info(:timeout, state) do
-    :rpc.call(state.node, System, :halt, [])
+  def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
+    # The launcher has died. Usually, the launcher is Server.Project.Node,
+    # and when it dies, both the process and project node vm should die.
+    state = State.halt(state)
+    {:stop, :shutdown, state}
+  end
+
+  @impl true
+  def handle_info(:timeout, %State{} = state) do
+    state = State.halt(state)
     GenServer.reply(state.stopped_by, :ok)
     {:stop, :shutdown, state}
   end
@@ -165,26 +201,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info(msg, state) do
+  def handle_info(msg, %State{} = state) do
     Logger.warn("Received unexpected message #{inspect(msg)}")
     {:noreply, state}
   end
 
-  defp path_append_arguments(%State{} = state) do
-    Enum.map(state.paths, fn path ->
-      expanded_path = Path.expand(path)
-      ["-pa", "#{expanded_path}"]
-    end)
-    |> List.flatten()
-  end
-
   def name(%Project{} = project) do
     :"#{Project.name(project)}::node_process"
-  end
-
-  defp port_wrapper_executable(project) do
-    # Use the project_dir to detect the correct erl version
-    System.put_env("PROJECT_DIR", Project.root_path(project))
-    Path.join(:code.priv_dir(:remote_control), "port_wrapper.sh")
   end
 end

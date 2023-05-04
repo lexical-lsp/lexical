@@ -21,7 +21,7 @@ defmodule Lexical.RemoteControl do
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
     node = node_name(project)
 
-    with {:ok, node_pid} <- ProjectNode.start(project, project_listener),
+    with {:ok, node_pid} <- ProjectNode.start(project, project_listener, glob_paths()),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node, node_pid}
     end
@@ -55,9 +55,7 @@ defmodule Lexical.RemoteControl do
     :persistent_term.put({__MODULE__, :project}, project)
   end
 
-  def stop(%Project{} = project, stop_timeout \\ 1_000) do
-    ProjectNode.stop(project, stop_timeout)
-  end
+  defdelegate stop(project), to: ProjectNode
 
   def call(%Project{} = project, m, f, a \\ []) do
     project
