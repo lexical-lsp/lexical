@@ -28,20 +28,20 @@ defmodule Lexical.Server.Project.Progress.State do
     create_workdone_progress(state, label)
 
     progress = begin_progress_value(label, token)
-    send_progress(progress)
+    write(progress)
 
     %{state | progress: progress}
   end
 
   def update(%__MODULE__{} = state, label, message) do
     progress = report_progress_value(state, label, message)
-    send_progress(progress)
+    write(progress)
     %{state | progress: progress}
   end
 
   def complete(%__MODULE__{} = state, label, message \\ "") do
     progress = end_progress_value(state, label, message)
-    send_progress(progress)
+    write(progress)
 
     state = clear_token_by_label(state, label)
     %{state | progress: progress}
@@ -65,7 +65,7 @@ defmodule Lexical.Server.Project.Progress.State do
     Transport.write(progress)
   end
 
-  defp send_progress(progress) do
+  defp write(progress) do
     if progress.token do
       progress |> Value.to_progress() |> Transport.write()
     end
