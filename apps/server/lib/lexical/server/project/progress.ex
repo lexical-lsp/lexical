@@ -1,7 +1,10 @@
 defmodule Lexical.Server.Project.Progress do
   require Logger
+  alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Types.WorkDone
+  alias Lexical.Server.Transport
 
-  defmodule ProgressValue do
+  defmodule Value do
     defstruct [:title, :message, :percentage]
 
     def new(options) do
@@ -30,11 +33,6 @@ defmodule Lexical.Server.Project.Progress do
       }
     end
 
-    @prepare_labels ~w(local.hex.begin local.hex.end local.rebar.begin local.rebar.end deps.get.begin deps.get.end)s
-    @compile_labels ~w(deps.compile.begin deps.compile deps.compile.end compile.begin compile compile.end)s
-
-    @mix_labels @prepare_labels ++ @compile_labels
-
     def add(state, label, message \\ "") do
       # Only need to care about `begin` and `report` events
       # `end` event is too simple
@@ -52,7 +50,7 @@ defmodule Lexical.Server.Project.Progress do
 
         "begin" ->
           token = System.unique_integer([:positive])
-          progress = ProgressValue.new(title: title(label))
+          progress = Value.new(title: trim(label))
 
           %{
             state
@@ -101,7 +99,7 @@ defmodule Lexical.Server.Project.Progress do
           compile_report_progress(state, message)
 
         _ ->
-          ProgressValue.new(message: message)
+          Value.new(message: message)
       end
     end
 
@@ -111,7 +109,7 @@ defmodule Lexical.Server.Project.Progress do
           nil
 
         _ ->
-          ProgressValue.new(
+          Value.new(
             message: message,
             percentage: state.percentages_by_label["compile"].percentage
           )
@@ -120,9 +118,9 @@ defmodule Lexical.Server.Project.Progress do
 
     def trim(label) do
       label
+      |> String.trim_trailing(".prepare")
       |> String.trim_trailing(".begin")
       |> String.trim_trailing(".end")
-      |> String.trim_trailing(".prepare")
     end
 
     def kind(label) do
@@ -130,24 +128,62 @@ defmodule Lexical.Server.Project.Progress do
       if kind in ["prepare", "begin", "end"], do: kind, else: "report"
     end
 
-    defp title(label) when label in @mix_labels do
-      "mix " <> trim(label)
+    def create_workdone_progress(%__MODULE__{} = state, label) do
+      token = get_token(state, label)
+      progress = Notifications.CreateWorkDoneProgress.new(token: token)
+      Transport.write(progress)
     end
 
-    defp title(label) do
-      trim(label)
+    def begin_progress(%__MODULE__{} = state, label) do
+      token = get_token(state, label)
+      value = to_progress_begin(state)
+      progress = Notifications.Progress.new(token: token, value: value)
+      Transport.write(progress)
+    end
+
+    def report_progress(%__MODULE__{} = state, label) do
+      token = get_token(state, label)
+      value = to_progress_report(state)
+
+      if token && value do
+        progress = Notifications.Progress.new(token: token, value: value)
+        Transport.write(progress)
+      end
+    end
+
+    def end_progress(%__MODULE__{} = state, label) do
+      token = get_token(state, label)
+      value = WorkDone.Progress.End.new(kind: "end")
+      progress = Notifications.Progress.new(token: token, value: value)
+      Transport.write(progress)
+    end
+
+    defp to_progress_begin(%__MODULE__{progress: progress}) do
+      WorkDone.Progress.Begin.new(kind: "begin", title: progress.title)
+    end
+
+    defp to_progress_report(%__MODULE__{progress: nil}) do
+      # NOTE: we need to use nil to ignore prepare progress
+      # and some incorrect progress like `compile` without percentage
+      nil
+    end
+
+    defp to_progress_report(%__MODULE__{progress: progress}) do
+      WorkDone.Progress.Report.new(
+        kind: "report",
+        message: progress.message,
+        percentage: progress.percentage
+      )
+    end
+
+    defp get_token(%__MODULE__{} = state, label) do
+      Map.get(state.token_by_label, State.trim(label))
     end
   end
 
   alias Lexical.Project
-  alias Lexical.Protocol.Notifications.CreateWorkDoneProgress
-  alias Lexical.Protocol.Notifications.Progress, as: LSProgress
-  alias Lexical.Protocol.Types.WorkDone.ProgressBegin
-  alias Lexical.Protocol.Types.WorkDone.Progress.Report, as: ProgressReport
-  alias Lexical.Protocol.Types.WorkDone.ProgressEnd
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
-  alias Lexical.Server.Transport
 
   require Logger
 
@@ -181,14 +217,14 @@ defmodule Lexical.Server.Project.Progress do
 
     case State.kind(label) do
       "begin" ->
-        create_workdone_progress(state, label)
-        begin_progress(state, label)
+        State.create_workdone_progress(state, label)
+        State.begin_progress(state, label)
 
       "end" ->
-        end_progress(state, label)
+        State.end_progress(state, label)
 
       _ ->
-        report_progress(state, label)
+        State.report_progress(state, label)
     end
 
     {:noreply, state}
@@ -196,57 +232,5 @@ defmodule Lexical.Server.Project.Progress do
 
   defp name(%Project{} = project) do
     :"#{Project.name(project)}::progress"
-  end
-
-  defp create_workdone_progress(state, label) do
-    token = get_token(state, label)
-    progress = CreateWorkDoneProgress.new(token: token)
-    Transport.write(progress)
-  end
-
-  defp begin_progress(state, label) do
-    token = get_token(state, label)
-    value = to_progress_begin(state)
-    progress = LSProgress.new(token: token, value: value)
-    Transport.write(progress)
-  end
-
-  defp report_progress(state, label) do
-    token = get_token(state, label)
-    value = to_progress_report(state)
-
-    if token && value do
-      progress = LSProgress.new(token: token, value: value)
-      Transport.write(progress)
-    end
-  end
-
-  defp end_progress(state, label) do
-    token = get_token(state, label)
-    value = ProgressEnd.new(kind: "end")
-    progress = LSProgress.new(token: token, value: value)
-    Transport.write(progress)
-  end
-
-  defp to_progress_begin(%State{progress: progress}) do
-    ProgressBegin.new(kind: "begin", title: progress.title)
-  end
-
-  defp to_progress_report(%State{progress: nil}) do
-    # NOTE: we need to use nil to ignore prepare progress
-    # and some incorrect progress like `compile` without percentage
-    nil
-  end
-
-  defp to_progress_report(%State{progress: progress}) do
-    ProgressReport.new(
-      kind: "report",
-      message: progress.message,
-      percentage: progress.percentage
-    )
-  end
-
-  defp get_token(state, label) do
-    Map.get(state.token_by_label, State.trim(label))
   end
 end

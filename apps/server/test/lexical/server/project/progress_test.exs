@@ -42,7 +42,7 @@ defmodule Lexical.Server.Project.ProgressTest do
 
     test "it create the work done progress and begin the progress when receive a begin message",
          %{project: project} do
-      message = progress("compile.begin")
+      message = progress("mix compile.begin")
 
       Project.Dispatch.broadcast(project, message)
 
@@ -56,13 +56,13 @@ defmodule Lexical.Server.Project.ProgressTest do
     test "it should be able to send the end porgress and use the previous token", %{
       project: project
     } do
-      message = progress("compile.begin")
+      message = progress("mix compile.begin")
       Project.Dispatch.broadcast(project, message)
 
       assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
       assert_receive {:transport, %LSProgress{}}
 
-      message = progress("compile.end")
+      message = progress("mix compile.end")
       Project.Dispatch.broadcast(project, message)
       assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
 
@@ -70,8 +70,8 @@ defmodule Lexical.Server.Project.ProgressTest do
     end
 
     test "it should be able to send the report progress", %{project: project} do
-      prepare_message = progress("compile.prepare", 3)
-      begin_message = progress("compile.begin")
+      prepare_message = progress("mix compile.prepare", 3)
+      begin_message = progress("mix compile.begin")
 
       Project.Dispatch.broadcast(project, prepare_message)
       Project.Dispatch.broadcast(project, begin_message)
@@ -79,13 +79,13 @@ defmodule Lexical.Server.Project.ProgressTest do
       assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
       assert_receive {:transport, %LSProgress{}}
 
-      report_message = progress("compile", "lib/file.ex")
+      report_message = progress("mix compile", "lib/file.ex")
       Project.Dispatch.broadcast(project, report_message)
       assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
 
       assert value.kind == "report"
       assert value.message == "lib/file.ex"
-      assert value.percentage == 33
+      assert value.percentage == nil
       assert value.cancellable == nil
     end
   end

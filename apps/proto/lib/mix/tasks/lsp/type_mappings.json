@@ -1720,7 +1720,7 @@
     "source": "WindowClientCapabilities"
   },
   {
-    "destination": "WorkDone.ProgressBegin",
+    "destination": "WorkDone.Progress.Begin",
     "imported_version": "3.17",
     "source": "WorkDoneProgressBegin"
   },
@@ -1735,7 +1735,7 @@
     "source": "WorkDoneProgressCreateParams"
   },
   {
-    "destination": "WorkDone.ProgressEnd",
+    "destination": "WorkDone.Progress.End",
     "imported_version": "3.17",
     "source": "WorkDoneProgressEnd"
   },
