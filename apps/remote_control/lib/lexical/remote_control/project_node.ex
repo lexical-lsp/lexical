@@ -126,7 +126,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     GenServer.start_link(__MODULE__, state, name: name(project))
   end
 
-  @start_timeout 5_000
+  @start_timeout 3_000
 
   defp start_node(project, paths) do
     project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
