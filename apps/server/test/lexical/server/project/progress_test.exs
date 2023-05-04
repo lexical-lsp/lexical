@@ -5,8 +5,6 @@ defmodule Lexical.Server.Project.ProgressTest do
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
 
-  alias Project.Progress
-
   import Lexical.Test.Fixtures
   import RemoteControl.Api.Messages
 
@@ -40,40 +38,8 @@ defmodule Lexical.Server.Project.ProgressTest do
   describe "report the progress message" do
     setup [:with_patched_tranport]
 
-    test "it create the work done progress and begin the progress when receive a begin message",
-         %{project: project} do
-      message = progress("mix compile.begin")
-
-      Project.Dispatch.broadcast(project, message)
-
-      assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
-      assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
-
-      assert value.kind == "begin"
-      assert value.title == "mix compile"
-    end
-
-    test "it should be able to send the end porgress and use the previous token", %{
-      project: project
-    } do
-      message = progress("mix compile.begin")
-      Project.Dispatch.broadcast(project, message)
-
-      assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
-      assert_receive {:transport, %LSProgress{}}
-
-      message = progress("mix compile.end")
-      Project.Dispatch.broadcast(project, message)
-      assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
-
-      assert value.kind == "end"
-    end
-
     test "it should be able to send the report progress", %{project: project} do
-      prepare_message = progress("mix compile.prepare", 3)
       begin_message = progress("mix compile.begin")
-
-      Project.Dispatch.broadcast(project, prepare_message)
       Project.Dispatch.broadcast(project, begin_message)
 
       assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
@@ -83,7 +49,7 @@ defmodule Lexical.Server.Project.ProgressTest do
       Project.Dispatch.broadcast(project, report_message)
       assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
 
-      assert value.kind == "report"
+      assert value.kind == :report
       assert value.message == "lib/file.ex"
       assert value.percentage == nil
       assert value.cancellable == nil

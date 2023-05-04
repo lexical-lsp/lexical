@@ -30,9 +30,9 @@ defmodule Lexical.RemoteControl.CompileTracer do
     relative_path = Path.relative_to_cwd(file)
 
     if String.starts_with?(relative_path, "deps") do
-      project_progress(label: "deps.compile", message: relative_path)
+      project_progress(label: "mix deps.compile", message: relative_path)
     else
-      project_progress(label: "compile", message: relative_path)
+      project_progress(label: "mix compile", message: relative_path)
     end
   end
 
