@@ -2,7 +2,6 @@ defmodule Lexical.Server.Project.Progress do
   alias Lexical.Project
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Project.Progress.State
-  require Logger
 
   import Lexical.RemoteControl.Api.Messages
 

@@ -53,8 +53,4 @@ defmodule Lexical.RemoteControl.Api do
       position
     ])
   end
-
-  def all_ex_files(%Project{} = project) do
-    RemoteControl.call(project, RemoteControl.Build.Progress, :all_ex_files, [project])
-  end
 end

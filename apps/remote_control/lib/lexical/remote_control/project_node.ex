@@ -194,9 +194,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({_port, {:data, message}}, state) do
-    message = message |> IO.iodata_to_binary() |> String.trim()
-    Logger.info("Port: #{message}")
+  def handle_info({_port, {:data, _message}}, state) do
     {:noreply, state}
   end
 
