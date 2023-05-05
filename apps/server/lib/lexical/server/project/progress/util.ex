@@ -6,9 +6,9 @@ defmodule Lexical.Server.Project.Progress.Util do
   def with_progress(project, label, func) do
     progress_pid = Progress.name(project)
 
-    send(progress_pid, project_progress(label: label <> ".begin"))
+    send(progress_pid, project_progress(label: label, stage: :begin))
     result = func.()
-    send(progress_pid, project_progress(label: label <> ".end"))
+    send(progress_pid, project_progress(label: label, stage: :end))
 
     result
   end
