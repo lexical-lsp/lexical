@@ -46,7 +46,9 @@ defmodule Lexical.RemoteControl.Build.State do
 
       result =
         RemoteControl.Mix.in_project(project, fn _ ->
-          Mix.Task.run(:compile, mix_compile_opts(false))
+          with_progress "compile", fn ->
+            Mix.Task.run(:compile, mix_compile_opts(false))
+          end
         end)
 
       case result do
