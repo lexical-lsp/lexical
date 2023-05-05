@@ -162,7 +162,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @impl true
   def handle_info({:nodeup, _node, _}, %State{} = state) do
     {pid, _ref} = state.started_by
-    Process.monitor(pid)
+    Process.link(pid)
     GenServer.reply(state.started_by, :ok)
     state = State.on_nodeup(state)
     {:noreply, state}
@@ -187,18 +187,16 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
-    # The launcher has died. Usually, the launcher is Server.Project.Node,
-    # and when it dies, both the process and project node vm should die.
+  def handle_info({:EXIT, pid, _reason}, %State{started_by: {pid, _}} = state) do
     state = State.on_linked_dead(state)
     {:stop, :shutdown, state}
   end
 
   @impl true
-  def handle_info({:EXIT, from, _reason}, %State{started_by: from} = state) do
-    # NOTE: I don't think this callback is needed
+  def handle_info({:EXIT, _port, _reason}, %State{} = state) do
     state = State.on_linked_dead(state)
-    {:stop, :shutdown, state}
+    # NOTE: Just like `:peer` we should ignore the exit of the port and continue working
+    {:noreply, state}
   end
 
   @impl true

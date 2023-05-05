@@ -22,7 +22,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
     assert_eventually Process.whereis(ProjectNode.name(project)) == nil, 50
   end
 
-  test "it should be stopped atomically when the linked process is dead", %{project: project} do
+  test "it should be stopped atomically when the startup process is dead", %{project: project} do
     test_pid = self()
 
     linked_node_process =
