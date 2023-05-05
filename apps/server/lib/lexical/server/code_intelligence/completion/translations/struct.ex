@@ -21,17 +21,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
           struct.name
       end
 
-    insert_text =
-      if add_curlies? do
-        insert_text <> "{}"
+    builder_opts =
+      if struct_reference? do
+        [kind: :struct, detail: "#{struct.name} (Struct)", label: "%#{struct.name}"]
       else
-        insert_text
+        [kind: :module, detail: "#{struct.name} (Module)", label: struct.name]
       end
 
-    builder.plain_text(env, insert_text,
-      detail: "#{struct.name} (Struct)",
-      kind: :struct,
-      label: struct.name
-    )
+    if add_curlies? do
+      builder.snippet(env, insert_text <> "{$1}", builder_opts)
+    else
+      builder.plain_text(env, insert_text, builder_opts)
+    end
   end
 end
