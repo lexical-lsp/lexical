@@ -27,9 +27,12 @@ defmodule Lexical.Server.Project.Progress do
   end
 
   @impl true
-  def handle_info(project_progress(label: label, message: message), %State{} = state) do
+  def handle_info(
+        project_progress(label: label, message: message, stage: stage),
+        %State{} = state
+      ) do
     new_state =
-      case State.kind(label) do
+      case stage do
         :begin ->
           State.begin(state, label)
 

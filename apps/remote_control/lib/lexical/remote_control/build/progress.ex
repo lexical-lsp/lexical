@@ -7,9 +7,9 @@ defmodule Lexical.RemoteControl.Build.Progress do
     mix? = Keyword.get(opts, :mix?, true)
     label = if mix?, do: "mix " <> label, else: label
 
-    RemoteControl.notify_listener(project_progress(label: label <> ".begin"))
+    RemoteControl.notify_listener(project_progress(label: label, stage: :begin))
     result = func.()
-    RemoteControl.notify_listener(project_progress(label: label <> ".end"))
+    RemoteControl.notify_listener(project_progress(label: label, stage: :end))
 
     result
   end

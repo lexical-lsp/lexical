@@ -22,41 +22,28 @@ defmodule Lexical.Server.Project.Progress.State do
 
   def begin(%__MODULE__{} = state, label) do
     token = System.unique_integer([:positive])
-    token_by_label = Map.put(state.token_by_label, trim(label), token)
+    token_by_label = Map.put(state.token_by_label, label, token)
 
     state = %{state | token_by_label: token_by_label}
     create_workdone_progress(state, label)
 
-    progress = begin_progress_value(label, token)
+    progress = value(:begin, state, label, nil)
     write(progress)
 
     %{state | progress: progress}
   end
 
   def update(%__MODULE__{} = state, label, message) do
-    progress = report_progress_value(state, label, message)
+    progress = value(:report, state, label, message)
     write(progress)
     %{state | progress: progress}
   end
 
-  def complete(%__MODULE__{} = state, label, message \\ "") do
-    progress = end_progress_value(state, label, message)
+  def complete(%__MODULE__{} = state, label, message) do
+    progress = value(:end, state, label, message)
     write(progress)
-
     state = clear_token_by_label(state, label)
     %{state | progress: progress}
-  end
-
-  def trim(label) do
-    label
-    |> String.trim_trailing(".prepare")
-    |> String.trim_trailing(".begin")
-    |> String.trim_trailing(".end")
-  end
-
-  def kind(label) do
-    kind = String.split(label, ".") |> List.last()
-    if kind in ["prepare", "begin", "end"], do: String.to_atom(kind), else: :report
   end
 
   defp create_workdone_progress(%__MODULE__{} = state, label) do
@@ -66,32 +53,33 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write(progress) do
-    if progress.token do
+    if progress && progress.token do
       progress |> Value.to_progress() |> Transport.write()
     end
   end
 
-  defp begin_progress_value(label, token) do
-    Value.new(kind: kind(label), token: token, title: trim(label))
-  end
-
-  defp report_progress_value(state, label, message) do
-    token = get_token_when_update(state, label)
-    Value.new(kind: kind(label), token: token, message: message)
-  end
-
-  defp end_progress_value(state, label, message) do
+  defp value(:begin, state, label, _message) do
     token = get_token(state, label)
-    Value.new(kind: kind(label), token: token, message: message)
+    Value.new(kind: :begin, token: token, title: label)
+  end
+
+  defp value(:report, state, label, message) do
+    token = get_token_when_update(state, label)
+    Value.new(kind: :report, token: token, message: message)
+  end
+
+  defp value(:end, state, label, message) do
+    token = get_token(state, label)
+    Value.new(kind: :end, token: token, message: message)
   end
 
   defp clear_token_by_label(%__MODULE__{} = state, label) do
-    token_by_label = Map.delete(state.token_by_label, trim(label))
+    token_by_label = Map.delete(state.token_by_label, label)
     %{state | token_by_label: token_by_label}
   end
 
   defp get_token_when_update(state, label) do
-    case trim(label) do
+    case label do
       "mix compile" ->
         # NOTE: `mix compile` updating event is from the compile tracer
         # Then this tracer can be triggered by both `mix deps.compile` and `mix compile`.
@@ -103,6 +91,6 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp get_token(state, label) do
-    state.token_by_label[trim(label)]
+    state.token_by_label[label]
   end
 end

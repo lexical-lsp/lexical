@@ -21,8 +21,8 @@ defmodule Lexical.Server.Project.ProgressTest do
     {:ok, project: project}
   end
 
-  def progress(label, message \\ "") do
-    project_progress(label: label, message: message)
+  def progress(stage, label, message \\ "") do
+    project_progress(label: label, message: message, stage: stage)
   end
 
   def with_patched_tranport(_) do
@@ -39,13 +39,13 @@ defmodule Lexical.Server.Project.ProgressTest do
     setup [:with_patched_tranport]
 
     test "it should be able to send the report progress", %{project: project} do
-      begin_message = progress("mix compile.begin")
+      begin_message = progress(:begin, "mix compile")
       Project.Dispatch.broadcast(project, begin_message)
 
       assert_receive {:transport, %CreateWorkDoneProgress{lsp: %{token: token}}}
       assert_receive {:transport, %LSProgress{}}
 
-      report_message = progress("mix compile", "lib/file.ex")
+      report_message = progress(:report, "mix compile", "lib/file.ex")
       Project.Dispatch.broadcast(project, report_message)
       assert_receive {:transport, %LSProgress{lsp: %{token: ^token, value: value}}}
 
