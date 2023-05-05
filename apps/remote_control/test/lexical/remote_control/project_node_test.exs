@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
   use ExUnit.Case, async: false
 
   setup do
-    project = project(:project)
+    project = project()
     start_supervised!({ProjectNodeSupervisor, project})
     {:ok, %{project: project}}
   end

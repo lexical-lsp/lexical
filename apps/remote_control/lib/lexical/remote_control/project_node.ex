@@ -59,15 +59,23 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     def halt(%__MODULE__{} = state) do
       :rpc.call(node_name(state.project), System, :halt, [])
-      on_nodedown(state)
+      %{state | status: :stopped}
     end
 
-    def handle_nodeup(%__MODULE__{} = state) do
+    def on_nodeup(%__MODULE__{} = state) do
       %{state | status: :started}
     end
 
     def on_nodedown(%__MODULE__{} = state) do
       %{state | status: :stopped}
+    end
+
+    def on_linked_dead(%__MODULE__{} = state) do
+      if :rpc.call(node_name(state.project), Node, :alive?, []) do
+        halt(state)
+      else
+        %{state | status: :stopped}
+      end
     end
 
     def node_name(%Project{} = project) do
@@ -94,9 +102,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
     node_name = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
-    {:ok, node_pid} = ProjectNodeSupervisor.start_project_node(project)
-
-    with :ok <- start_node(project, paths),
+    with {:ok, node_pid} <- ProjectNodeSupervisor.start_project_node(project),
+         :ok <- start_node(project, paths),
          :ok <-
            :rpc.call(node_name, RemoteControl.Bootstrap, :init, [
              project,
@@ -154,10 +161,11 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_info({:nodeup, _node, _}, %State{} = state) do
-    GenServer.reply(state.started_by, :ok)
     {pid, _ref} = state.started_by
     Process.monitor(pid)
-    {:noreply, State.handle_nodeup(state)}
+    GenServer.reply(state.started_by, :ok)
+    state = State.on_nodeup(state)
+    {:noreply, state}
   end
 
   @impl true
@@ -182,7 +190,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
   def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
     # The launcher has died. Usually, the launcher is Server.Project.Node,
     # and when it dies, both the process and project node vm should die.
-    state = State.halt(state)
+    state = State.on_linked_dead(state)
+    {:stop, :shutdown, state}
+  end
+
+  @impl true
+  def handle_info({:EXIT, from, _reason}, %State{started_by: from} = state) do
+    # NOTE: I don't think this callback is needed
+    state = State.on_linked_dead(state)
     {:stop, :shutdown, state}
   end
 
