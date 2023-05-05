@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | status: :stopped}
     end
 
-    def on_linked_dead(%__MODULE__{} = state) do
+    def on_monitored_dead(%__MODULE__{} = state) do
       if :rpc.call(node_name(state.project), Node, :alive?, []) do
         halt(state)
       else
@@ -162,7 +162,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @impl true
   def handle_info({:nodeup, _node, _}, %State{} = state) do
     {pid, _ref} = state.started_by
-    Process.link(pid)
+    Process.monitor(pid)
     GenServer.reply(state.started_by, :ok)
     state = State.on_nodeup(state)
     {:noreply, state}
@@ -187,14 +187,13 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({:EXIT, pid, _reason}, %State{started_by: {pid, _}} = state) do
-    state = State.on_linked_dead(state)
+  def handle_info({:DOWN, _ref, :process, _object, _reason}, %State{} = state) do
+    state = State.on_monitored_dead(state)
     {:stop, :shutdown, state}
   end
 
   @impl true
   def handle_info({:EXIT, _port, _reason}, %State{} = state) do
-    state = State.on_linked_dead(state)
     # NOTE: Just like `:peer` we should ignore the exit of the port and continue working
     {:noreply, state}
   end

@@ -15,7 +15,6 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
   end
 
   test "it should be able to stop a project node and won't restart", %{project: project} do
-    Process.flag(:trap_exit, true)
     {:ok, _node_name, _} = RemoteControl.start_link(project, self())
 
     assert ProjectNode.name(project) |> Process.whereis() |> Process.alive?()
