@@ -51,7 +51,7 @@ defmodule Lexical.Server.MixProject do
       {:common, in_umbrella: true},
       {:elixir_sense, github: "elixir-lsp/elixir_sense"},
       {:jason, "~> 1.4"},
-      {:logger_file_backend, "~> 0.0.13", only: :dev},
+      {:logger_file_backend, "~> 0.0.13", only: [:dev, :prod]},
       {:path_glob, "~> 0.2"},
       {:protocol, in_umbrella: true},
       {:remote_control, in_umbrella: true, runtime: false},
