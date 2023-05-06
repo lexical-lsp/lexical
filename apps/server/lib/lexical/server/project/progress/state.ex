@@ -6,18 +6,10 @@ defmodule Lexical.Server.Project.Progress.State do
 
   require Logger
 
-  defstruct [
-    :project,
-    :token_by_label,
-    :progress
-  ]
+  defstruct [project: nil, token_by_label: %{}, progress: nil]
 
   def new(%Project{} = project) do
-    %__MODULE__{
-      project: project,
-      token_by_label: %{},
-      progress: nil
-    }
+    %__MODULE__{project: project}
   end
 
   def begin(%__MODULE__{} = state, label) do
