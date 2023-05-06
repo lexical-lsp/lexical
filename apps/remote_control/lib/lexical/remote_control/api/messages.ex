@@ -61,5 +61,10 @@ defmodule Lexical.RemoteControl.Api.Messages do
             diagnostics: diagnostics()
           )
 
-  @type project_progress :: record(:project_progress, label: String.t(), message: String.t() | Integer.t(), stage: :prepare | :begin | :report | :end)
+  @type project_progress ::
+          record(:project_progress,
+            label: String.t(),
+            message: String.t() | Integer.t(),
+            stage: :prepare | :begin | :report | :end
+          )
 end

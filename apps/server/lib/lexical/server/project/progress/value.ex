@@ -3,7 +3,7 @@ defmodule Lexical.Server.Project.Progress.Value do
   alias Lexical.Protocol.Types.WorkDone
 
   @enforce_keys [:token, :kind]
-  defstruct [:token, :kind, :title, :message, :percentage]
+  defstruct [:token, :kind, :title, :message]
 
   def new(opts) do
     struct!(__MODULE__, opts)

@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.Build.Progress do
 
   import Lexical.RemoteControl.Api.Messages
 
-  def with_progress(label, func, opts \\ []) when is_function(func) do
+  def with_progress(label, func, opts \\ []) when is_function(func, 0) do
     mix? = Keyword.get(opts, :mix?, true)
     label = if mix?, do: "mix " <> label, else: label
 
