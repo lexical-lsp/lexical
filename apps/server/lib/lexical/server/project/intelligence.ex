@@ -115,12 +115,14 @@ defmodule Lexical.Server.Project.Intelligence do
         ]
   def collect_struct_modules(project, root_module, opts \\ [])
 
-  def collect_struct_modules(%Project{} = project, root_module, %Range{} = range) do
-    descendent_struct_modules(project, root_module, range)
+  def collect_struct_modules(%Project{} = project, root_module, opts) when is_list(opts) do
+    collect_struct_modules(project, root_module, extract_range(opts))
   end
 
-  def collect_struct_modules(%Project{} = project, root_module, opts) when is_list(opts) do
-    descendent_struct_modules(project, root_module, extract_range(opts))
+  def collect_struct_modules(%Project{} = project, root_module, %Range{} = range) do
+    project
+    |> name()
+    |> GenServer.call({:collect_struct_modules, root_module, range})
   end
 
   @doc """
@@ -133,24 +135,14 @@ defmodule Lexical.Server.Project.Intelligence do
   @spec defines_struct?(Project.t(), module_spec, generation_options | Range.t()) :: boolean
   def defines_struct?(project, root_module, opts \\ [])
 
-  def defines_struct?(%Project{} = project, root_module, %Range{} = range) do
-    descendent_defines_struct?(project, root_module, range)
-  end
-
   def defines_struct?(%Project{} = project, root_module, opts) when is_list(opts) do
     defines_struct?(project, root_module, extract_range(opts))
   end
 
-  def descendent_struct_modules(%Project{} = project, parent_module, %Range{} = steps) do
+  def defines_struct?(%Project{} = project, root_module, %Range{} = range) do
     project
     |> name()
-    |> GenServer.call({:descendent_struct_modules, parent_module, steps})
-  end
-
-  def descendent_defines_struct?(%Project{} = project, parent_module, %Range{} = steps) do
-    project
-    |> name()
-    |> GenServer.call({:descendent_defines_struct, parent_module, steps})
+    |> GenServer.call({:defines_struct?, root_module, range})
   end
 
   def child_spec(%Project{} = project) do
@@ -170,13 +162,17 @@ defmodule Lexical.Server.Project.Intelligence do
   end
 
   @impl GenServer
-  def handle_call({:descendent_defines_struct, parent_module, steps}, _from, %State{} = state) do
-    {:reply, State.descendent_defines_struct?(state, parent_module, steps), state}
+  def handle_call({:defines_struct?, parent_module, %Range{} = range}, _from, %State{} = state) do
+    {:reply, State.descendent_defines_struct?(state, parent_module, range), state}
   end
 
   @impl GenServer
-  def handle_call({:descendent_struct_modules, parent_module, steps}, _from, %State{} = state) do
-    {:reply, State.descendent_struct_modules(state, parent_module, steps), state}
+  def handle_call(
+        {:collect_struct_modules, parent_module, %Range{} = range},
+        _from,
+        %State{} = state
+      ) do
+    {:reply, State.descendent_struct_modules(state, parent_module, range), state}
   end
 
   @impl GenServer
