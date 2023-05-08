@@ -91,10 +91,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   defp strip_leading_period(string_without_period), do: string_without_period
 
   defp immediate_descentent_defines_struct?(%Lexical.Project{} = project, module_name) do
-    Intelligence.descendent_defines_struct?(project, module_name, 1..2)
+    Intelligence.defines_struct?(project, module_name, to: :grandchild)
   end
 
   defp immediate_descendent_struct_modules(%Lexical.Project{} = project, module_name) do
-    Intelligence.descendent_struct_modules(project, module_name, 1..2)
+    Intelligence.collect_struct_modules(project, module_name, to: :grandchild)
   end
 end

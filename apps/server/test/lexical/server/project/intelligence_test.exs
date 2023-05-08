@@ -17,11 +17,23 @@ defmodule Lexical.Server.Project.IntelligenceTest do
 
   def with_parent_and_children(%{project: project}) do
     [
+      module_updated(name: "RootStruct", struct: [name: nil, value: nil]),
       module_updated(name: "Parent", functions: []),
       module_updated(name: "Parent.Child"),
       module_updated(name: "Parent.ChildWithStruct", struct: [name: nil, value: nil]),
       module_updated(name: "Parent.Child.Grandchild"),
-      module_updated(name: "Parent.Child.GrandchildWithStruct", struct: [name: nil])
+      module_updated(name: "Parent.Child.GrandchildWithStruct", struct: [name: nil]),
+      module_updated(name: "NoStructs", functions: []),
+      module_updated(name: "NoStructs.Child", functions: []),
+      module_updated(name: "DeepStructs", functions: []),
+      module_updated(name: "DeepStructs.Child", functions: []),
+      module_updated(name: "DeepStructs.Child.Grandchild", functions: []),
+      module_updated(name: "DeepStructs.Child.Grandchild.GreatGrandchild", functions: []),
+      module_updated(
+        name: "DeepStructs.Child.Grandchild.Greatgrandchild.GreatGreatGrandchild",
+        functions: [],
+        struct: [name: nil]
+      )
     ]
     |> Enum.each(&Dispatch.broadcast(project, &1))
 
@@ -42,31 +54,123 @@ defmodule Lexical.Server.Project.IntelligenceTest do
     end
   end
 
-  describe "child_defines_struct?/2" do
+  describe "defines_struct?/3" do
     setup [:with_parent_and_children]
 
     test "returns true if a child defines a struct", %{project: project} do
-      assert Intelligence.child_defines_struct?(project, "Parent")
-      assert Intelligence.child_defines_struct?(project, "Parent.Child")
+      assert Intelligence.defines_struct?(project, "Parent", from: :child, to: :child)
+      assert Intelligence.defines_struct?(project, "Parent.Child", from: :child, to: :child)
 
-      assert Intelligence.child_defines_struct?(project, Parent)
-      assert Intelligence.child_defines_struct?(project, Parent.Child)
+      assert Intelligence.defines_struct?(project, Parent, from: :child, to: :child)
+      assert Intelligence.defines_struct?(project, Parent.Child, from: :child, to: :child)
     end
 
     test "returns false if a child doesn't define a struct", %{project: project} do
-      refute Intelligence.child_defines_struct?(project, "Parent.Child.Grandchild")
-      refute Intelligence.child_defines_struct?(project, Parent.Child.Grandchild)
+      refute Intelligence.defines_struct?(project, "Parent.Child.Grandchild",
+               from: :child,
+               to: :child
+             )
+
+      refute Intelligence.defines_struct?(project, Parent.Child.Grandchild,
+               from: :child,
+               to: :child
+             )
+    end
+
+    test "works with arbitrary ranges", %{project: project} do
+      refute Intelligence.defines_struct?(project, "DeepStructs")
+      refute Intelligence.defines_struct?(project, "DeepStructs", 0..1)
+      refute Intelligence.defines_struct?(project, "DeepStructs", 0..2)
+      refute Intelligence.defines_struct?(project, "DeepStructs", 0..3)
+      assert Intelligence.defines_struct?(project, "DeepStructs", 0..4)
+    end
+
+    test "works with arbitrary ranges of names", %{project: project} do
+      refute Intelligence.defines_struct?(project, "DeepStructs")
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: :child)
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: :grandchild)
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: :great_grandchild)
+      assert Intelligence.defines_struct?(project, "DeepStructs", to: :great_great_grandchild)
+    end
+
+    test "works with arbitrary ranges of numbers", %{project: project} do
+      refute Intelligence.defines_struct?(project, "DeepStructs")
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: 1)
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: 2)
+      refute Intelligence.defines_struct?(project, "DeepStructs", to: 3)
+      assert Intelligence.defines_struct?(project, "DeepStructs", to: 4)
+    end
+
+    test "returns true if a range defines a struct", %{project: project} do
+      assert Intelligence.defines_struct?(project, Parent, to: :grandchild)
+      assert Intelligence.defines_struct?(project, Parent, to: :grandchild)
     end
   end
 
-  describe "child_struct_modules/2" do
+  describe "collect_struct_modules/3" do
     setup [:with_parent_and_children]
 
-    test "should only return direct children of a given module", %{project: project} do
-      assert ["Parent.ChildWithStruct"] = Intelligence.child_struct_modules(project, "Parent")
+    test "collecting the root module's struct", %{project: project} do
+      assert ["RootStruct"] = Intelligence.collect_struct_modules(project, "RootStruct")
+    end
+
+    test "collecting direct children of a given module", %{project: project} do
+      assert ["Parent.ChildWithStruct"] =
+               Intelligence.collect_struct_modules(project, "Parent", from: :child, to: :child)
 
       assert ["Parent.Child.GrandchildWithStruct"] =
-               Intelligence.child_struct_modules(project, Parent.Child)
+               Intelligence.collect_struct_modules(project, Parent.Child, from: :child, to: :child)
+    end
+
+    test "collecting a range of structs", %{project: project} do
+      assert collected = Intelligence.collect_struct_modules(project, "Parent", to: :grandchild)
+
+      assert "Parent.ChildWithStruct" in collected
+      assert "Parent.Child.GrandchildWithStruct" in collected
+    end
+
+    test "collecting a range specifying from using names", %{project: project} do
+      assert collected =
+               Intelligence.collect_struct_modules(project, "Parent",
+                 from: :child,
+                 to: :grandchild
+               )
+
+      assert "Parent.ChildWithStruct" in collected
+      assert "Parent.Child.GrandchildWithStruct" in collected
+
+      assert ["Parent.Child.GrandchildWithStruct"] =
+               Intelligence.collect_struct_modules(project, "Parent",
+                 from: :grandchild,
+                 to: :great_grandchild
+               )
+    end
+
+    test "collecting a range specifying from using numbers", %{project: project} do
+      assert collected =
+               Intelligence.collect_struct_modules(project, "Parent",
+                 from: 1,
+                 to: 2
+               )
+
+      assert "Parent.ChildWithStruct" in collected
+      assert "Parent.Child.GrandchildWithStruct" in collected
+
+      assert ["Parent.Child.GrandchildWithStruct"] =
+               Intelligence.collect_struct_modules(project, "Parent",
+                 from: 2,
+                 to: 3
+               )
+    end
+
+    test "collecting a range using ranges", %{project: project} do
+      assert collected = Intelligence.collect_struct_modules(project, "Parent", 1..2)
+
+      assert "Parent.ChildWithStruct" in collected
+      assert "Parent.Child.GrandchildWithStruct" in collected
+
+      assert ["Parent.Child.GrandchildWithStruct"] =
+               Intelligence.collect_struct_modules(project, "Parent", 2..3)
     end
   end
 end
