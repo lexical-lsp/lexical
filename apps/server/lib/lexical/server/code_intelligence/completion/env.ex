@@ -47,6 +47,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
+  def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
+    line_charlist = String.to_charlist(env.prefix)
+
+    tokens =
+      case :elixir_tokenizer.tokenize(line_charlist, 1, 1, []) do
+        {:ok, _, _, _, tokens} ->
+          Enum.reverse(tokens)
+
+        {:error, _, _, _, reversed_tokens} ->
+          reversed_tokens
+      end
+
+    take_relevant_tokens(tokens, [], env.position.character, count)
+  end
+
+  @impl Environment
   def function_capture?(%__MODULE__{} = env) do
     case cursor_context(env) do
       {:ok, line, {:alias, module_name}} ->
@@ -87,6 +103,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       _ ->
         false
     end
+  end
+
+  @impl Environment
+  def in_bitstring?(%__MODULE__{} = env) do
+    env
+    |> prefix_tokens(:all)
+    |> Enum.reduce_while(
+      false,
+      fn
+        {:operator, :">>"}, _ -> {:halt, false}
+        {:operator, :"<<"}, _ -> {:halt, true}
+        _, _ -> {:cont, false}
+      end
+    )
   end
 
   @impl Environment
@@ -169,4 +199,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         {:ok, context}
     end
   end
+
+  defp take_relevant_tokens([], tokens, _, _) do
+    Enum.reverse(tokens)
+  end
+
+  defp take_relevant_tokens(_, tokens, _, 0) do
+    Enum.reverse(tokens)
+  end
+
+  defp take_relevant_tokens([token | rest], tokens, start_character, remaining) do
+    remaining = decrement(remaining)
+    take_relevant_tokens(rest, [normalize_token(token) | tokens], start_character, remaining)
+  end
+
+  defp normalize_token(token) do
+    case token do
+      {:dual_op, _context, value} ->
+        {:operator, value}
+
+      {:type_op, _context, _value} ->
+        {:operator, :"::"}
+
+      {:bin_string, _, value} ->
+        {:string, List.to_string(value)}
+
+      {type, {_, _, nil}, value} when is_list(value) ->
+        {normalize_type(type), value}
+
+      {type, {_, _, token_value}, _} ->
+        {normalize_type(type), token_value}
+
+      {type, _context, value} when is_atom(value) ->
+        {normalize_type(type), value}
+
+      {operator, _} ->
+        {map_operator(operator), operator}
+    end
+  end
+
+  defp decrement(:all), do: :all
+  defp decrement(num) when is_integer(num), do: num - 1
+
+  defp map_operator(:"("), do: :paren
+  defp map_operator(:")"), do: :paren
+  defp map_operator(:"{"), do: :curly
+  defp map_operator(:"}"), do: :curly
+  defp map_operator(:","), do: :comma
+  defp map_operator(:%{}), do: :map_new
+  defp map_operator(:%), do: :percent
+  defp map_operator(_), do: :operator
+
+  defp normalize_type(:flt), do: :float
+  defp normalize_type(:bin_string), do: :string
+  defp normalize_type(type), do: type
 end
