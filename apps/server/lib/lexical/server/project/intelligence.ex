@@ -60,33 +60,89 @@ defmodule Lexical.Server.Project.Intelligence do
   use GenServer
   import Api.Messages
 
+  @generations [
+                 :self,
+                 :child,
+                 :grandchild,
+                 :great_grandchild,
+                 :great_great_grandchild,
+                 :great_great_great_grandchild
+               ]
+               |> Enum.with_index()
+               |> Map.new()
+
+  @type generation_name ::
+          :self
+          | :child
+          | :grandchild
+          | :great_grandchild
+          | :great_great_grandchild
+          | :great_great_great_grandchild
+
+  @type module_spec :: module() | String.t()
+  @type module_name :: String.t()
+  @type generation_spec :: generation_name | non_neg_integer
+  @type generation_option :: {:from, generation_spec} | {:to, generation_spec}
+  @type generation_options :: [generation_option]
+
   # Public api
   def start_link(%Project{} = project) do
     GenServer.start_link(__MODULE__, [project], name: name(project))
   end
 
-  def defines_struct?(%Project{} = project, module_or_name) do
-    descendent_defines_struct?(project, module_or_name, 0..0)
+  @doc """
+  Collects struct modules in the given ranges
+
+  When given your project, and a root module, this function returns a list of module names
+  that fall within the given collection range. Given a module's descendent tree, a
+  range can be specified in the following ways:
+
+  `named:`  A keyword list contiaining `:from` (optional, defaults to `:self`) and
+   `:to` (optional, defaults to `:self`) keys. The values of these keys can be either
+   a number representing the degree of the  descendent generation (o for self, 1
+   for child, etc) or named generations (`:self`, `:child`, `:grandchild`, etc). For example,
+   the collectionn range: `from: :child, to: :great_grandchild` will collect all struct
+   modules where the  root module is thier parent up to and including all modules where the
+   root module is their great grandparent, and is equivalent to the range `1..2`.
+
+  `range`: A `Range` struct containing the starting and ending generations. The module passed in
+  as `root_module` is generation 0, its child is generation 1, its grandchild is generation 2,
+  and so on.
+  """
+  @spec collect_struct_modules(Project.t(), module_spec) :: [module_name]
+  @spec collect_struct_modules(Project.t(), module_spec, generation_options | Range.t()) :: [
+          module_name
+        ]
+  def collect_struct_modules(project, root_module, opts \\ [])
+
+  def collect_struct_modules(%Project{} = project, root_module, opts) when is_list(opts) do
+    collect_struct_modules(project, root_module, extract_range(opts))
   end
 
-  def child_defines_struct?(%Project{} = project, parent_module) do
-    descendent_defines_struct?(project, parent_module, 1..1)
-  end
-
-  def child_struct_modules(%Project{} = project, parent_module) do
-    descendent_struct_modules(project, parent_module, 1..1)
-  end
-
-  def descendent_struct_modules(%Project{} = project, parent_module, steps) do
+  def collect_struct_modules(%Project{} = project, root_module, %Range{} = range) do
     project
     |> name()
-    |> GenServer.call({:descendent_struct_modules, parent_module, steps})
+    |> GenServer.call({:collect_struct_modules, root_module, range})
   end
 
-  def descendent_defines_struct?(%Project{} = project, parent_module, steps) do
+  @doc """
+  Returns true if a module in the given generation range defines a struct
+
+  see `collect_struct_modules/3` for an explanation of generation ranges
+  """
+
+  @spec defines_struct?(Project.t(), module_spec) :: boolean
+  @spec defines_struct?(Project.t(), module_spec, generation_options | Range.t()) :: boolean
+  def defines_struct?(project, root_module, opts \\ [])
+
+  def defines_struct?(%Project{} = project, root_module, opts) when is_list(opts) do
+    defines_struct?(project, root_module, extract_range(opts))
+  end
+
+  def defines_struct?(%Project{} = project, root_module, %Range{} = range) do
     project
     |> name()
-    |> GenServer.call({:descendent_defines_struct, parent_module, steps})
+    |> GenServer.call({:defines_struct?, root_module, range})
   end
 
   def child_spec(%Project{} = project) do
@@ -106,13 +162,17 @@ defmodule Lexical.Server.Project.Intelligence do
   end
 
   @impl GenServer
-  def handle_call({:descendent_defines_struct, parent_module, steps}, _from, %State{} = state) do
-    {:reply, State.descendent_defines_struct?(state, parent_module, steps), state}
+  def handle_call({:defines_struct?, parent_module, %Range{} = range}, _from, %State{} = state) do
+    {:reply, State.descendent_defines_struct?(state, parent_module, range), state}
   end
 
   @impl GenServer
-  def handle_call({:descendent_struct_modules, parent_module, steps}, _from, %State{} = state) do
-    {:reply, State.descendent_struct_modules(state, parent_module, steps), state}
+  def handle_call(
+        {:collect_struct_modules, parent_module, %Range{} = range},
+        _from,
+        %State{} = state
+      ) do
+    {:reply, State.descendent_struct_modules(state, parent_module, range), state}
   end
 
   @impl GenServer
@@ -131,5 +191,15 @@ defmodule Lexical.Server.Project.Intelligence do
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::intelligence"
+  end
+
+  defp extract_range(opts) when is_list(opts) do
+    from = Keyword.get(opts, :from, :self)
+    from = Map.get(@generations, from, from)
+
+    to = Keyword.get(opts, :to, :self)
+    to = Map.get(@generations, to, to)
+
+    from..to
   end
 end

@@ -106,7 +106,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         true
 
       struct_reference? and struct_module == Result.Module ->
-        Intelligence.descendent_defines_struct?(env.project, result.full_name, 0..2)
+        Intelligence.defines_struct?(env.project, result.full_name, to: :grandchild)
 
       struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
         true
@@ -125,7 +125,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
        }) do
     case result do
       %Result.Module{} = result ->
-        Intelligence.child_defines_struct?(project, result.full_name)
+        Intelligence.defines_struct?(project, result.full_name, from: :child, to: :child)
 
       %Result.Struct{} ->
         true
