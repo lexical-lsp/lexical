@@ -77,18 +77,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   @impl Environment
   def function_capture?(%__MODULE__{} = env) do
-    case cursor_context(env) do
-      {:ok, line, {:alias, module_name}} ->
-        # &Enum|
-        String.contains?(line, List.to_string([?& | module_name]))
+    env
+    |> prefix_tokens()
+    |> Enum.reduce_while(false, fn
+      {:paren, :")"}, _ ->
+        {:halt, false}
 
-      {:ok, line, {:dot, {:alias, module_name}, _}} ->
-        # &Enum.f|
-        String.contains?(line, List.to_string([?& | module_name]))
+      {:operator, :&}, _ ->
+        {:halt, true}
 
-      _ ->
-        false
-    end
+      {:int, _} = maybe_arity, _ ->
+        {:cont, maybe_arity}
+
+      {:operator, :/}, {:int, _} ->
+        # if we encounter a trailing /<arity> in the prefix, the
+        # function capture is complete, and we're not inside it
+        {:halt, false}
+
+      _, _ ->
+        {:cont, false}
+    end)
   end
 
   @impl Environment
@@ -253,6 +261,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   defp normalize_token(token) do
     case token do
+      {:capture_op, _context, value} ->
+        {:operator, value}
+
       {:dual_op, _context, value} ->
         {:operator, value}
 
@@ -261,6 +272,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
       {:bin_string, _, value} ->
         {:string, List.to_string(value)}
+
+      {:operator, _, value} ->
+        {:operator, value}
 
       {type, {_, _, nil}, value} when is_list(value) ->
         {normalize_type(type), value}

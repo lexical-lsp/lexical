@@ -233,6 +233,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   end
 
   describe "function_capture?/1" do
+    test "is true for arity one local functions" do
+      env = new_env("&is_map|")
+      assert function_capture?(env)
+    end
+
+    test "is true for arity two local functions with a variable" do
+      env = new_env("&is_map_key(&1, l|)")
+      assert function_capture?(env)
+    end
+
     test "is true if the capture starts at the beginning of the line" do
       env = new_env("&Enum")
       assert function_capture?(env)
@@ -256,6 +266,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     test "is true if the capture is in the body of a for" do
       env = new_env("for x <- Enum.map(1..10, &String.|)")
       assert function_capture?(env)
+    end
+
+    test "is false if the position is after a capture with no arguments" do
+      env = new_env("&something/1|")
+      refute function_capture?(env)
+    end
+
+    test "is false if the position is after a capture with arguments" do
+      env = new_env("&captured(&1, :foo)|")
+      refute function_capture?(env)
     end
 
     test "is false if the capture starts at the beginning of the line" do
