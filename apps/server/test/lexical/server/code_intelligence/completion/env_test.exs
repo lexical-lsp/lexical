@@ -21,54 +21,167 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     env
   end
 
-  describe "last_word/1" do
-    test "is the module name" do
-      env = new_env("Mod|")
-
-      assert last_word(env) == "Mod"
+  describe "prefix_tokens/2" do
+    test "works with bitstring specifiers" do
+      env = new_env("<<foo::int|")
+      assert [{:identifier, 'int'}, {:operator, :"::"}] = prefix_tokens(env, 2)
     end
 
-    test "is do if a block has been declared" do
-      env = new_env("whatever do|\nend")
-      assert last_word(env) == "do"
+    test "works with floats" do
+      tokens =
+        "27.88"
+        |> new_env()
+        |> prefix_tokens(1)
+
+      assert [{:float, 27.88}] = tokens
     end
 
-    test "is a function name" do
-      env = new_env("fun|")
-      assert last_word(env) == "fun"
+    test "works with strings" do
+      tokens =
+        ~s("hello")
+        |> new_env()
+        |> prefix_tokens(1)
+
+      assert [{:string, "hello"}] = tokens
+    end
+
+    test "works with maps with atom keys" do
+      tokens =
+        "%{a: 3}"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:curly, :"}"},
+               {:int, 3},
+               {:kw_identifier, 'a'},
+               {:curly, :"{"},
+               {:map_new, :%{}}
+             ] = tokens
+    end
+
+    test "works with maps with string keys" do
+      tokens =
+        ~s(%{"a" => 3})
+        |> new_env()
+        |> prefix_tokens(8)
+
+      assert [
+               {:curly, :"}"},
+               {:int, 3},
+               {:assoc_op, nil},
+               {:string, "a"},
+               {:curly, :"{"},
+               {:map_new, :%{}}
+             ] = tokens
+    end
+
+    test "works with pattern matches" do
+      tokens =
+        "my_var = 3 + 5"
+        |> new_env()
+        |> prefix_tokens(3)
+
+      assert tokens == [
+               {:int, 5},
+               {:operator, :+},
+               {:int, 3}
+             ]
+    end
+
+    test "works with remote function calls" do
+      tokens =
+        "Enum.map|"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:identifier, 'map'},
+               {:operator, :.},
+               {:alias, 'Enum'}
+             ] = tokens
+    end
+
+    test "works with local function calls" do
+      tokens =
+        "foo = local(|"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:paren, :"("},
+               {:paren_identifier, 'local'},
+               {:match_op, nil},
+               {:identifier, 'foo'}
+             ] = tokens
+    end
+
+    test "consumes as many tokens as it can" do
+      tokens =
+        "String.tri|"
+        |> new_env()
+        |> prefix_tokens(900)
+
+      assert [{:identifier, 'tri'}, {:operator, :.}, {:alias, 'String'}] = tokens
+    end
+
+    test "works with macros" do
+      tokens =
+        "defmacro MyModule do"
+        |> new_env()
+        |> prefix_tokens(3)
+
+      assert tokens == [
+               {:operator, :do},
+               {:alias, 'MyModule'},
+               {:identifier, 'defmacro'}
+             ]
+    end
+
+    test "works with lists of integers" do
+      tokens =
+        "x = [1, 2, 3]"
+        |> new_env()
+        |> prefix_tokens(7)
+
+      assert tokens == [
+               {:operator, :"]"},
+               {:int, 3},
+               {:comma, :","},
+               {:int, 2},
+               {:comma, :","},
+               {:int, 1},
+               {:operator, :"["}
+             ]
     end
   end
 
-  describe "last_token/1" do
-    test "is the module name" do
-      env = new_env("Mod|")
-
-      assert last_token(env) == "Mod"
+  describe "in_bitstring?/1" do
+    test "is true if the reference starts in a bitstring at the start of a line" do
+      env = new_env("<<|")
+      assert in_bitstring?(env)
     end
 
-    test "works with a list literal" do
-      env = new_env("[1, 2, 3, 4]")
-      assert last_token(env) == "]"
+    test "is true if the reference starts in a bitstring with matches" do
+      env = new_env("<<foo::|")
+      assert in_bitstring?(env)
+
+      env = new_env("<<foo::uint32, ba|")
+      assert in_bitstring?(env)
+
+      env = new_env("<<foo::uint32, bar::|")
+      assert in_bitstring?(env)
     end
 
-    test "is the name of the function after a dot" do
-      env = new_env("Mod.fun|")
-      assert last_token(env) == "fun"
-    end
+    test "is false if the position is outside a bitstring match on the same line" do
+      env = new_env("<<foo::utf8>>|")
+      refute in_bitstring?(env)
 
-    test "is do if a block has been declared" do
-      env = new_env("whatever do|\nend")
-      assert last_token(env) == "do"
-    end
+      env = new_env("<<foo::utf8>> = |")
+      refute in_bitstring?(env)
 
-    test "is a function name" do
-      env = new_env("fun|")
-      assert last_token(env) == "fun"
-    end
-
-    test "works with multiple tokens" do
-      env = new_env("foo = Module.fun")
-      assert last_token(env) == "fun"
+      env = new_env("<<foo::utf8>> = str|")
+      refute in_bitstring?(env)
     end
   end
 

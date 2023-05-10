@@ -130,6 +130,14 @@ defmodule Lexical.RemoteControl.Completion.Result do
     end
   end
 
+  defmodule BitstringOption do
+    defstruct [:name, :type]
+
+    def new(%{} = elixir_sense_map) do
+      struct(__MODULE__, elixir_sense_map)
+    end
+  end
+
   def from_elixir_sense(%{type: :module, subtype: nil} = elixir_sense_map) do
     Module.new(elixir_sense_map)
   end
@@ -164,6 +172,10 @@ defmodule Lexical.RemoteControl.Completion.Result do
 
   def from_elixir_sense(%{type: :type_spec} = elixir_sense_map) do
     Typespec.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(%{type: :bitstring_option} = elixir_sense_map) do
+    BitstringOption.new(elixir_sense_map)
   end
 
   def from_elixir_sense(%{type: :attribute} = elixir_sense_map) do

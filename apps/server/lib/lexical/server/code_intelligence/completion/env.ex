@@ -18,7 +18,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     :suffix,
     :position,
     :words,
-    :tokens,
     :zero_based_character
   ]
 
@@ -41,7 +40,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         graphemes = String.graphemes(line)
         prefix = graphemes |> Enum.take(zero_based_character) |> IO.iodata_to_binary()
         suffix = String.slice(line, zero_based_character..-1)
-        tokens = tokens(line)
         words = String.split(prefix)
 
         {:ok,
@@ -52,7 +50,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
            prefix: prefix,
            project: project,
            suffix: suffix,
-           tokens: tokens,
            words: words,
            zero_based_character: zero_based_character
          }}
@@ -60,6 +57,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       _ ->
         {:error, :out_of_bounds}
     end
+  end
+
+  @impl Environment
+  def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
+    line_charlist = String.to_charlist(env.prefix)
+
+    tokens =
+      case :elixir_tokenizer.tokenize(line_charlist, 1, 1, []) do
+        {:ok, _, _, _, tokens} ->
+          Enum.reverse(tokens)
+
+        {:error, _, _, _, reversed_tokens} ->
+          reversed_tokens
+      end
+
+    take_relevant_tokens(tokens, [], env.position.character, count)
   end
 
   @impl Environment
@@ -106,6 +119,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
+  def in_bitstring?(%__MODULE__{} = env) do
+    env
+    |> prefix_tokens(:all)
+    |> Enum.reduce_while(
+      false,
+      fn
+        {:operator, :">>"}, _ -> {:halt, false}
+        {:operator, :"<<"}, _ -> {:halt, true}
+        _, _ -> {:cont, false}
+      end
+    )
+  end
+
+  @impl Environment
   def empty?("") do
     true
   end
@@ -117,18 +144,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   @impl Environment
   def last_word(%__MODULE__{} = env) do
     List.last(env.words)
-  end
-
-  def last_token(%__MODULE__{} = env) do
-    env.tokens
-    |> List.last()
-    |> case do
-      {_token_kind, {_line, _col, token}, _} ->
-        List.to_string(token)
-
-      {token_kind, {_line, _col, nil}} ->
-        Atom.to_string(token_kind)
-    end
   end
 
   @behaviour Builder
@@ -190,25 +205,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   # private
 
-  defp tokens(line) do
-    tokens =
-      case :elixir_tokenizer.tokenize(String.to_charlist(line), 1, 1, []) do
-        {:ok, _, _, _, tokens} -> tokens
-        {:error, _, _, _, tokens} -> tokens
-      end
-
-    Enum.sort_by(
-      tokens,
-      fn
-        {_kind, {_line, col, _}, _} ->
-          col
-
-        {_kind, {_line, col, _}} ->
-          col
-      end
-    )
-  end
-
   defp cursor_context(%__MODULE__{} = env) do
     with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line) do
       fragment = String.slice(line, 0..(env.zero_based_character - 1))
@@ -241,4 +237,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         {:ok, context}
     end
   end
+
+  defp take_relevant_tokens([], tokens, _, _) do
+    Enum.reverse(tokens)
+  end
+
+  defp take_relevant_tokens(_, tokens, _, 0) do
+    Enum.reverse(tokens)
+  end
+
+  defp take_relevant_tokens([token | rest], tokens, start_character, remaining) do
+    remaining = decrement(remaining)
+    take_relevant_tokens(rest, [normalize_token(token) | tokens], start_character, remaining)
+  end
+
+  defp normalize_token(token) do
+    case token do
+      {:dual_op, _context, value} ->
+        {:operator, value}
+
+      {:type_op, _context, _value} ->
+        {:operator, :"::"}
+
+      {:bin_string, _, value} ->
+        {:string, List.to_string(value)}
+
+      {type, {_, _, nil}, value} when is_list(value) ->
+        {normalize_type(type), value}
+
+      {type, {_, _, token_value}, _} ->
+        {normalize_type(type), token_value}
+
+      {type, _context, value} when is_atom(value) ->
+        {normalize_type(type), value}
+
+      {operator, _} ->
+        {map_operator(operator), operator}
+    end
+  end
+
+  defp decrement(:all), do: :all
+  defp decrement(num) when is_integer(num), do: num - 1
+
+  defp map_operator(:"("), do: :paren
+  defp map_operator(:")"), do: :paren
+  defp map_operator(:"{"), do: :curly
+  defp map_operator(:"}"), do: :curly
+  defp map_operator(:","), do: :comma
+  defp map_operator(:%{}), do: :map_new
+  defp map_operator(:%), do: :percent
+  defp map_operator(_), do: :operator
+
+  defp normalize_type(:flt), do: :float
+  defp normalize_type(:bin_string), do: :string
+  defp normalize_type(type), do: type
 end
