@@ -100,6 +100,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
   defp applies_to_env?(%Env{} = env, %struct_module{} = result) do
     struct_reference? = Env.struct_reference?(env)
+    in_bitstring? = Env.in_bitstring?(env)
 
     cond do
       struct_reference? and struct_module == Result.Struct ->
@@ -113,6 +114,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
       struct_reference? ->
         false
+
+      in_bitstring? ->
+        struct_module in [Result.BitstringOption, Result.Variable]
 
       true ->
         true

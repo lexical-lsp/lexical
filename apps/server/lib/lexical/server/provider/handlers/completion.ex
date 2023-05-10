@@ -16,7 +16,6 @@ defmodule Lexical.Server.Provider.Handlers.Completion do
       )
 
     response = Responses.Completion.new(request.id, completions)
-    Logger.info("Got #{Jason.encode!(completions)}")
     {:reply, response}
   end
 end
