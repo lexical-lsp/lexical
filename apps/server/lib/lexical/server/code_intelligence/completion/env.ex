@@ -2,12 +2,25 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Completion.Builder
   alias Lexical.Completion.Environment
   alias Lexical.Document
+  alias Lexical.Document
+  alias Lexical.Document.Edit
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Server.CodeIntelligence.Completion.Env
 
-  defstruct [:project, :document, :prefix, :suffix, :position, :words, :zero_based_character]
+  defstruct [
+    :project,
+    :document,
+    :line,
+    :prefix,
+    :suffix,
+    :position,
+    :words,
+    :tokens,
+    :zero_based_character
+  ]
 
   @type t :: %__MODULE__{
           project: Lexical.Project.t(),
@@ -28,15 +41,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         graphemes = String.graphemes(line)
         prefix = graphemes |> Enum.take(zero_based_character) |> IO.iodata_to_binary()
         suffix = String.slice(line, zero_based_character..-1)
+        tokens = tokens(line)
         words = String.split(prefix)
 
         {:ok,
          %__MODULE__{
-           project: project,
            document: document,
-           prefix: prefix,
-           suffix: suffix,
+           line: line,
            position: cursor_position,
+           prefix: prefix,
+           project: project,
+           suffix: suffix,
+           tokens: tokens,
            words: words,
            zero_based_character: zero_based_character
          }}
@@ -103,6 +119,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     List.last(env.words)
   end
 
+  def last_token(%__MODULE__{} = env) do
+    env.tokens
+    |> List.last()
+    |> case do
+      {_token_kind, {_line, _col, token}, _} ->
+        List.to_string(token)
+
+      {token_kind, {_line, _col, nil}} ->
+        Atom.to_string(token_kind)
+    end
+  end
+
   @behaviour Builder
 
   @impl Builder
@@ -121,6 +149,29 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Builder
+  def text_edit(%Env{} = env, text, {start_char, end_char}, options \\ []) do
+    line_number = env.position.line
+    range = Range.new(Position.new(line_number, start_char), Position.new(line_number, end_char))
+    edits = Document.Changes.new(env.document, Edit.new(text, range))
+
+    options
+    |> Keyword.put(:text_edit, edits)
+    |> Completion.Item.new()
+  end
+
+  @impl Builder
+  def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options \\ []) do
+    line_number = env.position.line
+    range = Range.new(Position.new(line_number, start_char), Position.new(line_number, end_char))
+    edits = Document.Changes.new(env.document, Edit.new(text, range))
+
+    options
+    |> Keyword.put(:text_edit, edits)
+    |> Keyword.put(:insert_text_format, :snippet)
+    |> Completion.Item.new()
+  end
+
+  @impl Builder
   def fallback(nil, fallback), do: fallback
   def fallback("", fallback), do: fallback
   def fallback(detail, _), do: detail
@@ -135,6 +186,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   def boost(text, _) do
     boost(text, 0)
+  end
+
+  # private
+
+  defp tokens(line) do
+    tokens =
+      case :elixir_tokenizer.tokenize(String.to_charlist(line), 1, 1, []) do
+        {:ok, _, _, _, tokens} -> tokens
+        {:error, _, _, _, tokens} -> tokens
+      end
+
+    Enum.sort_by(
+      tokens,
+      fn
+        {_kind, {_line, col, _}, _} ->
+          col
+
+        {_kind, {_line, col, _}} ->
+          col
+      end
+    )
   end
 
   defp cursor_context(%__MODULE__{} = env) do

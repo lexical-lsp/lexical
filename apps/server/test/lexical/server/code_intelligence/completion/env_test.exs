@@ -18,8 +18,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     position = Document.Position.new(line, column)
 
     {:ok, env} = new(project, document, position)
-
     env
+  end
+
+  describe "last_word/1" do
+    test "is the module name" do
+      env = new_env("Mod|")
+
+      assert last_word(env) == "Mod"
+    end
+
+    test "is do if a block has been declared" do
+      env = new_env("whatever do|\nend")
+      assert last_word(env) == "do"
+    end
+
+    test "is a function name" do
+      env = new_env("fun|")
+      assert last_word(env) == "fun"
+    end
+  end
+
+  describe "last_token/1" do
+    test "is the module name" do
+      env = new_env("Mod|")
+
+      assert last_token(env) == "Mod"
+    end
+
+    test "works with a list literal" do
+      env = new_env("[1, 2, 3, 4]")
+      assert last_token(env) == "]"
+    end
+
+    test "is the name of the function after a dot" do
+      env = new_env("Mod.fun|")
+      assert last_token(env) == "fun"
+    end
+
+    test "is do if a block has been declared" do
+      env = new_env("whatever do|\nend")
+      assert last_token(env) == "do"
+    end
+
+    test "is a function name" do
+      env = new_env("fun|")
+      assert last_token(env) == "fun"
+    end
+
+    test "works with multiple tokens" do
+      env = new_env("foo = Module.fun")
+      assert last_token(env) == "fun"
+    end
   end
 
   describe "struct_reference?/1" do

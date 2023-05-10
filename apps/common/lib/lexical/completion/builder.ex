@@ -65,11 +65,19 @@ defmodule Lexical.Completion.Builder do
 
   @type result :: t | :skip
 
+  @type range :: {start_character :: pos_integer, end_character :: pos_integer}
+
   @callback snippet(Environment.t(), String.t()) :: translated_item()
   @callback snippet(Environment.t(), String.t(), item_opts) :: translated_item()
 
   @callback plain_text(Environment.t(), String.t()) :: translated_item()
   @callback plain_text(Environment.t(), String.t(), item_opts) :: translated_item()
+
+  @callback text_edit(Environment.t(), String.t(), range) :: translated_item()
+  @callback text_edit(Environment.t(), String.t(), range, item_opts) :: translated_item()
+
+  @callback text_edit_snippet(Environment.t(), String.t(), range) :: translated_item()
+  @callback text_edit_snippet(Environment.t(), String.t(), range, item_opts) :: translated_item()
 
   @callback fallback(any, any) :: any
   @callback boost(String.t(), 0..10) :: String.t()
