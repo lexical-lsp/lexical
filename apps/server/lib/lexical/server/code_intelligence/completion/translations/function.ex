@@ -14,23 +14,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
   end
 
   defp function_capture_completions(%Result.Function{} = function, %Env{} = env) do
-    name_and_arity = "#{function.name}/#{function.arity}"
+    name_and_arity = name_and_arity(function)
 
     complete_capture =
       Env.plain_text(env, name_and_arity,
-        label: "#{name_and_arity}",
         detail: "(Capture)",
+        kind: :function,
+        label: name_and_arity,
         sort_text: "&" <> sort_text(function)
       )
 
-    arg_templates = argument_templates(function, env)
-    snippet_text = "#{function.name}(#{arg_templates})"
-    args = Enum.join(function.argument_names, ", ")
-
     call_capture =
-      Env.snippet(env, snippet_text,
-        label: "#{function.name}(#{args})",
+      Env.snippet(env, function_snippet(function, env),
         detail: "(Capture with arguments)",
+        kind: :function,
+        label: function_label(function),
         sort_text: "&" <> sort_text(function)
       )
 
@@ -38,18 +36,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
   end
 
   defp function_call_completion(%Result.Function{} = function, %Env{} = env) do
-    label = "#{function.name}/#{function.arity}"
-    arg_detail = Enum.join(function.argument_names, ",")
-    detail = "#{function.origin}.#{label}(#{arg_detail})"
     add_args? = not String.contains?(env.suffix, "(")
 
     insert_text =
       if add_args? do
-        arg_templates = argument_templates(function, env)
-
-        "#{function.name}(#{arg_templates})"
+        function_snippet(function, env)
       else
-        "#{function.name}"
+        function.name
       end
 
     tags =
@@ -58,15 +51,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
       end
 
     Env.snippet(env, insert_text,
-      detail: detail,
       kind: :function,
-      label: label,
+      label: function_label(function),
       sort_text: sort_text(function),
       tags: tags
     )
   end
 
-  defp argument_templates(%Result.Function{} = function, %Env{} = env) do
+  defp function_snippet(%Result.Function{} = function, %Env{} = env) do
     argument_names =
       if Env.pipe?(env) do
         tl(function.argument_names)
@@ -74,16 +66,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
         function.argument_names
       end
 
-    argument_names
-    |> Enum.with_index()
-    |> Enum.map_join(", ", fn {name, index} ->
-      escaped_name = String.replace(name, "\\", "\\\\")
-      "${#{index + 1}:#{escaped_name}}"
-    end)
+    argument_templates =
+      argument_names
+      |> Enum.with_index()
+      |> Enum.map_join(", ", fn {name, index} ->
+        escaped_name = String.replace(name, "\\", "\\\\")
+        "${#{index + 1}:#{escaped_name}}"
+      end)
+
+    "#{function.name}(#{argument_templates})"
   end
 
   defp sort_text(%Result.Function{} = function) do
     normalized = String.replace(function.name, "__", "")
     "#{normalized}/#{function.arity}"
+  end
+
+  defp function_label(%Result.Function{} = function) do
+    arg_detail = Enum.join(function.argument_names, ",")
+    "#{function.name}(#{arg_detail})"
+  end
+
+  defp name_and_arity(%Result.Function{} = function) do
+    "#{function.name}/#{function.arity}"
   end
 end
