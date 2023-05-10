@@ -193,9 +193,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({:EXIT, _port, _reason}, %State{} = state) do
-    # NOTE: Just like `:peer` we should ignore the exit of the port and continue working
-    {:noreply, state}
+  def handle_info({:EXIT, port, reason}, %State{port: port} = state) do
+    Logger.info("Port #{inspect port} has exited due to: #{inspect(reason)}")
+    {:noreply, %State{state | port: nil}}
   end
 
   @impl true
