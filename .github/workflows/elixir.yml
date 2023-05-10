@@ -18,43 +18,6 @@ permissions:
   contents: read
 
 jobs:
-  formatting-check:
-    runs-on: ubuntu-latest
-    name: Formatting check
-    steps:
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: 25.3.2
-          elixir-version: 1.14.4
-
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Cache deps
-        id: cache-deps
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-elixir-deps
-        with:
-          path: |
-            deps
-            _build
-
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
-
-      - name: Install dependencies
-        run: |
-          mix deps.get
-
-      # Step: Check that the checked in code has already been formatted.
-      # This step fails if something was found unformatted.
-      # Customize this step as desired.
-      - name: Check Formatting
-        run: mix format --check-formatted
-
   test:
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
@@ -64,6 +27,10 @@ jobs:
       matrix:
         otp: ["24", "25"] # Define the OTP version [required]
         elixir: ["1.13", "1.14"] # Define the elixir version [required]
+        include:
+          - otp: "25"
+            elixir: "1.14"
+            check-format: true
     steps:
       # Step: Setup Elixir + Erlang image as the base.
       - name: Set up Elixir
@@ -110,6 +77,13 @@ jobs:
         run: |
           mix deps.get
           mix deps.compile
+
+      # Step: Check that the checked in code has already been formatted.
+      # This step fails if something was found unformatted.
+      # Customize this step as desired.
+      - name: Check Formatting
+        if: ${{ matrix.check-format == true }}
+        run: mix format --check-formatted
 
       # Step: Run credo static code analysis
       - name: Credo static analysis
