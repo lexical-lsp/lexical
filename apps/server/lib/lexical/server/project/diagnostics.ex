@@ -91,7 +91,7 @@ defmodule Lexical.Server.Project.Diagnostics do
   end
 
   alias Lexical.Document
-  alias Lexical.Format
+  alias Lexical.Formats
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.RemoteControl.Api.Messages
@@ -158,7 +158,7 @@ defmodule Lexical.Server.Project.Diagnostics do
         %State{} = state
       ) do
     project_name = Project.name(state.project)
-    Logger.info("Compiled #{project_name} in #{Format.time(elapsed_ms, unit: :millisecond)}")
+    Logger.info("Compiled #{project_name} in #{Formats.time(elapsed_ms, unit: :millisecond)}")
 
     {:noreply, state}
   end
