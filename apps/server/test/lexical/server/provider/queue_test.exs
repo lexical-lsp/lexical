@@ -8,7 +8,7 @@ defmodule Lexical.Server.Provider.QueueTest do
 
   use ExUnit.Case
   use Patch
-  use Testing.EventualAssertions
+  use Lexical.Test.EventualAssertions
 
   setup do
     {:ok, _} = start_supervised(Queue.Supervisor.child_spec())

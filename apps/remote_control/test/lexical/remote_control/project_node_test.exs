@@ -3,8 +3,8 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
   alias Lexical.RemoteControl.ProjectNode
   alias Lexical.RemoteControl.ProjectNodeSupervisor
 
+  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
-  import Testing.EventualAssertions
 
   use ExUnit.Case, async: false
 

@@ -1,4 +1,4 @@
-defmodule Lexical.Proto.Fixtures.LspProtocol do
+defmodule Lexical.Test.Protocol.Fixtures.LspProtocol do
   def build(module_to_build, opts \\ []) do
     true = Code.ensure_loaded?(module_to_build)
 
