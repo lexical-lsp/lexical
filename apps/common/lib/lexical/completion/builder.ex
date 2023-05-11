@@ -1,4 +1,6 @@
 defmodule Lexical.Completion.Builder do
+  alias Lexical.Completion.Environment
+
   @type insert_text_format :: :plain_text | :snippet
 
   @type completion_item_kind ::
@@ -63,11 +65,20 @@ defmodule Lexical.Completion.Builder do
 
   @type result :: t | :skip
 
-  @callback snippet(String.t()) :: translated_item()
-  @callback snippet(String.t(), item_opts) :: translated_item()
+  @type line_range :: {start_character :: pos_integer, end_character :: pos_integer}
 
-  @callback plain_text(String.t()) :: translated_item()
-  @callback plain_text(String.t(), item_opts) :: translated_item()
+  @callback snippet(Environment.t(), String.t()) :: translated_item()
+  @callback snippet(Environment.t(), String.t(), item_opts) :: translated_item()
+
+  @callback plain_text(Environment.t(), String.t()) :: translated_item()
+  @callback plain_text(Environment.t(), String.t(), item_opts) :: translated_item()
+
+  @callback text_edit(Environment.t(), String.t(), line_range) :: translated_item()
+  @callback text_edit(Environment.t(), String.t(), line_range, item_opts) :: translated_item()
+
+  @callback text_edit_snippet(Environment.t(), String.t(), line_range) :: translated_item()
+  @callback text_edit_snippet(Environment.t(), String.t(), line_range, item_opts) ::
+              translated_item()
 
   @callback fallback(any, any) :: any
   @callback boost(String.t(), 0..10) :: String.t()

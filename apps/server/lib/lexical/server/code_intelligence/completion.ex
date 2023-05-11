@@ -7,7 +7,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Result
-  alias Lexical.Server.CodeIntelligence.Completion.Builder
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
 
@@ -48,7 +47,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     for result <- local_completions,
         displayable?(project, result),
         applies_to_context?(project, result, context),
-        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Builder, env)) do
+        applies_to_env?(env, result),
+        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Env, env)) do
       item
     end
   end
@@ -98,13 +98,38 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
+  defp applies_to_env?(%Env{} = env, %struct_module{} = result) do
+    struct_reference? = Env.struct_reference?(env)
+    in_bitstring? = Env.in_bitstring?(env)
+
+    cond do
+      struct_reference? and struct_module == Result.Struct ->
+        true
+
+      struct_reference? and struct_module == Result.Module ->
+        Intelligence.defines_struct?(env.project, result.full_name, to: :grandchild)
+
+      struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
+        true
+
+      struct_reference? ->
+        false
+
+      in_bitstring? ->
+        struct_module in [Result.BitstringOption, Result.Variable]
+
+      true ->
+        true
+    end
+  end
+
   defp applies_to_context?(%Project{} = project, result, %Completion.Context{
          trigger_kind: :trigger_character,
          trigger_character: "%"
        }) do
     case result do
       %Result.Module{} = result ->
-        Intelligence.child_defines_struct?(project, result.full_name)
+        Intelligence.defines_struct?(project, result.full_name, from: :child, to: :child)
 
       %Result.Struct{} ->
         true

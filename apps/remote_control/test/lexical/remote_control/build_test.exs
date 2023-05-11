@@ -336,6 +336,19 @@ defmodule Lexical.BuildTest do
       assert_receive module_updated(name: NewModule, functions: []), 500
     end
 
+    test "adding a non-loaded module notifies the listener", %{project: project} do
+      source = ~S[
+      defmodule NotLoaded do
+        @compile {:autoload, false}
+        defstruct loaded: false
+      end
+      ]
+      compile_document(project, source)
+
+      assert_receive module_updated(name: NotLoaded, struct: fields), 500
+      assert [%{field: :loaded, required?: true}] = fields
+    end
+
     test "adding multiple modules notifies the listener for each module", %{project: project} do
       source = ~S[
         defmodule FirstModule do

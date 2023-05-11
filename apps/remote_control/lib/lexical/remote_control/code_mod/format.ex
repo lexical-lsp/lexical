@@ -79,7 +79,11 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
             result
 
           _ ->
-            formatter = &Code.format_string!/2
+            formatter = fn source ->
+              formatted_source = Code.format_string!(source)
+              IO.iodata_to_binary([formatted_source, ?\n])
+            end
+
             {formatter, nil}
         end
       else

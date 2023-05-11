@@ -77,6 +77,10 @@ defmodule Lexical.Format do
     end
   end
 
+  def module(module_name) when is_binary(module_name) do
+    module_name
+  end
+
   defp to_milliseconds(micros, :microsecond) do
     micros / 1000
   end
