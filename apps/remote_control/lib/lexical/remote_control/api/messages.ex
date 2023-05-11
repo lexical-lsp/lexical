@@ -64,7 +64,7 @@ defmodule Lexical.RemoteControl.Api.Messages do
   @type project_progress ::
           record(:project_progress,
             label: String.t(),
-            message: String.t() | Integer.t(),
+            message: String.t() | integer(),
             stage: :prepare | :begin | :report | :end
           )
 end

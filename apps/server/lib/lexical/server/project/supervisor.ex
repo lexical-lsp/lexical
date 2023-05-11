@@ -4,8 +4,8 @@ defmodule Lexical.Server.Project.Supervisor do
   alias Lexical.Server.Project.Diagnostics
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Project.Intelligence
-  alias Lexical.Server.Project.Progress
   alias Lexical.Server.Project.Node
+  alias Lexical.Server.Project.Progress
 
   use Supervisor
 

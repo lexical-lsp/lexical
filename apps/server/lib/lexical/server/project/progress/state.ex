@@ -44,11 +44,11 @@ defmodule Lexical.Server.Project.Progress.State do
     Transport.write(progress)
   end
 
-  defp write(progress) do
-    if progress && progress.token do
-      progress |> Value.to_progress() |> Transport.write()
-    end
+  defp write(%{token: token} = progress) when not is_nil(token) do
+    progress |> Value.to_progress() |> Transport.write()
   end
+
+  defp write(_), do: :ok
 
   defp value(:begin, state, label, _message) do
     token = get_token(state, label)
