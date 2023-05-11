@@ -5,13 +5,13 @@ defmodule Lexical.Test.Fixtures do
   use ExUnit.CaseTemplate
 
   def fixtures_path do
-    [__ENV__.file, "..", "..", "fixtures"]
+    [__ENV__.file, "..", "..", "..", "..", "fixtures"]
     |> Path.join()
     |> Path.expand()
   end
 
   def project(project_name) do
-    [Path.dirname(__ENV__.file), "..", "fixtures", to_string(project_name)]
+    [Path.dirname(__ENV__.file), "..", "..", "..", "fixtures", to_string(project_name)]
     |> Path.join()
     |> Path.expand()
     |> Lexical.Document.Path.to_uri()

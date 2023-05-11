@@ -5,8 +5,9 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.State
 
+  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
-  import Testing.EventualAssertions
+
   use ExUnit.Case, async: false
   use Patch
 

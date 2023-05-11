@@ -4,7 +4,7 @@ defmodule Lexical.RemoteControlTest do
   alias Lexical.RemoteControl
 
   use ExUnit.Case
-  use Testing.EventualAssertions
+  use Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
 
   def start_project(%Project{} = project) do
