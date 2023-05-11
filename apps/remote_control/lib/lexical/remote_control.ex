@@ -6,46 +6,24 @@ defmodule Lexical.RemoteControl do
   """
 
   alias Lexical.Project
-  alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.ProjectNode
+  require Logger
 
   @allowed_apps ~w(common path_glob remote_control elixir_sense)a
 
   @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
 
-  @localhost_charlist '127.0.0.1'
-
   def start_link(%Project{} = project, project_listener) do
     :ok = ensure_epmd_started()
     entropy = :rand.uniform(65_536)
-
     start_net_kernel(project, entropy)
 
-    node_name = String.to_charlist("#{Project.name(project)}")
-    {:ok, paths} = system_paths(project)
-
-    erl_args =
-      erl_args([
-        "-hosts #{@localhost_charlist}",
-        "-setcookie #{Node.get_cookie()}",
-        "-sbwt none",
-        "-path #{paths}",
-        "-noshell"
-      ])
-
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
-    remote_control_config = Application.get_all_env(:remote_control)
+    node = node_name(project)
 
-    with {:ok, node} <- :slave.start_link(@localhost_charlist, node_name, erl_args),
-         :ok <- :rpc.call(node, :code, :add_paths, [glob_paths()]),
-         :ok <-
-           :rpc.call(node, RemoteControl.Bootstrap, :init, [
-             project,
-             project_listener,
-             remote_control_config
-           ]),
+    with {:ok, node_pid} <- ProjectNode.start(project, project_listener, glob_paths()),
          :ok <- ensure_apps_started(node, apps_to_start) do
-      supervisor_pid = :rpc.call(node, Process, :whereis, [Lexical.RemoteControl.Supervisor])
-      {:ok, node, supervisor_pid}
+      {:ok, node, node_pid}
     end
   end
 
@@ -77,11 +55,7 @@ defmodule Lexical.RemoteControl do
     :persistent_term.put({__MODULE__, :project}, project)
   end
 
-  def stop(%Project{} = project) do
-    project
-    |> node_name()
-    |> :slave.stop()
-  end
+  defdelegate stop(project), to: ProjectNode
 
   def call(%Project{} = project, m, f, a \\ []) do
     project
@@ -115,28 +89,7 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  defp erl_args(arg_list) do
-    arg_list
-    |> Enum.join(" ")
-    |> String.to_charlist()
-  end
-
-  def system_paths(%Project{} = project) do
-    old_cwd = File.cwd!()
-    root_path = Project.root_path(project)
-
-    result =
-      with :ok <- File.cd(root_path),
-           {:ok, elixir} <- elixir_executable(project),
-           {:ok, paths} <- elixir_code_paths(project, elixir) do
-        {:ok, format_paths(paths)}
-      end
-
-    File.cd(old_cwd)
-    result
-  end
-
-  defp elixir_executable(%Project{} = project) do
+  def elixir_executable(%Project{} = project) do
     root_path = Project.root_path(project)
 
     path_result =
@@ -169,20 +122,6 @@ defmodule Lexical.RemoteControl do
 
       executable when is_binary(executable) ->
         {:ok, executable}
-    end
-  end
-
-  defp format_paths(paths_as_charlists) do
-    Enum.map_join(paths_as_charlists, " ", &Path.expand/1)
-  end
-
-  defp elixir_code_paths(%Project{} = project, elixir_executable) do
-    root_path = Project.root_path(project)
-    command = ~w[--eval IO.inspect(:code.get_path())]
-
-    with {output, 0} <- System.cmd(elixir_executable, command, cd: root_path),
-         {evaluated, _} <- Code.eval_string(output) do
-      {:ok, evaluated}
     end
   end
 

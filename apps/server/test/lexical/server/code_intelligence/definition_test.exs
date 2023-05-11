@@ -4,6 +4,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   alias Lexical.Document.Position
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.Server.CodeIntelligence.Definition
 
   import Lexical.Test.CodeSigil
@@ -40,11 +41,8 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     start_supervised!(Lexical.Document.Store)
 
     project = project(:navigations)
+    {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
-
-    on_exit(fn ->
-      :ok = RemoteControl.stop(project)
-    end)
 
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000

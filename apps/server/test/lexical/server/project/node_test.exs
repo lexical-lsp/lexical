@@ -35,10 +35,14 @@ defmodule Lexical.Server.Project.NodeTest do
 
   test "the node is restarted when it goes down", %{project: project} do
     node_name = ProjectNode.node_name(project)
-    assert :pong = Node.ping(node_name)
-    :ok = RemoteControl.stop(project)
+    old_pid = node_pid(project)
 
-    assert_eventually Node.ping(node_name) == :pong, 750
+    :ok = RemoteControl.stop(project)
+    assert_eventually Node.ping(node_name) == :pong, 1000
+
+    new_pid = node_pid(project)
+    assert is_pid(new_pid)
+    assert new_pid != old_pid
   end
 
   test "the node restarts when the supervisor pid is killed", %{project: project} do
@@ -48,5 +52,9 @@ defmodule Lexical.Server.Project.NodeTest do
     assert is_pid(supervisor_pid)
     Process.exit(supervisor_pid, :kill)
     assert_eventually Node.ping(node_name) == :pong, 750
+  end
+
+  defp node_pid(project) do
+    RemoteControl.ProjectNode.name(project) |> Process.whereis()
   end
 end

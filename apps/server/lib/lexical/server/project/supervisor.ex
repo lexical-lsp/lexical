@@ -1,5 +1,6 @@
 defmodule Lexical.Server.Project.Supervisor do
   alias Lexical.Project
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.Server.Project.Diagnostics
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Project.Intelligence
@@ -20,6 +21,7 @@ defmodule Lexical.Server.Project.Supervisor do
       {Dispatch, project},
       {Diagnostics, project},
       {Intelligence, project},
+      {ProjectNodeSupervisor, project},
       {Node, project}
     ]
 

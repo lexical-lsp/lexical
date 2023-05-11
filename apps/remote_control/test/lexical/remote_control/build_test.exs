@@ -4,6 +4,7 @@ defmodule Lexical.BuildTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Mix.Task.Compiler.Diagnostic
 
   import Messages
@@ -34,11 +35,8 @@ defmodule Lexical.BuildTest do
     fixture_dir = Path.join(fixtures_path(), project_name)
     project = Project.new("file://#{fixture_dir}")
 
+    {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
-
-    on_exit(fn ->
-      :ok = RemoteControl.stop(project)
-    end)
 
     {:ok, project}
   end
