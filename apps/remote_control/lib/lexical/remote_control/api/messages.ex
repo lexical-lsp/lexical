@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Api.Messages do
   defrecord :project_diagnostics, project: nil, diagnostics: []
   defrecord :file_diagnostics, project: nil, uri: nil, diagnostics: []
 
-  defrecord :project_progress, label: nil, message: nil, stage: nil
+  defrecord :project_progress, label: nil, message: nil, stage: :report
 
   @type compile_status :: :successful | :error
   @type name_and_arity :: {atom, non_neg_integer}

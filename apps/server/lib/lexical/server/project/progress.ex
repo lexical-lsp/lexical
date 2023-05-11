@@ -41,9 +41,6 @@ defmodule Lexical.Server.Project.Progress do
 
         :end ->
           State.complete(state, label, message)
-
-        _ ->
-          state
       end
 
     {:noreply, new_state}

@@ -17,7 +17,7 @@ defmodule Lexical.Server.Project.Progress.State do
     token_by_label = Map.put(state.token_by_label, label, token)
 
     state = %{state | token_by_label: token_by_label}
-    create_work_done(state, label)
+    write_work_done(state, label)
 
     progress = value(:begin, state, label, nil)
     write(progress)
@@ -38,7 +38,7 @@ defmodule Lexical.Server.Project.Progress.State do
     %{state | progress: progress}
   end
 
-  defp create_work_done(%__MODULE__{} = state, label) do
+  defp write_work_done(%__MODULE__{} = state, label) do
     token = get_token(state, label)
     progress = Notifications.CreateWorkDoneProgress.new(token: token)
     Transport.write(progress)

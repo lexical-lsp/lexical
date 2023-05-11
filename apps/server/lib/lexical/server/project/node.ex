@@ -14,11 +14,12 @@ defmodule Lexical.Server.Project.Node do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.Server.Project.Dispatch
+  alias Lexical.Server.Project.Progress
 
-  import Lexical.Server.Project.Progress.Util, only: [with_progress: 3]
+  require Logger
 
   use GenServer
-  require Logger
+  use Progress.Support
 
   def start_link(%Project{} = project) do
     GenServer.start_link(__MODULE__, project, name: name(project))

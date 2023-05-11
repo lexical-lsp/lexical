@@ -6,10 +6,12 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
 
-  import Build.CaptureIO
-  import Build.Progress
-  import Messages
   require Logger
+
+  import Build.CaptureIO
+  import Messages
+
+  use Build.Progress
 
   defstruct project: nil, uri_to_source_and_edit_time: %{}
 
@@ -235,7 +237,7 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     with_progress "deps.compile", fn ->
-      Mix.Task.run("deps.safe_compile")
+      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
     end
 
     Mix.Task.run("clean")
