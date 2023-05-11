@@ -1,6 +1,6 @@
 defmodule Lexical.Server.Project.Intelligence do
   defmodule State do
-    alias Lexical.Format
+    alias Lexical.Formats
     alias Lexical.Project
     defstruct project: nil, struct_modules: MapSet.new()
 
@@ -36,7 +36,7 @@ defmodule Lexical.Server.Project.Intelligence do
 
     defp module_path(module_name) do
       module_name
-      |> Format.module()
+      |> Formats.module()
       |> String.split(".")
     end
 

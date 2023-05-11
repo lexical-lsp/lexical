@@ -1,4 +1,4 @@
-defmodule Lexical.Format do
+defmodule Lexical.Formats do
   @moduledoc """
   A collection of formatting functions
   """
@@ -54,7 +54,7 @@ defmodule Lexical.Format do
    ```
 
    ```
-  Format.module(Somewhat.Nested.Module)
+  Formats.module(Somewhat.Nested.Module)
   "Somewhat.Nested.Module"
   ```
 

@@ -7,7 +7,7 @@ defmodule Lexical.Server.Project.NodeTest do
   import RemoteControl.Api.Messages
 
   use ExUnit.Case
-  use Testing.EventualAssertions
+  use Lexical.Test.EventualAssertions
 
   setup do
     project = project()
