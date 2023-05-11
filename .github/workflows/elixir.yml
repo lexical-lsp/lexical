@@ -29,7 +29,7 @@ jobs:
         elixir: ["1.13", "1.14"] # Define the elixir version [required]
         include:
           - otp: "25"
-            elixir: "1.14"
+            elixir: "1.13"
             check-format: true
     steps:
       # Step: Setup Elixir + Erlang image as the base.
