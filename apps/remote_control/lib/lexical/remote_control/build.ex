@@ -89,6 +89,11 @@ defmodule Lexical.RemoteControl.Build do
     {:noreply, project}
   end
 
+  def handle_info(msg, %Project{} = project) do
+    Logger.warn("Undefined message: #{inspect msg}")
+    {:noreply, project}
+  end
+
   defp schedule_tick do
     Process.send_after(self(), :tick, @tick_interval_millis)
   end

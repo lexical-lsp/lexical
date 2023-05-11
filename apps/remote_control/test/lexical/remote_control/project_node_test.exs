@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
   use ExUnit.Case, async: false
 
   setup do
-    project = project(:project)
+    project = project()
     start_supervised!({ProjectNodeSupervisor, project})
     {:ok, %{project: project}}
   end
@@ -18,11 +18,11 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
     {:ok, _node_name, _} = RemoteControl.start_link(project, self())
 
     assert ProjectNode.name(project) |> Process.whereis() |> Process.alive?()
-    assert :ok = ProjectNode.stop(project)
-    assert_eventually Process.whereis(ProjectNode.name(project)) == nil, 50
+    assert :ok = ProjectNode.stop(project, 500)
+    assert Process.whereis(ProjectNode.name(project)) == nil
   end
 
-  test "it should be stopped atomically when the linked process is dead", %{project: project} do
+  test "it should be stopped atomically when the startup process is dead", %{project: project} do
     test_pid = self()
 
     linked_node_process =

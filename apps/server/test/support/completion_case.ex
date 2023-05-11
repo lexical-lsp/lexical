@@ -2,6 +2,7 @@ defmodule Lexical.Test.Server.CompletionCase do
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
+  alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
   alias Lexical.RemoteControl
   alias Lexical.Server
   alias Lexical.Server.CodeIntelligence.Completion
@@ -33,6 +34,12 @@ defmodule Lexical.Test.Server.CompletionCase do
       import unquote(__MODULE__)
       import unquote(CodeSigil), only: [sigil_q: 2]
     end
+  end
+
+  def apply_completion(%CompletionItem{text_edit: %Document.Changes{} = changes}) do
+    edits = List.wrap(changes.edits)
+    {:ok, edited_document} = Document.apply_content_changes(changes.document, 1, edits)
+    Document.to_string(edited_document)
   end
 
   def complete(project, text, trigger_character \\ nil) do

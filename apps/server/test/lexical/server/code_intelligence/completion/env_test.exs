@@ -18,8 +18,171 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     position = Document.Position.new(line, column)
 
     {:ok, env} = new(project, document, position)
-
     env
+  end
+
+  describe "prefix_tokens/2" do
+    test "works with bitstring specifiers" do
+      env = new_env("<<foo::int|")
+      assert [{:identifier, 'int'}, {:operator, :"::"}] = prefix_tokens(env, 2)
+    end
+
+    test "works with floats" do
+      tokens =
+        "27.88"
+        |> new_env()
+        |> prefix_tokens(1)
+
+      assert [{:float, 27.88}] = tokens
+    end
+
+    test "works with strings" do
+      tokens =
+        ~s("hello")
+        |> new_env()
+        |> prefix_tokens(1)
+
+      assert [{:string, "hello"}] = tokens
+    end
+
+    test "works with maps with atom keys" do
+      tokens =
+        "%{a: 3}"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:curly, :"}"},
+               {:int, 3},
+               {:kw_identifier, 'a'},
+               {:curly, :"{"},
+               {:map_new, :%{}}
+             ] = tokens
+    end
+
+    test "works with maps with string keys" do
+      tokens =
+        ~s(%{"a" => 3})
+        |> new_env()
+        |> prefix_tokens(8)
+
+      assert [
+               {:curly, :"}"},
+               {:int, 3},
+               {:assoc_op, nil},
+               {:string, "a"},
+               {:curly, :"{"},
+               {:map_new, :%{}}
+             ] = tokens
+    end
+
+    test "works with pattern matches" do
+      tokens =
+        "my_var = 3 + 5"
+        |> new_env()
+        |> prefix_tokens(3)
+
+      assert tokens == [
+               {:int, 5},
+               {:operator, :+},
+               {:int, 3}
+             ]
+    end
+
+    test "works with remote function calls" do
+      tokens =
+        "Enum.map|"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:identifier, 'map'},
+               {:operator, :.},
+               {:alias, 'Enum'}
+             ] = tokens
+    end
+
+    test "works with local function calls" do
+      tokens =
+        "foo = local(|"
+        |> new_env()
+        |> prefix_tokens(9)
+
+      assert [
+               {:paren, :"("},
+               {:paren_identifier, 'local'},
+               {:match_op, nil},
+               {:identifier, 'foo'}
+             ] = tokens
+    end
+
+    test "consumes as many tokens as it can" do
+      tokens =
+        "String.tri|"
+        |> new_env()
+        |> prefix_tokens(900)
+
+      assert [{:identifier, 'tri'}, {:operator, :.}, {:alias, 'String'}] = tokens
+    end
+
+    test "works with macros" do
+      tokens =
+        "defmacro MyModule do"
+        |> new_env()
+        |> prefix_tokens(3)
+
+      assert tokens == [
+               {:operator, :do},
+               {:alias, 'MyModule'},
+               {:identifier, 'defmacro'}
+             ]
+    end
+
+    test "works with lists of integers" do
+      tokens =
+        "x = [1, 2, 3]"
+        |> new_env()
+        |> prefix_tokens(7)
+
+      assert tokens == [
+               {:operator, :"]"},
+               {:int, 3},
+               {:comma, :","},
+               {:int, 2},
+               {:comma, :","},
+               {:int, 1},
+               {:operator, :"["}
+             ]
+    end
+  end
+
+  describe "in_bitstring?/1" do
+    test "is true if the reference starts in a bitstring at the start of a line" do
+      env = new_env("<<|")
+      assert in_bitstring?(env)
+    end
+
+    test "is true if the reference starts in a bitstring with matches" do
+      env = new_env("<<foo::|")
+      assert in_bitstring?(env)
+
+      env = new_env("<<foo::uint32, ba|")
+      assert in_bitstring?(env)
+
+      env = new_env("<<foo::uint32, bar::|")
+      assert in_bitstring?(env)
+    end
+
+    test "is false if the position is outside a bitstring match on the same line" do
+      env = new_env("<<foo::utf8>>|")
+      refute in_bitstring?(env)
+
+      env = new_env("<<foo::utf8>> = |")
+      refute in_bitstring?(env)
+
+      env = new_env("<<foo::utf8>> = str|")
+      refute in_bitstring?(env)
+    end
   end
 
   describe "struct_reference?/1" do
@@ -70,6 +233,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   end
 
   describe "function_capture?/1" do
+    test "is true for arity one local functions" do
+      env = new_env("&is_map|")
+      assert function_capture?(env)
+    end
+
+    test "is true for arity two local functions with a variable" do
+      env = new_env("&is_map_key(&1, l|)")
+      assert function_capture?(env)
+    end
+
     test "is true if the capture starts at the beginning of the line" do
       env = new_env("&Enum")
       assert function_capture?(env)
@@ -93,6 +266,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     test "is true if the capture is in the body of a for" do
       env = new_env("for x <- Enum.map(1..10, &String.|)")
       assert function_capture?(env)
+    end
+
+    test "is false if the position is after a capture with no arguments" do
+      env = new_env("&something/1|")
+      refute function_capture?(env)
+    end
+
+    test "is false if the position is after a capture with arguments" do
+      env = new_env("&captured(&1, :foo)|")
+      refute function_capture?(env)
     end
 
     test "is false if the capture starts at the beginning of the line" do
