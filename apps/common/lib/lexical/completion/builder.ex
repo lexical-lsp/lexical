@@ -63,7 +63,7 @@ defmodule Lexical.Completion.Builder do
 
   @type t :: module()
 
-  @type result :: t | :skip
+  @type result :: translated_item | :skip
 
   @type line_range :: {start_character :: pos_integer, end_character :: pos_integer}
 
