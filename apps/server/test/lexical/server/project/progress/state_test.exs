@@ -45,8 +45,9 @@ defmodule Lexical.Server.Project.Progress.StateTest do
   test "clear the token_by_label after received a complete event", %{project: project} do
     state = State.new(project) |> State.begin(message("mix compile"))
 
-    state = State.complete(state, message("mix compile", "in 2s"))
+    %{progress_by_label: progress_by_label} =
+      State.complete(state, message("mix compile", "in 2s"))
 
-    assert state.progress_by_label == %{}
+    assert progress_by_label == %{}
   end
 end
