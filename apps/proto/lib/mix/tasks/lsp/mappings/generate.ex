@@ -75,8 +75,8 @@ defmodule Mix.Tasks.Lsp.Mappings.Generate do
     end
 
     keywords
-    |> Keyword.replace_lazy(:only, &split_comma_delimited/1)
-    |> Keyword.replace_lazy(:roots, &split_comma_delimited/1)
+    |> Keyword.replace(:only, &split_comma_delimited/1)
+    |> Keyword.replace(:roots, &split_comma_delimited/1)
   end
 
   defp map_lsp_types(types_to_map, %DataModel{} = data_model, %Mappings{} = mappings) do
