@@ -27,11 +27,13 @@ defmodule Lexical.RemoteControl.CompileTracer do
   defp progress_message(file) do
     relative_path = Path.relative_to_cwd(file)
 
-    if String.starts_with?(relative_path, "deps") do
-      project_progress(label: "mix deps.compile", message: relative_path)
+    label = 
+      if String.starts_with?(relative_path, "deps") do
+        "mix deps.compile"
     else
-      project_progress(label: "mix compile", message: relative_path)
+      "mix compile"
     end
+    project_progress(label: label, message: relative_path)
   end
 
   def extract_module_updated(module, module_binary, filename) do
