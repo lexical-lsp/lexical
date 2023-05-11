@@ -40,6 +40,7 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   # GenServer Callbacks
+
   def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -78,6 +79,7 @@ defmodule Lexical.RemoteControl.Build do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:tick, %State{} = state) do
     new_state = State.on_tick(state)
     schedule_tick()
@@ -85,12 +87,8 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   @impl GenServer
-  def handle_info(_, %Project{} = project) do
-    {:noreply, project}
-  end
-
   def handle_info(msg, %Project{} = project) do
-    Logger.warn("Undefined message: #{inspect msg}")
+    Logger.warn("Undefined message: #{inspect(msg)}")
     {:noreply, project}
   end
 
