@@ -27,22 +27,8 @@ defmodule Lexical.Server.Project.Progress do
   end
 
   @impl true
-  def handle_info(
-        project_progress(label: label, message: message, stage: stage),
-        %State{} = state
-      ) do
-    new_state =
-      case stage do
-        :begin ->
-          State.begin(state, label)
-
-        :report ->
-          State.update(state, label, message)
-
-        :end ->
-          State.complete(state, label, message)
-      end
-
+  def handle_info(project_progress(stage: stage) = message, %State{} = state) do
+    new_state = apply(State, stage, [state, message])
     {:noreply, new_state}
   end
 

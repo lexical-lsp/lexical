@@ -5,8 +5,12 @@ defmodule Lexical.Server.Project.Progress.Value do
   @enforce_keys [:token, :kind]
   defstruct [:token, :kind, :title, :message]
 
-  def new(opts) do
-    struct!(__MODULE__, opts)
+  def new(token, :begin, title) do
+    %__MODULE__{token: token, kind: :begin, title: title}
+  end
+
+  def new(token, kind, message) when kind in [:report, :end] do
+    %__MODULE__{token: token, kind: kind, message: message}
   end
 
   def to_progress(%__MODULE__{kind: :report = kind} = value) do

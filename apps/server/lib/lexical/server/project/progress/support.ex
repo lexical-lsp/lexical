@@ -16,7 +16,7 @@ defmodule Lexical.Server.Project.Progress.Support do
       send(progress_pid, project_progress(label: label, stage: :begin))
       func.()
     after
-      send(progress_pid, project_progress(label: label, stage: :end))
+      send(progress_pid, project_progress(label: label, stage: :complete))
     end
   end
 end

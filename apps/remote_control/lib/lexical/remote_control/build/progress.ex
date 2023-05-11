@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Build.Progress do
       RemoteControl.notify_listener(project_progress(label: label, stage: :begin))
       func.()
     after
-      RemoteControl.notify_listener(project_progress(label: label, stage: :end))
+      RemoteControl.notify_listener(project_progress(label: label, stage: :complete))
     end
   end
 end
