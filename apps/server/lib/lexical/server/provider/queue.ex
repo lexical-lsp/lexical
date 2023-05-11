@@ -166,6 +166,10 @@ defmodule Lexical.Server.Provider.Queue do
     GenServer.call(__MODULE__, :size)
   end
 
+  def cancel(%{lsp: %{id: id}}) do
+    cancel(id)
+  end
+
   def cancel(%{id: request_id}) do
     cancel(request_id)
   end
