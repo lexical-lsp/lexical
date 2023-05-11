@@ -72,7 +72,7 @@ jobs:
       - name: Install and compile dependencies
         run: |
           mix deps.get
-          mix deps.compile
+          mix deps.compile --skip-umbrella-children
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
