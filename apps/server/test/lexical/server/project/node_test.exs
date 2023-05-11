@@ -2,15 +2,19 @@ defmodule Lexical.Server.Project.NodeTest do
   alias Lexical.RemoteControl
   alias Lexical.Server
   alias Lexical.Server.Project.Node, as: ProjectNode
-
-  use ExUnit.Case
-  use Testing.EventualAssertions
+  alias Lexical.Server.Transport
 
   import Lexical.Test.Fixtures
   import RemoteControl.Api.Messages
 
+  use ExUnit.Case
+  use Patch
+  use Testing.EventualAssertions
+
   setup do
     project = project()
+
+    patch(Transport, :write, :ok)
 
     {:ok, _} =
       start_supervised(
