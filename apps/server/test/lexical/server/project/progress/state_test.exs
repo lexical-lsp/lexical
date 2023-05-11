@@ -22,20 +22,24 @@ defmodule Lexical.Server.Project.Progress.StateTest do
   end
 
   test "it should be able to add a begin event and put the new token", %{project: project} do
-    state = State.new(project) |> State.begin(message("mix deps.get"))
+    label = "mix deps.get"
+    state = State.new(project) |> State.begin(message(label))
 
-    assert %Value{token: token, title: "mix deps.get", kind: :begin} = state.progress
+    assert %Value{token: token, title: ^label, kind: :begin} = state.progress_by_label[label]
     assert token != nil
-    assert state.token_by_label["mix deps.get"] == token
   end
 
   test "it should be able to add a report event use the begin event token", %{project: project} do
-    %{progress: %{token: token}} =
-      state = State.new(project) |> State.begin(message("mix compile"))
+    label = "mix compile"
+    state = State.new(project) |> State.begin(message(label))
 
-    %{progress: progress} = State.report(state, message("mix compile", "lib/my_module.ex"))
+    previous_token = state.progress_by_label[label].token
 
-    assert %Value{token: ^token, message: "lib/my_module.ex", kind: :report} = progress
+    %{progress_by_label: progress_by_label} =
+      State.report(state, message(label, "lib/my_module.ex"))
+
+    assert %Value{token: ^previous_token, message: "lib/my_module.ex", kind: :report} =
+             progress_by_label[label]
   end
 
   test "clear the token_by_label after received a complete event", %{project: project} do
@@ -43,6 +47,6 @@ defmodule Lexical.Server.Project.Progress.StateTest do
 
     state = State.complete(state, message("mix compile", "in 2s"))
 
-    assert state.token_by_label == %{}
+    assert state.progress_by_label == %{}
   end
 end
