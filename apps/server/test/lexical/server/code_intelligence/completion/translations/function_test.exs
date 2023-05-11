@@ -8,7 +8,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
                |> complete("Enum.filter_map|")
                |> fetch_completion("filter_map")
 
-      assert completion.detail
+      assert completion.label
       assert [:deprecated] = completion.tags
     end
 

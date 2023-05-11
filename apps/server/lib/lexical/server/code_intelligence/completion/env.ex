@@ -259,8 +259,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     take_relevant_tokens(rest, [normalize_token(token) | tokens], start_character, remaining)
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp normalize_token(token) do
     case token do
+      {:bin_string, _, value} ->
+        {:string, List.to_string(value)}
+
       {:capture_op, _context, value} ->
         {:operator, value}
 
@@ -270,8 +274,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       {:type_op, _context, _value} ->
         {:operator, :"::"}
 
-      {:bin_string, _, value} ->
-        {:string, List.to_string(value)}
+      {:mult_op, _, operator} ->
+        {:operator, operator}
+
+      {:in_op, _, _} ->
+        {:operator, :in}
 
       {:operator, _, value} ->
         {:operator, value}

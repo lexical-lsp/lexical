@@ -22,7 +22,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
       [{:operator, :"::"}] ->
         0
 
-      [{:in_op, nil}] ->
+      [{:operator, :in}] ->
         # they're typing integer and got "in" out, which the lexer thinks
         # is Kernel.in/2
         2

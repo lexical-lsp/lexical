@@ -83,7 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
   end
 
   defp function_label(%Result.Function{} = function) do
-    arg_detail = Enum.join(function.argument_names, ",")
+    arg_detail = Enum.join(function.argument_names, ", ")
     "#{function.name}(#{arg_detail})"
   end
 
