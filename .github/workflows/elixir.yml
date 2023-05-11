@@ -85,7 +85,7 @@ jobs:
         run: mix credo
 
       - name: Compile
-        run: mix compile
+        run: mix compile --warnings-as-errors
 
       - name: Maybe create plt files
         if: steps.cache-plt.outputs.cache-hit != 'true'
