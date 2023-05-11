@@ -79,11 +79,11 @@ defmodule Mix.Tasks.Lsp.DataModel do
     collect_references(data_model, List.wrap(roots), MapSet.new())
   end
 
-  defp collect_references(%__MODULE__{}, [], %MapSet{} = references) do
+  defp collect_references(%__MODULE__{}, [], references) do
     MapSet.to_list(references)
   end
 
-  defp collect_references(%__MODULE__{} = data_model, [first | rest], %MapSet{} = references) do
+  defp collect_references(%__MODULE__{} = data_model, [first | rest], references) do
     with false <- MapSet.member?(references, first),
          {:ok, %referred_type{} = referred} <- fetch(data_model, first) do
       new_refs = referred_type.references(referred)
