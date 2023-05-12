@@ -20,9 +20,7 @@ defmodule Lexical.MixProject do
     [
       {:ex_doc, "~> 0.29.1", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test]},
-      {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false},
-      # Try break the ci cache
-      {:recode, "~> 0.4", only: :dev}
+      {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false}
     ]
   end
 
