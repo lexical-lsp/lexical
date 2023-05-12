@@ -10,13 +10,13 @@ defmodule Lexical.Server.Project.Progress.Support do
   end
 
   def with_progress(project, label, func) when is_function(func, 0) do
-    progress_pid = Progress.name(project)
+    dest = Progress.name(project)
 
     try do
-      send(progress_pid, project_progress(label: label, stage: :begin))
+      send(dest, project_progress(label: label, stage: :begin))
       func.()
     after
-      send(progress_pid, project_progress(label: label, stage: :complete))
+      send(dest, project_progress(label: label, stage: :complete))
     end
   end
 end
