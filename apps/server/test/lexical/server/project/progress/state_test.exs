@@ -9,13 +9,11 @@ defmodule Lexical.Server.Project.Progress.StateTest do
   use ExUnit.Case
   use Patch
 
-  def with_a_project(_) do
+  setup do
     project = project()
-    {:ok, %{project: project}}
+    patch(Transport, :write, :ok)
+    {:ok, project: project}
   end
-
-  setup :with_a_project
-  setup do: patch(Transport, :write, :ok)
 
   def progress(label, message \\ nil) do
     project_progress(label: label, message: message)
@@ -49,5 +47,29 @@ defmodule Lexical.Server.Project.Progress.StateTest do
       State.complete(state, progress("mix compile", "in 2s"))
 
     assert progress_by_label == %{}
+  end
+
+  test "set the progress value to nil when there is no begin event", %{
+    project: project
+  } do
+    state = project |> State.new() |> State.report(progress("mix compile"))
+    assert state.progress_by_label["mix compile"] == nil
+  end
+
+  test "set the progress value to nil when a complete event received before the report", %{
+    project: project
+  } do
+    label = "mix compile"
+
+    state =
+      project
+      |> State.new()
+      |> State.begin(progress(label))
+      |> State.complete(progress(label, "in 2s"))
+
+    %{progress_by_label: progress_by_label} =
+      State.report(state, progress(label, "lib/my_module.ex"))
+
+    assert progress_by_label[label] == nil
   end
 end
