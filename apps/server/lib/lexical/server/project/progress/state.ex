@@ -47,7 +47,7 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write(%{token: token} = progress) when not is_nil(token) do
-    progress |> Value.to_progress() |> Transport.write()
+    progress |> Value.to_protocol() |> Transport.write()
   end
 
   defp write(_), do: :ok
