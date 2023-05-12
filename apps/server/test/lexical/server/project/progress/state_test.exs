@@ -1,7 +1,6 @@
 defmodule Lexical.Server.Project.Progress.StateTest do
   alias Lexical.Server.Project.Progress.State
   alias Lexical.Server.Project.Progress.Value
-  alias Lexical.Server.Transport
 
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.Fixtures
@@ -11,7 +10,6 @@ defmodule Lexical.Server.Project.Progress.StateTest do
 
   setup do
     project = project()
-    patch(Transport, :write, :ok)
     {:ok, project: project}
   end
 
