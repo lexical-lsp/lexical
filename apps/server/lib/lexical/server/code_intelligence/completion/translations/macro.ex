@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
 
   use Translatable.Impl, for: Result.Macro
 
@@ -444,17 +445,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     :skip
   end
 
-  def translate(%Result.Macro{name: name} = macro, builder, env)
+  def translate(%Result.Macro{name: name} = macro, _builder, env)
       when name not in @snippet_macros do
-    label = "#{macro.name}/#{macro.arity}"
-    sort_text = String.replace(label, "__", "")
-
-    builder.plain_text(env, label,
-      detail: macro.spec,
-      kind: :function,
-      sort_text: sort_text,
-      label: label
-    )
+    Callable.completion(macro, env)
   end
 
   def translate(%Result.Macro{}, _builder, _env) do

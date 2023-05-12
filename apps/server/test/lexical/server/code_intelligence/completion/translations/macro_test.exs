@@ -545,6 +545,63 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     end
   end
 
+  describe "normal macro completion" do
+    test "completes imported macros", %{project: project} do
+      source = ~q[
+        import Project.Macros
+
+        macro_a|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.kind == :function
+      assert completion.insert_text_format == :snippet
+      assert completion.label == "macro_add(a, b)"
+      assert completion.insert_text == "macro_add(${1:a}, ${2:b})"
+    end
+
+    test "completes required macros", %{project: project} do
+      source = ~q[
+        require Project.Macros
+
+        Project.Macros.macro_a|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.kind == :function
+      assert completion.insert_text_format == :snippet
+      assert completion.label == "macro_add(a, b)"
+      assert completion.insert_text == "macro_add(${1:a}, ${2:b})"
+    end
+
+    test "completes aliased macros", %{project: project} do
+      source = ~q[
+        alias Project.Macros
+        require Macros
+
+        Macros.macro_a|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.kind == :function
+      assert completion.insert_text_format == :snippet
+      assert completion.label == "macro_add(a, b)"
+      assert completion.insert_text == "macro_add(${1:a}, ${2:b})"
+    end
+  end
+
   describe "sort_text" do
     test "dunder macros have the dunder removed in their sort_text", %{project: project} do
       assert {:ok, completion} =

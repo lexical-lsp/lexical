@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Provider.QueueTest do
+  alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
@@ -75,6 +76,58 @@ defmodule Lexical.Server.Provider.QueueTest do
     test "canceling a non-existing request is a no-op" do
       assert :ok = Queue.cancel("5")
       refute_receive %{id: _}
+    end
+
+    test "Adding a cancel notification cancels the request" do
+      request = request("1", fn _, _ -> Process.sleep(500) end)
+      :ok = Queue.add(request, Env.new())
+
+      {:ok, notif} =
+        Notifications.Cancel.parse(%{
+          "method" => "$/cancelRequest",
+          "jsonrpc" => "2.0",
+          "params" => %{
+            "id" => "1"
+          }
+        })
+
+      :ok = Queue.cancel(notif)
+      assert_receive %{id: "1", error: error}
+      assert Queue.size() == 0
+      assert error.code == :request_cancelled
+      assert error.message == "Request cancelled"
+    end
+
+    test "Adding a cancel request cancels the request" do
+      request = request("1", fn _, _ -> Process.sleep(500) end)
+      :ok = Queue.add(request, Env.new())
+
+      {:ok, req} =
+        Requests.Cancel.parse(%{
+          "method" => "$/cancelRequest",
+          "jsonrpc" => "2.0",
+          "id" => "50",
+          "params" => %{
+            "id" => "1"
+          }
+        })
+
+      :ok = Queue.cancel(req)
+      assert_receive %{id: "1", error: error}
+      assert Queue.size() == 0
+      assert error.code == :request_cancelled
+      assert error.message == "Request cancelled"
+    end
+
+    test "canceling a request that has finished is a no-op" do
+      me = self()
+      request = request("1", fn _, _ -> send(me, :finished) end)
+
+      assert :ok = Queue.add(request, Env.new())
+      assert_receive :finished
+
+      :ok = Queue.cancel("1")
+      assert Queue.size() == 0
     end
   end
 

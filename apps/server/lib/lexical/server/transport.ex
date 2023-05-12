@@ -10,10 +10,12 @@ defmodule Lexical.Server.Transport do
 
   alias Lexical.Server.Transport.StdIO
 
-  defdelegate log(level, message), to: StdIO
-  defdelegate write(message), to: StdIO
+  @implementation Application.compile_env(:server, :transport, StdIO)
+
+  defdelegate log(level, message), to: @implementation
+  defdelegate write(message), to: @implementation
 
   def error(message) do
-    StdIO.log(:error, message)
+    @implementation.log(:error, message)
   end
 end
