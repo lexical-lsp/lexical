@@ -13,33 +13,32 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   def begin(%__MODULE__{} = state, project_progress(label: label)) do
-    token = System.unique_integer([:positive])
-    progress = Value.new(token, :begin, label)
+    progress = Value.begin(label)
     progress_by_label = Map.put(state.progress_by_label, label, progress)
 
-    write_work_done(token)
+    write_work_done(progress.token)
     write(progress)
 
     %{state | progress_by_label: progress_by_label}
   end
 
   def report(%__MODULE__{} = state, project_progress(label: label, message: message)) do
-    token = get_token(state, label)
+    {progress, progress_by_label} =
+      Map.get_and_update(state.progress_by_label, label, fn old_value ->
+        new_value = Value.report(old_value, message)
+        {new_value, new_value}
+      end)
 
-    progress = Value.new(token, :report, message)
     write(progress)
-
-    progress_by_label = Map.put(state.progress_by_label, label, progress)
     %{state | progress_by_label: progress_by_label}
   end
 
   def complete(%__MODULE__{} = state, project_progress(label: label, message: message)) do
-    token = get_token(state, label)
+    {progress, progress_by_label} =
+      Map.get_and_update(state.progress_by_label, label, fn _ -> :pop end)
 
-    progress = Value.new(token, :end, message)
-    write(progress)
-
-    clear_progress_by_label(state, label)
+    progress |> Value.complete(message) |> write()
+    %{state | progress_by_label: progress_by_label}
   end
 
   defp write_work_done(token) do
@@ -52,13 +51,4 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write(_), do: :ok
-
-  defp clear_progress_by_label(%__MODULE__{} = state, label) do
-    progress_by_label = Map.delete(state.progress_by_label, label)
-    %{state | progress_by_label: progress_by_label}
-  end
-
-  defp get_token(state, label) do
-    get_in(state.progress_by_label, [label, Access.key(:token)])
-  end
 end
