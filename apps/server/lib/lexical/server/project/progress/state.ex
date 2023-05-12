@@ -59,6 +59,6 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp get_token(state, label) do
-   get_in(state.progress_by_label, [label, :token])
+    get_in(state.progress_by_label, [label, Access.key(:token)])
   end
 end

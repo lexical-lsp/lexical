@@ -19,20 +19,22 @@ defmodule Lexical.RemoteControl.CompileTracer do
 
   defp maybe_report_progress(file) do
     if Path.extname(file) == ".ex" do
-      progress_message = progress_message(file)
-      RemoteControl.notify_listener(progress_message)
+      file
+      |> progress_message()
+      |> RemoteControl.notify_listener()
     end
   end
 
   defp progress_message(file) do
     relative_path = Path.relative_to_cwd(file)
 
-    label = 
+    label =
       if String.starts_with?(relative_path, "deps") do
         "mix deps.compile"
-    else
-      "mix compile"
-    end
+      else
+        "mix compile"
+      end
+
     project_progress(label: label, message: relative_path)
   end
 
