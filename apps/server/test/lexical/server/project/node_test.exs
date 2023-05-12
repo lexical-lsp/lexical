@@ -3,11 +3,11 @@ defmodule Lexical.Server.Project.NodeTest do
   alias Lexical.Server
   alias Lexical.Server.Project.Node, as: ProjectNode
 
-  use ExUnit.Case
-  use Testing.EventualAssertions
-
   import Lexical.Test.Fixtures
   import RemoteControl.Api.Messages
+
+  use ExUnit.Case
+  use Testing.EventualAssertions
 
   setup do
     project = project()

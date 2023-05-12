@@ -14,9 +14,12 @@ defmodule Lexical.Server.Project.Node do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.Server.Project.Dispatch
+  alias Lexical.Server.Project.Progress
+
+  require Logger
 
   use GenServer
-  require Logger
+  use Progress.Support
 
   def start_link(%Project{} = project) do
     GenServer.start_link(__MODULE__, project, name: name(project))
@@ -47,7 +50,7 @@ defmodule Lexical.Server.Project.Node do
 
   @impl GenServer
   def init(%Project{} = project) do
-    case start_node(project) do
+    case with_progress(project, "Project Node", fn -> start_node(project) end) do
       {:ok, state} ->
         {:ok, state, {:continue, :trigger_build}}
 

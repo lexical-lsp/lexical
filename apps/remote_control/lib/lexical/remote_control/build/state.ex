@@ -6,9 +6,12 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
 
+  require Logger
+
   import Build.CaptureIO
   import Messages
-  require Logger
+
+  use Build.Progress
 
   defstruct project: nil, uri_to_source_and_edit_time: %{}
 
@@ -45,7 +48,9 @@ defmodule Lexical.RemoteControl.Build.State do
 
       result =
         RemoteControl.Mix.in_project(project, fn _ ->
-          Mix.Task.run(:compile, mix_compile_opts(false))
+          with_progress "compile", fn ->
+            Mix.Task.run(:compile, mix_compile_opts(false))
+          end
         end)
 
       case result do
@@ -188,7 +193,10 @@ defmodule Lexical.RemoteControl.Build.State do
 
       compile_fun = fn ->
         Mix.Task.clear()
-        Mix.Task.run("compile", mix_compile_opts(force?))
+
+        with_progress "compile", fn ->
+          Mix.Task.run("compile", mix_compile_opts(force?))
+        end
       end
 
       case compile_fun.() do
@@ -213,14 +221,25 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp prepare_for_project_build(true = _force?) do
     if connected_to_internet?() do
-      Mix.Task.run("local.hex", ~w(--force --if-missing))
-      Mix.Task.run("local.rebar", ~w(--force --if-missing))
-      Mix.Task.run("deps.get")
+      with_progress "local.hex", fn ->
+        Mix.Task.run("local.hex", ~w(--force --if-missing))
+      end
+
+      with_progress "local.rebar", fn ->
+        Mix.Task.run("local.rebar", ~w(--force --if-missing))
+      end
+
+      with_progress "deps.get", fn ->
+        Mix.Task.run("deps.get")
+      end
     else
       Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
     end
 
-    Mix.Task.run("deps.safe_compile")
+    with_progress "deps.compile", fn ->
+      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
+    end
+
     Mix.Task.run("clean")
   end
 

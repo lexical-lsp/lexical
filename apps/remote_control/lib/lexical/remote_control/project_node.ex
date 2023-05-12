@@ -194,7 +194,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @impl true
   def handle_info({:EXIT, port, reason}, %State{port: port} = state) do
-    Logger.info("Port #{inspect port} has exited due to: #{inspect(reason)}")
+    Logger.info("Port #{inspect(port)} has exited due to: #{inspect(reason)}")
     {:noreply, %State{state | port: nil}}
   end
 

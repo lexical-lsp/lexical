@@ -8,11 +8,34 @@ defmodule Lexical.RemoteControl.CompileTracer do
     message = extract_module_updated(env.module, module_binary, filename)
     ModuleMappings.update(env.module, env.file)
     RemoteControl.notify_listener(message)
+    maybe_report_progress(env.file)
+
     :ok
   end
 
   def trace(_event, _env) do
     :ok
+  end
+
+  defp maybe_report_progress(file) do
+    if Path.extname(file) == ".ex" do
+      file
+      |> progress_message()
+      |> RemoteControl.notify_listener()
+    end
+  end
+
+  defp progress_message(file) do
+    relative_path = Path.relative_to_cwd(file)
+
+    label =
+      if String.starts_with?(relative_path, "deps") do
+        "mix deps.compile"
+      else
+        "mix compile"
+      end
+
+    project_progress(label: label, message: relative_path)
   end
 
   def extract_module_updated(module, module_binary, filename) do
