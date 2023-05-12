@@ -89,7 +89,12 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%Requests.Cancel{} = cancel_request, %State{} = state) do
-    Provider.Queue.cancel(to_string(cancel_request.id))
+    Provider.Queue.cancel(cancel_request)
+    {:ok, state}
+  end
+
+  def handle_message(%Notifications.Cancel{} = cancel_notification, %State{} = state) do
+    Provider.Queue.cancel(cancel_notification)
     {:ok, state}
   end
 
