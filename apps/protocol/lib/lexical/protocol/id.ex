@@ -6,7 +6,11 @@ defmodule Lexical.Protocol.Id do
   end
 
   def next_request_id do
-    to_string(get_latest_request_id() + 1)
+    latest_request_id = get_latest_request_id()
+
+    if latest_request_id do
+      to_string(latest_request_id + 1)
+    end
   end
 
   def put_latest_request_id(id) do
@@ -14,6 +18,6 @@ defmodule Lexical.Protocol.Id do
   end
 
   defp get_latest_request_id do
-    :persistent_term.get({__MODULE__, :latest_request_id})
+    :persistent_term.get({__MODULE__, :latest_request_id}, nil)
   end
 end
