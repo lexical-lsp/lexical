@@ -32,7 +32,7 @@ defmodule Lexical.Protocol.JsonRpc do
   end
 
   defp do_decode(%{"method" => method, "id" => id} = request) do
-    Id.put_latest_request_id(id)
+    Id.set_latest_request_id(id)
     Requests.decode(method, request)
   end
 

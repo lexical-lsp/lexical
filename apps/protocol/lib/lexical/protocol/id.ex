@@ -13,7 +13,7 @@ defmodule Lexical.Protocol.Id do
     end
   end
 
-  def put_latest_request_id(id) do
+  def set_latest_request_id(id) do
     :persistent_term.put({__MODULE__, :latest_request_id}, id)
   end
 
