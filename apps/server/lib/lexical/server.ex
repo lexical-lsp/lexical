@@ -109,10 +109,16 @@ defmodule Lexical.Server do
     end
   end
 
+  def handle_message(nil, %State{} = state) do
+    # NOTE: This deals with the response after a request is requested by the server,
+    # such as the response of workDoneProgress.
+    {:ok, state}
+  end
+
   def handle_message(request, %State{} = state) do
     Provider.Queue.add(request, state.configuration)
 
-    {:ok, %State{} = state}
+    {:ok, state}
   end
 
   defp apply_to_state(%State{} = state, %{} = request_or_notification) do

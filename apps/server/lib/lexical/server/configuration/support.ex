@@ -6,7 +6,8 @@ defmodule Lexical.Server.Configuration.Support do
             snippet?: false,
             deprecated?: false,
             tags?: false,
-            signature_help?: false
+            signature_help?: false,
+            work_done_progress?: false
 
   def new(%ClientCapabilities{} = client_capabilities) do
     dynamic_registration? =
@@ -39,13 +40,19 @@ defmodule Lexical.Server.Configuration.Support do
       |> get_in([:text_document, :signature_help])
       |> bool()
 
+    work_done_progress? =
+      client_capabilities
+      |> get_in([:window, :work_done_progress])
+      |> bool()
+
     %__MODULE__{
       code_action_dynamic_registration?: dynamic_registration?,
       hierarchical_document_symbols?: hierarchical_symbols?,
       snippet?: snippet?,
       deprecated?: deprecated?,
       tags?: tags?,
-      signature_help?: signature_help?
+      signature_help?: signature_help?,
+      work_done_progress?: work_done_progress?
     }
   end
 

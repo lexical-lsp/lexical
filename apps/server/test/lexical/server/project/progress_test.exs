@@ -1,5 +1,6 @@
 defmodule Lexical.Server.Project.ProgressTest do
   alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Requests
   alias Lexical.RemoteControl
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
@@ -41,7 +42,7 @@ defmodule Lexical.Server.Project.ProgressTest do
       begin_message = progress(:begin, "mix compile")
       Project.Dispatch.broadcast(project, begin_message)
 
-      assert_receive {:transport, %Notifications.WorkDone.Progress.Create{lsp: %{token: token}}}
+      assert_receive {:transport, %Requests.CreateWorkDoneProgress{lsp: %{token: token}}}
       assert_receive {:transport, %Notifications.Progress{}}
 
       report_message = progress(:report, "mix compile", "lib/file.ex")

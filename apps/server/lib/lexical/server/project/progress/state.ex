@@ -1,6 +1,7 @@
 defmodule Lexical.Server.Project.Progress.State do
   alias Lexical.Project
-  alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Id
+  alias Lexical.Protocol.Requests
   alias Lexical.Server.Project.Progress.Value
   alias Lexical.Server.Transport
 
@@ -42,7 +43,7 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write_work_done(token) do
-    progress = Notifications.WorkDone.Progress.Create.new(token: token)
+    progress = Requests.CreateWorkDoneProgress.new(id: Id.next_request_id(), token: token)
     Transport.write(progress)
   end
 
