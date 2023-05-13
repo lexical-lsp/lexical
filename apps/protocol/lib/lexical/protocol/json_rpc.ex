@@ -41,6 +41,8 @@ defmodule Lexical.Protocol.JsonRpc do
   end
 
   defp do_decode(%{"error" => %{"code" => -32_601}}) do
+    # NOTE: vscode can't handle CreateWorkDoneProgress until `Requests.Initialize` is done,
+    # That's why the magic error code is here.
     {:ok, nil}
   end
 
