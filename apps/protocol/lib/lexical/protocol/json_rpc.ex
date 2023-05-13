@@ -36,6 +36,10 @@ defmodule Lexical.Protocol.JsonRpc do
     Requests.decode(method, request)
   end
 
+  defp do_decode(%{"error" => %{"code" => -32601}}) do
+    {:ok, nil}
+  end
+
   defp do_decode(%{"result" => nil, "id" => _}) do
     {:ok, nil}
   end
