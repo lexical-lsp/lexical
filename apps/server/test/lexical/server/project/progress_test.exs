@@ -63,7 +63,7 @@ defmodule Lexical.Server.Project.ProgressTest do
       begin_message = progress(:begin, "mix compile")
       Project.Dispatch.broadcast(project, begin_message)
 
-      e {:transport, %Requests.CreateWorkDoneProgress{lsp: %{}}}
+      refute_receive {:transport, %Requests.CreateWorkDoneProgress{lsp: %{}}}
     end
   end
 end
