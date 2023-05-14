@@ -161,9 +161,9 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   def error_to_diagnostic(%ArgumentError{} = argument_error, stack, _quoted_ast) do
     reversed_stack = Enum.reverse(stack)
-    [{_, _, _, context}, {_, maybe_pipe, _, _} | _] = reversed_stack
+    [{_, _, _, context}, {_, maybe_pipe_or_struct, _, _} | _] = reversed_stack
 
-    if maybe_pipe == :|> do
+    if maybe_pipe_or_struct in [:|>, :__struct__] do
       %Diagnostic{
         message: Exception.message(argument_error),
         position: context_to_position(context),

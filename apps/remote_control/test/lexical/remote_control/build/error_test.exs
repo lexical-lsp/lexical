@@ -393,5 +393,29 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.message =~ ~s[describe \"foo\" is already defined in FooTest]
       assert diagnostic.position == 11
     end
+
+    test "handles struct enforce key error" do
+      {:exception, exception, stack, quoted_ast} =
+        ~s(
+        defmodule Foo do
+          @enforce_keys [:a, :b]
+          defstruct [:a, :b]
+        end
+
+        defmodule Bar do
+          def bar do
+            %Foo{}
+          end
+        end
+        )
+        |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~
+               "the following keys must also be given when building struct Foo: [:a, :b]"
+
+      assert diagnostic.position == 9
+    end
   end
 end
