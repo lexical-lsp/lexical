@@ -39,6 +39,8 @@ defmodule Lexical.Server.Project.ProgressTest do
     setup [:with_patched_tranport]
 
     test "it should be able to send the report progress", %{project: project} do
+      patch(Project.Progress.State, :client_support_work_done?, fn -> true end)
+
       begin_message = progress(:begin, "mix compile")
       Project.Dispatch.broadcast(project, begin_message)
 
@@ -53,6 +55,15 @@ defmodule Lexical.Server.Project.ProgressTest do
       assert value.message == "lib/file.ex"
       assert value.percentage == nil
       assert value.cancellable == nil
+    end
+
+    test "it should write nothing when the client does not support work done", %{project: project} do
+      patch(Project.Progress.State, :client_support_work_done?, fn -> false end)
+
+      begin_message = progress(:begin, "mix compile")
+      Project.Dispatch.broadcast(project, begin_message)
+
+      e {:transport, %Requests.CreateWorkDoneProgress{lsp: %{}}}
     end
   end
 end
