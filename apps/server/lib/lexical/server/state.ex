@@ -22,6 +22,7 @@ defmodule Lexical.Server.State do
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
+  alias Lexical.Server.Project
   alias Lexical.Server.Transport
 
   require CodeAction.Kind
@@ -44,14 +45,13 @@ defmodule Lexical.Server.State do
     new_state = %__MODULE__{state | configuration: config, initialized?: true}
     Logger.info("Starting project at uri #{config.project.root_uri}")
 
-    Lexical.Server.Project.Supervisor.start(config.project)
-
     event.id
     |> initialize_result()
     |> Transport.write()
 
     Transport.write(registrations())
 
+    Project.Supervisor.start(config.project)
     {:ok, new_state}
   end
 
@@ -171,9 +171,13 @@ defmodule Lexical.Server.State do
     {:ok, state}
   end
 
+  defp registrations do
+    RegisterCapability.new(id: Id.next(), registrations: [file_watcher_registration()])
+  end
+
   @did_changed_watched_files_id "-42"
   @watched_extensions ~w(ex exs)
-  def registrations do
+  defp file_watcher_registration do
     extension_glob = "{" <> Enum.join(@watched_extensions, ",") <> "}"
 
     watchers = [
@@ -181,16 +185,11 @@ defmodule Lexical.Server.State do
       FileSystemWatcher.new(glob_pattern: "**/*.#{extension_glob}")
     ]
 
-    options = DidChangeWatchedFiles.Registration.Options.new(watchers: watchers)
-
-    registration =
-      Registration.new(
-        id: @did_changed_watched_files_id,
-        method: "workspace/didChangeWatchedFiles",
-        register_options: options
-      )
-
-    RegisterCapability.new(id: Id.next(), registrations: [registration])
+    Registration.new(
+      id: @did_changed_watched_files_id,
+      method: "workspace/didChangeWatchedFiles",
+      register_options: DidChangeWatchedFiles.Registration.Options.new(watchers: watchers)
+    )
   end
 
   def initialize_result(event_id) do
