@@ -1,17 +1,13 @@
 defmodule Lexical.Server.State do
   alias Lexical.Document
-
-  alias Lexical.Protocol.Notifications.{
-    DidChange,
-    DidChangeConfiguration,
-    DidClose,
-    DidOpen,
-    DidSave,
-    Initialized
-  }
-
   alias Lexical.Protocol.Id
+  alias Lexical.Protocol.Notifications.DidChange
+  alias Lexical.Protocol.Notifications.DidChangeConfiguration
+  alias Lexical.Protocol.Notifications.DidClose
+  alias Lexical.Protocol.Notifications.DidOpen
+  alias Lexical.Protocol.Notifications.DidSave
   alias Lexical.Protocol.Notifications.Exit
+  alias Lexical.Protocol.Notifications.Initialized
   alias Lexical.Protocol.Requests.Initialize
   alias Lexical.Protocol.Requests.RegisterCapability
   alias Lexical.Protocol.Requests.Shutdown
