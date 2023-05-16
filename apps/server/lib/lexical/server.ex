@@ -108,7 +108,7 @@ defmodule Lexical.Server do
 
   def handle_message(nil, %State{} = state) do
     # NOTE: This deals with the response after a request is requested by the server,
-    # such as the response of workDoneProgress.
+    # such as the response of `CreateWorkDoneProgress`.
     {:ok, state}
   end
 
