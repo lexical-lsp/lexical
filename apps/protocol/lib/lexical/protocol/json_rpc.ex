@@ -1,5 +1,4 @@
 defmodule Lexical.Protocol.JsonRpc do
-  alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
 
