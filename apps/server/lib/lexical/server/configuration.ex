@@ -19,9 +19,9 @@ defmodule Lexical.Server.Configuration do
 
   @spec new(Lexical.uri(), map()) :: t
   def new(root_uri, %ClientCapabilities{} = client_capabilities) do
-    support = client_capabilities |> Support.new() |> tap(&set_support/1)
+    support = Support.new(client_capabilities)
     project = Project.new(root_uri)
-    %__MODULE__{support: support, project: project}
+    %__MODULE__{support: support, project: project} |> tap(&set/1)
   end
 
   @spec default(t | nil) ::
@@ -114,14 +114,14 @@ defmodule Lexical.Server.Configuration do
   @supports_keys ~w(work_done_progress?)a
 
   def supports?(key) when key in @supports_keys do
-    Map.get(get_support(), key, false)
+    get_in(get(), [Access.key(:support), Access.key(key)]) || false
   end
 
-  def get_support do
-    :persistent_term.get({__MODULE__, :support}, %Support{})
+  def get do
+    :persistent_term.get(__MODULE__, %__MODULE__{})
   end
 
-  def set_support(%Support{} = support) do
-    :persistent_term.put({__MODULE__, :support}, support)
+  defp set(%__MODULE__{} = config) do
+    :persistent_term.put(__MODULE__, config)
   end
 end
