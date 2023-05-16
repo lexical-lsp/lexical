@@ -19,7 +19,7 @@ defmodule Lexical.Server.Configuration do
 
   @spec new(Lexical.uri(), map()) :: t
   def new(root_uri, %ClientCapabilities{} = client_capabilities) do
-    support = Support.new(client_capabilities)
+    support = client_capabilities |> Support.new() |> tap(&set_support/1)
     project = Project.new(root_uri)
     %__MODULE__{support: support, project: project}
   end
@@ -109,5 +109,19 @@ defmodule Lexical.Server.Configuration do
 
   defp maybe_add_watched_extensions(%__MODULE__{} = old_config, _) do
     {:ok, old_config}
+  end
+
+  @supports_keys ~w(work_done_progress?)a
+
+  def supports?(key) when key in @supports_keys do
+    Map.get(get_support(), key, false)
+  end
+
+  defp get_support do
+    :persistent_term.get({__MODULE__, :support}, %__MODULE__{})
+  end
+
+  defp set_support(support) do
+    :persistent_term.put({__MODULE__, :support}, support)
   end
 end

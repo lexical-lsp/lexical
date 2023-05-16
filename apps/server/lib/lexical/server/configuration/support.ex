@@ -55,7 +55,6 @@ defmodule Lexical.Server.Configuration.Support do
       work_done_progress?: work_done_progress?
     }
 
-    set(config)
     config
   end
 
@@ -69,8 +68,4 @@ defmodule Lexical.Server.Configuration.Support do
 
   defp bool(b) when b in [true, false], do: b
   defp bool(_), do: false
-
-  defp set(config) do
-    :persistent_term.put({__MODULE__, :config_support}, config)
-  end
 end
