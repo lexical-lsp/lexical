@@ -45,7 +45,7 @@ defmodule Lexical.Server.Configuration.Support do
       |> get_in([:window, :work_done_progress])
       |> bool()
 
-    config = %__MODULE__{
+    %__MODULE__{
       code_action_dynamic_registration?: dynamic_registration?,
       hierarchical_document_symbols?: hierarchical_symbols?,
       snippet?: snippet?,
@@ -54,16 +54,10 @@ defmodule Lexical.Server.Configuration.Support do
       signature_help?: signature_help?,
       work_done_progress?: work_done_progress?
     }
-
-    config
   end
 
   def new(_) do
     %__MODULE__{}
-  end
-
-  def get do
-    :persistent_term.get({__MODULE__, :config_support}, %__MODULE__{})
   end
 
   defp bool(b) when b in [true, false], do: b
