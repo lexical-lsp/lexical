@@ -38,8 +38,7 @@ defmodule Lexical.Protocol.JsonRpc do
     :error
   end
 
-  defp do_decode(%{"method" => method, "id" => id} = request) do
-    Id.set_latest_request_id(id)
+  defp do_decode(%{"method" => method, "id" => _id} = request) do
     Requests.decode(method, request)
   end
 

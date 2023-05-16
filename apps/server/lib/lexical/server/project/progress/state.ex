@@ -45,7 +45,7 @@ defmodule Lexical.Server.Project.Progress.State do
 
   defp write_work_done(token) do
     if Configuration.supports?(:work_done_progress?) do
-      progress = Requests.CreateWorkDoneProgress.new(id: Id.next_request_id(), token: token)
+      progress = Requests.CreateWorkDoneProgress.new(id: Id.next(), token: token)
       Transport.write(progress)
     end
   end
