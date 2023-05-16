@@ -4,6 +4,12 @@ defmodule Lexical.DocumentTest do
   alias Lexical.Protocol.Types.Range
   alias Lexical.Protocol.Types.TextEdit
 
+  alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent,
+    as: RangedContentChange
+
+  alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent.TextDocumentContentChangeEvent1,
+    as: TextOnlyContentChange
+
   use ExUnit.Case
   use ExUnitProperties
 
@@ -62,6 +68,24 @@ defmodule Lexical.DocumentTest do
       assert {:ok, "end"} = fetch_text_at(parsed, 7)
 
       assert :error = fetch_text_at(parsed, 8)
+    end
+  end
+
+  describe "applying protocol content change events" do
+    test "applying a text only change replaces all the test" do
+      {:ok, doc} = run_changes("hello", [TextOnlyContentChange.new(text: "goodbye")])
+      assert "goodbye" = text(doc)
+    end
+
+    test "applying a range event replaces the range" do
+      range_change =
+        RangedContentChange.new(
+          range: new_range(0, 6, 1, 0),
+          text: "people"
+        )
+
+      {:ok, doc} = run_changes("hello there", [range_change])
+      assert "hello people" == text(doc)
     end
   end
 

@@ -48,6 +48,12 @@ defmodule Lexical.Server.Transport.StdIO do
     IO.binwrite(io_device, message)
   end
 
+  def write(_, nil) do
+  end
+
+  def write(_, []) do
+  end
+
   def log(level, message, opts \\ [])
 
   def log(level, message, opts) when level in [:error, :warning, :info, :log] do
