@@ -1,4 +1,5 @@
 defmodule Lexical.Protocol.JsonRpc do
+  alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
 
@@ -37,7 +38,8 @@ defmodule Lexical.Protocol.JsonRpc do
     :error
   end
 
-  defp do_decode(%{"method" => method, "id" => _id} = request) do
+  defp do_decode(%{"method" => method, "id" => id} = request) do
+    Id.set_latest_request_id(id)
     Requests.decode(method, request)
   end
 

@@ -117,11 +117,11 @@ defmodule Lexical.Server.Configuration do
     Map.get(get_support(), key, false)
   end
 
-  defp get_support do
-    :persistent_term.get({__MODULE__, :support}, %__MODULE__{})
+  def get_support do
+    :persistent_term.get({__MODULE__, :support}, %Support{})
   end
 
-  defp set_support(support) do
+  def set_support(%Support{} = support) do
     :persistent_term.put({__MODULE__, :support}, support)
   end
 end
