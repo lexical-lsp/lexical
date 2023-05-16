@@ -106,9 +106,15 @@ defmodule Lexical.Server do
     State.apply(state, message)
   end
 
+  def handle_message(nil, %State{} = state) do
+    # NOTE: This deals with the response after a request is requested by the server,
+    # such as the response of `CreateWorkDoneProgress`.
+    {:ok, state}
+  end
+
   def handle_message(request, %State{} = state) do
     Provider.Queue.add(request, state.configuration)
 
-    {:ok, %State{} = state}
+    {:ok, state}
   end
 end

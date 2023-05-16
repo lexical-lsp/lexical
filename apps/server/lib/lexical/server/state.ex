@@ -87,9 +87,6 @@ defmodule Lexical.Server.State do
       {:ok, config, response} ->
         Transport.write(response)
         {:ok, %__MODULE__{state | configuration: config}}
-
-      error ->
-        error
     end
 
     {:ok, state}

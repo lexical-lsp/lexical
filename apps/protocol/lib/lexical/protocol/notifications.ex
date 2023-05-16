@@ -87,12 +87,6 @@ defmodule Lexical.Protocol.Notifications do
     end
   end
 
-  defmodule WorkDone.Progress.Create do
-    use Proto
-
-    defnotification "window/workDoneProgress/create", Types.WorkDone.Progress.Create.Params
-  end
-
   defmodule Progress do
     use Proto
 

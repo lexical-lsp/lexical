@@ -33,6 +33,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "textDocument/definition", Types.Definition.Params
   end
 
+  defmodule CreateWorkDoneProgress do
+    use Proto
+
+    defrequest "window/workDoneProgress/create", Types.WorkDone.Progress.Create.Params
+  end
+
   defmodule Formatting do
     use Proto
 

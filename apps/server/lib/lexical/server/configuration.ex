@@ -21,7 +21,7 @@ defmodule Lexical.Server.Configuration do
   def new(root_uri, %ClientCapabilities{} = client_capabilities) do
     support = Support.new(client_capabilities)
     project = Project.new(root_uri)
-    %__MODULE__{support: support, project: project}
+    %__MODULE__{support: support, project: project} |> tap(&set/1)
   end
 
   @spec default(t | nil) ::
@@ -53,17 +53,8 @@ defmodule Lexical.Server.Configuration do
   end
 
   defp apply_config_change(%__MODULE__{} = old_config, %{} = settings) do
-    with {:ok, new_config} <- maybe_set_env_vars(old_config, settings),
-         {:ok, new_config} <- maybe_enable_dialyzer(new_config, settings) do
+    with {:ok, new_config} <- maybe_enable_dialyzer(old_config, settings) do
       maybe_add_watched_extensions(new_config, settings)
-    end
-  end
-
-  defp maybe_set_env_vars(%__MODULE__{} = old_config, settings) do
-    env_vars = Map.get(settings, "envVariables")
-
-    with {:ok, new_project} <- Project.set_env_vars(old_config.project, env_vars) do
-      {:ok, %__MODULE__{old_config | project: new_project}}
     end
   end
 
@@ -109,5 +100,19 @@ defmodule Lexical.Server.Configuration do
 
   defp maybe_add_watched_extensions(%__MODULE__{} = old_config, _) do
     {:ok, old_config}
+  end
+
+  @supports_keys ~w(work_done_progress?)a
+
+  def supports?(key) when key in @supports_keys do
+    get_in(get(), [Access.key(:support), Access.key(key)]) || false
+  end
+
+  def get do
+    :persistent_term.get(__MODULE__, %__MODULE__{})
+  end
+
+  defp set(%__MODULE__{} = config) do
+    :persistent_term.put(__MODULE__, config)
   end
 end

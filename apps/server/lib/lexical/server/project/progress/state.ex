@@ -1,6 +1,8 @@
 defmodule Lexical.Server.Project.Progress.State do
   alias Lexical.Project
-  alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Id
+  alias Lexical.Protocol.Requests
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Project.Progress.Value
   alias Lexical.Server.Transport
 
@@ -42,12 +44,16 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write_work_done(token) do
-    progress = Notifications.WorkDone.Progress.Create.new(token: token)
-    Transport.write(progress)
+    if Configuration.supports?(:work_done_progress?) do
+      progress = Requests.CreateWorkDoneProgress.new(id: Id.next(), token: token)
+      Transport.write(progress)
+    end
   end
 
   defp write(%{token: token} = progress) when not is_nil(token) do
-    progress |> Value.to_protocol() |> Transport.write()
+    if Configuration.supports?(:work_done_progress?) do
+      progress |> Value.to_protocol() |> Transport.write()
+    end
   end
 
   defp write(_), do: :ok

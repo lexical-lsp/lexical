@@ -1,6 +1,8 @@
 defmodule Lexical.Server.Project.ProgressTest do
   alias Lexical.Protocol.Notifications
+  alias Lexical.Protocol.Requests
   alias Lexical.RemoteControl
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
 
@@ -38,10 +40,12 @@ defmodule Lexical.Server.Project.ProgressTest do
     setup [:with_patched_tranport]
 
     test "it should be able to send the report progress", %{project: project} do
+      patch(Configuration, :supports?, fn :work_done_progress? -> true end)
+
       begin_message = progress(:begin, "mix compile")
       Project.Dispatch.broadcast(project, begin_message)
 
-      assert_receive {:transport, %Notifications.WorkDone.Progress.Create{lsp: %{token: token}}}
+      assert_receive {:transport, %Requests.CreateWorkDoneProgress{lsp: %{token: token}}}
       assert_receive {:transport, %Notifications.Progress{}}
 
       report_message = progress(:report, "mix compile", "lib/file.ex")
@@ -52,6 +56,15 @@ defmodule Lexical.Server.Project.ProgressTest do
       assert value.message == "lib/file.ex"
       assert value.percentage == nil
       assert value.cancellable == nil
+    end
+
+    test "it should write nothing when the client does not support work done", %{project: project} do
+      patch(Configuration, :supports?, fn :work_done_progress? -> false end)
+
+      begin_message = progress(:begin, "mix compile")
+      Project.Dispatch.broadcast(project, begin_message)
+
+      refute_receive {:transport, %Requests.CreateWorkDoneProgress{lsp: %{}}}
     end
   end
 end
