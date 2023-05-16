@@ -53,17 +53,8 @@ defmodule Lexical.Server.Configuration do
   end
 
   defp apply_config_change(%__MODULE__{} = old_config, %{} = settings) do
-    with {:ok, new_config} <- maybe_set_env_vars(old_config, settings),
-         {:ok, new_config} <- maybe_enable_dialyzer(new_config, settings) do
+    with {:ok, new_config} <- maybe_enable_dialyzer(old_config, settings) do
       maybe_add_watched_extensions(new_config, settings)
-    end
-  end
-
-  defp maybe_set_env_vars(%__MODULE__{} = old_config, settings) do
-    env_vars = Map.get(settings, "envVariables")
-
-    with {:ok, new_project} <- Project.set_env_vars(old_config.project, env_vars) do
-      {:ok, %__MODULE__{old_config | project: new_project}}
     end
   end
 

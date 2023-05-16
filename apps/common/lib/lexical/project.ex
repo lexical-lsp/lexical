@@ -89,12 +89,6 @@ defmodule Lexical.Project do
     Document.Path.from_uri(mix_exs_uri)
   end
 
-  @spec change_environment_variables(t, map() | nil) ::
-          {:ok, t} | error_with_message() | restart_notification()
-  def change_environment_variables(%__MODULE__{} = project, environment_variables) do
-    set_env_vars(project, environment_variables)
-  end
-
   @doc """
   Returns the full path to the project's lexical workspace directory
 
@@ -182,31 +176,6 @@ defmodule Lexical.Project do
     else
       project
     end
-  end
-
-  # Project Path
-
-  # Environment variables
-
-  def set_env_vars(%__MODULE__{} = old_project, %{} = env_vars) do
-    case {old_project.env_variables, env_vars} do
-      {nil, vars} when map_size(vars) == 0 ->
-        {:ok, %__MODULE__{old_project | env_variables: vars}}
-
-      {nil, new_vars} ->
-        System.put_env(new_vars)
-        {:ok, %__MODULE__{old_project | env_variables: new_vars}}
-
-      {same, same} ->
-        {:ok, old_project}
-
-      _ ->
-        {:restart, :warning, "Environment variables have changed. Lexical needs to restart"}
-    end
-  end
-
-  def set_env_vars(%__MODULE__{} = old_project, _) do
-    {:ok, old_project}
   end
 
   defp find_mix_exs_path(nil) do
