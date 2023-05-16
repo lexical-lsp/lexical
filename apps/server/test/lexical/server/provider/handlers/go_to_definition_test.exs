@@ -9,7 +9,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
-  import Lexical.Proto.Fixtures.LspProtocol
+  import Lexical.Test.Protocol.Fixtures.LspProtocol
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.Fixtures
 

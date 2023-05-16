@@ -72,7 +72,7 @@ jobs:
       - name: Install and compile dependencies
         run: |
           mix deps.get
-          mix deps.compile
+          mix deps.compile --skip-umbrella-children
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
@@ -85,7 +85,7 @@ jobs:
         run: mix credo
 
       - name: Compile
-        run: mix compile
+        run: mix compile --warnings-as-errors
 
       - name: Maybe create plt files
         if: steps.cache-plt.outputs.cache-hit != 'true'

@@ -1,7 +1,8 @@
 defmodule Lexical.Protocol.JsonRpc do
-  alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
+
+  require Logger
 
   @crlf "\r\n"
 
@@ -31,22 +32,16 @@ defmodule Lexical.Protocol.JsonRpc do
     {:ok, json_rpc}
   end
 
-  defp do_decode(%{"method" => method, "id" => id} = request) do
-    Id.set_latest_request_id(id)
+  defp do_decode(%{"id" => id, "result" => nil}) do
+    Logger.info("Reply for id #{id} had no body")
+    :error
+  end
+
+  defp do_decode(%{"method" => method, "id" => _id} = request) do
     Requests.decode(method, request)
   end
 
   defp do_decode(%{"method" => method} = notification) do
     Notifications.decode(method, notification)
-  end
-
-  defp do_decode(%{"error" => %{"code" => -32_601}}) do
-    # NOTE: vscode can't handle CreateWorkDoneProgress until `Requests.Initialize` is done,
-    # That's why the magic error code is here.
-    {:ok, nil}
-  end
-
-  defp do_decode(%{"result" => nil, "id" => _}) do
-    {:ok, nil}
   end
 end

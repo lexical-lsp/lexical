@@ -1,4 +1,4 @@
-defmodule Testing.EventualAssertions do
+defmodule Lexical.Test.EventualAssertions do
   @moduledoc """
   Assertion macros for an eventually consistent world
   Sometimes, despite our best efforts, we want to assert that some condition holds, but it doesn't

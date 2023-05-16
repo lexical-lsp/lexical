@@ -11,7 +11,7 @@ defmodule Lexical.Server.Project.ProgressTest do
 
   use ExUnit.Case
   use Patch
-  use Testing.EventualAssertions
+  use Lexical.Test.EventualAssertions
 
   setup do
     project = project()

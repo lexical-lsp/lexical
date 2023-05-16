@@ -2,8 +2,8 @@ defmodule Lexical.Document.Store do
   @moduledoc """
   A backing store for source file documents
 
-  This implementation stores documents in ETS, and partitions read and write operations. Read operations are served
-  immediately by querying the ETS table, while writes go through a GenServer process (which is the owner of the ETS table).
+  This implementation stores documents in a public ETS table. Since documents are versioned, it's OK if we get writes
+  out of order, as they'll be rejected if the versions don't match up.
   """
   defmodule State do
     alias Lexical.Document
@@ -15,7 +15,13 @@ defmodule Lexical.Document.Store do
     @table_name Document.Store
 
     def new do
-      :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
+      :ets.new(@table_name, [
+        :named_table,
+        :set,
+        :public,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
 
       %__MODULE__{}
     end
@@ -70,21 +76,21 @@ defmodule Lexical.Document.Store do
       end
     end
 
-    def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
+    def get_and_update(uri, updater_fn) do
       with {:ok, document} <- fetch(uri),
            {:ok, updated_source} <- updater_fn.(document) do
         ets_put(uri, :sources, updated_source)
 
-        {:ok, updated_source, store}
+        {:ok, updated_source}
       else
         error ->
           normalize_error(error)
       end
     end
 
-    def update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, _, new_store} <- get_and_update(store, uri, updater_fn) do
-        {:ok, new_store}
+    def update(uri, updater_fn) do
+      with {:ok, _} <- get_and_update(uri, updater_fn) do
+        :ok
       end
     end
 
@@ -240,12 +246,12 @@ defmodule Lexical.Document.Store do
 
   @spec get_and_update(Lexical.uri(), updater()) :: {:ok, Document.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
-    GenServer.call(__MODULE__, {:get_and_update, uri, update_fn})
+    State.get_and_update(uri, update_fn)
   end
 
   @spec update(Lexical.uri(), updater()) :: :ok | {:error, any()}
   def update(uri, update_fn) do
-    GenServer.call(__MODULE__, {:update, uri, update_fn})
+    State.update(uri, update_fn)
   end
 
   def start_link(_) do
@@ -296,26 +302,6 @@ defmodule Lexical.Document.Store do
   def handle_call({:close, uri}, _from, %State{} = state) do
     {reply, new_state} =
       case State.close(state, uri) do
-        {:ok, _} = success -> success
-        error -> {error, state}
-      end
-
-    {:reply, reply, new_state}
-  end
-
-  def handle_call({:get_and_update, uri, update_fn}, _from, %State{} = state) do
-    {reply, new_state} =
-      case State.get_and_update(state, uri, update_fn) do
-        {:ok, updated_source, new_state} -> {{:ok, updated_source}, new_state}
-        error -> {error, state}
-      end
-
-    {:reply, reply, new_state}
-  end
-
-  def handle_call({:update, uri, updater_fn}, _, %State{} = state) do
-    {reply, new_state} =
-      case State.update(state, uri, updater_fn) do
         {:ok, _} = success -> success
         error -> {error, state}
       end

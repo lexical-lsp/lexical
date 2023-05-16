@@ -1,26 +1,28 @@
 defmodule Lexical.Server.State do
   alias Lexical.Document
-
-  alias Lexical.Protocol.Notifications.{
-    DidChange,
-    DidChangeConfiguration,
-    DidClose,
-    DidOpen,
-    DidSave,
-    Initialized
-  }
-
+  alias Lexical.Protocol.Id
+  alias Lexical.Protocol.Notifications.DidChange
+  alias Lexical.Protocol.Notifications.DidChangeConfiguration
+  alias Lexical.Protocol.Notifications.DidClose
+  alias Lexical.Protocol.Notifications.DidOpen
+  alias Lexical.Protocol.Notifications.DidSave
   alias Lexical.Protocol.Notifications.Exit
+  alias Lexical.Protocol.Notifications.Initialized
   alias Lexical.Protocol.Requests.Initialize
+  alias Lexical.Protocol.Requests.RegisterCapability
   alias Lexical.Protocol.Requests.Shutdown
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.CodeAction
   alias Lexical.Protocol.Types.Completion
+  alias Lexical.Protocol.Types.DidChangeWatchedFiles
+  alias Lexical.Protocol.Types.FileSystemWatcher
+  alias Lexical.Protocol.Types.Registration
   alias Lexical.Protocol.Types.TextDocument
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
+  alias Lexical.Server.Project
   alias Lexical.Server.Transport
 
   require CodeAction.Kind
@@ -43,12 +45,13 @@ defmodule Lexical.Server.State do
     new_state = %__MODULE__{state | configuration: config, initialized?: true}
     Logger.info("Starting project at uri #{config.project.root_uri}")
 
-    Lexical.Server.Project.Supervisor.start(config.project)
-
     event.id
     |> initialize_result()
     |> Transport.write()
 
+    Transport.write(registrations())
+
+    Project.Supervisor.start(config.project)
     {:ok, new_state}
   end
 
@@ -166,6 +169,27 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{} = state, msg) do
     Logger.error("Ignoring unhandled message: #{inspect(msg)}")
     {:ok, state}
+  end
+
+  defp registrations do
+    RegisterCapability.new(id: Id.next(), registrations: [file_watcher_registration()])
+  end
+
+  @did_changed_watched_files_id "-42"
+  @watched_extensions ~w(ex exs)
+  defp file_watcher_registration do
+    extension_glob = "{" <> Enum.join(@watched_extensions, ",") <> "}"
+
+    watchers = [
+      FileSystemWatcher.new(glob_pattern: "**/mix.lock"),
+      FileSystemWatcher.new(glob_pattern: "**/*.#{extension_glob}")
+    ]
+
+    Registration.new(
+      id: @did_changed_watched_files_id,
+      method: "workspace/didChangeWatchedFiles",
+      register_options: DidChangeWatchedFiles.Registration.Options.new(watchers: watchers)
+    )
   end
 
   def initialize_result(event_id) do

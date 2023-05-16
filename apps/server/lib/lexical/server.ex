@@ -20,7 +20,7 @@ defmodule Lexical.Server do
     Requests.Shutdown
   ]
 
-  @dialyzer {:nowarn_function, apply_to_state: 2}
+  @dialyzer {:nowarn_function, handle_cast: 2}
 
   @spec response_complete(Requests.request(), Responses.response()) :: :ok
   def response_complete(request, response) do
@@ -46,6 +46,9 @@ defmodule Lexical.Server do
   def handle_cast({:protocol_message, message}, %State{} = state) do
     new_state =
       case handle_message(message, state) do
+        :ok ->
+          state
+
         {:ok, new_state} ->
           new_state
 
@@ -100,13 +103,7 @@ defmodule Lexical.Server do
 
   def handle_message(%message_module{} = message, %State{} = state)
       when message_module in @server_specific_messages do
-    case apply_to_state(state, message) do
-      {:ok, _} = success ->
-        success
-
-      error ->
-        error("Failed to handle #{message.__struct__}, #{inspect(error)}")
-    end
+    State.apply(state, message)
   end
 
   def handle_message(nil, %State{} = state) do
@@ -119,13 +116,5 @@ defmodule Lexical.Server do
     Provider.Queue.add(request, state.configuration)
 
     {:ok, state}
-  end
-
-  defp apply_to_state(%State{} = state, %{} = request_or_notification) do
-    case State.apply(state, request_or_notification) do
-      {:ok, new_state} -> {:ok, new_state}
-      :ok -> {:ok, state}
-      error -> {error, state}
-    end
   end
 end
