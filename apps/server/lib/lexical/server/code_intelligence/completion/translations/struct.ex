@@ -6,7 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
   use Translatable.Impl, for: Result.Struct
 
   def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
-    struct_reference? = Env.struct_reference?(env)
+    struct_reference? = Env.in_context?(env, :struct_reference)
     add_curlies? = struct_reference? and not String.contains?(env.suffix, "{")
 
     insert_text =

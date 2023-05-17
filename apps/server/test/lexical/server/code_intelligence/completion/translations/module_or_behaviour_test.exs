@@ -6,7 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert {:ok, completion} =
                project
                |> complete("Enu|")
-               |> fetch_completion(kind: :module)
+               |> fetch_completion(label: "Enum", kind: :module)
 
       assert completion.kind == :module
       assert completion.label == "Enum"
@@ -44,6 +44,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert completion.kind == :module
       assert completion.label == "GenServer"
       assert completion.detail =~ "A behaviour module"
+    end
+
+    test "protocols should emit a completion", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("Enumer|")
+               |> fetch_completion(kind: :module)
+
+      assert completion.kind == :module
+      assert completion.label == "Enumerable"
+      assert completion.detail =~ "Enumerable protocol"
     end
   end
 

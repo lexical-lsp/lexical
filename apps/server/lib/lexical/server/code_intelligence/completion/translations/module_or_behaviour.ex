@@ -4,7 +4,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.Project.Intelligence
 
-  use Translatable.Impl, for: [Result.Module, Result.Behaviour]
+  use Translatable.Impl, for: [Result.Module, Result.Behaviour, Result.Protocol]
 
   def translate(%Result.Module{} = module, builder, %Env{} = env) do
     do_translate(module, builder, env)
@@ -14,8 +14,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     do_translate(behaviour, builder, env)
   end
 
+  def translate(%Result.Protocol{} = protocol, builder, %Env{} = env) do
+    do_translate(protocol, builder, env)
+  end
+
   defp do_translate(%_{} = module, builder, %Env{} = env) do
-    struct_reference? = Env.struct_reference?(env)
+    struct_reference? = Env.in_context?(env, :struct_reference)
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
 
     cond do
