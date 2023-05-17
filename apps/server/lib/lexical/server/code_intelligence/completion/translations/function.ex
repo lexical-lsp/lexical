@@ -7,7 +7,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
   use Translatable.Impl, for: Result.Function
 
   def translate(%Result.Function{} = function, _builder, %Env{} = env) do
-    if Env.function_capture?(env) do
+    if Env.in_context?(env, :function_capture) do
       Callable.capture_completions(function, env)
     else
       Callable.completion(function, env)

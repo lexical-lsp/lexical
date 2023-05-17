@@ -53,7 +53,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp callable_snippet(%_{} = callable, %Env{} = env) do
     argument_names =
-      if Env.pipe?(env) do
+      if Env.in_context?(env, :pipe) do
         tl(callable.argument_names)
       else
         callable.argument_names

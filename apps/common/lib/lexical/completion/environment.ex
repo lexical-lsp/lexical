@@ -6,10 +6,10 @@ defmodule Lexical.Completion.Environment do
   @type lexer_token :: {atom, token_value}
   @type token_count :: pos_integer | :all
 
-  @callback function_capture?(t) :: boolean
-  @callback struct_reference?(t) :: boolean
-  @callback pipe?(t) :: boolean
-  @callback in_bitstring?(t) :: boolean
+  @type context_type :: :pipe | :alias | :struct_reference | :function_capture | :bitstring
+
+  @callback in_context?(t, context_type) :: boolean
+
   @callback empty?(maybe_binary) :: boolean
   @callback last_word(t) :: String.t()
   @callback prefix_tokens(t) :: [lexer_token]

@@ -414,7 +414,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Result.Macro{name: "__MODULE__"} = macro, builder, env) do
-    if Env.struct_reference?(env) do
+    if Env.in_context?(env, :struct_reference) do
       builder.snippet(env, "%__MODULE__{$1}",
         detail: "%__MODULE__{}",
         label: "%__MODULE__{}",

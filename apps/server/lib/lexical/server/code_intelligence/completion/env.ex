@@ -32,7 +32,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         }
 
   @behaviour Environment
-
   def new(%Project{} = project, %Document{} = document, %Position{} = cursor_position) do
     case Document.fetch_text_at(document, cursor_position.line) do
       {:ok, line} ->
@@ -61,24 +60,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   @impl Environment
   def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
-    line_charlist = String.to_charlist(env.prefix)
+    case count do
+      :all ->
+        prefix_token_stream(env)
 
-    tokens =
-      case :elixir_tokenizer.tokenize(line_charlist, 1, 1, []) do
-        {:ok, _, _, _, tokens} ->
-          Enum.reverse(tokens)
-
-        {:error, _, _, _, reversed_tokens} ->
-          reversed_tokens
-      end
-
-    take_relevant_tokens(tokens, [], env.position.character, count)
+      count when is_integer(count) ->
+        env
+        |> prefix_token_stream()
+        |> Enum.take(count)
+    end
   end
 
   @impl Environment
-  def function_capture?(%__MODULE__{} = env) do
+  def in_context?(%__MODULE__{} = env, :function_capture) do
     env
-    |> prefix_tokens()
+    |> prefix_token_stream()
     |> Enum.reduce_while(false, fn
       {:paren, :")"}, _ ->
         {:halt, false}
@@ -100,7 +96,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
-  def struct_reference?(%__MODULE__{} = env) do
+
+  def in_context?(%__MODULE__{} = env, :struct_reference) do
     case cursor_context(env) do
       {:ok, _line, {:struct, _}} ->
         true
@@ -116,7 +113,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
-  def pipe?(%__MODULE__{} = env) do
+  def in_context?(%__MODULE__{} = env, :pipe) do
     with {:ok, line, context} <- surround_context(env),
          {:ok, {:operator, '|>'}} <- previous_surround_context(line, context) do
       true
@@ -127,7 +124,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
-  def in_bitstring?(%__MODULE__{} = env) do
+  def in_context?(%__MODULE__{} = env, :bitstring) do
     env
     |> prefix_tokens(:all)
     |> Enum.reduce_while(
@@ -138,6 +135,68 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
         _, _ -> {:cont, false}
       end
     )
+  end
+
+  @impl Environment
+
+  def in_context?(%__MODULE__{} = env, :alias) do
+    # Aliases are complicated, especially if we're trying to find out if we're in
+    # them from the current cursor position moving backwards.
+    # I'll try to describe the state machine below.
+    # First off, if we're outside of a } on the current line, we cannot be in an alias, so that
+    # halts with false.
+    # Similarly an alias on the current line is also simple, we just backtrack until we see the alias identifier.
+    # However, if we're on the current line, and see an EOL, we set that as our accumulator, then we get
+    # to the previous line, we see if it ends in a comma. If not, we can't be in an alias. If it does, we keep
+    # backtracking until we hit the alias keyword.
+    # So basically, if we hit an EOL, and the previous token isn't an open curly or a comma, we stop, otherwise
+    # we backtrack until we hit the alias keyword
+
+    env
+    |> prefix_token_stream()
+    |> Stream.with_index()
+    |> Enum.reduce_while(false, fn
+      {{:curly, :"{"}, _index}, :eol ->
+        {:cont, false}
+
+      {{:comma, _}, _index}, :eol ->
+        {:cont, false}
+
+      {{:eol, _}, _index}, _acc ->
+        {:cont, :eol}
+
+      {_, _}, :eol ->
+        {:halt, false}
+
+      {{:curly, :"}"}, _index}, _ ->
+        {:halt, false}
+
+      {{:identifier, 'alias'}, 0}, _ ->
+        # there is nothing after the alias directive, so we're not
+        # inside the context *yet*
+        {:halt, false}
+
+      {{:identifier, 'alias'}, _index}, _ ->
+        {:halt, true}
+
+      _, _ ->
+        {:cont, false}
+    end)
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :import) do
+    in_directive?(env, 'import')
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :use) do
+    in_directive?(env, 'use')
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :require) do
+    in_directive?(env, 'require')
   end
 
   @impl Environment
@@ -213,6 +272,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   # private
 
+  defp in_directive?(%__MODULE__{} = env, context_name) do
+    env
+    |> prefix_token_stream()
+    |> Enum.reduce_while(false, fn
+      {:identifier, ^context_name}, _ ->
+        {:halt, true}
+
+      {:eol, _}, _ ->
+        {:halt, false}
+
+      _, _ ->
+        {:cont, false}
+    end)
+  end
+
   defp cursor_context(%__MODULE__{} = env) do
     with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line) do
       fragment = String.slice(line, 0..(env.zero_based_character - 1))
@@ -246,24 +320,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
-  defp take_relevant_tokens([], tokens, _, _) do
-    Enum.reverse(tokens)
-  end
-
-  defp take_relevant_tokens(_, tokens, _, 0) do
-    Enum.reverse(tokens)
-  end
-
-  defp take_relevant_tokens([token | rest], tokens, start_character, remaining) do
-    remaining = decrement(remaining)
-    take_relevant_tokens(rest, [normalize_token(token) | tokens], start_character, remaining)
-  end
-
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp normalize_token(token) do
     case token do
-      {:bin_string, _, value} ->
-        {:string, List.to_string(value)}
+      :eol ->
+        {:eol, '\n'}
+
+      {:bin_string, _, [string_value]} ->
+        {:string, string_value}
+
+      {:bin_string, _, interpolated} ->
+        {:interpolated_string, interpolated}
 
       {:capture_op, _context, value} ->
         {:operator, value}
@@ -283,6 +350,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       {:operator, _, value} ->
         {:operator, value}
 
+      {:sigil, _, sigil_char, _sigil_context, _, _opts, delim} ->
+        {:sigil, [sigil_char], delim}
+
       {type, {_, _, nil}, value} when is_list(value) ->
         {normalize_type(type), value}
 
@@ -297,9 +367,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
-  defp decrement(:all), do: :all
-  defp decrement(num) when is_integer(num), do: num - 1
-
   defp map_operator(:"("), do: :paren
   defp map_operator(:")"), do: :paren
   defp map_operator(:"{"), do: :curly
@@ -312,4 +379,69 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   defp normalize_type(:flt), do: :float
   defp normalize_type(:bin_string), do: :string
   defp normalize_type(type), do: type
+
+  defp prefix_token_stream(%__MODULE__{} = env) do
+    init_function = fn ->
+      {env, '', env.position.line}
+    end
+
+    next_function = fn
+      {env, _, 0} ->
+        {:halt, env}
+
+      {env, current_context, line_number} ->
+        case find_and_tokenize(env, line_number, current_context) do
+          {:ok, tokens, new_context} ->
+            prev_line_number = line_number - 1
+
+            tokens =
+              if prev_line_number > 0 do
+                tokens ++ [:eol]
+              else
+                tokens
+              end
+
+            {tokens, {env, new_context, prev_line_number}}
+
+          :stop ->
+            {:halt, env}
+        end
+    end
+
+    finalize_function = fn _ -> :ok end
+
+    init_function
+    |> Stream.resource(next_function, finalize_function)
+    |> Stream.map(&normalize_token/1)
+  end
+
+  defp find_and_tokenize(%__MODULE__{position: %{line: line_number}} = env, line_number, context) do
+    tokenize(env.prefix, line_number, context)
+  end
+
+  defp find_and_tokenize(%__MODULE__{} = env, line_number, context) do
+    case Document.fetch_text_at(env.document, line_number) do
+      {:ok, line_text} ->
+        tokenize(line_text, line_number, context)
+
+      :error ->
+        :stop
+    end
+  end
+
+  defp tokenize(line_text, line_number, context) do
+    line_charlist = String.to_charlist(line_text)
+    current_context = line_charlist ++ context
+
+    case :elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
+      {:ok, _, _, _, tokens} ->
+        {:ok, Enum.reverse(tokens), ''}
+
+      {:error, {_, _, 'unexpected token: ', _}, _, _, _} ->
+        {:ok, [], '\n' ++ current_context}
+
+      {:error, _, _, _, tokens} ->
+        {:ok, tokens, ''}
+    end
+  end
 end
