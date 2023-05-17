@@ -98,9 +98,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp applies_to_env?(%Env{} = env, %struct_module{} = result) do
-    struct_reference? = Env.struct_reference?(env)
-    in_bitstring? = Env.in_bitstring?(env)
+    struct_reference? = Env.in_context?(env, :struct_reference)
 
     cond do
       struct_reference? and struct_module == Result.Struct ->
@@ -115,8 +115,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       struct_reference? ->
         false
 
-      in_bitstring? ->
+      Env.in_context?(env, :bitstring) ->
         struct_module in [Result.BitstringOption, Result.Variable]
+
+      Env.in_context?(env, :alias) ->
+        struct_module in [Result.Behaviour, Result.Module, Result.Protocol, Result.Struct]
 
       true ->
         true

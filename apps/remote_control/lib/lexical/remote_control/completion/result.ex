@@ -97,7 +97,7 @@ defmodule Lexical.RemoteControl.Completion.Result do
 
   defmodule Typespec do
     @moduledoc false
-    defstruct [:args_list, :airty, :doc, :metadata, :name, :signature, :spec]
+    defstruct [:args_list, :arity, :doc, :metadata, :name, :signature, :spec]
 
     def new(%{} = elixir_sense_map) do
       struct(__MODULE__, elixir_sense_map)
