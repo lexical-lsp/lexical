@@ -48,6 +48,19 @@ defmodule Lexical.DocumentTest do
   describe "new" do
     setup [:with_a_simple_module]
 
+    test "it should handle out of bounds lines" do
+      doc = new(file_uri(), "hello", 1)
+
+      assert :error = fetch_line_at(doc, 0)
+      assert :error = fetch_text_at(doc, 0)
+
+      assert :error = fetch_line_at(doc, -1)
+      assert :error = fetch_text_at(doc, -1)
+
+      assert :error = fetch_line_at(doc, 2)
+      assert :error = fetch_text_at(doc, 2)
+    end
+
     test "it should be able to parse a single line" do
       assert parsed = new(file_uri(), "hello", 1)
 

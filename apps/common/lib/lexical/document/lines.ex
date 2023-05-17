@@ -40,7 +40,7 @@ defmodule Lexical.Document.Lines do
   end
 
   def fetch_line(%__MODULE__{lines: lines, starting_index: starting_index}, index)
-      when index - starting_index >= tuple_size(lines) do
+      when index - starting_index >= tuple_size(lines) or index < starting_index do
     :error
   end
 
