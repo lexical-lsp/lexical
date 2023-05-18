@@ -66,7 +66,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           )
         ]
 
-      String.length(Env.last_word(env)) == 1 ->
+      is_nil(Env.last_word(env)) || String.length(Env.last_word(env)) == 1 ->
         Completion.List.new(items: [], is_incomplete: true)
 
       true ->
