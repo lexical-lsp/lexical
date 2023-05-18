@@ -638,4 +638,90 @@ defmodule Lexical.DocumentTest do
                ])
     end
   end
+
+  def document(text) do
+    new(file_uri(), String.trim(text), 0)
+  end
+
+  describe "fragment/2" do
+    test "works with out of bounds lines" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(3, 0))
+
+      assert "one\ntwo\nthree" == doc
+    end
+
+    test "can omit entire lines" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(2, 0))
+
+      assert "one\ntwo\n" == doc
+    end
+
+    test "can truncate the end of a line" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(2, 2))
+
+      assert "one\ntwo\nth" == doc
+    end
+  end
+
+  describe "fragment/3" do
+    test "can omit an entire line" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(1, 0), new_position(3, 0))
+
+      assert "two\nthree" == doc
+    end
+
+    test "can truncate the beginning of a line" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(0, 2), new_position(3, 0))
+
+      assert "e\ntwo\nthree" == doc
+    end
+
+    test "can truncate both the beginning and end of a line" do
+      doc =
+        """
+        one
+        two
+        three
+        """
+        |> document()
+        |> Document.fragment(new_position(0, 2), new_position(1, 1))
+
+      assert "e\nt" == doc
+    end
+  end
 end
