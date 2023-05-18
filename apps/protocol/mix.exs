@@ -13,7 +13,8 @@ defmodule Lexical.Protocol.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       consolidate_protocols: Mix.env() != :test,
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      xref: [exclude: [Credo.Priority]]
     ]
   end
 
