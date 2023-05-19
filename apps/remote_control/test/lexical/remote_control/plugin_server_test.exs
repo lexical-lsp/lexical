@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.PluginServerTest do
-  alias Lexical.Project
   alias Lexical.Enhancement
+  alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.PluginServer
 
