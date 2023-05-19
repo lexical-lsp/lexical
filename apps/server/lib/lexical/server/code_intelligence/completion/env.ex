@@ -33,34 +33,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   def new(%Project{} = project, %Document{} = document, %Position{} = cursor_position) do
     zero_based_character = cursor_position.character - 1
 
-    env =
-      case Document.fetch_text_at(document, cursor_position.line) do
-        {:ok, line} ->
-          prefix = String.slice(line, 0, zero_based_character)
-          suffix = String.slice(line, zero_based_character..-1)
+    case Document.fetch_text_at(document, cursor_position.line) do
+      {:ok, line} ->
+        prefix = String.slice(line, 0, zero_based_character)
+        suffix = String.slice(line, zero_based_character..-1)
 
-          %__MODULE__{
-            document: document,
-            line: line,
-            position: cursor_position,
-            prefix: prefix,
-            project: project,
-            suffix: suffix,
-            zero_based_character: zero_based_character
-          }
+        env = %__MODULE__{
+          document: document,
+          line: line,
+          position: cursor_position,
+          prefix: prefix,
+          project: project,
+          suffix: suffix,
+          zero_based_character: zero_based_character
+        }
 
-        _ ->
-          %__MODULE__{
-            document: document,
-            line: "",
-            position: cursor_position,
-            prefix: "",
-            suffix: "",
-            zero_based_character: zero_based_character
-          }
-      end
+        {:ok, env}
 
-    {:ok, env}
+      _ ->
+        {:error, {:out_of_bounds, cursor_position}}
+    end
   end
 
   @impl Environment

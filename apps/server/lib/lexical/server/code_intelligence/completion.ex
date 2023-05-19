@@ -31,10 +31,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = context
       ) do
-    {:ok, env} = Env.new(project, document, position)
-    completions = completions(project, env, context)
-    Logger.warning("Emitting completions: #{inspect(completions)}")
-    completions
+    case Env.new(project, document, position) do
+      {:ok, env} ->
+        completions = completions(project, env, context)
+        Logger.warning("Emitting completions: #{inspect(completions)}")
+        completions
+
+      {:error, _} = error ->
+        Logger.error("Failed to build completion env #{inspect(error)}")
+        empty_completion_list()
+    end
   end
 
   defp to_completion_items(
@@ -59,7 +65,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
     cond do
       prefix_tokens == [] ->
-        Completion.List.new(items: [], is_incomplete: true)
+        empty_completion_list()
 
       match?([{:operator, :do}], prefix_tokens) and Env.empty?(env.suffix) ->
         do_end_snippet = "do\n$0\nend"
@@ -173,5 +179,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
   defp applies_to_context?(_project, _result, _context) do
     true
+  end
+
+  defp empty_completion_list do
+    Completion.List.new(items: [], is_incomplete: true)
   end
 end
