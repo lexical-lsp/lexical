@@ -93,6 +93,49 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert completion.detail == "User (Struct)"
     end
 
+    test "a completion with curlies in the suffix should not have them added", %{project: project} do
+      source = ~q[
+        def my_thing(%Project.Structs.A|{}) do
+      end
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.insert_text == "Account"
+    end
+
+    test "A module without a dot should have a percent added", %{project: project} do
+      source = ~q[
+        alias Project.Structs.Account
+        def my_thing(%A|) do
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.label == "%Account"
+      assert completion.insert_text == "%Account{$1}"
+    end
+
+    test "A module with a dot in it should not have a percent added", %{project: project} do
+      source = ~q[
+        def my_thing(%Project.Structs.A|) do
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.label == "%Account"
+      assert completion.insert_text == "Account{$1}"
+    end
+
     test "modules that define a struct should not emit curlies if they're already present", %{
       project: project
     } do

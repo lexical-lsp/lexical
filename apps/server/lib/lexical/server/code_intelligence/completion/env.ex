@@ -17,7 +17,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     :prefix,
     :suffix,
     :position,
-    :words,
     :zero_based_character
   ]
 
@@ -27,7 +26,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
           prefix: String.t(),
           suffix: String.t(),
           position: Lexical.Document.Position.t(),
-          words: [String.t()],
           zero_based_character: non_neg_integer()
         }
 
@@ -36,10 +34,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     case Document.fetch_text_at(document, cursor_position.line) do
       {:ok, line} ->
         zero_based_character = cursor_position.character - 1
-        graphemes = String.graphemes(line)
-        prefix = graphemes |> Enum.take(zero_based_character) |> IO.iodata_to_binary()
+        prefix = String.slice(line, 0, zero_based_character)
         suffix = String.slice(line, zero_based_character..-1)
-        words = String.split(prefix)
 
         {:ok,
          %__MODULE__{
@@ -49,7 +45,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
            prefix: prefix,
            project: project,
            suffix: suffix,
-           words: words,
            zero_based_character: zero_based_character
          }}
 
@@ -206,11 +201,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
-  end
-
-  @impl Environment
-  def last_word(%__MODULE__{} = env) do
-    List.last(env.words)
   end
 
   @behaviour Builder

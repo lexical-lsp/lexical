@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.Document.Position
+  alias Lexical.Math
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
@@ -54,25 +55,53 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
+    prefix_tokens = Env.prefix_tokens(env, 1)
+
     cond do
-      Env.last_word(env) == "do" and Env.empty?(env.suffix) ->
-        insert_text = "do\n$0\nend"
+      prefix_tokens == [] ->
+        Completion.List.new(items: [], is_incomplete: true)
 
-        [
-          Completion.Item.new(
-            label: "do/end",
-            insert_text_format: :snippet,
-            insert_text: insert_text
-          )
-        ]
+      match?([{:operator, :do}], prefix_tokens) and Env.empty?(env.suffix) ->
+        do_end_snippet = "do\n$0\nend"
 
-      String.length(Env.last_word(env)) == 1 ->
+        env
+        |> Env.snippet(do_end_snippet, label: "do/end block")
+        |> List.wrap()
+
+      Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
         Completion.List.new(items: [], is_incomplete: true)
 
       true ->
         project
         |> RemoteControl.Api.complete(env.document, env.position)
         |> to_completion_items(project, env, context)
+    end
+  end
+
+  def context_will_give_meaningful_completions?(%Env{} = env) do
+    case Code.Fragment.cursor_context(env.prefix) do
+      {:local_or_var, name} ->
+        local_length = length(name)
+
+        surround_begin =
+          Math.clamp(env.position.character - local_length - 1, 1, env.position.character)
+
+        case Code.Fragment.surround_context(env.prefix, {1, surround_begin}) do
+          :none ->
+            local_length > 1
+
+          _other ->
+            true
+        end
+
+      :none ->
+        false
+
+      {:unquoted_atom, name} ->
+        length(name) > 1
+
+      _ ->
+        true
     end
   end
 

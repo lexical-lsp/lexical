@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
 
   use Translatable.Impl, for: [Result.Module, Result.Behaviour, Result.Protocol]
@@ -20,6 +21,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
   defp do_translate(%_{} = module, builder, %Env{} = env) do
     struct_reference? = Env.in_context?(env, :struct_reference)
+
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
 
     cond do
@@ -42,17 +44,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   end
 
   defp struct_completion(builder, %Env{} = env, module_name) do
-    last_word = Env.last_word(env)
-
-    add_curlies? = not String.contains?(env.suffix, "{")
-    # A leading percent is added only if the struct reference is to a top-level struct.
-    # If it's for a child struct (e.g. %Types.Range) then adding a percent at "Range"
-    # will be syntactically invalid and get us `%Types.%Range{}`
-
-    add_percent? = not String.contains?(last_word, ".")
-
     insert_text =
-      if add_percent? do
+      if Translations.Struct.add_percent?(env) do
         "%" <> module_name
       else
         module_name
@@ -65,7 +58,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       detail: module_name <> " (Struct)"
     ]
 
-    if add_curlies? do
+    if Translations.Struct.add_curlies?(env) do
       builder.snippet(env, insert_text <> "{$1}", completion_opts)
     else
       builder.plain_text(env, insert_text, completion_opts)

@@ -7,18 +7,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
 
   def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
     struct_reference? = Env.in_context?(env, :struct_reference)
-    add_curlies? = struct_reference? and not String.contains?(env.suffix, "{")
+
+    add_curlies? = add_curlies?(env)
 
     insert_text =
-      cond do
-        struct_reference? and not String.contains?(env.prefix, ".") ->
-          "%#{struct.name}"
-
-        struct_reference? ->
-          "#{struct.name}"
-
-        true ->
-          struct.name
+      if add_percent?(env) do
+        "%" <> struct.name
+      else
+        struct.name
       end
 
     builder_opts =
@@ -32,6 +28,81 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
       builder.snippet(env, insert_text <> "{$1}", builder_opts)
     else
       builder.plain_text(env, insert_text, builder_opts)
+    end
+  end
+
+  def add_curlies?(%Env{} = env) do
+    if Env.in_context?(env, :struct_reference) do
+      not String.contains?(env.suffix, "{")
+    else
+      false
+    end
+  end
+
+  def add_percent?(%Env{} = env) do
+    if Env.in_context?(env, :struct_reference) do
+      # A leading percent is added only if the struct reference is to a top-level struct.
+      # If it's for a child struct (e.g. %Types.Range) then adding a percent at "Range"
+      # will be syntactically invalid and get us `%Types.%Range{}`
+
+      struct_module_name =
+        case Code.Fragment.cursor_context(env.prefix) do
+          {:struct, {:dot, {:alias, module_name}, []}} ->
+            '#{module_name}.'
+
+          {:struct, module_name} ->
+            module_name
+
+          {:dot, {:alias, module_name}, _} ->
+            module_name
+
+          _ ->
+            ''
+        end
+
+      contains_period? =
+        struct_module_name
+        |> List.to_string()
+        |> String.contains?(".")
+
+      not contains_period?
+    else
+      false
+    end
+  end
+
+  def struct_details(%Env{} = env) do
+    if Env.in_context?(env, :struct_reference) do
+      add_curlies? = not String.contains?(env.suffix, "{")
+
+      # A leading percent is added only if the struct reference is to a top-level struct.
+      # If it's for a child struct (e.g. %Types.Range) then adding a percent at "Range"
+      # will be syntactically invalid and get us `%Types.%Range{}`
+
+      struct_module_name =
+        case Code.Fragment.cursor_context(env.prefix) do
+          {:struct, {:dot, {:alias, module_name}, []}} ->
+            '#{module_name}.'
+
+          {:struct, module_name} ->
+            module_name
+
+          {:dot, {:alias, module_name}, _} ->
+            module_name
+
+          _ ->
+            ''
+        end
+
+      contains_period? =
+        struct_module_name
+        |> List.to_string()
+        |> String.contains?(".")
+
+      add_percent? = not contains_period?
+      {add_curlies?, add_percent?}
+    else
+      {false, false}
     end
   end
 end

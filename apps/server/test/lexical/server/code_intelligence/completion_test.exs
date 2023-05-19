@@ -52,6 +52,17 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
                items: []
              }
     end
+
+    test "returns an incomplete completion list when the context is empty", %{project: project} do
+      assert %Completion.List{is_incomplete: true, items: []} = complete(project, " ")
+    end
+  end
+
+  describe "do/end" do
+    test "returns do/end when the last token is do", %{project: project} do
+      [completion] = complete(project, "for a <- something do|")
+      assert completion.label == "do/end block"
+    end
   end
 
   describe "sort_text" do
