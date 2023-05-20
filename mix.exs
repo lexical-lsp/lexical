@@ -123,7 +123,6 @@ defmodule Lexical.MixProject do
     [
       release: [&maybe_clean/1, "release", &maybe_clean/1],
       compile: "compile --docs --debug-info",
-      credo: "credo --strict",
       docs: "docs --html",
       test: "test --no-start"
     ]
