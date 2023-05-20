@@ -25,28 +25,46 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
     end
 
+    @default_from "Mix"
+    @plugin "Plugin"
+
     @doc """
     Only clear diagnostics if they've been synced to disk
     It's possible that the diagnostic presented by typing is still correct, and the file
     that exists on the disk is actually an older copy of the file in memory.
     """
-    def clear_all_flushed(%__MODULE__{} = state) do
+    def clear_all_flushed(%__MODULE__{} = state, from) do
       cleared =
-        Map.new(state.diagnostics_by_uri, fn {uri, diagnostics} ->
-          with true <- Document.Store.open?(uri),
-               {:ok, %Document{} = document} <- Document.Store.fetch(uri),
-               true <- keep_diagnostics?(document) do
-            {uri, diagnostics}
-          else
-            _ ->
-              {uri, []}
-          end
-        end)
+        case from do
+          @default_from -> clear_all_mix_flushed(state.diagnostics_by_uri)
+          @plugin -> clear_all_plugin_flushed(state.diagnostics_by_uri)
+        end
 
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
-    @default_from "Mix"
+    defp clear_all_plugin_flushed(diagnostics_by_uri) do
+      Map.new(diagnostics_by_uri, fn {uri, diagnostics} ->
+        new_diagnostics = Enum.reject(diagnostics, fn {from, _diagnostic} -> from == @plugin end)
+        {uri, new_diagnostics}
+      end)
+    end
+
+    defp clear_all_mix_flushed(diagnostics_by_uri) do
+      Map.new(diagnostics_by_uri, fn {uri, diagnostics} ->
+        with true <- Document.Store.open?(uri),
+             {:ok, %Document{} = document} <- Document.Store.fetch(uri),
+             true <- keep_diagnostics?(document) do
+          {uri, diagnostics}
+        else
+          _ ->
+            new_diagnostics =
+              Enum.reject(diagnostics, fn {from, _diagnostic} -> from == @default_from end)
+
+            {uri, new_diagnostics}
+        end
+      end)
+    end
 
     def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic, @default_from) do
       source_uri = Document.Path.to_uri(diagnostic.file)
@@ -90,8 +108,6 @@ defmodule Lexical.Server.Project.Diagnostics do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
       state
     end
-
-    @plugin "Plugin"
 
     def add(%__MODULE__{} = state, issues, @plugin, uri) do
       file_diagnostics =
@@ -154,7 +170,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   @impl GenServer
   def handle_info(project_diagnostics(diagnostics: diagnostics, from: from), %State{} = state) do
-    state = State.clear_all_flushed(state)
+    state = State.clear_all_flushed(state, from)
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
