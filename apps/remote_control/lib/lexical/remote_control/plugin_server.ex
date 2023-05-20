@@ -4,9 +4,12 @@ defmodule Lexical.RemoteControl.PluginServer do
   end
 
   alias Lexical.Document
+  alias Lexical.Formats
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+
+  require Logger
 
   import Messages
 
@@ -51,7 +54,12 @@ defmodule Lexical.RemoteControl.PluginServer do
     for plugin <- plugins, do: plugin.init()
 
     for plugin <- state.plugins do
-      publish(plugin.issues(), project)
+      {t, _} =
+        :timer.tc(fn ->
+          publish(plugin.issues(), project)
+        end)
+
+      Logger.info("Plugin #{plugin} enhance project diagnostics took #{Formats.time(t)} ")
     end
 
     {:noreply, state}
