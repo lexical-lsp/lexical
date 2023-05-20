@@ -2,7 +2,9 @@ defmodule Lexical.RemoteControl.PluginServerTest do
   alias Lexical.Enhancement
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.PluginServer
+  alias Lexical.RemoteControl.ProjectNodeSupervisor
 
   alias Lexical.RemoteControl.Api.Messages
 
@@ -38,13 +40,44 @@ defmodule Lexical.RemoteControl.PluginServerTest do
                    )
   end
 
-  def with_plugged_credo_project do
+  def with_plugged_credo_project(_) do
     fixture_dir = Path.join(fixtures_path(), "plugged_credo_project")
     project = Project.new("file://#{fixture_dir}")
 
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
-    {:ok, project}
+    %{project: project}
+  end
+
+  describe "credo diagnostics" do
+    setup :with_plugged_credo_project
+
+    test "it should publish the diagnostics", %{project: project} do
+      # RemoteControl.call(project, Process, :whereis, [PluginServer]) |> dbg()
+      Build.schedule_compile(project, true)
+      assert_receive project_compiled(status: :success), 10000
+
+      enhancement =
+        Enhancement.new(
+          project: "project",
+          uri: "file:///path/to/file",
+          type: :file,
+          source: :credo,
+          validate: [Code, :ensure_loaded?, [Credo]],
+          # validate: fn -> RemoteControl.call(project, Code, :ensure_loaded?, [Credo]) end,
+          enhance: :enhanced
+        )
+
+      RemoteControl.call(project, PluginServer, :run, [enhancement]) |> dbg()
+
+      assert_receive file_diagnostics(
+                       project: "project",
+                       uri: "file:///path/to/file",
+                       diagnostics: [:enhanced],
+                       source: :credo
+                     ),
+                     3000
+    end
   end
 end

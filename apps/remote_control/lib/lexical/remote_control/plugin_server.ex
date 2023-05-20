@@ -8,7 +8,8 @@ defmodule Lexical.RemoteControl.PluginServer do
   use GenServer
 
   def run(%Enhancement{} = enhancement) do
-    GenServer.cast(__MODULE__, {:run, enhancement})
+    # GenServer.cast(__MODULE__, {:run, enhancement})
+    GenServer.call(__MODULE__, {:run, enhancement})
   end
 
   # Public
@@ -22,14 +23,17 @@ defmodule Lexical.RemoteControl.PluginServer do
   end
 
   @impl true
-  def handle_cast({:run, %{validate: validate, enhance: enhance} = enhancement}, state) do
-    if validate.() do
-      enhance.() |> publish(enhancement)
+  def handle_call({:run, %{validate: [m, f, a], enhance: thing} = enhancement}, _from, state) do
+    # def handle_cast({:run, %{validate: validate, enhance: enhance} = enhancement}, state) do
+    if apply(m, f, a) do
+      publish(thing, enhancement)
+      # enhance.() |> publish(enhancement)
     else
       :ok
     end
 
-    {:noreply, state}
+    # {:noreply, state}
+    {:reply, :ok, state}
   end
 
   defp publish(enhance_result, enhancement) do
