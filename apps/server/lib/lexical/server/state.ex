@@ -246,7 +246,7 @@ defmodule Lexical.Server.State do
         Api.enhance_by_plugin(project, document)
         :ok
 
-      :error ->
+      {:error, :not_open} ->
         Logger.info("document already closed #{uri}")
         {:error, :document_not_found}
     end
