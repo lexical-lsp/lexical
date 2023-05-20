@@ -48,7 +48,7 @@ defmodule Lexical.RemoteControl.PluginServerTest do
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
     Build.schedule_compile(project, true)
-    assert_receive project_compiled(status: :success), 10000
+    assert_receive project_compiled(status: :success), 10_000
 
     %{project: project}
   end

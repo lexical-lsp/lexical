@@ -28,9 +28,7 @@ defmodule Lexical.RemoteControl.PluginServer do
   @impl true
   def init(_) do
     config_file = "config/config.exs"
-
-    config_file =
-      unless File.exists?(config_file), do: "../../config/config.exs", else: config_file
+    config_file = if File.exists?(config_file), do: config_file, else: "../../config/config.exs"
 
     plugins =
       config_file
@@ -43,7 +41,6 @@ defmodule Lexical.RemoteControl.PluginServer do
 
   @impl true
   def handle_cast({:enhance_file, project, document}, %State{plugins: plugins} = state) do
-    # TODO: make sure plugin module is compiled and loaded
     for plugin <- plugins, do: plugin.init()
 
     for plugin <- state.plugins do
