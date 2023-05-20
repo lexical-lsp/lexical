@@ -145,6 +145,7 @@ defmodule Lexical.Server.State do
     case Document.Store.save(uri) do
       :ok ->
         Api.schedule_compile(state.configuration.project, false)
+        throttle(&Api.enhance_by_plugin/1, :enhance_per_project, state.configuration.project)
         {:ok, state}
 
       error ->
@@ -228,6 +229,14 @@ defmodule Lexical.Server.State do
       func.(project, uri)
     end
     |> Throttler.JobInfo.new(:enhance_per_file, 250)
+    |> Throttler.run()
+  end
+
+  defp throttle(func, :enhance_per_project, project) do
+    fn ->
+      func.(project)
+    end
+    |> Throttler.JobInfo.new(:enhance_per_project, 1000)
     |> Throttler.run()
   end
 

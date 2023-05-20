@@ -104,23 +104,41 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
     end
 
+    def add(%__MODULE__{} = state, issue, @plugin) do
+      # NOTE: Principally, we should not know which field specifically represents the URI here.
+      # So, maybe we should not use `issue.filename` here.
+      source_uri = Document.Path.to_uri(issue.filename)
+
+      file_diagnostics =
+        Map.update(
+          state.diagnostics_by_uri,
+          source_uri,
+          [{@plugin, issue}],
+          fn diagnostics ->
+            [{@plugin, issue} | diagnostics]
+          end
+        )
+
+      %{state | diagnostics_by_uri: file_diagnostics}
+    end
+
     def add(%__MODULE__{} = state, other, _) do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
       state
     end
 
-    def add(%__MODULE__{} = state, issues, @plugin, uri) do
+    def add(%__MODULE__{} = state, issue, @plugin, uri) do
       file_diagnostics =
         Map.update(
           state.diagnostics_by_uri,
           uri,
-          [{@plugin, issues}],
+          [{@plugin, issue}],
           fn diagnostics ->
-            [{@plugin, issues} | diagnostics]
+            [{@plugin, issue} | diagnostics]
           end
         )
 
-      %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
+      %{state | diagnostics_by_uri: file_diagnostics}
     end
 
     defp keep_diagnostics?(%Document{} = document) do

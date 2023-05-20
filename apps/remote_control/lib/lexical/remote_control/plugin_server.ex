@@ -71,7 +71,7 @@ defmodule Lexical.RemoteControl.PluginServer do
     result
   end
 
-  defp plugins() do
+  defp plugins do
     config = config_file()
 
     if config do
