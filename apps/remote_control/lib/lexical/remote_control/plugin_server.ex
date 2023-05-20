@@ -52,7 +52,7 @@ defmodule Lexical.RemoteControl.PluginServer do
 
       source_string
       |> plugin.issues(path)
-      |> publish(project, from(plugin), document.uri)
+      |> publish(project, document.uri)
     end
 
     {:noreply, state}
@@ -63,25 +63,23 @@ defmodule Lexical.RemoteControl.PluginServer do
     for plugin <- plugins, do: plugin.init()
 
     for plugin <- state.plugins do
-      publish(plugin.issues(), project, from(plugin))
+      publish(plugin.issues(), project)
     end
 
     {:noreply, state}
   end
 
-  defp publish(result, project, from, uri) do
-    diagnostics = file_diagnostics(project: project, uri: uri, diagnostics: result, from: from)
+  @from "Plugin"
+
+  defp publish(result, project, uri) do
+    diagnostics = file_diagnostics(project: project, uri: uri, diagnostics: result, from: @from)
     RemoteControl.notify_listener(diagnostics)
     result
   end
 
-  defp publish(result, project, from) do
-    diagnostics = project_diagnostics(project: project, diagnostics: result, from: from)
+  defp publish(result, project) do
+    diagnostics = project_diagnostics(project: project, diagnostics: result, from: @from)
     RemoteControl.notify_listener(diagnostics)
     result
-  end
-
-  defp from(plugin) do
-    plugin |> Module.split() |> List.last()
   end
 end

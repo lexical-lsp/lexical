@@ -30,13 +30,34 @@ defimpl Lexical.Convertible, for: Credo.Issue do
   # @dialyzer {:nowarn_function, to_atom: 1}
 
   defp priority_to_security(%Credo.Issue{priority: priority}) do
-    case Credo.Priority.to_atom(priority) do
-      :higher -> Severity.error()
-      :high -> Severity.error()
-      :normal -> Severity.warning()
-      :low -> Severity.information()
-      :ignore -> Severity.hint()
-      _ -> Severity.hint()
+    case to_atom(priority) do
+      :higher -> :error
+      :high -> :error
+      :normal -> :warning
+      :low -> :information
+      :ignore -> :hint
+      _ -> :hint
     end
   end
+
+  @doc """
+  Copied from Credo.Priority
+  """
+  def to_atom(priority)
+
+  def to_atom(priority) when is_number(priority) do
+    cond do
+      priority > 19 -> :higher
+      priority in 10..19 -> :high
+      priority in 0..9 -> :normal
+      priority in -10..-1 -> :low
+      priority < -10 -> :ignore
+    end
+  end
+
+  def to_atom(%{priority: priority}), do: to_atom(priority)
+
+  def to_atom(priority) when is_atom(priority), do: priority
+
+  def to_atom(_), do: nil
 end

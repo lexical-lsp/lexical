@@ -16,8 +16,13 @@ defmodule Lexical.Server.Project.Diagnostics do
       Map.get(state.diagnostics_by_uri, source_uri, [])
     end
 
-    def clear(%__MODULE__{} = state, source_uri) do
-      %__MODULE__{state | diagnostics_by_uri: Map.put(state.diagnostics_by_uri, source_uri, [])}
+    def clear(%__MODULE__{} = state, source_uri, new_from) do
+      diagnostics_by_uri =
+        Map.update(state.diagnostics_by_uri, source_uri, [], fn diagnostics ->
+          Enum.reject(diagnostics, fn {from, _diagnostic} -> from == new_from end)
+        end)
+
+      %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
     end
 
     @doc """
@@ -41,18 +46,25 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
-    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
+    @default_from "Mix"
+
+    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic, @default_from) do
       source_uri = Document.Path.to_uri(diagnostic.file)
 
       diagnostics_by_uri =
-        Map.update(state.diagnostics_by_uri, source_uri, [diagnostic], fn diagnostics ->
-          [diagnostic | diagnostics]
-        end)
+        Map.update(
+          state.diagnostics_by_uri,
+          source_uri,
+          [{@default_from, diagnostic}],
+          fn diagnostics ->
+            [{@default_from, diagnostic} | diagnostics]
+          end
+        )
 
       %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
     end
 
-    def add(%__MODULE__{} = state, %Mix.Error{} = error) do
+    def add(%__MODULE__{} = state, %Mix.Error{} = error, @default_from) do
       project_uri = state.project.mix_exs_uri
 
       compiler_diagnostic = %Compiler.Diagnostic{
@@ -67,16 +79,32 @@ defmodule Lexical.Server.Project.Diagnostics do
         Map.update(
           state.diagnostics_by_uri,
           project_uri,
-          [compiler_diagnostic],
-          &[compiler_diagnostic | &1]
+          [{@default_from, compiler_diagnostic}],
+          &[{@default_from, compiler_diagnostic} | &1]
         )
 
       %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
     end
 
-    def add(%__MODULE__{} = state, other) do
+    def add(%__MODULE__{} = state, other, _) do
       Logger.error("Invalid diagnostic: #{inspect(other)}")
       state
+    end
+
+    @plugin "Plugin"
+
+    def add(%__MODULE__{} = state, issues, @plugin, uri) do
+      file_diagnostics =
+        Map.update(
+          state.diagnostics_by_uri,
+          uri,
+          [{@plugin, issues}],
+          fn diagnostics ->
+            [{@plugin, issues} | diagnostics]
+          end
+        )
+
+      %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
     end
 
     defp keep_diagnostics?(%Document{} = document) do
@@ -125,12 +153,12 @@ defmodule Lexical.Server.Project.Diagnostics do
   end
 
   @impl GenServer
-  def handle_info(project_diagnostics(diagnostics: diagnostics), %State{} = state) do
+  def handle_info(project_diagnostics(diagnostics: diagnostics, from: from), %State{} = state) do
     state = State.clear_all_flushed(state)
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
-        State.add(state, diagnostic)
+        State.add(state, diagnostic, from)
       end)
 
     publish_diagnostics(state)
@@ -139,12 +167,19 @@ defmodule Lexical.Server.Project.Diagnostics do
   end
 
   @impl GenServer
-  def handle_info(file_diagnostics(uri: uri, diagnostics: diagnostics), %State{} = state) do
-    state = State.clear(state, uri)
+  def handle_info(
+        file_diagnostics(uri: uri, diagnostics: diagnostics, from: from),
+        %State{} = state
+      ) do
+    state = State.clear(state, uri, from)
 
     state =
       Enum.reduce(diagnostics, state, fn diagnostic, state ->
-        State.add(state, diagnostic)
+        if from == "Plugin" do
+          State.add(state, diagnostic, from, uri)
+        else
+          State.add(state, diagnostic, from)
+        end
       end)
 
     publish_diagnostics(state)
@@ -167,7 +202,8 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   defp publish_diagnostics(%State{} = state) do
     Enum.each(state.diagnostics_by_uri, fn {uri, diagnostic_list} ->
-      notification = PublishDiagnostics.new(uri: uri, diagnostics: diagnostic_list)
+      diagnostics = Enum.map(diagnostic_list, fn {_from, diagnostic} -> diagnostic end)
+      notification = PublishDiagnostics.new(uri: uri, diagnostics: diagnostics)
 
       Transport.write(notification)
     end)

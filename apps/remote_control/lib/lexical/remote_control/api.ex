@@ -6,11 +6,20 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
+  alias Lexical.RemoteControl.PluginServer
 
   require Logger
 
   defdelegate schedule_compile(project, force?), to: Build
   defdelegate compile_document(project, document), to: Build
+
+  def enhance_by_plugin(project) do
+    RemoteControl.call(project, PluginServer, :enhance, [project])
+  end
+
+  def enhance_by_plugin(project, document) do
+    RemoteControl.call(project, PluginServer, :enhance, [project, document])
+  end
 
   def list_modules(%Project{} = project) do
     RemoteControl.call(project, :code, :all_available)

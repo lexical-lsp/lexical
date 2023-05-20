@@ -2,7 +2,7 @@ defmodule Lexical.Throttler do
   defmodule JobInfo do
     defstruct [:type, :job_func, :interval, :timer_ref]
 
-    def new(job_func, type, interval) when is_function(job_func) do
+    def new(job_func, type, interval) when is_function(job_func, 0) do
       %__MODULE__{type: type, job_func: job_func, interval: interval}
     end
 

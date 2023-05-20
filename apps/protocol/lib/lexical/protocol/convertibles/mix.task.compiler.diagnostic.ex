@@ -4,11 +4,15 @@ defimpl Lexical.Convertible, for: Mix.Task.Compiler.Diagnostic do
   alias Lexical.Protocol.Types
   alias Mix.Task.Compiler
 
+  require Logger
+
   def to_lsp(%Compiler.Diagnostic{} = diagnostic, _context_document) do
     diagnostic_uri = Document.Path.ensure_uri(diagnostic.file)
 
     with {:ok, document} <- Document.Store.open_temporary(diagnostic_uri),
          {:ok, lsp_range} <- Support.position_to_range(document, diagnostic.position) do
+      Logger.info("diagnostic: #{inspect(diagnostic)}")
+
       proto_diagnostic = %Types.Diagnostic{
         message: diagnostic.message,
         range: lsp_range,

@@ -24,6 +24,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Server.Configuration
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
+  alias Lexical.Throttler
 
   require CodeAction.Kind
   require Logger
@@ -102,6 +103,7 @@ defmodule Lexical.Server.State do
          ) do
       {:ok, updated_source} ->
         Api.compile_document(state.configuration.project, updated_source)
+        throttle(&fetch_latest_and_enhance/2, :enhance_per_file, state.configuration.project, uri)
         {:ok, state}
 
       error ->
@@ -219,5 +221,25 @@ defmodule Lexical.Server.State do
       )
 
     Responses.InitializeResult.new(event_id, result)
+  end
+
+  defp throttle(func, :enhance_per_file, project, uri) do
+    fn ->
+      func.(project, uri)
+    end
+    |> Throttler.JobInfo.new(:enhance_per_file, 250)
+    |> Throttler.run()
+  end
+
+  defp fetch_latest_and_enhance(project, uri) do
+    case Document.Store.fetch(uri) do
+      {:ok, document} ->
+        Api.enhance_by_plugin(project, document)
+        :ok
+
+      :error ->
+        Logger.info("document already closed #{uri}")
+        {:error, :document_not_found}
+    end
   end
 end

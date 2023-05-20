@@ -4,7 +4,7 @@
       name: "default",
       files: %{
         included: ["lib/", "src/", "web/", "apps/"],
-        excluded: ["apps/remote_control/test/fixtures/**/*.ex"]
+        excluded: ["apps/remote_control/test/fixtures/**/*.ex", ~r|apps/remote_control/test/fixtures/plugged_credo_project/*|]
       },
       plugins: [],
       requires: [],
