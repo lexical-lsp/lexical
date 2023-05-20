@@ -27,16 +27,7 @@ defmodule Lexical.RemoteControl.PluginServer do
 
   @impl true
   def init(_) do
-    config_file = "config/config.exs"
-    config_file = if File.exists?(config_file), do: config_file, else: "../../config/config.exs"
-
-    plugins =
-      config_file
-      |> Config.Reader.read!(env: :test)
-      |> get_in([:lexical, :plugins])
-      |> Kernel.||([])
-
-    {:ok, %State{plugins: plugins}}
+    {:ok, %State{plugins: plugins()}}
   end
 
   @impl true
@@ -78,5 +69,27 @@ defmodule Lexical.RemoteControl.PluginServer do
     diagnostics = project_diagnostics(project: project, diagnostics: result, from: @from)
     RemoteControl.notify_listener(diagnostics)
     result
+  end
+
+  defp plugins() do
+    config = config_file()
+
+    if config do
+      config
+      |> Config.Reader.read!(env: :test)
+      |> get_in([:lexical, :plugins])
+      |> Kernel.||([])
+    else
+      []
+    end
+  end
+
+  defp config_file do
+    config_file("config/config.exs")
+  end
+
+  defp config_file(config_file) do
+    config_file = if File.exists?(config_file), do: config_file, else: "../../config/config.exs"
+    if File.exists?(config_file), do: config_file
   end
 end
