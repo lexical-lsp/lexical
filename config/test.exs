@@ -9,3 +9,5 @@ config :logger, level: :error, backends: []
 config :remote_control, edit_window_millis: 10
 
 config :server, transport: NoOp
+
+config :lexical, plugins: [Lexical.Credo]

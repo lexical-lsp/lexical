@@ -21,7 +21,8 @@ defmodule PluggedCredoProject.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test]},
+      {:lexical_credo, github: "scottming/lexical-credo", only: [:dev, :test]}
     ]
   end
 end

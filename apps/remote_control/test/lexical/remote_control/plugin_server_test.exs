@@ -1,5 +1,5 @@
 defmodule Lexical.RemoteControl.PluginServerTest do
-  alias Lexical.Enhancement
+  alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
@@ -14,70 +14,74 @@ defmodule Lexical.RemoteControl.PluginServerTest do
   use ExUnit.Case
   use Patch
 
-  test "it should publish the diagnostics after validating and enhancing" do
-    test_pid = self()
-    patch(RemoteControl, :notify_listener, fn diagnostics -> send(test_pid, diagnostics) end)
+  describe "Current project" do
+    setup do
+      test_pid = self()
+      patch(RemoteControl, :notify_listener, fn diagnostics -> send(test_pid, diagnostics) end)
+      start_supervised!(PluginServer)
+      :ok
+    end
 
-    start_supervised!(PluginServer)
+    test "it should publish the diagnostics" do
+      project = project()
+      file_uri = "file:///path/to/file"
+      document = Document.new(file_uri, ~s[IO.puts("Hello World");\n], 1)
 
-    enhancement =
-      Enhancement.new(
-        project: "project",
-        uri: "file:///path/to/file",
-        type: :file,
-        source: :credo,
-        validate: fn -> true end,
-        enhance: fn -> :enhanced end
-      )
+      PluginServer.enhance(project, document)
 
-    PluginServer.run(enhancement)
+      assert_receive file_diagnostics(
+                       project: ^project,
+                       uri: ^file_uri,
+                       diagnostics: [diagnostic]
+                     ),
+                     500
 
-    assert_receive file_diagnostics(
-                     project: "project",
-                     uri: "file:///path/to/file",
-                     diagnostics: [:enhanced],
-                     source: :credo
-                   )
+      assert diagnostic.message == "Don't use ; to separate statements and expressions"
+    end
   end
 
-  def with_plugged_credo_project(_) do
+  def with_compiled_plugged_project(_) do
     fixture_dir = Path.join(fixtures_path(), "plugged_credo_project")
     project = Project.new("file://#{fixture_dir}")
 
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project, self())
 
+    Build.schedule_compile(project, true)
+    assert_receive project_compiled(status: :success), 10000
+
     %{project: project}
   end
 
   describe "credo diagnostics" do
-    setup :with_plugged_credo_project
+    setup :with_compiled_plugged_project
 
-    test "it should publish the diagnostics", %{project: project} do
-      # RemoteControl.call(project, Process, :whereis, [PluginServer]) |> dbg()
-      Build.schedule_compile(project, true)
-      assert_receive project_compiled(status: :success), 10000
-
-      enhancement =
-        Enhancement.new(
-          project: "project",
-          uri: "file:///path/to/file",
-          type: :file,
-          source: :credo,
-          validate: [Code, :ensure_loaded?, [Credo]],
-          # validate: fn -> RemoteControl.call(project, Code, :ensure_loaded?, [Credo]) end,
-          enhance: :enhanced
-        )
-
-      RemoteControl.call(project, PluginServer, :run, [enhancement]) |> dbg()
+    test "it should publish the file diagnostics", %{project: project} do
+      file_uri = "file:///path/to/file"
+      document = Document.new(file_uri, ~s[IO.puts("Hello World");\n], 1)
+      RemoteControl.call(project, PluginServer, :enhance, [project, document])
 
       assert_receive file_diagnostics(
-                       project: "project",
-                       uri: "file:///path/to/file",
-                       diagnostics: [:enhanced],
-                       source: :credo
+                       project: ^project,
+                       uri: ^file_uri,
+                       diagnostics: [diagnostic]
                      ),
-                     3000
+                     500
+
+      assert diagnostic.message == "Don't use ; to separate statements and expressions"
+    end
+
+    test "it should publish project diagnostics", %{project: project} do
+      RemoteControl.call(project, PluginServer, :enhance, [project])
+
+      assert_receive project_diagnostics(
+                       project: ^project,
+                       diagnostics: [diagnostic],
+                       from: "Credo"
+                     ),
+                     2000
+
+      assert diagnostic.message == "One `Enum.filter/2` is more efficient than `Enum.filter/2 |> Enum.filter/2`"
     end
   end
 end

@@ -13,8 +13,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :module_updated, name: nil, functions: [], macros: [], struct: nil
 
-  defrecord :project_diagnostics, project: nil, diagnostics: [], source: :mix
-  defrecord :file_diagnostics, project: nil, uri: nil, diagnostics: [], source: :mix
+  defrecord :project_diagnostics, project: nil, diagnostics: [], from: :mix
+  defrecord :file_diagnostics, project: nil, uri: nil, diagnostics: [], from: :mix
 
   defrecord :project_progress, label: nil, message: nil, stage: :report
 

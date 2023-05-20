@@ -1,5 +1,10 @@
 defmodule Lexical.RemoteControl.PluginServer do
-  alias Lexical.Enhancement
+  defmodule State do
+    defstruct plugins: []
+  end
+
+  alias Lexical.Document
+  alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
 
@@ -7,9 +12,12 @@ defmodule Lexical.RemoteControl.PluginServer do
 
   use GenServer
 
-  def run(%Enhancement{} = enhancement) do
-    # GenServer.cast(__MODULE__, {:run, enhancement})
-    GenServer.call(__MODULE__, {:run, enhancement})
+  def enhance(%Project{} = project) do
+    GenServer.cast(__MODULE__, {:enhance_project, project})
+  end
+
+  def enhance(%Project{} = project, %Document{} = document) do
+    GenServer.cast(__MODULE__, {:enhance_file, project, document})
   end
 
   # Public
@@ -19,35 +27,61 @@ defmodule Lexical.RemoteControl.PluginServer do
 
   @impl true
   def init(_) do
-    {:ok, %{}}
+    config_file = "config/config.exs"
+
+    config_file =
+      unless File.exists?(config_file), do: "../../config/config.exs", else: config_file
+
+    plugins =
+      config_file
+      |> Config.Reader.read!(env: :test)
+      |> get_in([:lexical, :plugins])
+      |> Kernel.||([])
+
+    {:ok, %State{plugins: plugins}}
   end
 
   @impl true
-  def handle_call({:run, %{validate: [m, f, a], enhance: thing} = enhancement}, _from, state) do
-    # def handle_cast({:run, %{validate: validate, enhance: enhance} = enhancement}, state) do
-    if apply(m, f, a) do
-      publish(thing, enhancement)
-      # enhance.() |> publish(enhancement)
-    else
-      :ok
+  def handle_cast({:enhance_file, project, document}, %State{plugins: plugins} = state) do
+    # TODO: make sure plugin module is compiled and loaded
+    for plugin <- plugins, do: plugin.init()
+
+    for plugin <- state.plugins do
+      source_string = Document.to_string(document)
+      path = document.path |> Path.relative_to_cwd()
+
+      source_string
+      |> plugin.issues(path)
+      |> publish(project, from(plugin), document.uri)
     end
 
-    # {:noreply, state}
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
-  defp publish(enhance_result, enhancement) do
-    %{project: project, uri: uri, type: type, source: source} = enhancement
-    result = List.wrap(enhance_result)
+  @impl true
+  def handle_cast({:enhance_project, project}, %State{plugins: plugins} = state) do
+    for plugin <- plugins, do: plugin.init()
 
-    if type == :file do
-      diagnostics =
-        file_diagnostics(project: project, uri: uri, diagnostics: result, source: source)
-
-      RemoteControl.notify_listener(diagnostics)
-    else
-      diagnostics = project_diagnostics(project: project, diagnostics: result, source: source)
-      RemoteControl.notify_listener(diagnostics)
+    for plugin <- state.plugins do
+      publish(plugin.issues(), project, from(plugin))
     end
+
+    {:noreply, state}
+  end
+
+  defp publish(result, project, from, uri) do
+    diagnostics = file_diagnostics(project: project, uri: uri, diagnostics: result, from: from)
+    RemoteControl.notify_listener(diagnostics)
+    result
+  end
+
+  defp publish(result, project, from) do
+    diagnostics = project_diagnostics(project: project, diagnostics: result, from: from)
+    RemoteControl.notify_listener(diagnostics)
+    result
+  end
+
+  defp from(plugin) do
+    plugin |> Module.split() |> List.last()
   end
 end
