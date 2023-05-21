@@ -164,10 +164,10 @@ defmodule Lexical.RemoteControl.Build.Error do
 
     [{_, _, _, context}, {_, call, _, second_to_last_context} | _] = reversed_stack
 
-    maybe_pipe_or_struct? = call in [:|>, :__struct__]
+    pipe_or_struct? = call in [:|>, :__struct__]
     expanding_macro? = second_to_last_context[:file] == 'expanding macro'
 
-    if maybe_pipe_or_struct? or expanding_macro? do
+    if pipe_or_struct? or expanding_macro? do
       %Diagnostic{
         message: Exception.message(argument_error),
         position: context_to_position(context),
