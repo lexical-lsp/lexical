@@ -27,8 +27,6 @@ defimpl Lexical.Convertible, for: Credo.Issue do
     {:ok, issue}
   end
 
-  # @dialyzer {:nowarn_function, to_atom: 1}
-
   defp priority_to_security(%Credo.Issue{priority: priority}) do
     case to_atom(priority) do
       :higher -> :error
