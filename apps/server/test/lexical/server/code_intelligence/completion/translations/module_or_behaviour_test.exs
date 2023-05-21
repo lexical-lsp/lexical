@@ -71,8 +71,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
       assert completion.insert_text_format == :snippet
       assert completion.label == "%MapSet"
-      assert completion.insert_text == "%MapSet{$1}"
       assert completion.detail == "MapSet (Struct)"
+      assert apply_completion(completion) == "%MapSet{$1}\n"
     end
 
     test "modules that define a struct should emit curlies if in a struct reference", %{
@@ -84,13 +84,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         end
       ]
 
+      expected = ~q[
+        alias Project.Structs
+        def my_thing(%Structs.User{$1}) do
+        end
+      ]
+
       assert {:ok, completion} =
                project
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.insert_text == "User{$1}"
       assert completion.detail == "User (Struct)"
+      assert apply_completion(completion) == expected
     end
 
     test "a completion with curlies in the suffix should not have them added", %{project: project} do
@@ -99,12 +105,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       end
       ]
 
+      expected = ~q[
+        def my_thing(%Project.Structs.Account{}) do
+      end
+      ]
+
       assert {:ok, completion} =
                project
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.insert_text == "Account"
+      assert apply_completion(completion) == expected
     end
 
     test "A module without a dot should have a percent added", %{project: project} do
@@ -113,18 +124,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         def my_thing(%A|) do
       ]
 
-      assert {:ok, completion} =
-               project
-               |> complete(source)
-               |> fetch_completion(kind: :struct)
-
-      assert completion.label == "%Account"
-      assert completion.insert_text == "%Account{$1}"
-    end
-
-    test "A module with a dot in it should not have a percent added", %{project: project} do
-      source = ~q[
-        def my_thing(%Project.Structs.A|) do
+      expected = ~q[
+        alias Project.Structs.Account
+        def my_thing(%Account{$1}) do
       ]
 
       assert {:ok, completion} =
@@ -133,7 +135,25 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> fetch_completion(kind: :struct)
 
       assert completion.label == "%Account"
-      assert completion.insert_text == "Account{$1}"
+      assert apply_completion(completion) == expected
+    end
+
+    test "A module with a dot in it should not have a percent added", %{project: project} do
+      source = ~q[
+        def my_thing(%Project.Structs.A|) do
+      ]
+
+      expected = ~q[
+        def my_thing(%Project.Structs.Account{$1}) do
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert completion.label == "%Account"
+      assert apply_completion(completion) == expected
     end
 
     test "modules that define a struct should not emit curlies if they're already present", %{
@@ -145,13 +165,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       end
       ]
 
+      expected = ~q[
+      alias Project.Structs
+      def my_thing(%Structs.User{}) do
+      end
+      ]
+
       assert {:ok, completion} =
                project
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.insert_text == "User"
       assert completion.detail == "User (Struct)"
+      assert apply_completion(completion) == expected
     end
 
     test "should offer no other types of completions", %{project: project} do
