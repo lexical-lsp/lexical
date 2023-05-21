@@ -12,6 +12,7 @@ defmodule Lexical.Document do
   alias Lexical.Document.Lines
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Math
 
   import Lexical.Document.Line
 
@@ -22,6 +23,7 @@ defmodule Lexical.Document do
   defstruct [:uri, :path, :version, dirty?: false, lines: nil]
 
   @type version :: non_neg_integer()
+  @type fragment_position :: Position.t() | Convertible.t()
   @type t :: %__MODULE__{
           uri: String.t(),
           version: version(),
@@ -94,6 +96,59 @@ defmodule Lexical.Document do
       {:ok, line} -> {:ok, line}
       _ -> :error
     end
+  end
+
+  @doc """
+  Returns a fragment defined by the from and to arguments
+
+  Builds a string that represents the text of the document from the two positions given.
+  The from position, defaults to `:beginning` meaning the start of the document.
+  Positions can be a `Document.Position.t` or anything that will convert to a position using
+  `Convertible.to_native/2`.
+  """
+  @spec fragment(t, fragment_position() | :beginning, fragment_position()) :: String.t()
+  @spec fragment(t, fragment_position()) :: String.t()
+  def fragment(%__MODULE__{} = document, from \\ :beginning, to) do
+    line_count = size(document)
+    from_pos = convert_fragment_position(document, from)
+    to_pos = convert_fragment_position(document, to)
+
+    from_line = Math.clamp(from_pos.line, document.lines.starting_index, line_count)
+    to_line = Math.clamp(to_pos.line, from_line, line_count + 1)
+
+    # source code positions are 1 based, but string slices are zero-based. Need an ad-hoc conversion
+    # here.
+    from_character = from_pos.character - 1
+    to_character = to_pos.character - 1
+
+    line_range = from_line..to_line
+
+    line_range
+    |> Enum.reduce([], fn line_number, acc ->
+      to_append =
+        case fetch_line_at(document, line_number) do
+          {:ok, line(text: text, ending: ending)} ->
+            line_text = text <> ending
+
+            cond do
+              line_number == from_line ->
+                slice_length = String.length(line_text) - from_character
+                String.slice(line_text, from_character, slice_length)
+
+              line_number == to_line ->
+                String.slice(line_text, 0, to_character)
+
+              true ->
+                line_text
+            end
+
+          :error ->
+            []
+        end
+
+      [acc, to_append]
+    end)
+    |> IO.iodata_to_binary()
   end
 
   @spec apply_content_changes(t, version(), [Convertible.t() | nil]) ::
@@ -270,5 +325,19 @@ defmodule Lexical.Document do
 
   defp to_iodata(%__MODULE__{} = document) do
     Lines.to_iodata(document.lines)
+  end
+
+  @spec convert_fragment_position(t, Position.t() | :beginning | Convertible.t()) :: Position.t()
+  defp convert_fragment_position(%__MODULE__{}, %Position{} = pos) do
+    pos
+  end
+
+  defp convert_fragment_position(%__MODULE__{}, :beginning) do
+    Position.new(1, 1)
+  end
+
+  defp convert_fragment_position(%__MODULE__{} = document, convertible) do
+    {:ok, %Position{} = converted} = Convertible.to_native(convertible, document)
+    converted
   end
 end
