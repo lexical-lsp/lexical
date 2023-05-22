@@ -43,23 +43,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
-  defp to_completion_items(
-         local_completions,
-         %Project{} = project,
-         %Env{} = env,
-         %Completion.Context{} = context
-       ) do
-    Logger.info("Local completions are #{inspect(local_completions)}")
-
-    for result <- local_completions,
-        displayable?(project, result),
-        applies_to_context?(project, result, context),
-        applies_to_env?(env, result),
-        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Env, env)) do
-      item
-    end
-  end
-
   defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
     prefix_tokens = Env.prefix_tokens(env, 1)
 
@@ -84,7 +67,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
-  def context_will_give_meaningful_completions?(%Env{} = env) do
+  defp to_completion_items(
+         local_completions,
+         %Project{} = project,
+         %Env{} = env,
+         %Completion.Context{} = context
+       ) do
+    Logger.info("Local completions are #{inspect(local_completions)}")
+
+    for result <- local_completions,
+        displayable?(project, result),
+        applies_to_context?(project, result, context),
+        applies_to_env?(env, result),
+        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Env, env)) do
+      item
+    end
+  end
+
+  defp context_will_give_meaningful_completions?(%Env{} = env) do
     case Code.Fragment.cursor_context(env.prefix) do
       {:local_or_var, name} ->
         local_length = length(name)
@@ -102,9 +102,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
       :none ->
         false
-
-      {:alias, name} ->
-        length(name) > 1
 
       {:unquoted_atom, name} ->
         length(name) > 1
