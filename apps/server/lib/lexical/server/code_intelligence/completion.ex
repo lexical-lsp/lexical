@@ -103,6 +103,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       :none ->
         false
 
+      {:alias, name} ->
+        length(name) > 1
+
       {:unquoted_atom, name} ->
         length(name) > 1
 

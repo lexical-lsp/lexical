@@ -56,6 +56,11 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     test "returns an incomplete completion list when the context is empty", %{project: project} do
       assert %Completion.List{is_incomplete: true, items: []} = complete(project, " ")
     end
+
+    test "ignores a completion of one character", %{project: project} do
+      assert %Completion.List{is_incomplete: true, items: []} = complete(project, "E|")
+      assert %Completion.List{is_incomplete: true, items: []} = complete(project, ":e|")
+    end
   end
 
   describe "do/end" do
