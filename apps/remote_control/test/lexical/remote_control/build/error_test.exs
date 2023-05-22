@@ -417,5 +417,27 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
       assert diagnostic.position == 9
     end
+
+    test "handles record missing key's error" do
+      {:exception, exception, stack, quoted_ast} =
+        ~s[
+        defmodule Bar do
+          import Record
+          defrecord :user, name: nil, age: nil
+
+          def bar do
+            u = user(name: "John", email: "")
+          end
+        end
+        ]
+        |> compile()
+
+      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+
+      assert diagnostic.message =~
+               "record :user does not have the key: :email"
+
+      assert diagnostic.position == 7
+    end
   end
 end
