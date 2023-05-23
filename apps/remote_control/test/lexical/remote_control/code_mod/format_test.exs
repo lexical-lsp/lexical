@@ -90,20 +90,20 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       def foo(a, ) do
         true
       end
-      ] |> modify(project: project)
+      ] |> modify(project: project, convert_to_ast: false)
     end
 
     test "it should provide an error for a missing token", %{project: project} do
       assert {:error, %TokenMissingError{}} = ~q[
       defmodule TokenMissing do
        :bad
-      ] |> modify(project: project)
+      ] |> modify(project: project, convert_to_ast: false)
     end
 
     test "it correctly handles unicode", %{project: project} do
       assert {:ok, result} = ~q[
         {"🎸",    "o"}
-      ] |> modify(project: project)
+      ] |> modify(project: project, convert_to_ast: false)
 
       assert ~q[
         {"🎸", "o"}
@@ -119,7 +119,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
 
           end
       end
-      ] |> modify(project: project)
+      ] |> modify(project: project, convert_to_ast: false)
 
       assert result == formatted()
     end
@@ -132,9 +132,9 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       assert {:error, _} = ~q[
         def foo(a, ) do
       end
-      ] |> modify(project: project)
+      ] |> modify(project: project, convert_to_ast: false)
 
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 250
       assert diagnostic.message =~ "syntax error"
     end
   end
