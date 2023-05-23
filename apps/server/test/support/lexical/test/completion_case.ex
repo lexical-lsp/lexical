@@ -3,6 +3,7 @@ defmodule Lexical.Test.Server.CompletionCase do
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
+  alias Lexical.Protocol.Types.Completion.List, as: CompletionList
   alias Lexical.RemoteControl
   alias Lexical.Server
   alias Lexical.Server.CodeIntelligence.Completion
@@ -89,7 +90,16 @@ defmodule Lexical.Test.Server.CompletionCase do
       end)
     end
 
-    case Enum.filter(completions, matcher) do
+    completion_enumerable =
+      case completions do
+        %CompletionList{} = completion_list ->
+          completion_list.items
+
+        list when is_list(list) ->
+          list
+      end
+
+    case Enum.filter(completion_enumerable, matcher) do
       [] -> {:error, :not_found}
       [found] -> {:ok, found}
       found when is_list(found) -> {:ok, found}

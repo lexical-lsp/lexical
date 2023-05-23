@@ -11,7 +11,6 @@ defmodule Lexical.Completion.Environment do
   @callback in_context?(t, context_type) :: boolean
 
   @callback empty?(maybe_binary) :: boolean
-  @callback last_word(t) :: String.t()
   @callback prefix_tokens(t) :: [lexer_token]
   @callback prefix_tokens(t, token_count) :: [lexer_token]
 end
