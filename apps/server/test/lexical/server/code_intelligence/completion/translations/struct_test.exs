@@ -11,8 +11,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert Enum.find(account_and_user, &(&1.label == "%User"))
       account = Enum.find(account_and_user, &(&1.label == "%Account"))
       assert account
-      assert account.insert_text == "Account{$1}"
       assert account.detail == "Account (Struct)"
+
+      assert apply_completion(account) == "%Project.Structs.Account{$1}"
+    end
+
+    test "should complete after a dot", %{project: project} do
+      assert {:ok, account} =
+               project
+               |> complete("%Project.Structs.A|")
+               |> fetch_completion(kind: :struct)
+
+      assert account
+      assert account.detail == "Account (Struct)"
+
+      assert apply_completion(account) == "%Project.Structs.Account{$1}"
     end
 
     test "should complete aliases after %", %{project: project} do
@@ -21,10 +34,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
         def my_function(%Us|)
       ]
 
+      expected = ~q[
+        alias Project.Structs.User
+        def my_function(%User{$1})
+      ]
+
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "%User{$1}"
       assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "should complete, but not add curlies for aliases after %", %{project: project} do
@@ -32,10 +50,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
         alias Project.Structs.User
         def my_function(%Us|{})
       ]
+
+      expected = ~q[
+        alias Project.Structs.User
+        def my_function(%User{})
+      ]
+
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "%User"
       assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "should complete module aliases after %", %{project: project} do
@@ -46,10 +70,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
         def my_function(%Us|)
       ]
 
+      expected = ~q[
+        defmodule TestModule do
+        alias Project.Structs.User
+
+        def my_function(%User{$1})
+      ]
+
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "%User{$1}"
       assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "should complete, but not add curlies when last word not contains %", %{project: project} do
@@ -70,10 +101,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       source = ~q[
         def my_function(%Project.Structs.U|)
       ]
+
+      expected = ~q[
+        def my_function(%Project.Structs.User{$1})
+      ]
+
       assert [completion] = complete(project, source)
 
-      assert completion.insert_text == "User{$1}"
       assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "does not add curlies if they're already present in a non-aliased reference", %{
@@ -83,21 +119,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
         def my_function(%Project.Structs.U|{})
       ]
 
-      assert [completion] = complete(project, source)
+      expected = ~q[
+        def my_function(%Project.Structs.User{})
+      ]
 
-      assert completion.insert_text == "User"
+      assert [completion] = complete(project, source)
       assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "when using %, child structs are returned", %{project: project} do
       assert [account, user] = complete(project, "%Project.|", "%")
       assert account.label == "%Structs.Account"
       assert account.detail == "Structs.Account (Struct)"
-      assert account.insert_text == "Structs.Account{$1}"
 
       assert user.label == "%Structs.User"
       assert user.detail == "Structs.User (Struct)"
-      assert user.insert_text == "Structs.User{$1}"
     end
 
     test "it should complete struct fields", %{project: project} do

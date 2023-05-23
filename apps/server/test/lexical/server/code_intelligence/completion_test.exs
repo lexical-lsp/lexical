@@ -43,6 +43,20 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     refute [] == complete(project, "Project.|")
   end
 
+  describe "single character completions" do
+    test "completes elixir modules", %{project: project} do
+      assert [_ | _] = completions = complete(project, "E|")
+
+      for completion <- completions do
+        assert completion.kind == :module
+      end
+    end
+
+    test "ignores erlang modules", %{project: project} do
+      assert %Completion.List{is_incomplete: true, items: []} = complete(project, ":e|")
+    end
+  end
+
   describe "ignoring things" do
     test "return empty items and mark is_incomplete when single character contexts", %{
       project: project
@@ -51,6 +65,17 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
                is_incomplete: true,
                items: []
              }
+    end
+
+    test "returns an incomplete completion list when the context is empty", %{project: project} do
+      assert %Completion.List{is_incomplete: true, items: []} = complete(project, " ")
+    end
+  end
+
+  describe "do/end" do
+    test "returns do/end when the last token is do", %{project: project} do
+      [completion] = complete(project, "for a <- something do|")
+      assert completion.label == "do/end block"
     end
   end
 

@@ -83,12 +83,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_count_utf16(<<c::utf8, rest::binary>>, count) do
-    increment =
-      <<c::utf16>>
-      |> byte_size()
-      |> div(2)
-
-    do_count_utf16(rest, count + increment)
+    do_count_utf16(rest, count + codepoint_size(c, :utf16))
   end
 
   defp do_count_utf8(<<>>, count) do
@@ -100,7 +95,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_count_utf8(<<c::utf8, rest::binary>>, count) do
-    increment = byte_size(<<c::utf8>>)
+    increment = codepoint_size(c, :utf8)
     do_count_utf8(rest, count + increment)
   end
 
@@ -119,8 +114,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_utf16_offset(<<c::utf8, rest::binary>>, remaining, offset) do
-    s = <<c::utf8>>
-    increment = utf16_size(s)
+    increment = codepoint_size(c, :utf16)
     do_utf16_offset(rest, remaining - 1, offset + increment)
   end
 
@@ -141,18 +135,10 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_to_utf16(<<c::utf8, rest::binary>>, utf8_unit, utf16_unit) do
-    utf8_string = <<c::utf8>>
-    increment = utf16_size(utf8_string)
-    decrement = byte_size(utf8_string)
+    increment = codepoint_size(c, :utf16)
+    decrement = codepoint_size(c, :utf8)
 
     do_to_utf16(rest, utf8_unit - decrement, utf16_unit + increment)
-  end
-
-  defp utf16_size(binary) when is_binary(binary) do
-    binary
-    |> :unicode.characters_to_binary(:utf8, :utf16)
-    |> byte_size()
-    |> div(2)
   end
 
   # UTF-8
@@ -172,9 +158,8 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_utf8_offset(<<c::utf8, rest::binary>>, remaining, offset) do
-    s = <<c::utf8>>
-    increment = utf8_size(s)
-    decrement = utf16_size(s)
+    increment = codepoint_size(c, :utf8)
+    decrement = codepoint_size(c, :utf16)
     do_utf8_offset(rest, remaining - decrement, offset + increment)
   end
 
@@ -195,13 +180,27 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_to_utf8(<<c::utf8, rest::binary>>, utf16_unit, utf8_unit) do
-    utf8_code_units = byte_size(<<c::utf8>>)
-    utf16_code_units = utf16_size(<<c::utf8>>)
+    utf8_code_units = codepoint_size(c, :utf8)
+    utf16_code_units = codepoint_size(c, :utf16)
 
     do_to_utf8(rest, utf16_unit - utf16_code_units, utf8_unit + utf8_code_units)
   end
 
-  defp utf8_size(binary) when is_binary(binary) do
-    byte_size(binary)
+  @unicode_range 0..0x10_FFFF
+
+  defp codepoint_size(c, :utf16) when c in @unicode_range do
+    if c in 0x0000..0xD7FF or c in 0xE000..0xFFFF,
+      do: 1,
+      else: 2
+  end
+
+  defp codepoint_size(c, :utf8) when c in @unicode_range do
+    # See table at https://en.wikipedia.org/wiki/UTF-8#Encoding
+    cond do
+      c in 0x00..0x7F -> 1
+      c in 0x80..0x7FF -> 2
+      c in 0x800..0xFFFF -> 3
+      c in 0x1_0000..0x10_FFFF -> 4
+    end
   end
 end

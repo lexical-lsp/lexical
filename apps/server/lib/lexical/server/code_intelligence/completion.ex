@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.Document.Position
+  alias Lexical.Math
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
@@ -30,10 +31,40 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         %Position{} = position,
         %Completion.Context{} = context
       ) do
-    {:ok, env} = Env.new(project, document, position)
-    completions = completions(project, env, context)
-    Logger.warning("Emitting completions: #{inspect(completions)}")
-    completions
+    case Env.new(project, document, position) do
+      {:ok, env} ->
+        completions = completions(project, env, context)
+        Logger.warning("Emitting completions: #{inspect(completions)}")
+        completions
+
+      {:error, _} = error ->
+        Logger.error("Failed to build completion env #{inspect(error)}")
+        empty_completion_list()
+    end
+  end
+
+  defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
+    prefix_tokens = Env.prefix_tokens(env, 1)
+
+    cond do
+      prefix_tokens == [] ->
+        empty_completion_list()
+
+      match?([{:operator, :do}], prefix_tokens) and Env.empty?(env.suffix) ->
+        do_end_snippet = "do\n$0\nend"
+
+        env
+        |> Env.snippet(do_end_snippet, label: "do/end block")
+        |> List.wrap()
+
+      Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
+        Completion.List.new(items: [], is_incomplete: true)
+
+      true ->
+        project
+        |> RemoteControl.Api.complete(env.document, env.position)
+        |> to_completion_items(project, env, context)
+    end
   end
 
   defp to_completion_items(
@@ -53,26 +84,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
-  defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
-    cond do
-      Env.last_word(env) == "do" and Env.empty?(env.suffix) ->
-        insert_text = "do\n$0\nend"
+  defp context_will_give_meaningful_completions?(%Env{} = env) do
+    case Code.Fragment.cursor_context(env.prefix) do
+      {:local_or_var, name} ->
+        local_length = length(name)
 
-        [
-          Completion.Item.new(
-            label: "do/end",
-            insert_text_format: :snippet,
-            insert_text: insert_text
-          )
-        ]
+        surround_begin =
+          Math.clamp(env.position.character - local_length - 1, 1, env.position.character)
 
-      String.length(Env.last_word(env)) == 1 ->
-        Completion.List.new(items: [], is_incomplete: true)
+        case Code.Fragment.surround_context(env.prefix, {1, surround_begin}) do
+          :none ->
+            local_length > 1
 
-      true ->
-        project
-        |> RemoteControl.Api.complete(env.document, env.position)
-        |> to_completion_items(project, env, context)
+          _other ->
+            true
+        end
+
+      :none ->
+        false
+
+      {:unquoted_atom, name} ->
+        length(name) > 1
+
+      _ ->
+        true
     end
   end
 
@@ -144,5 +179,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
   defp applies_to_context?(_project, _result, _context) do
     true
+  end
+
+  defp empty_completion_list do
+    Completion.List.new(items: [], is_incomplete: true)
   end
 end
