@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Format
 
-  use Lexical.Test.CodeMod.Case
+  use Lexical.Test.CodeMod.Case, enable_ast_conversion: false
   use Patch
   import Messages
 
@@ -134,7 +134,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       end
       ] |> modify(project: project)
 
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 250
       assert diagnostic.message =~ "syntax error"
     end
   end
