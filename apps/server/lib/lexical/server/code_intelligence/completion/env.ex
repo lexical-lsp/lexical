@@ -10,6 +10,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Server.CodeIntelligence.Completion.Env
 
+  import Document.Line
+
   defstruct [
     :project,
     :document,
@@ -262,7 +264,59 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     boost(text, 0)
   end
 
+  # end builder behaviour
+
+  @spec strip_struct_reference(t()) :: {Document.t(), Position.t()}
+  def strip_struct_reference(%__MODULE__{} = env) do
+    if in_context?(env, :struct_reference) do
+      do_strip_struct_reference(env)
+    else
+      {env.document, env.position}
+    end
+  end
+
   # private
+
+  defp do_strip_struct_reference(%__MODULE__{} = env) do
+    completion_length =
+      case Code.Fragment.cursor_context(env.prefix) do
+        {:struct, {:dot, {:alias, struct_name}, []}} ->
+          # add one because of the trailing period
+          length(struct_name) + 1
+
+        {:struct, {:local_or_var, local_name}} ->
+          length(local_name)
+
+        {:struct, struct_name} ->
+          length(struct_name)
+
+        {:local_or_var, local_name} ->
+          length(local_name)
+      end
+
+    column = env.position.character
+    percent_position = column - (completion_length + 1)
+
+    new_line_start = String.slice(env.line, 0, percent_position - 1)
+    new_line_end = String.slice(env.line, percent_position..-1)
+    new_line = [new_line_start, new_line_end]
+    new_position = Position.new(env.position.line, env.position.character - 1)
+    line_to_replace = env.position.line
+
+    new_document =
+      env.document.lines
+      |> Enum.with_index(1)
+      |> Enum.reduce([], fn
+        {line(ending: ending), ^line_to_replace}, acc ->
+          [acc, new_line, ending]
+
+        {line(text: line_text, ending: ending), _}, acc ->
+          [acc, line_text, ending]
+      end)
+      |> IO.iodata_to_binary()
+
+    {new_document, new_position}
+  end
 
   defp in_directive?(%__MODULE__{} = env, context_name) do
     env

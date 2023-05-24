@@ -1,9 +1,23 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
+  alias Lexical.Document
   alias Lexical.Protocol.Types.Completion
   alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.Server.CodeIntelligence.Completion, as: C
+  alias Lexical.Server.CodeIntelligence.Completion.Env
 
   use Lexical.Test.Server.CompletionCase
   use Patch
+
+  import Lexical.Test.CursorSupport
+
+  def new_env(project, code) do
+    {line, column} = cursor_position(code)
+    code = strip_cursor(code)
+    document = Document.new("file:///file.ex", code, 1)
+    position = Document.Position.new(line, column)
+    {:ok, env} = Env.new(project, document, position)
+    env
+  end
 
   describe "excluding modules from lexical dependencies" do
     test "lexical modules are removed", %{project: project} do
