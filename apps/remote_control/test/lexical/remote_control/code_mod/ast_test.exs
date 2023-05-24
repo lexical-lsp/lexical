@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.CodeMod.AstTest do
   alias Lexical.RemoteControl.CodeMod.Ast
   alias Sourceror.Zipper
 
-  use Lexical.Test.CodeMod.Case
+  use Lexical.Test.CodeMod.Case, enable_ast_conversion: false
 
   setup do
     text = ~q[
@@ -56,7 +56,7 @@ defmodule Lexical.RemoteControl.CodeMod.AstTest do
       converted =
         doc
         |> Ast.traverse_line(2, &underscore_variable/1)
-        |> modify(convert_to_ast: false)
+        |> modify()
 
       assert converted =~ "_line = 2"
       assert converted =~ "line = 1"
@@ -68,7 +68,7 @@ defmodule Lexical.RemoteControl.CodeMod.AstTest do
       {converted, acc} =
         doc
         |> Ast.traverse_line(2, 0, &underscore_variable/2)
-        |> modify(convert_to_ast: false)
+        |> modify()
 
       assert acc == 1
       assert converted =~ "_line = 2"

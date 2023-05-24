@@ -4,7 +4,9 @@ defmodule Lexical.Test.CodeMod.Case do
 
   use ExUnit.CaseTemplate
 
-  using do
+  using opts do
+    convert_to_ast? = Keyword.get(opts, :enable_ast_conversion, true)
+
     quote do
       import Lexical.Test.Fixtures
       import unquote(CodeSigil), only: [sigil_q: 2]
@@ -25,7 +27,7 @@ defmodule Lexical.Test.CodeMod.Case do
       defp maybe_convert_to_ast(code, options) do
         alias Lexical.RemoteControl.CodeMod.Ast
 
-        if Keyword.get(options, :convert_to_ast, true) do
+        if Keyword.get(options, :convert_to_ast, unquote(convert_to_ast?)) do
           Ast.from(code)
         else
           {:ok, nil}

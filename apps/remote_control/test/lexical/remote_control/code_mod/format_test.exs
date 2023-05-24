@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Format
 
-  use Lexical.Test.CodeMod.Case
+  use Lexical.Test.CodeMod.Case, enable_ast_conversion: false
   use Patch
   import Messages
 
@@ -90,20 +90,20 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       def foo(a, ) do
         true
       end
-      ] |> modify(project: project, convert_to_ast: false)
+      ] |> modify(project: project)
     end
 
     test "it should provide an error for a missing token", %{project: project} do
       assert {:error, %TokenMissingError{}} = ~q[
       defmodule TokenMissing do
        :bad
-      ] |> modify(project: project, convert_to_ast: false)
+      ] |> modify(project: project)
     end
 
     test "it correctly handles unicode", %{project: project} do
       assert {:ok, result} = ~q[
         {"🎸",    "o"}
-      ] |> modify(project: project, convert_to_ast: false)
+      ] |> modify(project: project)
 
       assert ~q[
         {"🎸", "o"}
@@ -119,7 +119,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
 
           end
       end
-      ] |> modify(project: project, convert_to_ast: false)
+      ] |> modify(project: project)
 
       assert result == formatted()
     end
@@ -132,7 +132,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       assert {:error, _} = ~q[
         def foo(a, ) do
       end
-      ] |> modify(project: project, convert_to_ast: false)
+      ] |> modify(project: project)
 
       assert_receive file_diagnostics(diagnostics: [diagnostic]), 250
       assert diagnostic.message =~ "syntax error"
