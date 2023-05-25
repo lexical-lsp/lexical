@@ -1,4 +1,4 @@
-defmodule Lexical.MixProject do
+defmodule Lexical.LanguageServer.MixProject do
   use Mix.Project
 
   def project do

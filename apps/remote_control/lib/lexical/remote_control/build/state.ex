@@ -42,9 +42,11 @@ defmodule Lexical.RemoteControl.Build.State do
     # If the project directory isn't there, for some reason the main build fails, but a
     # non-forced build will work, after which the project can be built correctly.
     project = state.project
+    build_path = Project.build_path(project)
 
-    unless File.exists?(Project.build_path(project)) do
+    unless File.exists?(build_path) do
       Logger.info("Performing initial build on new workspace")
+      File.mkdir_p!(build_path)
 
       result =
         RemoteControl.Mix.in_project(project, fn _ ->
@@ -54,11 +56,11 @@ defmodule Lexical.RemoteControl.Build.State do
         end)
 
       case result do
-        {:error, {:exception, ex}} ->
+        {:error, {:exception, ex}, _} ->
           Logger.error("Initial compile failed #{Exception.message(ex)}")
 
-        _ ->
-          Logger.info("initial build complete")
+        other ->
+          Logger.info("initial build complete #{inspect(other)}")
       end
     end
 
@@ -153,7 +155,7 @@ defmodule Lexical.RemoteControl.Build.State do
   def set_compiler_options do
     Code.compiler_options(
       parser_options: parser_options(),
-      tracers: [RemoteControl.CompileTracer]
+      tracers: [RemoteControl.Compilation.Tracer]
     )
 
     :ok

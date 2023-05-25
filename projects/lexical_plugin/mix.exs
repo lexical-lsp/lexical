@@ -1,17 +1,14 @@
-defmodule Proto.MixProject do
+defmodule Lexical.Plugin.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :proto,
+      app: :lexical_plugin,
       version: "0.1.0",
-      build_path: "../../_build",
-      config_path: "../../config/config.exs",
-      deps_path: "../../deps",
-      lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      deps_path: "../../deps"
     ]
   end
 
@@ -25,9 +22,7 @@ defmodule Proto.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:jason, "~> 1.4", optional: true},
-      {:lexical, path: "../../projects/lexical"},
-      {:common, in_umbrella: true}
+      {:lexical, path: "../lexical"}
     ]
   end
 end
