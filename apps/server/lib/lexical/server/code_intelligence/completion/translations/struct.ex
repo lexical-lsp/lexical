@@ -5,24 +5,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
   use Translatable.Impl, for: Result.Struct
+  require Logger
 
   def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
-      completion(env, builder, struct.name)
+      completion(env, builder, struct.name, struct.full_name)
     else
       Translations.ModuleOrBehaviour.completion(
         env,
         builder,
-        struct.name
+        struct.name,
+        struct.full_name
       )
     end
   end
 
-  def completion(%Env{} = env, builder, struct_name) do
+  def completion(%Env{} = env, builder, struct_name, full_name) do
     builder_opts = [
       kind: :struct,
-      detail: "#{struct_name} (Struct)",
-      label: "%#{struct_name}"
+      detail: "#{full_name}",
+      label: "#{struct_name}"
     ]
 
     range = edit_range(env)
@@ -37,41 +39,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
     builder.text_edit_snippet(env, insert_text, range, builder_opts)
   end
 
-  def add_curlies?(%Env{} = env) do
+  defp add_curlies?(%Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
       not String.contains?(env.suffix, "{")
-    else
-      false
-    end
-  end
-
-  def add_percent?(%Env{} = env) do
-    if Env.in_context?(env, :struct_reference) do
-      # A leading percent is added only if the struct reference is to a top-level struct.
-      # If it's for a child struct (e.g. %Types.Range) then adding a percent at "Range"
-      # will be syntactically invalid and get us `%Types.%Range{}`
-
-      struct_module_name =
-        case Code.Fragment.cursor_context(env.prefix) do
-          {:struct, {:dot, {:alias, module_name}, []}} ->
-            '#{module_name}.'
-
-          {:struct, module_name} ->
-            module_name
-
-          {:dot, {:alias, module_name}, _} ->
-            module_name
-
-          _ ->
-            ''
-        end
-
-      contains_period? =
-        struct_module_name
-        |> List.to_string()
-        |> String.contains?(".")
-
-      not contains_period?
     else
       false
     end

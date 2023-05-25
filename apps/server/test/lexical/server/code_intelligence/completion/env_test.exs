@@ -1,10 +1,13 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   alias Lexical.Document
   alias Lexical.Server.CodeIntelligence.Completion
+  alias Lexical.Test.CodeSigil
   alias Lexical.Test.CursorSupport
   alias Lexical.Test.Fixtures
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
+
+  import CodeSigil
   import Completion.Env
   import CursorSupport
   import Fixtures
@@ -12,7 +15,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   def new_env(text) do
     project = project()
     {line, column} = cursor_position(text)
-    stripped_text = context_before_cursor(text)
+    stripped_text = strip_cursor(text)
     document = Document.new("file://foo.ex", stripped_text, 0)
 
     position = Document.Position.new(line, column)
@@ -473,12 +476,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     test "should be true if this is a multiple alias on multiple lines" do
       env =
-        """
+        ~q[
         alias Foo.{
           Bar,
           Baz|
         }
-        """
+        ]t
         |> new_env()
 
       assert in_context?(env, :alias)
@@ -499,12 +502,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     test "should be false if this is after a multiple alias on multiple lines" do
       env =
-        """
+        ~q[
         alias Foo.{
           Bar,
           Baz
         }|
-        """
+        ]t
         |> new_env()
 
       refute in_context?(env, :alias)
@@ -512,11 +515,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     test "should be false if this is after a multiple alias on multiple lines (second form)" do
       env =
-        """
+        ~q[
         alias Foo.{ Bar,
           Baz
         }|
-        """
+        ]t
         |> new_env()
 
       refute in_context?(env, :alias)
@@ -524,10 +527,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     test "should be false if this is after a multiple alias on multiple lines (third form)" do
       env =
-        """
+        ~q[
         alias Foo.{ Bar, Baz
         }|
-        """
+        ]t
         |> new_env()
 
       refute in_context?(env, :alias)
@@ -540,10 +543,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
     test "is false if the alias is on another line" do
       env =
-        """
+        ~q[
         alias Something.Else
         Macro.|
-        """
+        ]t
         |> new_env()
 
       refute in_context?(env, :alias)
@@ -577,6 +580,108 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     test "is false if in a pipe" do
       env = new_env("|> MyThing.|")
       refute in_context?(env, :alias)
+    end
+  end
+
+  describe "strip_struct_reference/1" do
+    test "with a reference followed by  __" do
+      {doc, _position} =
+        "%__"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "__"
+    end
+
+    test "with a reference followed by a module name" do
+      {doc, _position} =
+        "%Module"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "Module"
+    end
+
+    test "with a reference followed by a module and a dot" do
+      {doc, _position} =
+        "%Module."
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "Module."
+    end
+
+    test "with a reference followed by a nested module" do
+      {doc, _position} =
+        "%Module.Sub"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "Module.Sub"
+    end
+
+    test "with a reference followed by an alias" do
+      code = ~q[
+        alias Something.Else
+        %El|
+      ]t
+
+      {doc, _position} =
+        code
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "alias Something.Else\nEl"
+    end
+
+    test "on a line with two references, replacing the first" do
+      {doc, _position} =
+        "%First{} = %Se"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "%First{} = Se"
+    end
+
+    test "on a line with two references, replacing the second" do
+      {doc, _position} =
+        "%Fir| = %Second{}"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "Fir = %Second{}"
+    end
+
+    test "with a plain module" do
+      env = new_env("Module")
+      {doc, _position} = strip_struct_reference(env)
+
+      assert doc == env.document
+    end
+
+    test "with a plain module strip_struct_reference a dot" do
+      env = new_env("Module.")
+      {doc, _position} = strip_struct_reference(env)
+
+      assert doc == env.document
+    end
+
+    test "leaves leading spaces in place" do
+      {doc, _position} =
+        "     %Some"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "     Some"
+    end
+
+    test "works in a function definition" do
+      {doc, _position} =
+        "def my_function(%Lo|)"
+        |> new_env()
+        |> strip_struct_reference()
+
+      assert doc == "def my_function(Lo)"
     end
   end
 end

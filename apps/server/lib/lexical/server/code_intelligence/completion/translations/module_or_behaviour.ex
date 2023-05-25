@@ -26,7 +26,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     cond do
       struct_reference? and defines_struct? ->
-        Translations.Struct.completion(env, builder, module.name)
+        Translations.Struct.completion(env, builder, module.name, module.full_name)
 
       struct_reference? and
           immediate_descentent_defines_struct?(env.project, module.full_name) ->
@@ -34,7 +34,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         |> immediate_descendent_struct_modules(module.full_name)
         |> Enum.map(fn child_module_name ->
           local_name = local_module_name(module.full_name, child_module_name)
-          Translations.Struct.completion(env, builder, local_name)
+          Translations.Struct.completion(env, builder, local_name, child_module_name)
         end)
 
       true ->

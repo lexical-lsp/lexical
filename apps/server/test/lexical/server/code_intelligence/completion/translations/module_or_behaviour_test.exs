@@ -32,7 +32,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
       assert completion.kind == :module
       assert completion.label == "User"
-      assert completion.detail =~ "(Module)"
+      assert completion.detail =~ "Project.Structs.User"
     end
 
     test "behaviours should emit a completion", %{project: project} do
@@ -70,8 +70,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> fetch_completion(kind: :struct)
 
       assert completion.insert_text_format == :snippet
-      assert completion.label == "%MapSet"
-      assert completion.detail == "MapSet (Struct)"
+      assert completion.label == "MapSet"
+      assert completion.detail == "MapSet"
       assert apply_completion(completion) == "%MapSet{$1}\n"
     end
 
@@ -95,7 +95,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.detail == "User (Struct)"
+      assert completion.detail == "Project.Structs.User"
       assert apply_completion(completion) == expected
     end
 
@@ -134,7 +134,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.label == "%Account"
+      assert completion.label == "Account"
       assert apply_completion(completion) == expected
     end
 
@@ -152,7 +152,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.label == "%Account"
+      assert completion.label == "Account"
       assert apply_completion(completion) == expected
     end
 
@@ -176,15 +176,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.detail == "User (Struct)"
+      assert completion.detail == "Project.Structs.User"
       assert apply_completion(completion) == expected
     end
 
     test "should offer no other types of completions", %{project: project} do
       assert [] = complete(project, "%MapSet.|")
       assert [account, user] = complete(project, "%Project.|")
-      assert account.label == "%Structs.Account"
-      assert user.label == "%Structs.User"
+      assert account.label == "Structs.Account"
+      assert user.label == "Structs.User"
     end
   end
 end
