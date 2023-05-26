@@ -6,9 +6,10 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
 
   def apply_code_mod(original_text, _ast, options) do
     variable = Keyword.get(options, :variable, :unused)
+    line_number = Keyword.get(options, :line, 1)
     document = Document.new("file:///file.ex", original_text, 0)
 
-    with {:ok, document_edits} <- ReplaceWithUnderscore.edits(document, 1, variable) do
+    with {:ok, document_edits} <- ReplaceWithUnderscore.edits(document, line_number, variable) do
       {:ok, document_edits.edits}
     end
   end
@@ -18,87 +19,96 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
       {:ok, result} =
         ~q[
           def my_func(unused) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(_unused) do"
+      assert result == "def my_func(_unused) do\nend"
     end
 
     test "applied to a pattern match in params" do
       {:ok, result} =
         ~q[
           def my_func(%Document{} = unused) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(%Document{} = _unused) do"
+      assert result == "def my_func(%Document{} = _unused) do\nend"
     end
 
     test "applied to a pattern match preceding a struct in params" do
       {:ok, result} =
         ~q[
           def my_func(unused = %Document{}) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(_unused = %Document{}) do"
+      assert result == "def my_func(_unused = %Document{}) do\nend"
     end
 
     test "applied prior to a map" do
       {:ok, result} =
         ~q[
           def my_func(unused = %{}) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(_unused = %{}) do"
+      assert result == "def my_func(_unused = %{}) do\nend"
     end
 
     test "applied after a map %{} = unused" do
       {:ok, result} =
         ~q[
           def my_func(%{} = unused) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(%{} = _unused) do"
+      assert result == "def my_func(%{} = _unused) do\nend"
     end
 
     test "applied to a map key %{foo: unused}" do
       {:ok, result} =
         ~q[
           def my_func(%{foo: unused}) do
+          end
         ]
         |> modify()
 
-      assert result == "def my_func(%{foo: _unused}) do"
+      assert result == "def my_func(%{foo: _unused}) do\nend"
     end
 
     test "applied to a list element params = [unused, a, b | rest]" do
       {:ok, result} =
         ~q{
           def my_func([unused, a, b | rest]) do
+          end
         }
         |> modify()
 
-      assert result == "def my_func([_unused, a, b | rest]) do"
+      assert result == "def my_func([_unused, a, b | rest]) do\nend"
     end
 
     test "applied to the tail of a list params = [a, b, | unused]" do
       {:ok, result} =
         ~q{
           def my_func([a, b | unused]) do
+          end
         }
         |> modify()
 
-      assert result == "def my_func([a, b | _unused]) do"
+      assert result == "def my_func([a, b | _unused]) do\nend"
     end
 
     test "does not change the name of a function if it is the same as a parameter" do
       {:ok, result} = ~q{
-          def unused(unused) do
+        def unused(unused) do
+        end
       } |> modify()
-      assert result == "def unused(_unused) do"
+      assert result == "def unused(_unused) do\nend"
     end
   end
 
@@ -203,6 +213,26 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
   end
 
   describe "fixes in structures" do
+    test "applied to a branch in a case" do
+      {:ok, result} =
+        ~q[
+          case my_thing do
+            {:ok, unused} -> :ok
+            _ -> :error
+          end
+        ]t
+        |> modify(line: 2)
+
+      expected = ~q[
+        case my_thing do
+          {:ok, _unused} -> :ok
+          _ -> :error
+        end
+      ]t
+
+      assert result == expected
+    end
+
     test "applied to a match of a comprehension" do
       {:ok, result} =
         ~q[

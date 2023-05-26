@@ -8,10 +8,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
                |> complete("%Project.Structs.|")
                |> fetch_completion(kind: :struct)
 
-      assert Enum.find(account_and_user, &(&1.label == "%User"))
-      account = Enum.find(account_and_user, &(&1.label == "%Account"))
+      assert Enum.find(account_and_user, &(&1.label == "User"))
+      account = Enum.find(account_and_user, &(&1.label == "Account"))
       assert account
-      assert account.detail == "Account (Struct)"
+      assert account.detail == "Project.Structs.Account"
 
       assert apply_completion(account) == "%Project.Structs.Account{$1}"
     end
@@ -23,7 +23,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
                |> fetch_completion(kind: :struct)
 
       assert account
-      assert account.detail == "Account (Struct)"
+      assert account.detail == "Project.Structs.Account"
 
       assert apply_completion(account) == "%Project.Structs.Account{$1}"
     end
@@ -130,11 +130,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
     test "when using %, child structs are returned", %{project: project} do
       assert [account, user] = complete(project, "%Project.|", "%")
-      assert account.label == "%Structs.Account"
-      assert account.detail == "Structs.Account (Struct)"
+      assert account.label == "Structs.Account"
+      assert account.detail == "Project.Structs.Account"
 
-      assert user.label == "%Structs.User"
-      assert user.detail == "Structs.User (Struct)"
+      assert user.label == "Structs.User"
+      assert user.detail == "Project.Structs.User"
     end
 
     test "it should complete struct fields", %{project: project} do

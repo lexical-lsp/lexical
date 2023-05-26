@@ -1,27 +1,19 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
   alias Lexical.Document
   alias Lexical.Document.Changes
-  alias Lexical.Document.Edit
   alias Lexical.RemoteControl.CodeMod.Ast
-  alias Lexical.RemoteControl.CodeMod.Diff
 
   @spec edits(Document.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, Changes.t()} | :error
   def edits(%Document{} = document, line_number, variable_name) do
     variable_name = ensure_atom(variable_name)
 
-    with {:ok, line_text} <- Document.fetch_text_at(document, line_number),
-         {:ok, line_ast} <- Ast.from(line_text),
-         {:ok, transformed_text} <- apply_transform(line_text, line_ast, variable_name) do
-      edits = to_edits(line_number, line_text, transformed_text)
+    case apply_transform(document, line_number, variable_name) do
+      {:ok, edits} ->
+        {:ok, Changes.new(document, edits)}
 
-      {:ok, Changes.new(document, edits)}
-    end
-  end
-
-  defp to_edits(line_number, orig_text, fixed_text) do
-    for %Edit{text: "_"} = edit <- Diff.diff(orig_text, fixed_text) do
-      adjust_line_number(edit, line_number)
+      error ->
+        error
     end
   end
 
@@ -33,55 +25,21 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
     variable_name
   end
 
-  defp apply_transform(line_text, quoted_ast, unused_variable_name) do
+  defp apply_transform(document, line_number, unused_variable_name) do
     underscored_variable_name = :"_#{unused_variable_name}"
-    leading_indent = leading_indent(line_text)
 
-    Macro.postwalk(quoted_ast, fn
-      {^unused_variable_name, meta, nil} ->
-        {underscored_variable_name, meta, nil}
+    result =
+      Ast.traverse_line(document, line_number, [], fn
+        {{^unused_variable_name, _meta, nil} = node, _} = zipper, patches ->
+          [patch] = Sourceror.Patch.rename_identifier(node, underscored_variable_name)
+          {zipper, [patch | patches]}
 
-      other ->
-        other
-    end)
-    |> Macro.to_string()
-    # We're dealing with a single error on a single line.
-    # If the line doesn't compile (like it has a do with no end), ElixirSense
-    # adds additional lines do documents with errors, so take the first line, as it's
-    # the properly transformed source
-    |> fetch_line(0)
-    |> case do
-      {:ok, text} ->
-        {:ok, "#{leading_indent}#{text}"}
+        zipper, acc ->
+          {zipper, acc}
+      end)
 
-      error ->
-        error
+    with {:ok, _, patches} <- result do
+      Ast.patches_to_edits(patches)
     end
-  end
-
-  @indent_regex ~r/^\s+/
-  defp leading_indent(line_text) do
-    case Regex.scan(@indent_regex, line_text) do
-      [indent] -> indent
-      _ -> ""
-    end
-  end
-
-  defp fetch_line(message, line_number) do
-    line =
-      message
-      |> String.split(["\r\n", "\r", "\n"])
-      |> Enum.at(line_number)
-
-    case line do
-      nil -> :error
-      other -> {:ok, other}
-    end
-  end
-
-  defp adjust_line_number(%Edit{} = text_edit, line_number) do
-    text_edit
-    |> put_in([:range, :start, :line], line_number)
-    |> put_in([:range, :end, :line], line_number)
   end
 end

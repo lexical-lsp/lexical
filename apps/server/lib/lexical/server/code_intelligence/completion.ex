@@ -61,8 +61,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         Completion.List.new(items: [], is_incomplete: true)
 
       true ->
+        {document, position} = Env.strip_struct_reference(env)
+
         project
-        |> RemoteControl.Api.complete(env.document, env.position)
+        |> RemoteControl.Api.complete(document, position)
         |> to_completion_items(project, env, context)
     end
   end
@@ -142,7 +144,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         true
 
       struct_reference? and struct_module == Result.Module ->
-        Intelligence.defines_struct?(env.project, result.full_name, to: :grandchild)
+        Intelligence.defines_struct?(env.project, result.full_name, to: :child)
 
       struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
         true

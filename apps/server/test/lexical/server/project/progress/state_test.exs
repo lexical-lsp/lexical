@@ -5,8 +5,7 @@ defmodule Lexical.Server.Project.Progress.StateTest do
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.Fixtures
 
-  use ExUnit.Case
-  use Patch
+  use ExUnit.Case, async: true
 
   setup do
     project = project()
