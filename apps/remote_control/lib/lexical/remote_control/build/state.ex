@@ -50,7 +50,7 @@ defmodule Lexical.RemoteControl.Build.State do
 
       result =
         RemoteControl.Mix.in_project(project, fn _ ->
-          with_progress "compile", fn ->
+          with_progress building_label(project), fn ->
             Mix.Task.run(:compile, mix_compile_opts(false))
           end
         end)
@@ -71,7 +71,7 @@ defmodule Lexical.RemoteControl.Build.State do
     project = state.project
 
     Build.with_lock(fn ->
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(force?) end)
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(state.project, force?) end)
       elapsed_ms = to_ms(elapsed_us)
 
       {compile_message, diagnostics} =
@@ -178,6 +178,10 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
+  def building_label(%Project{} = project) do
+    "Building #{Project.name(project)}"
+  end
+
   defp now do
     System.system_time(:millisecond)
   end
@@ -187,7 +191,7 @@ defmodule Lexical.RemoteControl.Build.State do
     millis_since_last_edit >= edit_window_millis()
   end
 
-  defp safe_compile_project(force?) do
+  defp safe_compile_project(%Project{} = project, force?) do
     RemoteControl.Mix.in_project(fn _ ->
       Mix.Task.clear()
 
@@ -196,7 +200,7 @@ defmodule Lexical.RemoteControl.Build.State do
       compile_fun = fn ->
         Mix.Task.clear()
 
-        with_progress "compile", fn ->
+        with_progress building_label(project), fn ->
           Mix.Task.run("compile", mix_compile_opts(force?))
         end
       end
@@ -223,22 +227,22 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp prepare_for_project_build(true = _force?) do
     if connected_to_internet?() do
-      with_progress "local.hex", fn ->
+      with_progress "mix local.hex", fn ->
         Mix.Task.run("local.hex", ~w(--force --if-missing))
       end
 
-      with_progress "local.rebar", fn ->
+      with_progress "mix local.rebar", fn ->
         Mix.Task.run("local.rebar", ~w(--force --if-missing))
       end
 
-      with_progress "deps.get", fn ->
+      with_progress "mix deps.get", fn ->
         Mix.Task.run("deps.get")
       end
     else
       Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
     end
 
-    with_progress "deps.compile", fn ->
+    with_progress "mix deps.compile", fn ->
       Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
     end
 

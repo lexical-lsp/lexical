@@ -9,11 +9,11 @@ defmodule Lexical.RemoteControl.Plugin do
 
   def on_module_updated(plugin_module) do
     if Keyword.has_key?(plugin_module.__info__(:attributes), :lexical_plugin) do
-      current_plugiuns = get()
+      current_plugins = get()
 
-      unless exists?(current_plugiuns, plugin_module) do
+      unless exists?(current_plugins, plugin_module) do
         plugin_module.init()
-        add(current_plugiuns, plugin_module)
+        add(current_plugins, plugin_module)
       end
     end
   end

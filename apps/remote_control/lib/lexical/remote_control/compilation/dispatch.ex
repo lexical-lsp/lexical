@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Compilation.Dispatch do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
   alias Lexical.RemoteControl.Plugin
 
@@ -37,16 +38,17 @@ defmodule Lexical.RemoteControl.Compilation.Dispatch do
   end
 
   defp progress_message(file) do
-    relative_path = Path.basename(file)
-    message = "compiling: " <> relative_path
+    relative_path_elements =
+      file
+      |> Path.relative_to_cwd()
+      |> Path.split()
 
-    label =
-      if String.starts_with?(relative_path, "deps") do
-        "mix deps.compile"
-      else
-        "mix compile"
-      end
+    base_dir = List.first(relative_path_elements)
+    file_name = List.last(relative_path_elements)
 
+    message = "compiling: " <> Path.join([base_dir, "...", file_name])
+
+    label = Build.State.building_label(RemoteControl.get_project())
     project_progress(label: label, message: message)
   end
 end
