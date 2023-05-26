@@ -32,7 +32,7 @@ defmodule Common.MixProject do
 
   defp deps do
     [
-      {:lexical, path: "../../projects/lexical"},
+      {:lexical_shared, path: "../../projects/lexical_shared"},
       {:stream_data, "~> 0.5", only: [:test], runtime: false},
       {:patch, "~> 0.12", only: [:test], optional: true, runtime: false}
     ]

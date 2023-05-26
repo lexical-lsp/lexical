@@ -41,7 +41,7 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
-      {:lexical, path: "../../projects/lexical"},
+      {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
       {:common, in_umbrella: true},

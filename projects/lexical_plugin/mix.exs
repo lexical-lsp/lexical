@@ -22,7 +22,7 @@ defmodule Lexical.Plugin.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:lexical, path: "../lexical"}
+      {:lexical_shared, path: "../lexical_shared"}
     ]
   end
 end

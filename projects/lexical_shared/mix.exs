@@ -1,9 +1,9 @@
-defmodule Lexical.MixProject do
+defmodule Lexical.Shared.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :lexical,
+      app: :lexical_shared,
       version: "0.1.0",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,

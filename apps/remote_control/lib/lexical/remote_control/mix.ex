@@ -23,7 +23,7 @@ defmodule Lexical.RemoteControl.Mix do
         project_root = Project.root_path(project)
 
         project
-        |> unique_project_name()
+        |> Project.atom_name()
         |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
       rescue
         ex ->
@@ -45,15 +45,5 @@ defmodule Lexical.RemoteControl.Mix do
         File.cd!(old_cwd)
       end
     end)
-  end
-
-  if Mix.env() == :test do
-    defp unique_project_name(%Project{} = project) do
-      Project.atom_name(project)
-    end
-  else
-    defp unique_project_name(%Project{} = project) do
-      :"#{Project.name(project)}.#{System.unique_integer()}"
-    end
   end
 end

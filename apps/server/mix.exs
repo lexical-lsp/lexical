@@ -48,7 +48,7 @@ defmodule Lexical.Server.MixProject do
 
   defp deps do
     [
-      {:lexical, path: "../../projects/lexical"},
+      {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:common, in_umbrella: true},
       {:elixir_sense, github: "elixir-lsp/elixir_sense"},
