@@ -97,7 +97,7 @@ jobs:
       - name: Run dialyzer
         run: |
           mix compile.protocols
-          mix dialyzer
+          make dialyzer.all
 
       # Step: Execute the tests.
       - name: Run tests

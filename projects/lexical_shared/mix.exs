@@ -1,4 +1,5 @@
 defmodule Lexical.Shared.MixProject do
+  Code.require_file("../mix_dialyzer.exs", "..")
   use Mix.Project
 
   def project do
@@ -8,7 +9,9 @@ defmodule Lexical.Shared.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      deps_path: "../../deps"
+      deps_path: "../../deps",
+      build_path: "../../_build",
+      dialyzer: Mix.Dialyzer.config()
     ]
   end
 
@@ -20,10 +23,12 @@ defmodule Lexical.Shared.MixProject do
   end
 
   # Run "mix help deps" to learn about dependencies.
+
   defp deps do
     [
       {:stream_data, "~> 0.5", only: [:test], runtime: false},
-      {:patch, "~> 0.12", runtime: false, only: [:dev, :test]}
+      {:patch, "~> 0.12", runtime: false, only: [:dev, :test]},
+      Mix.Dialyzer.dependency()
     ]
   end
 end

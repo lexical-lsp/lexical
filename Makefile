@@ -1,11 +1,20 @@
+project_dirs = lexical_shared lexical_plugin lexical_test
+dialyzer_dirs = lexical_shared lexical_plugin
+
 compile.all: compile.projects compile.umbrella
+
+dialyzer.all: compile.all dialyzer.projects dialyzer.umbrella
 
 test.all: test.projects test.umbrella
 
+dialyzer.umbrella:
+	mix dialyzer
+
+dialyzer.projects:
+	$(foreach dir, $(dialyzer_dirs), cd projects/$(dir) && mix dialyzer && cd ../..;)
+
 test.umbrella:
 	mix test
-
-project_dirs = lexical lexical_plugin lexical_test
 
 test.projects:
 	cd projects
@@ -17,4 +26,4 @@ compile.umbrella: compile.projects
 
 compile.projects:
 	cd projects
-	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix deps.get && mix compile --warnings-as-errors && cd ../..;)
+	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix deps.get && mix do clean, compile --warnings-as-errors && cd ../..;)

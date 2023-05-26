@@ -8,6 +8,7 @@ defmodule Lexical.Test.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      build_path: "../../_build",
       deps_path: "../../deps"
     ]
   end

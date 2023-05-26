@@ -1,5 +1,6 @@
 defmodule Lexical.Plugin.Diagnostic do
-  alias Lexical.Plugint.Diagnostic
+  alias Lexical.Document
+  alias Lexical.Plugin.Diagnostic
 
   @callback diagnose(Document.t()) :: [Diagnostic.Result.t()]
 
