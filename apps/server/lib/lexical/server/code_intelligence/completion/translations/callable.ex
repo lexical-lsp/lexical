@@ -61,10 +61,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
     argument_templates =
       argument_names
-      |> Enum.with_index()
+      |> Enum.with_index(1)
       |> Enum.map_join(", ", fn {name, index} ->
-        escaped_name = String.replace(name, "\\", "\\\\")
-        "${#{index + 1}:#{escaped_name}}"
+        "${#{index}:#{name}}"
       end)
 
     "#{callable.name}(#{argument_templates})"
