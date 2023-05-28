@@ -139,6 +139,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
     end
   end
 
+  describe "handling default arguments" do
+    test "works with a first arg", %{project: project} do
+      {:ok, [arity_1, arity_2]} =
+        project
+        |> complete("Project.DefaultArgs.first|")
+        |> fetch_completion(kind: :function)
+
+      assert arity_1.insert_text == "first_arg(${1:y})"
+      assert arity_2.insert_text == "first_arg(${1:x}, ${2:y})"
+    end
+
+    test "works with the middle arg", %{project: project} do
+      {:ok, [arity_1, arity_2]} =
+        project
+        |> complete("Project.DefaultArgs.middle|")
+        |> fetch_completion(kind: :function)
+
+      assert arity_1.insert_text == "middle_arg(${1:a}, ${2:c})"
+      assert arity_2.insert_text == "middle_arg(${1:a}, ${2:b}, ${3:c})"
+    end
+
+    test "works with the last arg", %{project: project} do
+      {:ok, [arity_1, arity_2]} =
+        project
+        |> complete("Project.DefaultArgs.last|")
+        |> fetch_completion(kind: :function)
+
+      assert arity_1.insert_text == "last_arg(${1:x})"
+      assert arity_2.insert_text == "last_arg(${1:x}, ${2:y})"
+    end
+
+    test "works with options", %{project: project} do
+      {:ok, [arity_1, arity_2]} =
+        project
+        |> complete("Project.DefaultArgs.opt|")
+        |> fetch_completion(kind: :function)
+
+      assert arity_1.insert_text == "options(${1:a})"
+      assert arity_2.insert_text == "options(${1:a}, ${2:opts})"
+    end
+
+    test "works with struct defaults", %{project: project} do
+      {:ok, [arity_1, arity_2]} =
+        project
+        |> complete("Project.DefaultArgs.struct|")
+        |> fetch_completion(kind: :function)
+
+      assert arity_1.insert_text == "struct_arg(${1:a})"
+      assert arity_2.insert_text == "struct_arg(${1:a}, ${2:b})"
+    end
+  end
+
   describe "sort_text" do
     test "dunder functions have the dunder removed in their sort_text", %{project: project} do
       assert {:ok, completion} =

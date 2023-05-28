@@ -1,12 +1,20 @@
 defmodule Lexical.RemoteControl.Completion.Result do
+  alias Lexical.RemoteControl.Completion.Result.ArgumentNames
+
   defmodule Function do
     @moduledoc false
     defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
+      arg_names =
+        case ArgumentNames.from_elixir_sense_map(elixir_sense_map) do
+          :error -> []
+          names -> names
+        end
+
       __MODULE__
       |> struct(elixir_sense_map)
-      |> Map.put(:argument_names, Map.get(elixir_sense_map, :args_list))
+      |> Map.put(:argument_names, arg_names)
     end
   end
 
@@ -15,9 +23,15 @@ defmodule Lexical.RemoteControl.Completion.Result do
     defstruct [:argument_names, :arity, :metadata, :name, :origin, :spec, :summary, :type]
 
     def new(%{} = elixir_sense_map) do
+      arg_names =
+        case ArgumentNames.from_elixir_sense_map(elixir_sense_map) do
+          :error -> []
+          names -> names
+        end
+
       __MODULE__
       |> struct(elixir_sense_map)
-      |> Map.put(:argument_names, Map.get(elixir_sense_map, :args_list))
+      |> Map.put(:argument_names, arg_names)
     end
   end
 
@@ -26,9 +40,15 @@ defmodule Lexical.RemoteControl.Completion.Result do
     defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
 
     def new(%{} = elixir_sense_map) do
+      arg_names =
+        case ArgumentNames.from_elixir_sense_map(elixir_sense_map) do
+          :error -> []
+          names -> names
+        end
+
       __MODULE__
       |> struct(elixir_sense_map)
-      |> Map.put(:argument_names, Map.get(elixir_sense_map, :args_list))
+      |> Map.put(:argument_names, arg_names)
     end
   end
 
