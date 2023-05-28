@@ -20,6 +20,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
     end
   end
 
+  def completion(%Env{} = env, builder, module_name, full_name, more) when is_integer(more) do
+    builder_opts = [
+      kind: :module,
+      label: "#{module_name}...(#{more} more structs)",
+      detail: "#{full_name}."
+    ]
+
+    insert_text = "#{module_name}."
+    range = edit_range(env)
+
+    builder.text_edit_snippet(env, insert_text, range, builder_opts)
+  end
+
   def completion(%Env{} = env, builder, struct_name, full_name) do
     builder_opts = [
       kind: :struct,

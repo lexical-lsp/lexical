@@ -24,18 +24,31 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
 
+    immediate_descentent_structs =
+      immediate_descendent_struct_modules(env.project, module.full_name)
+
+    defines_struct_in_descentents? =
+      immediate_descentent_defines_struct?(env.project, module.full_name) and
+        length(immediate_descentent_structs) > 1
+
     cond do
-      struct_reference? and defines_struct? ->
-        Translations.Struct.completion(env, builder, module.name, module.full_name)
+      struct_reference? and defines_struct_in_descentents? and defines_struct? ->
+        more = length(immediate_descentent_structs) - 1
+
+        [
+          Translations.Struct.completion(env, builder, module.name, module.full_name, more),
+          Translations.Struct.completion(env, builder, module.name, module.full_name)
+        ]
 
       struct_reference? and
           immediate_descentent_defines_struct?(env.project, module.full_name) ->
-        env.project
-        |> immediate_descendent_struct_modules(module.full_name)
-        |> Enum.map(fn child_module_name ->
+        Enum.map(immediate_descentent_structs, fn child_module_name ->
           local_name = local_module_name(module.full_name, child_module_name)
           Translations.Struct.completion(env, builder, local_name, child_module_name)
         end)
+
+      defines_struct? ->
+        Translations.Struct.completion(env, builder, module.name, module.full_name)
 
       true ->
         detail = builder.fallback(module.summary, module.name)
