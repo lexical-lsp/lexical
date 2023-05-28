@@ -343,7 +343,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   defp surround_context(%__MODULE__{} = env) do
     with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line),
          %{context: _} = context <-
-           Code.Fragment.surround_context(line, {1, env.zero_based_character}) do
+           Code.Fragment.surround_context(
+             line,
+             {1, maybe_trim_dot(env.zero_based_character, line)}
+           ) do
       {:ok, line, context}
     end
   end
@@ -489,5 +492,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       {:error, _, _, _, tokens} ->
         {:ok, tokens, ''}
     end
+  end
+
+  defp maybe_trim_dot(character, line) do
+    if String.ends_with?(line, "."), do: character - 1, else: character
   end
 end

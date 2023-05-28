@@ -4,8 +4,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @callables [Result.Function, Result.Macro]
 
+  def completion(%callable_module{argument_names: []} = callable, %Env{} = env)
+      when callable_module in @callables do
+    if not Env.in_context?(env, :pipe) do
+      do_completion(callable, env)
+    end
+  end
+
   def completion(%callable_module{} = callable, %Env{} = env)
       when callable_module in @callables do
+    do_completion(callable, env)
+  end
+
+  defp do_completion(callable, %Env{} = env) do
     add_args? = not String.contains?(env.suffix, "(")
 
     insert_text =

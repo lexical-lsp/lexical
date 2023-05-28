@@ -12,6 +12,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert [:deprecated] = completion.tags
     end
 
+    test "suggest arity 0 functions if not in a pipeline", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Application.loaded_app|")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "loaded_applications()"
+    end
+
+    test "do not suggest arity 0 functions if in a pipeline", %{project: project} do
+      {:error, :not_found} =
+        project
+        |> complete("|> Application.loaded_app|")
+        |> fetch_completion(kind: :function)
+    end
+
     test "arity 1 omits arguments if in a pipeline", %{project: project} do
       {:ok, [completion, _]} =
         project
