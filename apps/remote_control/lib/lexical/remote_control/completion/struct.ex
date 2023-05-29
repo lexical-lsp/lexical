@@ -16,6 +16,7 @@ defmodule Lexical.RemoteControl.Completion.Struct do
 
       _ ->
         "#{inspect(struct.__struct__(), pretty: true, width: 40)}"
+        |> trim_parent(full_name)
     end
   end
 
