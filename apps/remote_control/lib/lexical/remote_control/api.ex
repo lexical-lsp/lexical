@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
+  alias Lexical.RemoteControl.Completion.Struct
 
   require Logger
 
@@ -45,6 +46,10 @@ defmodule Lexical.RemoteControl.Api do
       document_string,
       position
     ])
+  end
+
+  def struct_doc(%Project{} = project, struct_module) do
+    RemoteControl.call(project, Struct, :doc, [struct_module])
   end
 
   def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
