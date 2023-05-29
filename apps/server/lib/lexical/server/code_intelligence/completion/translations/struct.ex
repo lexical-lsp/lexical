@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.Protocol.Types.Markup.Content
   alias Lexical.RemoteControl.Api
+  alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
-  alias Lexical.Protocol.Types.Markup.Content
 
   use Translatable.Impl, for: Result.Struct
   require Logger
@@ -61,7 +61,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
 
   defp to_markup(doc) do
     value = """
-
     ```elixir
     #{doc}
     ```

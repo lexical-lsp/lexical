@@ -2,16 +2,18 @@ defmodule Lexical.RemoteControl.Completion.Struct do
   require Logger
 
   def doc(full_name) when is_binary(full_name) do
-    Module.concat(Elixir, full_name)
-    |> doc(full_name)
-    |> format()
-  end
+    struct = Module.concat(Elixir, full_name)
 
-  def doc(struct, full_name) when is_atom(struct) do
-    with {:ok, t} <- fetch_struct_type(struct) do
-      default = default_key_values(struct)
-      t |> Macro.to_string() |> trim_parent(full_name) |> maybe_put_default(default)
-    else
+    case fetch_struct_type(struct) do
+      {:ok, t} ->
+        default = default_key_values(struct)
+
+        t
+        |> Macro.to_string()
+        |> trim_parent(full_name)
+        |> maybe_put_default(default)
+        |> replace_default_symbol()
+
       _ ->
         "#{inspect(struct.__struct__(), pretty: true, width: 40)}"
     end
@@ -63,10 +65,6 @@ defmodule Lexical.RemoteControl.Completion.Struct do
     Sourceror.to_string(quoted, locals_without_parens: [], line_length: 40)
   end
 
-  defp format(doc) do
-    replace_default_symbols(doc)
-  end
-
   defp trim_parent(doc, full_name) do
     parent_module = full_name |> String.split(".") |> Enum.slice(0..-2) |> Enum.join(".")
 
@@ -75,7 +73,7 @@ defmodule Lexical.RemoteControl.Completion.Struct do
     |> String.replace(" #{parent_module}.", " ")
   end
 
-  defp replace_default_symbols(doc) do
+  defp replace_default_symbol(doc) do
     String.replace(doc, "||", "\\\\")
   end
 end
