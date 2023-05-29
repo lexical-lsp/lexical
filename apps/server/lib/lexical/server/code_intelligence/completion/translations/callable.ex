@@ -17,11 +17,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   end
 
   defp do_completion(callable, %Env{} = env) do
+    callable = reduce_args_when_pipe(callable, env)
     add_args? = not String.contains?(env.suffix, "(")
 
     insert_text =
       if add_args? do
-        callable_snippet(callable, env)
+        callable_snippet(callable)
       else
         callable.name
       end
@@ -52,7 +53,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       )
 
     call_capture =
-      Env.snippet(env, callable_snippet(callable, env),
+      Env.snippet(env, callable_snippet(callable),
         detail: "(Capture with arguments)",
         kind: :function,
         label: label(callable),
@@ -62,16 +63,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     [complete_capture, call_capture]
   end
 
-  defp callable_snippet(%_{} = callable, %Env{} = env) do
-    argument_names =
-      if Env.in_context?(env, :pipe) do
-        tl(callable.argument_names)
-      else
-        callable.argument_names
-      end
-
+  defp callable_snippet(%_{} = callable) do
     argument_templates =
-      argument_names
+      callable.argument_names
       |> Enum.with_index(1)
       |> Enum.map_join(", ", fn {name, index} ->
         "${#{index}:#{name}}"
@@ -92,5 +86,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp name_and_arity(%_{name: name, arity: arity}) do
     "#{name}/#{arity}"
+  end
+
+  defp reduce_args_when_pipe(%{argument_names: argument_names} = callable, %Env{} = env) do
+    if Env.in_context?(env, :pipe) do
+      %{callable | argument_names: tl(argument_names)}
+    else
+      callable
+    end
   end
 end

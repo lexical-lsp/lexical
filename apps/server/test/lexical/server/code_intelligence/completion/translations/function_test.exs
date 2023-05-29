@@ -22,10 +22,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
     end
 
     test "do not suggest arity 0 functions if in a pipeline", %{project: project} do
-      {:error, :not_found} =
-        project
-        |> complete("|> Application.loaded_app|")
-        |> fetch_completion(kind: :function)
+      assert {:error, :not_found} =
+               project
+               |> complete("|> Application.loaded_app|")
+               |> fetch_completion(kind: :function)
     end
 
     test "arity 1 omits arguments if in a pipeline", %{project: project} do
@@ -35,6 +35,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> fetch_completion(kind: :function)
 
       assert completion.insert_text == "dedup()"
+      assert completion.label == "dedup()"
     end
 
     test "arity > 1 omits the first argument if in a pipeline", %{project: project} do
