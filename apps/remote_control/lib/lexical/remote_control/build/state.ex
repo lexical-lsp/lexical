@@ -38,33 +38,15 @@ defmodule Lexical.RemoteControl.Build.State do
     Map.has_key?(state.uri_to_source_and_edit_time, uri)
   end
 
-  def initial_compile(%__MODULE__{} = state) do
-    # If the project directory isn't there, for some reason the main build fails, but a
-    # non-forced build will work, after which the project can be built correctly.
+  def ensure_build_directory(%__MODULE__{} = state) do
+    # If the project directory isn't there, for some reason the main build fails, so we create it here
+    # to ensure that the build will succeed.
     project = state.project
     build_path = Project.build_path(project)
 
     unless File.exists?(build_path) do
-      Logger.info("Performing initial build on new workspace")
       File.mkdir_p!(build_path)
-
-      result =
-        RemoteControl.Mix.in_project(project, fn _ ->
-          with_progress building_label(project), fn ->
-            Mix.Task.run(:compile, mix_compile_opts(false))
-          end
-        end)
-
-      case result do
-        {:error, {:exception, ex}, _} ->
-          Logger.error("Initial compile failed #{Exception.message(ex)}")
-
-        other ->
-          Logger.info("initial build complete #{inspect(other)}")
-      end
     end
-
-    update_build_path(project)
   end
 
   def compile_project(%__MODULE__{} = state, force?) do
@@ -201,7 +183,9 @@ defmodule Lexical.RemoteControl.Build.State do
         Mix.Task.clear()
 
         with_progress building_label(project), fn ->
-          Mix.Task.run("compile", mix_compile_opts(force?))
+          result = Mix.Task.run(:compile, mix_compile_opts(force?))
+          Mix.Task.run(:loadpaths)
+          result
         end
       end
 
@@ -345,15 +329,6 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp parser_options do
     [columns: true, token_metadata: true]
-  end
-
-  defp update_build_path(%Project{} = project) do
-    RemoteControl.Mix.in_project(project, fn _ ->
-      [Mix.Project.build_path(), "lib", "**", "ebin"]
-      |> Path.join()
-      |> Path.wildcard()
-      |> Enum.each(&Code.prepend_path/1)
-    end)
   end
 
   defp edit_window_millis do
