@@ -85,9 +85,8 @@ jobs:
         run: mix credo
 
       - name: Compile
-        run: |
-          mix clean
-          mix compile --warnings-as-errors
+        run: make compile.all
+
 
       - name: Maybe create plt files
         if: steps.cache-plt.outputs.cache-hit != 'true'
@@ -98,8 +97,8 @@ jobs:
       - name: Run dialyzer
         run: |
           mix compile.protocols
-          mix dialyzer
+          make dialyzer.all
 
       # Step: Execute the tests.
       - name: Run tests
-        run: mix test
+        run: make test.all

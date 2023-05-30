@@ -30,6 +30,8 @@ defmodule Lexical.Protocol.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:lexical_shared, path: "../../projects/lexical_shared"},
+      {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:common, in_umbrella: true},
       {:jason, "~> 1.4", optional: true},
       {:patch, "~> 0.12", only: [:test]},
