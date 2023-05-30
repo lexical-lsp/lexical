@@ -75,6 +75,25 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert apply_completion(completion) == "%MapSet{$1}\n"
     end
 
+    test "should work for aliased struct", %{project: project} do
+      source = ~q[
+        alias Project.Structs.Account, as: MyAccount
+        %My|
+      ]
+
+      expected = ~q[
+        alias Project.Structs.Account, as: MyAccount
+        %MyAccount{$1}
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert apply_completion(completion) == expected
+    end
+
     test "modules that define a struct should emit curlies if in a struct reference", %{
       project: project
     } do
@@ -182,9 +201,42 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     test "should offer no other types of completions", %{project: project} do
       assert [] = complete(project, "%MapSet.|")
-      assert [account, user] = complete(project, "%Project.|")
+      assert [account, order, order_line, user] = complete(project, "%Project.|")
+
       assert account.label == "Structs.Account"
+      assert order.label == "Structs.Order"
+      assert order_line.label == "Structs.Order.Line"
       assert user.label == "Structs.User"
+    end
+
+    test "should offer two completions when there are struct and its descendants", %{
+      project: project
+    } do
+      source = ~q[
+        alias Project.Structs.Order
+        %O|
+      ]
+
+      [order_line, order] = complete(project, source)
+
+      assert order_line.label == "Order...(1 more structs)"
+      assert order_line.kind == :module
+      assert apply_completion(order_line) =~ "%Order."
+
+      assert order.label == "Order"
+      assert order.kind == :struct
+      assert apply_completion(order) =~ "%Order{$1}"
+    end
+
+    test "should list all descendant structs when not concerned about the current module", %{
+      project: project
+    } do
+      source = ~q[
+        alias Project.Structs
+        %Structs.O|
+      ]
+
+      assert [_, _] = complete(project, source)
     end
   end
 end

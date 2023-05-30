@@ -40,15 +40,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
           Translations.Struct.completion(env, builder, module.name, module.full_name)
         ]
 
+      struct_reference? and defines_struct? ->
+        Translations.Struct.completion(env, builder, module.name, module.full_name)
+
       struct_reference? and
           immediate_descentent_defines_struct?(env.project, module.full_name) ->
         Enum.map(immediate_descentent_structs, fn child_module_name ->
           local_name = local_module_name(module.full_name, child_module_name)
           Translations.Struct.completion(env, builder, local_name, child_module_name)
         end)
-
-      struct_reference? and defines_struct? ->
-        Translations.Struct.completion(env, builder, module.name, module.full_name)
 
       true ->
         detail = builder.fallback(module.summary, module.name)
