@@ -47,7 +47,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
           Translations.Struct.completion(env, builder, local_name, child_module_name)
         end)
 
-      defines_struct? ->
+      struct_reference? and defines_struct? ->
         Translations.Struct.completion(env, builder, module.name, module.full_name)
 
       true ->
