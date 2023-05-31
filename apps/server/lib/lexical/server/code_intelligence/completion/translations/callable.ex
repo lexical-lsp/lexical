@@ -73,10 +73,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     normalized = String.replace(name, "__", "")
     fun = "#{normalized}/#{arity}"
 
-    unless String.starts_with?(name, "__") or name in ["module_info"] do
-      Env.boost(fun)
-    else
+    if String.starts_with?(name, "__") or name in ["module_info"] do
       fun
+    else
+      Env.boost(fun)
     end
   end
 

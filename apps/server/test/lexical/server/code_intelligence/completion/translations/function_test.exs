@@ -117,7 +117,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       [capture, args_capture] =
         project
         |> complete(source)
-        |> Enum.filter(&(&1.sort_text == "&is_map/1"))
+        |> Enum.filter(&(String.ends_with?(&1.sort_text, "is_map/1")))
 
       assert capture.detail == "(Capture)"
       assert capture.insert_text == "is_map/1"
