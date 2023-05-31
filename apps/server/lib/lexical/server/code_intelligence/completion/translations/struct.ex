@@ -5,7 +5,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
   use Translatable.Impl, for: Result.Struct
-  require Logger
 
   def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
@@ -37,7 +36,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
     builder_opts = [
       kind: :struct,
       detail: "#{full_name}",
-      label: "#{struct_name}",
+      label: "#{struct_name}"
     ]
 
     range = edit_range(env)

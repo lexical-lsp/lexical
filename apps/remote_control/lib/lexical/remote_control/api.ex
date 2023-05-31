@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
-  alias Lexical.RemoteControl.Completion.Struct
 
   require Logger
 
