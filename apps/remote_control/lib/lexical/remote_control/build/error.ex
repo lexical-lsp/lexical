@@ -1,68 +1,75 @@
 defmodule Lexical.RemoteControl.Build.Error do
-  alias Mix.Task.Compiler.Diagnostic
+  alias Lexical.Document
+  alias Lexical.Plugin.Diagnostic.Result
+  alias Mix.Task.Compiler
 
   require Logger
 
-  def normalize_diagnostic(%Diagnostic{message: message} = diagnostic) do
-    %{diagnostic | message: IO.iodata_to_binary(message)}
+  @elixir_source "Elixir"
+
+  def normalize_diagnostic(%Compiler.Diagnostic{} = diagnostic) do
+    Result.new(
+      diagnostic.file,
+      diagnostic.position,
+      diagnostic.message,
+      diagnostic.severity,
+      diagnostic.compiler_name
+    )
   end
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
-  def parse_error_to_diagnostics(context, {_error, detail} = message_info, token) do
-    detail_diagnostics = detail_diagnostics(detail)
+  def parse_error_to_diagnostics(
+        %Document{} = source,
+        context,
+        {_error, detail} = message_info,
+        token
+      ) do
+    detail_diagnostics = detail_diagnostics(source, detail)
     error = message_info_to_binary(message_info, token)
-    error_diagnostics = parse_error_to_diagnostics(context, error, token)
+    error_diagnostics = parse_error_to_diagnostics(source, context, error, token)
     uniq(error_diagnostics ++ detail_diagnostics)
   end
 
-  def parse_error_to_diagnostics(context, message_info, token) do
+  def parse_error_to_diagnostics(%Document{} = source, context, message_info, token) do
     parse_error_diagnostic_functions = [
-      &build_end_line_diagnostics/3,
-      &build_start_line_diagnostics/3,
-      &build_hint_diagnostics/3
+      &build_end_line_diagnostics/4,
+      &build_start_line_diagnostics/4,
+      &build_hint_diagnostics/4
     ]
 
-    Enum.flat_map(parse_error_diagnostic_functions, & &1.(context, message_info, token))
+    Enum.flat_map(
+      parse_error_diagnostic_functions,
+      & &1.(source, context, message_info, token)
+    )
   end
 
   defp uniq(diagnostics) do
     # We need to uniq by position because the same position can be reported
     # and the `end_line_diagnostic` is always the precise one
     extract_line = fn
-      %Diagnostic{position: {line, _column}} -> line
-      %Diagnostic{position: line} -> line
+      %Result{position: {line, _column}} -> line
+      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
+      %Result{position: line} when is_integer(line) -> line
     end
 
     Enum.uniq_by(diagnostics, extract_line)
   end
 
-  defp build_end_line_diagnostics(context, message_info, token) do
+  defp build_end_line_diagnostics(%Document{} = source, context, message_info, token) do
     [end_line_message | _] = String.split(message_info, "\n")
-
-    [
-      %Diagnostic{
-        file: nil,
-        severity: :error,
-        position: context_to_position(context),
-        compiler_name: "Elixir",
-        message: "#{end_line_message}#{token}"
-      }
-    ]
+    message = "#{end_line_message}#{token}"
+    diagnostic = Result.new(source.uri, context_to_position(context), message, :error, "Elixir")
+    [diagnostic]
   end
 
   @start_line_regex ~r/(\w+) \(for (.*) starting at line (\d+)\)/
-  defp build_start_line_diagnostics(_context, message_info, _token) do
+  defp build_start_line_diagnostics(%Document{} = source, _context, message_info, _token) do
     case Regex.run(@start_line_regex, message_info) do
       [_, missing, token, start_line] ->
-        diagnostic = %Diagnostic{
-          file: nil,
-          severity: :error,
-          position: String.to_integer(start_line),
-          compiler_name: "Elixir",
-          message: "The #{token} here is missing a terminator: #{inspect(missing)}"
-        }
-
-        [diagnostic]
+        message = "The #{token} here is missing a terminator: #{inspect(missing)}"
+        position = String.to_integer(start_line)
+        result = Result.new(source.uri, position, message, :error, @elixir_source)
+        [result]
 
       _ ->
         []
@@ -70,141 +77,128 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   @hint_regex ~r/HINT: .*on line (\d+).*/m
-  defp build_hint_diagnostics(_context, message_info, _token) do
+  defp build_hint_diagnostics(%Document{} = source, _context, message_info, _token) do
     case Regex.run(@hint_regex, message_info) do
       [message, hint_line] ->
-        diagnostic = %Diagnostic{
-          file: nil,
-          severity: :error,
-          position: String.to_integer(hint_line),
-          compiler_name: "Elixir",
-          message: String.replace(message, ~r/on line \d+/, "here")
-        }
-
-        [diagnostic]
+        message = String.replace(message, ~r/on line \d+/, "here")
+        position = String.to_integer(hint_line)
+        result = Result.new(source.uri, position, message, :error, @elixir_source)
+        [result]
 
       _ ->
         []
     end
   end
 
-  def error_to_diagnostic(%CompileError{} = compile_error, _stack, _quoted_ast) do
-    %Diagnostic{
-      message: compile_error.description,
-      position: position(compile_error.line),
-      compiler_name: "Elixir",
-      file: compile_error.file,
-      severity: :error
-    }
+  def error_to_diagnostic(
+        %Document{} = source,
+        %CompileError{} = compile_error,
+        _stack,
+        _quoted_ast
+      ) do
+    path = compile_error.file || source.path
+
+    Result.new(
+      path,
+      position(compile_error.line),
+      compile_error.description,
+      :error,
+      @elixir_source
+    )
   end
 
-  def error_to_diagnostic(%FunctionClauseError{} = function_clause, stack, _quoted_ast) do
+  def error_to_diagnostic(
+        %Document{} = source,
+        %FunctionClauseError{} = function_clause,
+        stack,
+        _quoted_ast
+      ) do
     [{_module, _function, _arity, context} | _] = stack
-
-    %Diagnostic{
-      message: Exception.message(function_clause),
-      position: context_to_position(context),
-      file: nil,
-      severity: :error,
-      compiler_name: "Elixir"
-    }
+    message = Exception.message(function_clause)
+    position = context_to_position(context)
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%Mix.Error{} = error, stack, quoted_ast) do
+  def error_to_diagnostic(%Document{} = source, %Mix.Error{} = error, stack, quoted_ast) do
     [{module, function, arguments, _} | _] = stack
 
     mfa = {module, function, arguments}
-
-    %Diagnostic{
-      message: Exception.message(error),
-      position: mfa_to_position(mfa, quoted_ast),
-      file: stack_to_file(stack),
-      severity: :error,
-      compiler_name: "Elixir"
-    }
+    message = Exception.message(error)
+    position = mfa_to_position(mfa, quoted_ast)
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%UndefinedFunctionError{} = undefined_function, stack, quoted_ast) do
+  def error_to_diagnostic(
+        %Document{} = source,
+        %UndefinedFunctionError{} = undefined_function,
+        stack,
+        quoted_ast
+      ) do
     [{module, function, arguments, context} | _] = stack
+    message = Exception.message(undefined_function)
 
-    if context == [] do
-      arity = length(arguments)
-      mfa = {module, function, arity}
+    position =
+      if context == [] do
+        arity = length(arguments)
+        mfa = {module, function, arity}
+        mfa_to_position(mfa, quoted_ast)
+      else
+        stack_to_position(stack)
+      end
 
-      %Diagnostic{
-        message: Exception.message(undefined_function),
-        position: mfa_to_position(mfa, quoted_ast),
-        file: stack_to_file(stack),
-        severity: :error,
-        compiler_name: "Elixir"
-      }
-    else
-      %Diagnostic{
-        message: Exception.message(undefined_function),
-        position: stack_to_position(stack),
-        file: nil,
-        severity: :error,
-        compiler_name: "Elixir"
-      }
-    end
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%RuntimeError{} = runtime_error, _stack, _quoted_ast) do
-    %Diagnostic{
-      message: Exception.message(runtime_error),
-      position: 1,
-      file: nil,
-      severity: :error,
-      compiler_name: "Elixir"
-    }
+  def error_to_diagnostic(
+        %Document{} = source,
+        %RuntimeError{} = runtime_error,
+        _stack,
+        _quoted_ast
+      ) do
+    message = Exception.message(runtime_error)
+    position = 1
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%ArgumentError{} = argument_error, stack, _quoted_ast) do
+  def error_to_diagnostic(
+        %Document{} = source,
+        %ArgumentError{} = argument_error,
+        stack,
+        _quoted_ast
+      ) do
     reversed_stack = Enum.reverse(stack)
 
     [{_, _, _, context}, {_, call, _, second_to_last_context} | _] = reversed_stack
 
     pipe_or_struct? = call in [:|>, :__struct__]
     expanding_macro? = second_to_last_context[:file] == 'expanding macro'
+    message = Exception.message(argument_error)
 
-    if pipe_or_struct? or expanding_macro? do
-      %Diagnostic{
-        message: Exception.message(argument_error),
-        position: context_to_position(context),
-        file: nil,
-        severity: :error,
-        compiler_name: "Elixir"
-      }
-    else
-      %Diagnostic{
-        message: Exception.message(argument_error),
-        position: stack_to_position(stack),
-        file: nil,
-        severity: :error,
-        compiler_name: "Elixir"
-      }
-    end
+    position =
+      if pipe_or_struct? or expanding_macro? do
+        context_to_position(context)
+      else
+        stack_to_position(stack)
+      end
+
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%module{} = exception, stack, _quoted_ast)
+  def error_to_diagnostic(%Document{} = source, %module{} = exception, stack, _quoted_ast)
       when module in [
              Protocol.UndefinedError,
              ExUnit.DuplicateTestError,
              ExUnit.DuplicateDescribeError
            ] do
-    %Diagnostic{
-      message: Exception.message(exception),
-      position: stack_to_position(stack),
-      file: nil,
-      severity: :error,
-      compiler_name: "Elixir"
-    }
+    message = Exception.message(exception)
+    position = stack_to_position(stack)
+    Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def message_to_diagnostic(message_string) do
+  def message_to_diagnostic(%Document{} = document, message_string) do
     message_string
     |> extract_individual_messages()
-    |> Enum.map(&do_message_to_diagnostic/1)
+    |> Enum.map(&do_message_to_diagnostic(document, &1))
     |> Enum.reject(&is_nil/1)
   end
 
@@ -300,16 +294,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     nil
   end
 
-  defp stack_to_file(stacktrace) do
-    case Enum.find(stacktrace, fn trace_element -> elem(trace_element, 0) == :elixir_eval end) do
-      {:elixir_eval, _, _, position_kw} ->
-        Keyword.get(position_kw, :file)
-
-      _ ->
-        nil
-    end
-  end
-
   defp context_to_position(context) do
     cond do
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
@@ -323,27 +307,27 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp do_message_to_diagnostic("") do
+  defp do_message_to_diagnostic(_, "") do
     nil
   end
 
-  defp do_message_to_diagnostic("warning: redefining module" <> _) do
+  defp do_message_to_diagnostic(_, "warning: redefining module" <> _) do
     nil
   end
 
-  defp do_message_to_diagnostic(message) do
+  defp do_message_to_diagnostic(%Document{} = document, message) do
     message_lines = String.split(message, "\n")
 
     with {:ok, location_line} <- find_location(message_lines),
          {:ok, {file, line, mfa}} <- parse_location(location_line) do
-      %Diagnostic{
-        compiler_name: "Elixir",
-        details: mfa,
-        message: message,
-        file: file,
-        position: line,
-        severity: :warning
-      }
+      file =
+        if blank?(file) do
+          document.path
+        else
+          file
+        end
+
+      Result.new(file, line, message, :warning, @elixir_source, mfa)
     else
       _ ->
         nil
@@ -402,24 +386,20 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   @detail_location_re ~r/at line (\d+)/
-  defp detail_diagnostics(detail) do
+  defp detail_diagnostics(%Document{} = source, detail) do
     case Regex.scan(@detail_location_re, detail) do
       [[matched, line_number]] ->
         line_number = String.to_integer(line_number)
         message = String.replace(detail, matched, "here")
-
-        [
-          %Diagnostic{
-            file: nil,
-            severity: :error,
-            position: line_number,
-            compiler_name: "Elixir",
-            message: message
-          }
-        ]
+        result = Result.new(source.uri, line_number, message, :error, @elixir_source)
+        [result]
 
       _ ->
         []
     end
+  end
+
+  defp blank?(s) when is_binary(s) do
+    String.trim(s) == ""
   end
 end

@@ -1,9 +1,13 @@
 defmodule Lexical.RemoteControl.Build.ErrorTest do
+  alias Lexical.Document
+  alias Lexical.Plugin.Diagnostic
   alias Lexical.RemoteControl.Build.Error
 
   use ExUnit.Case, async: true
 
   def compile(source) do
+    doc = Document.new("file:///unknown.ex", source, 0)
+
     case Code.string_to_quoted(source) do
       {:ok, quoted_ast} ->
         try do
@@ -12,16 +16,20 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            {:exception, filled_exception, stack, quoted_ast}
+            {doc, {:exception, filled_exception, stack, quoted_ast}}
         end
 
       error ->
-        error
+        {doc, error}
     end
   end
 
-  def parse_error({:error, {a, b, c}}) do
-    Error.parse_error_to_diagnostics(a, b, c)
+  def parse_error({source, {:error, {a, b, c}}}) do
+    Error.parse_error_to_diagnostics(source, a, b, c)
+  end
+
+  def error_to_diagnostic({source, {:exception, exception, stack, quoted_ast}}) do
+    Error.error_to_diagnostic(source, exception, stack, quoted_ast)
   end
 
   describe "normalize_diagnostic/1" do
@@ -40,9 +48,13 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       }
 
       normalized = Error.normalize_diagnostic(diagnostic)
+      assert %Diagnostic.Result{} = normalized
 
       assert normalized.message ==
                ":slave.stop/1 is deprecated. It will be removed in OTP 27. Use the 'peer' module instead"
+
+      assert String.starts_with?(normalized.uri, "file://")
+      assert String.ends_with?(normalized.uri, "lib/dummy.ex")
     end
   end
 
@@ -110,9 +122,12 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> parse_error()
 
       assert [end_diagnostic, start_diagnostic] = errors
+
+      assert %Diagnostic.Result{} = end_diagnostic
       assert end_diagnostic.message == "missing terminator: end (for \"do\" starting at line 2)"
       assert end_diagnostic.position == {5, 12}
 
+      assert %Diagnostic.Result{} = start_diagnostic
       assert start_diagnostic.message == ~S[The "do" here is missing a terminator: "end"]
       assert start_diagnostic.position == 2
     end
@@ -179,7 +194,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
   describe "error_to_diagnostic/3" do
     test "handles FunctionClauseError" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
         defmodule Foo do
           def add(a, b) when is_integer(a) and is_integer(b) do
             a + b
@@ -187,49 +203,52 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
 
         Foo.add("1", "2")
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[no function clause matching in Foo.add/2]
       assert diagnostic.position == 3
     end
 
     test "handles UndefinedError for erlang moudle" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
         defmodule Foo do
          :slave.stop
         end
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function :slave.stop/0 is undefined or private.]
       assert diagnostic.position == 3
     end
 
     test "handles UndefinedError for erlang function without defined module" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
 
          :slave.stop(:name, :name)
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function :slave.stop/2 is undefined or private.]
       assert diagnostic.position == 3
     end
 
     test "handles UndefinedError" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
         defmodule Foo do
           def bar do
             print(:bar)
           end
         end
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                ~s[undefined function print/1]
@@ -238,35 +257,37 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles UndefinedError without moudle" do
-      {:exception, exception, stack, quoted_ast} =
+      diagnostic =
         ~S[
 
           IO.ins
         ]
         |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function IO.ins/0 is undefined or private]
       assert diagnostic.position == 3
     end
 
     test "handles ArgumentError" do
-      {:exception, exception, stack, quoted_ast} = ~s[String.to_integer ""] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      diagnostic =
+        ~s[String.to_integer ""]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[errors were found at the given arguments:]
       assert diagnostic.position == 1
     end
 
     test "handles ArgumentError when in module" do
-      {:exception, exception, stack, quoted_ast} = ~s[
+      diagnostic =
+        ~s[
         defmodule Foo do
           :a |> {1, 2}
         end
-      ] |> compile()
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
@@ -275,14 +296,16 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles ArgumentError when in function" do
-      {:exception, exception, stack, quoted_ast} = ~s[
+      diagnostic =
+        ~s[
         defmodule Foo do
           def foo do
             :a |> {1, 2}
           end
         end
-      ] |> compile()
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                ~s[cannot pipe :a into {1, 2}, can only pipe into local calls foo()]
@@ -291,52 +314,56 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "can't find right line when use macro" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
           Module.create(
             Foo,
             quote do
               String.to_integer("")
             end,
             file: "")
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[errors were found at the given arguments:]
       assert diagnostic.position == nil
     end
 
     test "handles Protocol.UndefinedError for comprehension" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
         defmodule Foo do
           for i <- 1, do: i
-        end] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        end]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
       assert diagnostic.position == 3
     end
 
     test "handles Protocol.UndefinedError for comprehension when no module" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
           for i <- 1, do: i
-        ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
       assert diagnostic.position == 2
     end
 
     test "handles RuntimeError" do
-      {:exception, exception, stack, quoted_ast} = ~S[
+      diagnostic =
+        ~S[
       defmodule Foo do
         raise RuntimeError.exception("This is a runtime error")
       end
-      ] |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+      ]
+        |> compile()
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                ~s[This is a runtime error]
@@ -345,7 +372,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles ExUnit.DuplicateTestError" do
-      {:exception, exception, stack, quoted_ast} =
+      diagnostic =
         ~s[
         defmodule FooTest do
           use ExUnit.Case, async: true
@@ -360,15 +387,14 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
         ]
         |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[\"test foo\" is already defined in FooTest]
       assert diagnostic.position == 9
     end
 
     test "handles ExUnit.DuplicateDescribeError" do
-      {:exception, exception, stack, quoted_ast} =
+      diagnostic =
         ~s[
         defmodule FooTest do
           use ExUnit.Case, async: true
@@ -387,15 +413,14 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
         ]
         |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[describe \"foo\" is already defined in FooTest]
       assert diagnostic.position == 11
     end
 
     test "handles struct enforce key error" do
-      {:exception, exception, stack, quoted_ast} =
+      diagnostic =
         ~s(
         defmodule Foo do
           @enforce_keys [:a, :b]
@@ -409,8 +434,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
         )
         |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                "the following keys must also be given when building struct Foo: [:a, :b]"
@@ -419,7 +443,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles record missing key's error" do
-      {:exception, exception, stack, quoted_ast} =
+      diagnostic =
         ~s[
         defmodule Bar do
           import Record
@@ -431,8 +455,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
         ]
         |> compile()
-
-      diagnostic = Error.error_to_diagnostic(exception, stack, quoted_ast)
+        |> error_to_diagnostic()
 
       assert diagnostic.message =~
                "record :user does not have the key: :email"

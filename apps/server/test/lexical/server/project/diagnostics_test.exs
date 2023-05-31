@@ -1,10 +1,10 @@
 defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Document
+  alias Lexical.Plugin.Diagnostic
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project
   alias Lexical.Server.Transport
-  alias Mix.Task.Compiler
 
   use ExUnit.Case
   use Patch
@@ -24,7 +24,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
 
   def diagnostic(file_path, opts \\ []) do
     defaults = [
-      file: Document.Path.ensure_path(file_path),
+      uri: Document.Path.ensure_uri(file_path),
       severity: :error,
       message: "stuff broke",
       position: 1,
@@ -32,7 +32,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
     ]
 
     values = Keyword.merge(defaults, opts)
-    struct(Compiler.Diagnostic, values)
+    struct(Diagnostic.Result, values)
   end
 
   def with_patched_tranport(_) do
@@ -104,7 +104,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       Project.Dispatch.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
-      assert %Compiler.Diagnostic{} = diagnostic
+      assert %Diagnostic.Result{} = diagnostic
       assert diagnostic.position == {4, 1}
     end
   end
