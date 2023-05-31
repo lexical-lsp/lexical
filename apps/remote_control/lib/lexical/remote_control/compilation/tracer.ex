@@ -1,41 +1,17 @@
-defmodule Lexical.RemoteControl.CompileTracer do
+defmodule Lexical.RemoteControl.Compilation.Tracer do
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.ModuleMappings
+  alias Lexical.RemoteControl.Compilation
 
   import RemoteControl.Api.Messages
 
-  def trace({:on_module, module_binary, filename}, %Macro.Env{} = env) do
-    message = extract_module_updated(env.module, module_binary, filename)
-    ModuleMappings.update(env.module, env.file)
-    RemoteControl.notify_listener(message)
-    maybe_report_progress(env.file)
-
+  def trace({:on_module, module_binary, _filename}, %Macro.Env{} = env) do
+    message = extract_module_updated(env.module, module_binary, env.file)
+    Compilation.Dispatch.dispatch(message)
     :ok
   end
 
   def trace(_event, _env) do
     :ok
-  end
-
-  defp maybe_report_progress(file) do
-    if Path.extname(file) == ".ex" do
-      file
-      |> progress_message()
-      |> RemoteControl.notify_listener()
-    end
-  end
-
-  defp progress_message(file) do
-    relative_path = Path.relative_to_cwd(file)
-
-    label =
-      if String.starts_with?(relative_path, "deps") do
-        "mix deps.compile"
-      else
-        "mix compile"
-      end
-
-    project_progress(label: label, message: relative_path)
   end
 
   def extract_module_updated(module, module_binary, filename) do
@@ -61,9 +37,10 @@ defmodule Lexical.RemoteControl.CompileTracer do
       end
 
     module_updated(
-      name: module,
+      file: filename,
       functions: functions,
       macros: macros,
+      name: module,
       struct: struct
     )
   end

@@ -58,4 +58,8 @@ defmodule Lexical.RemoteControl.Api do
       position
     ])
   end
+
+  def diagnose(%Project{} = project, %Document{} = document) do
+    RemoteControl.call(project, RemoteControl.Plugin, :diagnose, [document])
+  end
 end

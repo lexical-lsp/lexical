@@ -18,8 +18,8 @@ defmodule Lexical.RemoteControl.Build.ProgressTest do
     result = with_progress "foo", fn -> :ok end
 
     assert result == :ok
-    assert_received project_progress(label: "mix foo", stage: :begin)
-    assert_received project_progress(label: "mix foo", stage: :complete)
+    assert_received project_progress(label: "foo", stage: :begin)
+    assert_received project_progress(label: "foo", stage: :complete)
   end
 
   test "it should send begin/complete event even there is an exception" do
@@ -27,7 +27,7 @@ defmodule Lexical.RemoteControl.Build.ProgressTest do
       with_progress "compile", fn -> raise Mix.Error, "can't compile" end
     end)
 
-    assert_received project_progress(label: "mix compile", stage: :begin)
-    assert_received project_progress(label: "mix compile", stage: :complete)
+    assert_received project_progress(label: "compile", stage: :begin)
+    assert_received project_progress(label: "compile", stage: :complete)
   end
 end
