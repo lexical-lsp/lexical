@@ -101,6 +101,7 @@ defmodule Lexical.Server.State do
            &Document.apply_content_changes(&1, version, event.content_changes)
          ) do
       {:ok, updated_source} ->
+        Api.diagnose(state.configuration.project, updated_source)
         Api.compile_document(state.configuration.project, updated_source)
         {:ok, state}
 

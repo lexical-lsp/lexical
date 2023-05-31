@@ -23,8 +23,7 @@ defmodule Lexical.RemoteControl.Mix do
         project_root = Project.root_path(project)
 
         project
-        |> Project.name()
-        |> String.to_atom()
+        |> Project.atom_name()
         |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
       rescue
         ex ->
