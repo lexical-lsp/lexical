@@ -24,16 +24,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
 
-    immediate_descentent_structs =
+    immediate_descendent_structs =
       immediate_descendent_struct_modules(env.project, module.full_name)
 
-    defines_struct_in_descentents? =
-      immediate_descentent_defines_struct?(env.project, module.full_name) and
-        length(immediate_descentent_structs) > 1
+    defines_struct_in_descendents? =
+      immediate_descendent_defines_struct?(env.project, module.full_name) and
+        length(immediate_descendent_structs) > 1
 
     cond do
-      struct_reference? and defines_struct_in_descentents? and defines_struct? ->
-        more = length(immediate_descentent_structs) - 1
+      struct_reference? and defines_struct_in_descendents? and defines_struct? ->
+        more = length(immediate_descendent_structs) - 1
 
         [
           Translations.Struct.completion(env, builder, module.name, module.full_name, more),
@@ -44,8 +44,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         Translations.Struct.completion(env, builder, module.name, module.full_name)
 
       struct_reference? and
-          immediate_descentent_defines_struct?(env.project, module.full_name) ->
-        Enum.map(immediate_descentent_structs, fn child_module_name ->
+          immediate_descendent_defines_struct?(env.project, module.full_name) ->
+        Enum.map(immediate_descendent_structs, fn child_module_name ->
           local_name = local_module_name(module.full_name, child_module_name)
           Translations.Struct.completion(env, builder, local_name, child_module_name)
         end)
@@ -80,7 +80,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   defp strip_leading_period(<<".", rest::binary>>), do: rest
   defp strip_leading_period(string_without_period), do: string_without_period
 
-  defp immediate_descentent_defines_struct?(%Lexical.Project{} = project, module_name) do
+  defp immediate_descendent_defines_struct?(%Lexical.Project{} = project, module_name) do
     Intelligence.defines_struct?(project, module_name, to: :grandchild)
   end
 

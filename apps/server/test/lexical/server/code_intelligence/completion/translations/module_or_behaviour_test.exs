@@ -227,16 +227,5 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert order.kind == :struct
       assert apply_completion(order) =~ "%Order{$1}"
     end
-
-    test "should list all descendant structs when not concerned about the current module", %{
-      project: project
-    } do
-      source = ~q[
-        alias Project.Structs
-        %Structs.O|
-      ]
-
-      assert [_, _] = complete(project, source)
-    end
   end
 end

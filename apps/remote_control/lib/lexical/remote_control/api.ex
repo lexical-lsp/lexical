@@ -48,10 +48,6 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
-  def struct_doc(%Project{} = project, struct_module) do
-    RemoteControl.call(project, Struct, :doc, [struct_module])
-  end
-
   def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
     RemoteControl.call(project, CodeIntelligence.Definition, :definition, [
       document,

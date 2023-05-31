@@ -1,6 +1,4 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
-  alias Lexical.Protocol.Types.Markup.Content
-  alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
@@ -40,7 +38,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
       kind: :struct,
       detail: "#{full_name}",
       label: "#{struct_name}",
-      documentation: documentation(env.project, full_name)
     ]
 
     range = edit_range(env)
@@ -53,20 +50,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
       end
 
     builder.text_edit_snippet(env, insert_text, range, builder_opts)
-  end
-
-  defp documentation(project, full_name) do
-    project |> Api.struct_doc(full_name) |> to_markup()
-  end
-
-  defp to_markup(doc) do
-    value = """
-    ```elixir
-    #{doc}
-    ```
-    """
-
-    Content.new(kind: :markdown, value: value)
   end
 
   defp add_curlies?(%Env{} = env) do
