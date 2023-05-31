@@ -200,5 +200,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
       assert completion.sort_text == "info/1"
     end
+
+    test "dunder functions have lower completion priority", %{project: project} do
+      completions =
+        complete(project, "GenServer.|")
+        |> Enum.sort_by(& &1.sort_text)
+
+      total_completions = length(completions)
+      info_idx = Enum.find_index(completions, &(&1.sort_text == "info/1"))
+
+      assert info_idx > total_completions * 0.80
+    end
+
+    test "default functions have lower completion priority", %{project: project} do
+      completions =
+        complete(project, "GenServer.|")
+        |> Enum.sort_by(& &1.sort_text)
+
+      total_completions = length(completions)
+      info_idx = Enum.find_index(completions, &(&1.sort_text == "module_info/0"))
+
+      assert info_idx > total_completions * 0.80
+    end
   end
 end
