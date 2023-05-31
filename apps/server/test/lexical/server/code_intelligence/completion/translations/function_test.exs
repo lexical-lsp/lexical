@@ -189,6 +189,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert arity_1.insert_text == "struct_arg(${1:a})"
       assert arity_2.insert_text == "struct_arg(${1:a}, ${2:b})"
     end
+
+    test "works with pattern match args", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Project.DefaultArgs.pattern_match|")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "pattern_match_arg(${1:user})"
+    end
+
+    test "works with reverse pattern match args", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Project.DefaultArgs.reverse|")
+        |> fetch_completion(kind: :function)
+
+      assert completion.insert_text == "reverse_pattern_match_arg(${1:user})"
+    end
   end
 
   describe "sort_text" do
