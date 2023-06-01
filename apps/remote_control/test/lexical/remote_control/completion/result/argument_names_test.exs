@@ -46,6 +46,24 @@ defmodule Lexical.RemoteControl.Completion.Result.ArgumentNamesTest do
       assert ~w(first second third) = from_elixir_sense(args, 3)
     end
 
+    test "handles match arguments with structs" do
+      assert ~w(project) = from_elixir_sense(["%Project{} = project"], 1)
+      assert ~w(project) = from_elixir_sense(["project = %Project{}"], 1)
+      assert ~w(arg_1) = from_elixir_sense(["%Project{}"], 1)
+    end
+
+    test "handles match arguments with lists" do
+      assert ~w(items) = from_elixir_sense(["[a, b, c] = items"], 1)
+      assert(~w(items) = from_elixir_sense(["items = [a, b, c]"], 1))
+      assert ~w(arg_1) = from_elixir_sense(["[a, b, c]"], 1)
+    end
+
+    test "handles match arguments with tuples" do
+      assert ~w(items) = from_elixir_sense(["{a, b, c = items"], 1)
+      assert(~w(items) = from_elixir_sense(["items = {a, b, c}"], 1))
+      assert ~w(arg_1) = from_elixir_sense(["{a, b, c}"], 1)
+    end
+
     test "handles incorrect arity" do
       args = ~w(first second third)
       assert :error == from_elixir_sense(args, 1)

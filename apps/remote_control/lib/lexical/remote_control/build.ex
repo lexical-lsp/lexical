@@ -50,13 +50,13 @@ defmodule Lexical.RemoteControl.Build do
     state = State.new(RemoteControl.get_project())
 
     with :ok <- State.set_compiler_options() do
-      {:ok, state, {:continue, :initial_build}}
+      {:ok, state, {:continue, :ensure_build_directory}}
     end
   end
 
   @impl GenServer
-  def handle_continue(:initial_build, %State{} = state) do
-    State.initial_compile(state)
+  def handle_continue(:ensure_build_directory, %State{} = state) do
+    State.ensure_build_directory(state)
     schedule_tick()
     {:noreply, state}
   end

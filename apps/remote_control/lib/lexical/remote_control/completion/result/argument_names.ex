@@ -62,19 +62,50 @@ defmodule Lexical.RemoteControl.Completion.Result.ArgumentNames do
   @spec preprocess(argument_names()) :: {[String.t()], non_neg_integer()}
   defp preprocess(argument_names) do
     {names, required_count} =
-      Enum.reduce(argument_names, {[], 0}, fn argument, {names, required_count} ->
+      argument_names
+      |> Enum.with_index(1)
+      |> Enum.reduce({[], 0}, fn {argument, index}, {names, required_count} ->
         {name, increment} =
           case split_on_default(argument) do
             [argument_name] ->
-              {{:required, argument_name}, 1}
+              {{:required, extract_name(argument_name, index)}, 1}
 
             [argument_name, _default] ->
-              {{:optional, argument_name}, 0}
+              {{:optional, extract_name(argument_name, index)}, 0}
           end
 
         {[name | names], required_count + increment}
       end)
 
     {Enum.reverse(names), required_count}
+  end
+
+  defp extract_name(argument, index) do
+    case Code.Fragment.cursor_context(argument) do
+      {:local_or_var, name} ->
+        List.to_string(name)
+
+      :none ->
+        argument
+        |> String.split("=")
+        |> find_local_in_pattern_match(index)
+    end
+  end
+
+  defp find_local_in_pattern_match([], index) do
+    "arg_#{index}"
+  end
+
+  defp find_local_in_pattern_match([first | rest], index) do
+    case Code.Fragment.cursor_context(first) do
+      {:local_or_var, name} ->
+        List.to_string(name)
+
+      {:local_call, name} ->
+        List.to_string(name)
+
+      _ ->
+        find_local_in_pattern_match(rest, index)
+    end
   end
 end
