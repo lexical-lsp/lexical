@@ -376,7 +376,8 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   defp find_location(lines) do
-    Enum.find(lines, fn
+    lines
+    |> Enum.find(fn
       line when is_binary(line) ->
         Regex.scan(@location_re, line) != [] or Regex.scan(@file_and_line_re, line) != []
 

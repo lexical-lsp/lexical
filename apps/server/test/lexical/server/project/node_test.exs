@@ -55,6 +55,8 @@ defmodule Lexical.Server.Project.NodeTest do
   end
 
   defp node_pid(project) do
-    RemoteControl.ProjectNode.name(project) |> Process.whereis()
+    project
+    |> RemoteControl.ProjectNode.name()
+    |> Process.whereis()
   end
 end

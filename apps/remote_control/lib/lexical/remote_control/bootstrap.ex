@@ -34,7 +34,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
     hex_ebin = Path.join(["hex-*", "**", "ebin"])
 
     [hex_path] =
-      Mix.path_for(:archives)
+      :archives
+      |> Mix.path_for()
       |> Path.join(hex_ebin)
       |> Path.wildcard()
 
