@@ -31,6 +31,11 @@ defmodule Lexical.RemoteControl.Build.Error do
     uniq(error_diagnostics ++ detail_diagnostics)
   end
 
+  def parse_error_to_diagnostics(%Document{} = source, context, message_info, token)
+      when is_exception(message_info) do
+    parse_error_to_diagnostics(source, context, Exception.message(message_info), token)
+  end
+
   def parse_error_to_diagnostics(%Document{} = source, context, message_info, token) do
     parse_error_diagnostic_functions = [
       &build_end_line_diagnostics/4,
