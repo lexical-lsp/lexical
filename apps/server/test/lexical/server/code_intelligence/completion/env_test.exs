@@ -417,6 +417,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
       assert in_context?(env, :pipe)
     end
 
+    test "is true if the pipe is in a remote function call" do
+      env = new_env("[] |> Enum.|")
+      assert in_context?(env, :pipe)
+    end
+
     test "is false if the pipe is in a function call and the cursor is outside it" do
       env = new_env("foo( a |> b |> c)|")
       refute in_context?(env, :pipe)

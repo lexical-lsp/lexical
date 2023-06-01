@@ -113,13 +113,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
   @impl Environment
   def in_context?(%__MODULE__{} = env, :pipe) do
-    with {:ok, line, context} <- surround_context(env),
-         {:ok, {:operator, '|>'}} <- previous_surround_context(line, context) do
-      true
-    else
-      _ ->
-        false
-    end
+    env
+    |> prefix_token_stream()
+    |> Enum.reduce_while(false, fn
+      {:identifier, _}, _ ->
+        {:cont, false}
+
+      {:operator, :.}, _ ->
+        {:cont, false}
+
+      {:alias, _}, _ ->
+        {:cont, false}
+
+      {:arrow_op, nil}, _ ->
+        {:halt, true}
+
+      _x, _acc ->
+        {:halt, false}
+    end)
   end
 
   @impl Environment
@@ -337,32 +348,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line) do
       fragment = String.slice(line, 0..(env.zero_based_character - 1))
       {:ok, line, Code.Fragment.cursor_context(fragment)}
-    end
-  end
-
-  defp surround_context(%__MODULE__{} = env) do
-    with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line),
-         %{context: _} = context <-
-           Code.Fragment.surround_context(line, {1, env.zero_based_character}) do
-      {:ok, line, context}
-    end
-  end
-
-  defp previous_surround_context(line, %{begin: {1, column}}) do
-    previous_surround_context(line, column)
-  end
-
-  defp previous_surround_context(_line, 1) do
-    :error
-  end
-
-  defp previous_surround_context(line, character) when is_integer(character) do
-    case Code.Fragment.surround_context(line, {1, character - 1}) do
-      :none ->
-        previous_surround_context(line, character - 1)
-
-      %{context: context} ->
-        {:ok, context}
     end
   end
 

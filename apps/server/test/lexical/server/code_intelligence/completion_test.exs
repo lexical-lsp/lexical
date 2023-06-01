@@ -2,7 +2,6 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
   alias Lexical.Document
   alias Lexical.Protocol.Types.Completion
   alias Lexical.RemoteControl.Completion.Result
-  alias Lexical.Server.CodeIntelligence.Completion, as: C
   alias Lexical.Server.CodeIntelligence.Completion.Env
 
   use Lexical.Test.Server.CompletionCase
