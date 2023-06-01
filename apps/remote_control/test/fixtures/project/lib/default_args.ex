@@ -18,4 +18,12 @@ defmodule Project.DefaultArgs do
   def struct_arg(a, b \\ %Project.Structs.User{}) do
     Map.put(b, :username, a)
   end
+
+  def pattern_match_arg(%Project.Structs.User{} = user) do
+    user
+  end
+
+  def reverse_pattern_match_arg(user = %Project.Structs.User{}) do
+    user
+  end
 end
