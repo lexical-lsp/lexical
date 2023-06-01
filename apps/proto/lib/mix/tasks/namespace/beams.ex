@@ -9,7 +9,8 @@ defmodule Mix.Tasks.Namespace.Beams do
         module
       end
 
-    app_globs = "{" <> Enum.join(app_names, ",") <> "}"
+    shared_apps = ~w(lexical_plugin lexical_shared)a
+    app_globs = "{" <> Enum.join(shared_apps ++ app_names, ",") <> "}"
 
     module_beams =
       [Mix.Project.build_path(), "lib", app_globs, "**", "ebin", "Elixir.*Lexical*.beam"]

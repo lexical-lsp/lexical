@@ -280,15 +280,15 @@ defmodule Mix.Tasks.Namespace.Abstract do
     other
   end
 
-  defp rewrite_module({:atom, sequence, literal}) do
+  def rewrite_module({:atom, sequence, literal}) do
     {:atom, sequence, rewrite_module(literal)}
   end
 
-  defp rewrite_module({:var, anno, name}) do
+  def rewrite_module({:var, anno, name}) do
     {:var, anno, rewrite_module(name)}
   end
 
-  defp rewrite_module(module) do
+  def rewrite_module(module) do
     split_module =
       module
       |> Atom.to_string()
@@ -298,6 +298,12 @@ defmodule Mix.Tasks.Namespace.Abstract do
       # namespace app references, e.g. in remote_control.ex
       ["remote_control"] ->
         :lx_remote_control
+
+      ["lexical_shared"] ->
+        :lx_lexical_shared
+
+      ["lexical_plugin"] ->
+        :lx_lexical_plugin
 
       ["common"] ->
         :lx_common
