@@ -6,7 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   def completion(%callable_module{argument_names: []} = callable, %Env{} = env)
       when callable_module in @callables do
-    if not Env.in_context?(env, :pipe) do
+    unless Env.in_context?(env, :pipe) do
       do_completion(callable, env)
     end
   end

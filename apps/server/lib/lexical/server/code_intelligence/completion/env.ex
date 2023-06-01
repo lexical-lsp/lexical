@@ -114,7 +114,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   @impl Environment
   def in_context?(%__MODULE__{} = env, :pipe) do
     env
-    |> prefix_tokens(:all)
+    |> token_stream()
     |> Enum.reduce_while(false, fn
       {:identifier, _}, _ ->
         {:cont, false}
