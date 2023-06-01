@@ -62,11 +62,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     [complete_capture, call_capture]
   end
 
-  defp normalize_argument_names(%_{arity: 0} = callable, _env) do
+  defp argument_names(%_{arity: 0} = callable, _env) do
     callable.argument_names
   end
 
-  defp normalize_argument_names(%_{} = callable, %Env{} = env) do
+  defp argument_names(%_{} = callable, %Env{} = env) do
     if Env.in_context?(env, :pipe) do
       tl(callable.argument_names)
     else
@@ -77,7 +77,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   defp callable_snippet(%_{} = callable, env) do
     argument_templates =
       callable
-      |> normalize_argument_names(env)
+      |> argument_names(env)
       |> Enum.with_index(1)
       |> Enum.map_join(", ", fn {name, index} ->
         "${#{index}:#{name}}"
@@ -92,7 +92,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   end
 
   defp label(%_{} = callable, env) do
-    arg_detail = callable |> normalize_argument_names(env) |> Enum.join(", ")
+    arg_detail = callable |> argument_names(env) |> Enum.join(", ")
     "#{callable.name}(#{arg_detail})"
   end
 
