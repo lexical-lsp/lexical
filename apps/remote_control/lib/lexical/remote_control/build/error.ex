@@ -23,7 +23,8 @@ defmodule Lexical.RemoteControl.Build.Error do
         context,
         {_error, detail} = message_info,
         token
-      ) do
+      )
+      when is_binary(detail) do
     detail_diagnostics = detail_diagnostics(source, detail)
     error = message_info_to_binary(message_info, token)
     error_diagnostics = parse_error_to_diagnostics(source, context, error, token)
