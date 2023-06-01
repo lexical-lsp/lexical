@@ -45,6 +45,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> fetch_completion(kind: :function)
 
       assert completion.insert_text == "chunk_by(${1:fun})"
+      assert completion.label == "chunk_by(fun)"
     end
 
     test "do not add parens if they're already present", %{project: project} do
