@@ -17,6 +17,23 @@ defmodule Project.Structs do
           }
   end
 
+  defmodule Order do
+    @type t :: %__MODULE__{
+            id: integer(),
+            lines: [Line.t()]
+          }
+    defstruct [:id, :lines]
+
+    defmodule Line do
+      @type t :: %__MODULE__{
+              id: integer(),
+              product_id: integer(),
+              quantity: integer()
+            }
+      defstruct [:id, :product_id, :quantity]
+    end
+  end
+
   defmodule NotAStruct do
   end
 end
