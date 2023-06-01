@@ -62,8 +62,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     [complete_capture, call_capture]
   end
 
-  defp argument_names(%_{arity: 0} = callable, _env) do
-    callable.argument_names
+  defp argument_names(%_{arity: 0}, _env) do
+    []
   end
 
   defp argument_names(%_{} = callable, %Env{} = env) do
