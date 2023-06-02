@@ -306,7 +306,8 @@ defmodule Mix.Tasks.Namespace.Abstract do
         :LXRelease
 
       ["Elixir" | rest] ->
-        Enum.map(rest, fn
+        rest
+        |> Enum.map(fn
           "Lexical" -> "LXRelease"
           other -> other
         end)

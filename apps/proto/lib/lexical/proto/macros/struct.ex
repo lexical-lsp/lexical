@@ -33,7 +33,8 @@ defmodule Lexical.Proto.Macros.Struct do
   end
 
   defp required_keys(opts) do
-    Enum.filter(opts, fn
+    opts
+    |> Enum.filter(fn
       # ignore the splat, it's always optional
       {:.., _} -> false
       # an optional signifier tuple

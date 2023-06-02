@@ -187,7 +187,8 @@ defmodule Lexical.DocumentTest do
 
     def position_after_substring(text, sub_text) do
       index = index_of(text, sub_text)
-      position_at(text, index + (String.to_charlist(sub_text) |> length))
+
+      position_at(text, index + (sub_text |> String.to_charlist() |> length))
     end
 
     def range_for_substring(doc, sub_text) do
