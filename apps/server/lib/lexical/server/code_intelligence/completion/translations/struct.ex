@@ -5,7 +5,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
   use Translatable.Impl, for: Result.Struct
-  require Logger
 
   def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
@@ -18,6 +17,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
         struct.full_name
       )
     end
+  end
+
+  def completion(%Env{} = env, builder, module_name, full_name, more) when is_integer(more) do
+    builder_opts = [
+      kind: :module,
+      label: "#{module_name}...(#{more} more structs)",
+      detail: "#{full_name}."
+    ]
+
+    insert_text = "#{module_name}."
+    range = edit_range(env)
+
+    builder.text_edit_snippet(env, insert_text, range, builder_opts)
   end
 
   def completion(%Env{} = env, builder, struct_name, full_name) do

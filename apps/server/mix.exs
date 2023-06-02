@@ -19,7 +19,7 @@ defmodule Lexical.Server.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :runtime_tools, :et, :wx, :kernel, :erts],
+      extra_applications: [:logger, :runtime_tools, :kernel, :erts],
       mod: {module(), []}
     ]
   end

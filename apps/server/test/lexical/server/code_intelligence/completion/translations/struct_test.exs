@@ -3,13 +3,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
   describe "structs" do
     test "should complete after %", %{project: project} do
-      assert {:ok, [_, _] = account_and_user} =
+      assert {:ok, [_, _, _] = account_and_user_and_order} =
                project
                |> complete("%Project.Structs.|")
                |> fetch_completion(kind: :struct)
 
-      assert Enum.find(account_and_user, &(&1.label == "User"))
-      account = Enum.find(account_and_user, &(&1.label == "Account"))
+      assert Enum.find(account_and_user_and_order, &(&1.label == "User"))
+      account = Enum.find(account_and_user_and_order, &(&1.label == "Account"))
       assert account
       assert account.detail == "Project.Structs.Account"
 
@@ -129,12 +129,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
     end
 
     test "when using %, child structs are returned", %{project: project} do
-      assert [account, user] = complete(project, "%Project.|", "%")
+      assert [account, order, order_line, user] = complete(project, "%Project.|", "%")
       assert account.label == "Structs.Account"
       assert account.detail == "Project.Structs.Account"
 
       assert user.label == "Structs.User"
       assert user.detail == "Project.Structs.User"
+
+      assert order.label == "Structs.Order"
+      assert order.detail == "Project.Structs.Order"
+
+      assert order_line.label == "Structs.Order.Line"
+      assert order_line.detail == "Project.Structs.Order.Line"
     end
 
     test "it should complete struct fields", %{project: project} do
