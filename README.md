@@ -69,5 +69,5 @@ To use lexical as a language server while working on lexical source code,
 use the following to produce the release and avoid bugs:
 
  ```
- NAMESPACE=1 mix release lexical
+ mix release lexical && NAMESPACE=1 mix release lexical --overwrite
  ```
