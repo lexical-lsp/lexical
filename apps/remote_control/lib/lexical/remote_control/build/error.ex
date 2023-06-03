@@ -125,12 +125,14 @@ defmodule Lexical.RemoteControl.Build.Error do
     Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
-  def error_to_diagnostic(%Document{} = source, %Mix.Error{} = error, stack, quoted_ast) do
-    [{module, function, arguments, _} | _] = stack
-
-    mfa = {module, function, arguments}
+  def error_to_diagnostic(
+        %Document{} = source,
+        %Mix.Error{} = error,
+        _stack,
+        _quoted_ast
+      ) do
     message = Exception.message(error)
-    position = mfa_to_position(mfa, quoted_ast)
+    position = position(1)
     Result.new(source.uri, position, message, :error, @elixir_source)
   end
 

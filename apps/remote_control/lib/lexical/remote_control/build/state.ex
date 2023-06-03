@@ -249,6 +249,12 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     case capture_io(:stderr, compile) do
+      {captured_messages, {:error, {:exception, {exception, _inner_stack}, stack}}} ->
+        error = Build.Error.error_to_diagnostic(document, exception, stack, [])
+        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
+
+        {:error, [error | diagnostics]}
+
       {captured_messages, {:error, {meta, message_info, token}}} ->
         errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
         diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
