@@ -108,7 +108,11 @@ defmodule Lexical.Server.JsonRpc.Backend do
   defp init(config, state) do
     level = Keyword.get(config, :level)
     format = Logger.Formatter.compile(Keyword.get(config, :format))
-    metadata = Keyword.get(config, :metadata, []) |> configure_metadata()
+
+    metadata =
+      config
+      |> Keyword.get(:metadata, [])
+      |> configure_metadata()
 
     %{
       state

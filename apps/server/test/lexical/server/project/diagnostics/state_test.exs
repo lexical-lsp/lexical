@@ -75,7 +75,10 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
   describe "clear_all_flushed/1" do
     test "it should not clear a dirty open file", %{state: state} do
-      document = document("hello") |> change_with("hello2")
+      document =
+        "hello"
+        |> document()
+        |> change_with("hello2")
 
       state = State.add(state, compiler_diagnostic(message: "The code is awful"))
 
