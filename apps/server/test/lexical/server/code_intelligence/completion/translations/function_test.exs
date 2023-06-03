@@ -201,26 +201,32 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert completion.sort_text == "info/1"
     end
 
-    test "dunder functions have lower completion priority", %{project: project} do
-      completions =
-        complete(project, "GenServer.|")
-        |> Enum.sort_by(& &1.sort_text)
+    test "dunder and default functions have lower completion priority", %{project: project} do
+      completions = complete(project, "GenServer.|")
 
-      total_completions = length(completions)
-      info_idx = Enum.find_index(completions, &(&1.sort_text == "info/1"))
+      defaults = ["module_info/0", "module_info/1"]
 
-      assert info_idx > total_completions * 0.80
+      low_priority_completion? = fn fun ->
+        String.starts_with?(fun.label, "__") or fun.sort_text in defaults
+      end
+
+      {low_priority_completions, normal_completions} =
+        Enum.split_with(completions, low_priority_completion?)
+
+      for completion <- low_priority_completions do
+        refute boosted?(completion.sort_text)
+      end
+
+      for completion <- normal_completions do
+        assert boosted?(completion.sort_text)
+      end
     end
+  end
 
-    test "default functions have lower completion priority", %{project: project} do
-      completions =
-        complete(project, "GenServer.|")
-        |> Enum.sort_by(& &1.sort_text)
+  @boost_characters ?!..?*
 
-      total_completions = length(completions)
-      info_idx = Enum.find_index(completions, &(&1.sort_text == "module_info/0"))
-
-      assert info_idx > total_completions * 0.80
-    end
+  defp boosted?(sort_text) do
+    <<first_char, _::binary>> = sort_text
+    first_char in @boost_characters
   end
 end
