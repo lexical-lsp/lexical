@@ -70,8 +70,8 @@ defmodule Mix.Tasks.Namespace.Release do
   end
 
   defp update_boot_file(path) do
-    binary = path |> File.read!() |> :erlang.binary_to_term()
-    {script, script_info, module_infos} = binary
+    term = path |> File.read!() |> :erlang.binary_to_term()
+    {script, script_info, module_infos} = term
     new_module_infos = Enum.map(module_infos, &update_module_list/1)
     namespaced_contents = :erlang.term_to_binary({script, script_info, new_module_infos})
     File.write!(path, namespaced_contents)
