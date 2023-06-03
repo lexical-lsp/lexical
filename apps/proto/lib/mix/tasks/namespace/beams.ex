@@ -9,7 +9,14 @@ defmodule Mix.Tasks.Namespace.Beams do
     app_globs = "{" <> Enum.join(@apps_to_rewrite, ",") <> "}"
 
     module_beams =
-      [Mix.Project.build_path(), "lib", app_globs, "**", "ebin", "{Elixir.*Lexical,Elixir.Sourceror,Elixir.PathGlob}*.beam"]
+      [
+        Mix.Project.build_path(),
+        "lib",
+        app_globs,
+        "**",
+        "ebin",
+        "{Elixir.*Lexical,Elixir.Sourceror,Elixir.PathGlob}*.beam"
+      ]
       |> Path.join()
       |> Path.wildcard()
 
