@@ -292,6 +292,6 @@ defmodule Mix.Tasks.Namespace.Abstract do
   end
 
   defp rewrite_module(module) do
-    Namespace.Module.rewrite(module)
+    Namespace.Module.apply(module)
   end
 end

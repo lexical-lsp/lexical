@@ -7,13 +7,18 @@ defmodule Mix.Tasks.Namespace.Release do
 
   @release_files ~w(start.script lexical.rel start_clean.script)
   @boot_files ~w(start.boot start_clean.boot)
-  @apps_to_rewrite Namespace.Task.apps_to_namespace()
 
   def run(_) do
+    apps_to_namespace = Namespace.apps_to_namespace()
     release = Mix.Release.from_config!(:lexical, Mix.Project.config(), [])
-    Enum.each(@apps_to_rewrite, &update_app(release.path, release.version_path, &1))
+
+    Enum.each(
+      apps_to_namespace,
+      &update_app(release.path, release.version_path, apps_to_namespace, &1)
+    )
+
     # namespace .app filenames because the filename is used as identifier by BEAM
-    Enum.each(@apps_to_rewrite, &namespace_app_file(release.path, &1))
+    Enum.each(apps_to_namespace, &namespace_app_file(release.path, &1))
     Enum.each(@boot_files, &update_boot_file(boot_file_path(release.version_path, &1)))
     Mix.Shell.IO.info("\nApplied namespace to release app.")
   end
@@ -35,11 +40,11 @@ defmodule Mix.Tasks.Namespace.Release do
     Path.join(release_version_path, boot_name)
   end
 
-  defp update_app(release_path, release_version_path, app_name) do
+  defp update_app(release_path, release_version_path, referencing_apps, app_name) do
     # Rename references in release scripts
     release_file_paths = Enum.map(@release_files, &Path.join([release_version_path, &1]))
     # Rename references in the dependencies of app files
-    apps_file_paths = Enum.map(@apps_to_rewrite, &app_file_path(release_path, &1))
+    apps_file_paths = Enum.map(referencing_apps, &app_file_path(release_path, &1))
     paths = apps_file_paths ++ release_file_paths
 
     Enum.each(paths, &update_file_contents(&1, app_name))
@@ -54,12 +59,12 @@ defmodule Mix.Tasks.Namespace.Release do
   defp update_script_contents(contents, app_name) do
     # matches if preceding characters involves either of: , " [ { [:blank:]
     # this way it doesn't match on substrings or directory names
-    contents
-    |> String.replace(~r/([,"\[{[:blank:]])#{app_name}/, "\\1lx_#{app_name}")
-    # Some deps app like `lexical_plugin` have `Elixir.Lexical` in their `app_file`
-    |> String.replace("Elixir.Lexical", "Elixir.LXRelease")
-    |> String.replace("Elixir.Sourceror", "Elixir.LXSourceror")
-    |> String.replace("Elixir.PathGlob", "Elixir.LXPathGlob")
+    contents = String.replace(contents, ~r/([,"\[{[:blank:]])#{app_name}/, "\\1lx_#{app_name}")
+
+    Enum.reduce(Namespace.root_modules(), contents, fn root_module, contents ->
+      new_modules = root_module |> Namespace.Module.apply() |> to_string()
+      String.replace(contents, to_string(root_module), new_modules)
+    end)
   end
 
   defp namespace_app_file(release_path, app_name) do
@@ -85,7 +90,7 @@ defmodule Mix.Tasks.Namespace.Release do
   defp update_module_list({:apply, {:application, mode, [{:application, app_name, app_info}]}}) do
     new_app_info =
       Keyword.update(app_info, :modules, [], fn modules ->
-        Enum.map(modules, &Namespace.Module.rewrite/1)
+        Enum.map(modules, &Namespace.Module.apply/1)
       end)
 
     {:apply, {:application, mode, [{:application, app_name, new_app_info}]}}
@@ -100,7 +105,7 @@ defmodule Mix.Tasks.Namespace.Release do
   end
 
   defp apply_namespace(module) when is_atom(module) do
-    Namespace.Module.rewrite(module)
+    Namespace.Module.apply(module)
   end
 
   defp apply_namespace(original) do

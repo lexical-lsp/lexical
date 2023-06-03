@@ -3,10 +3,8 @@ defmodule Mix.Tasks.Namespace.Beams do
 
   use Mix.Task
 
-  @apps_to_rewrite Namespace.Task.apps_to_namespace()
-
   def run(_) do
-    app_globs = "{" <> Enum.join(@apps_to_rewrite, ",") <> "}"
+    app_globs = "{" <> Enum.join(Namespace.apps_to_namespace(), ",") <> "}"
 
     module_beams =
       [
