@@ -2,12 +2,12 @@ defmodule Mix.Tasks.Namespace.Release do
   @moduledoc """
   `remote_control.app` must be namespaced too
   """
-  alias Mix.Tasks.Namespace.Abstract
-
+  alias Mix.Tasks.Namespace
   use Mix.Task
+
   @release_files ~w(start.script lexical.rel start_clean.script)
   @boot_files ~w(start.boot start_clean.boot)
-  @apps_to_rewrite ~w(remote_control common server protocol proto lexical_shared lexical_plugin)
+  @apps_to_rewrite Namespace.Task.apps_to_namespace()
 
   def run(_) do
     release = Mix.Release.from_config!(:lexical, Mix.Project.config(), [])
@@ -47,14 +47,19 @@ defmodule Mix.Tasks.Namespace.Release do
 
   defp update_file_contents(path, app_name) do
     contents = File.read!(path)
+    updated_contents = update_script_contents(contents, app_name)
+    File.write!(path, updated_contents)
+  end
+
+  defp update_script_contents(contents, app_name) do
     # matches if preceding characters involves either of: , " [ { [:blank:]
     # this way it doesn't match on substrings or directory names
-    updated_contents =
-      contents
-      |> String.replace(~r/([,"\[{[:blank:]])#{app_name}/, "\\1lx_#{app_name}")
-      |> String.replace("Elixir.Lexical", "Elixir.LXRelease")
-
-    File.write!(path, updated_contents)
+    contents
+    |> String.replace(~r/([,"\[{[:blank:]])#{app_name}/, "\\1lx_#{app_name}")
+    # Some deps app like `lexical_plugin` have `Elixir.Lexical` in their `app_file`
+    |> String.replace("Elixir.Lexical", "Elixir.LXRelease")
+    |> String.replace("Elixir.Sourceror", "Elixir.LXSourceror")
+    |> String.replace("Elixir.PathGlob", "Elixir.LXPathGlob")
   end
 
   defp namespace_app_file(release_path, app_name) do
@@ -67,36 +72,38 @@ defmodule Mix.Tasks.Namespace.Release do
   defp update_boot_file(path) do
     binary = path |> File.read!() |> :erlang.binary_to_term()
     {script, script_info, module_infos} = binary
-
-    new_module_infos =
-      Enum.map(module_infos, fn
-        {load_info, modules} when is_list(modules) ->
-          new_modules =
-            Enum.map(modules, fn
-              module when is_atom(module) -> Abstract.rewrite_module(module)
-              other -> other
-            end)
-
-          {load_info, new_modules}
-
-        {:apply, app} ->
-          rewrite_deep_modules({:apply, app})
-
-        other ->
-          other
-      end)
-
-    updated_contents = :erlang.term_to_binary({script, script_info, new_module_infos})
-    File.write!(path, updated_contents)
+    new_module_infos = Enum.map(module_infos, &update_module_list/1)
+    namespaced_contents = :erlang.term_to_binary({script, script_info, new_module_infos})
+    File.write!(path, namespaced_contents)
   end
 
-  def rewrite_deep_modules({:apply, {:application, mode, [{:application, app_name, app_info}]}}) do
-    new_modules = for module <- app_info[:modules], do: Abstract.rewrite_module(module)
-    new_app_info = Keyword.put(app_info, :modules, new_modules)
+  defp update_module_list({load_info, modules}) when is_list(modules) do
+    new_modules = apply_namespace(modules)
+    {load_info, new_modules}
+  end
+
+  defp update_module_list({:apply, {:application, mode, [{:application, app_name, app_info}]}}) do
+    new_app_info =
+      Keyword.update(app_info, :modules, [], fn modules ->
+        Enum.map(modules, &Namespace.Module.rewrite/1)
+      end)
+
     {:apply, {:application, mode, [{:application, app_name, new_app_info}]}}
   end
 
-  def rewrite_deep_modules({:apply, other}) do
-    {:apply, other}
+  defp update_module_list(original) do
+    original
+  end
+
+  defp apply_namespace(modules_list) when is_list(modules_list) do
+    Enum.map(modules_list, &apply_namespace/1)
+  end
+
+  defp apply_namespace(module) when is_atom(module) do
+    Namespace.Module.rewrite(module)
+  end
+
+  defp apply_namespace(original) do
+    original
   end
 end

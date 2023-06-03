@@ -90,7 +90,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     defp port_wrapper_executable do
       "remote_control"
-      |> String.to_existing_atom()
+      |> String.to_atom()
       |> :code.priv_dir()
       |> Path.join("port_wrapper.sh")
     end

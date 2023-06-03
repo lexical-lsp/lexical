@@ -5,6 +5,9 @@ defmodule Mix.Tasks.Namespace.Abstract do
   The abstract syntax is rather tersely defined here:
   https://www.erlang.org/doc/apps/erts/absform.html
   """
+
+  alias Mix.Tasks.Namespace
+
   def rewrite(abstract_format) when is_list(abstract_format) do
     Enum.map(abstract_format, &rewrite/1)
   end
@@ -280,46 +283,15 @@ defmodule Mix.Tasks.Namespace.Abstract do
     other
   end
 
-  def rewrite_module({:atom, sequence, literal}) do
+  defp rewrite_module({:atom, sequence, literal}) do
     {:atom, sequence, rewrite_module(literal)}
   end
 
-  def rewrite_module({:var, anno, name}) do
+  defp rewrite_module({:var, anno, name}) do
     {:var, anno, rewrite_module(name)}
   end
 
-  def rewrite_module(module) do
-    split_module =
-      module
-      |> Atom.to_string()
-      |> String.split(".")
-
-    case split_module do
-      # namespace app references, e.g. in remote_control.ex
-      ["remote_control"] ->
-        :lx_remote_control
-
-      ["lexical_shared"] ->
-        :lx_lexical_shared
-
-      ["lexical_plugin"] ->
-        :lx_lexical_plugin
-
-      ["common"] ->
-        :lx_common
-
-      ["Lexical"] ->
-        :LXRelease
-
-      ["Elixir" | rest] ->
-        Enum.map(rest, fn
-          "Lexical" -> "LXRelease"
-          other -> other
-        end)
-        |> Module.concat()
-
-      _ ->
-        module
-    end
+  defp rewrite_module(module) do
+    Namespace.Module.rewrite(module)
   end
 end
