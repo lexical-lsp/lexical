@@ -1,18 +1,20 @@
 defmodule Mix.Tasks.Namespace.Beams do
-  alias Mix.Tasks.Namespace.Transform
+  alias Mix.Tasks.Namespace
 
   use Mix.Task
 
   def run(_) do
-    app_names =
-      for {module, _} <- Mix.Project.apps_paths() do
-        module
-      end
-
-    app_globs = "{" <> Enum.join(app_names, ",") <> "}"
+    app_globs = "{" <> Enum.join(Namespace.apps_to_namespace(), ",") <> "}"
 
     module_beams =
-      [Mix.Project.build_path(), "lib", app_globs, "**", "ebin", "Elixir.*Lexical*.beam"]
+      [
+        Mix.Project.build_path(),
+        "lib",
+        app_globs,
+        "**",
+        "ebin",
+        "{Elixir.*Lexical,Elixir.Sourceror,Elixir.PathGlob}*.beam"
+      ]
       |> Path.join()
       |> Path.wildcard()
 
@@ -28,7 +30,7 @@ defmodule Mix.Tasks.Namespace.Beams do
     beam_files
     |> Enum.with_index()
     |> Enum.each(fn {beam_file, index} ->
-      Transform.transform(beam_file)
+      Namespace.Transform.transform(beam_file)
 
       IO.write("\r")
       percent_complete = format_percent(index, file_count)
