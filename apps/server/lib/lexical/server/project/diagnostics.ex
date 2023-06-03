@@ -1,8 +1,8 @@
 defmodule Lexical.Server.Project.Diagnostics do
   defmodule State do
     alias Lexical.Document
+    alias Lexical.Plugin.Diagnostic
     alias Lexical.Project
-    alias Mix.Task.Compiler
 
     defstruct [:project, :diagnostics_by_uri]
 
@@ -41,37 +41,13 @@ defmodule Lexical.Server.Project.Diagnostics do
       %__MODULE__{state | diagnostics_by_uri: cleared}
     end
 
-    def add(%__MODULE__{} = state, %Compiler.Diagnostic{} = diagnostic) do
-      source_uri = Document.Path.to_uri(diagnostic.file)
-
+    def add(%__MODULE__{} = state, %Diagnostic.Result{} = diagnostic) do
       diagnostics_by_uri =
-        Map.update(state.diagnostics_by_uri, source_uri, [diagnostic], fn diagnostics ->
+        Map.update(state.diagnostics_by_uri, diagnostic.uri, [diagnostic], fn diagnostics ->
           [diagnostic | diagnostics]
         end)
 
       %__MODULE__{state | diagnostics_by_uri: diagnostics_by_uri}
-    end
-
-    def add(%__MODULE__{} = state, %Mix.Error{} = error) do
-      project_uri = state.project.mix_exs_uri
-
-      compiler_diagnostic = %Compiler.Diagnostic{
-        file: project_uri,
-        message: error.message,
-        position: 1,
-        severity: :error,
-        compiler_name: "Mix"
-      }
-
-      file_diagnostics =
-        Map.update(
-          state.diagnostics_by_uri,
-          project_uri,
-          [compiler_diagnostic],
-          &[compiler_diagnostic | &1]
-        )
-
-      %__MODULE__{state | diagnostics_by_uri: file_diagnostics}
     end
 
     def add(%__MODULE__{} = state, other) do
@@ -97,7 +73,6 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Transport
-  alias Mix.Task.Compiler
 
   import Messages
   require Logger

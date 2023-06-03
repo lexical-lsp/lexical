@@ -1,9 +1,9 @@
 defmodule Lexical.Project.Diagnostics.StateTest do
   alias Lexical.Document
   alias Lexical.Document.Edit
+  alias Lexical.Plugin.Diagnostic
   alias Lexical.Project
   alias Lexical.Server.Project.Diagnostics.State
-  alias Mix.Task.Compiler
 
   import Lexical.Test.Fixtures
 
@@ -43,15 +43,15 @@ defmodule Lexical.Project.Diagnostics.StateTest do
   end
 
   def compiler_diagnostic(opts \\ []) do
-    position = Keyword.get(opts, :position, 1)
+    file_uri =
+      opts
+      |> Keyword.get(:file, existing_file_path())
+      |> Document.Path.ensure_uri()
 
-    %Compiler.Diagnostic{
-      message: Keyword.get(opts, :message, "This file is broken"),
-      file: Keyword.get(opts, :file, existing_file_path()),
-      position: position,
-      severity: Keyword.get(opts, :severity, :error),
-      compiler_name: "Elixir"
-    }
+    position = Keyword.get(opts, :position, 1)
+    message = Keyword.get(opts, :message, "This file is broken")
+    severity = Keyword.get(opts, :severity, :error)
+    Diagnostic.Result.new(file_uri, position, message, severity, "Elixir")
   end
 
   test "it allows you to add a global diagnostic", %{state: state} do
@@ -59,18 +59,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
 
     state = State.add(state, diagnostic)
 
-    assert [%Compiler.Diagnostic{}] = State.get(state, Document.Path.to_uri(diagnostic.file))
-  end
-
-  test "it allows you to add a mix error", %{state: state, project: project} do
-    error = %Mix.Error{message: "bad stuff"}
-    assert state = State.add(state, error)
-
-    [%Compiler.Diagnostic{} = diagnostic] =
-      State.get(state, Document.Path.to_uri(project.mix_exs_uri))
-
-    assert diagnostic.compiler_name == "Mix"
-    assert diagnostic.message == error.message
+    assert [%Diagnostic.Result{}] = State.get(state, diagnostic.uri)
   end
 
   describe "clear_all_flushed/1" do

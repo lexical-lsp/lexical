@@ -44,7 +44,7 @@ defmodule Lexical.Server.Provider.Queue do
     @spec cancel(t, pos_integer()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.tasks_by_id, request_id),
-           true <- Process.exit(task.pid, :kill) do
+           true <- Process.exit(task.pid, :cancelled) do
         error = ResponseError.new(message: "Request cancelled", code: :request_cancelled)
         reply = %{id: request_id, error: error}
         Transport.write(reply)
@@ -67,7 +67,6 @@ defmodule Lexical.Server.Provider.Queue do
     def task_finished(%__MODULE__{} = state, pid, reason) do
       case Map.pop(state.pids_to_ids, pid) do
         {nil, _} ->
-          Logger.warn("Got an exit for pid #{inspect(pid)}, but it wasn't in the queue")
           state
 
         {request_id, new_pids_to_ids} ->

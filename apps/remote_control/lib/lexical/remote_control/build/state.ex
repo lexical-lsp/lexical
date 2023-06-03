@@ -190,8 +190,13 @@ defmodule Lexical.RemoteControl.Build.State do
       end
 
       case compile_fun.() do
-        {:error, _} = error ->
-          error
+        {:error, diagnostics} ->
+          diagnostics =
+            diagnostics
+            |> List.wrap()
+            |> Enum.map(&Build.Error.normalize_diagnostic/1)
+
+          {:error, diagnostics}
 
         {status, diagnostics} when status in [:ok, :noop] ->
           Logger.info(
@@ -244,19 +249,23 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     case capture_io(:stderr, compile) do
-      {captured_messages, {:error, {meta, message_info, token}}} ->
-        errors = Build.Error.parse_error_to_diagnostics(meta, message_info, token)
-        diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        diagnostics = ensure_file(errors ++ diagnostics, document)
+      {captured_messages, {:error, {:exception, {exception, _inner_stack}, stack}}} ->
+        error = Build.Error.error_to_diagnostic(document, exception, stack, [])
+        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
 
-        {:error, diagnostics}
+        {:error, [error | diagnostics]}
+
+      {captured_messages, {:error, {meta, message_info, token}}} ->
+        errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
+        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
+
+        {:error, errors ++ diagnostics}
 
       {captured_messages, {:exception, exception, stack, quoted_ast}} ->
-        error = Build.Error.error_to_diagnostic(exception, stack, quoted_ast)
-        diagnostics = Build.Error.message_to_diagnostic(captured_messages)
-        diagnostics = ensure_file([error | diagnostics], document)
+        error = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
+        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
 
-        {:error, diagnostics}
+        {:error, [error | diagnostics]}
 
       {"", modules} ->
         purge_removed_modules(old_modules, modules)
@@ -265,10 +274,7 @@ defmodule Lexical.RemoteControl.Build.State do
       {captured_warnings, modules} ->
         purge_removed_modules(old_modules, modules)
 
-        diagnostics =
-          captured_warnings
-          |> Build.Error.message_to_diagnostic()
-          |> ensure_file(document)
+        diagnostics = Build.Error.message_to_diagnostic(document, captured_warnings)
 
         {:ok, diagnostics}
     end
@@ -317,10 +323,6 @@ defmodule Lexical.RemoteControl.Build.State do
       {:ok, _} -> true
       _ -> false
     end
-  end
-
-  defp ensure_file(diagnostics, %Document{} = document) do
-    Enum.map(diagnostics, &Map.put(&1, :file, document.path))
   end
 
   defp to_ms(microseconds) do

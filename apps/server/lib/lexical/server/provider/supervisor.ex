@@ -8,13 +8,6 @@ defmodule Lexical.Server.Provider.Queue.Supervisor do
   end
 
   def run_in_task(provider_fn) do
-    name()
-    |> Task.Supervisor.async(provider_fn)
-    |> unlink()
-  end
-
-  defp unlink(%Task{} = task) do
-    Process.unlink(task.pid)
-    task
+    Task.Supervisor.async_nolink(name(), provider_fn)
   end
 end
