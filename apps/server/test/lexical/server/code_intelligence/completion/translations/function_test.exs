@@ -135,7 +135,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       [capture, args_capture] =
         project
         |> complete(source)
-        |> Enum.filter(&(&1.sort_text == "&is_map/1"))
+        |> Enum.filter(&String.ends_with?(&1.sort_text, "is_map/1"))
 
       assert capture.detail == "(Capture)"
       assert capture.insert_text == "is_map/1"
@@ -236,5 +236,33 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
       assert completion.sort_text == "info/1"
     end
+
+    test "dunder and default functions have lower completion priority", %{project: project} do
+      completions = complete(project, "GenServer.|")
+
+      defaults = ["module_info/0", "module_info/1"]
+
+      low_priority_completion? = fn fun ->
+        String.starts_with?(fun.label, "__") or fun.sort_text in defaults
+      end
+
+      {low_priority_completions, normal_completions} =
+        Enum.split_with(completions, low_priority_completion?)
+
+      for completion <- low_priority_completions do
+        refute boosted?(completion.sort_text)
+      end
+
+      for completion <- normal_completions do
+        assert boosted?(completion.sort_text)
+      end
+    end
+  end
+
+  @boost_characters ?!..?*
+
+  defp boosted?(sort_text) do
+    <<first_char, _::binary>> = sort_text
+    first_char in @boost_characters
   end
 end
