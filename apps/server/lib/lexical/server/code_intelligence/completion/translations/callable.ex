@@ -86,11 +86,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     "#{callable.name}(#{argument_templates})"
   end
 
+  @default_functions ["module_info", "behaviour_info"]
+
   defp sort_text(%_{name: name, arity: arity}) do
     normalized = String.replace(name, "__", "")
     fun = "#{normalized}/#{arity}"
 
-    if String.starts_with?(name, "__") or name in ["module_info"] do
+    if String.starts_with?(name, "__") or name in @default_functions do
       fun
     else
       Env.boost(fun)
