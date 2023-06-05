@@ -2,7 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.RemoteControl.Completion.Result
   alias Lexical.Server.CodeIntelligence.Completion.Env
 
-  @callables [Result.Function, Result.Macro]
+  @callables [Result.Function, Result.Macro, Result.Callback]
 
   def completion(%callable_module{arity: 0} = callable, %Env{} = env)
       when callable_module in @callables do
