@@ -240,7 +240,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
     test "dunder and default functions have lower completion priority", %{project: project} do
       completions = complete(project, "GenServer.|")
 
-      defaults = ["module_info/0", "module_info/1"]
+      defaults = ["module_info/0", "module_info/1", "behaviour_info/1"]
 
       low_priority_completion? = fn fun ->
         String.starts_with?(fun.label, "__") or fun.sort_text in defaults
