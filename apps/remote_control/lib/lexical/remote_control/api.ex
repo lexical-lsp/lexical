@@ -47,6 +47,13 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
+  def complete_struct_fields(%Project{} = project, %Document{} = document, %Position{} = position) do
+    RemoteControl.call(project, RemoteControl.Completion, :struct_fields, [
+      document,
+      position
+    ])
+  end
+
   def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
     RemoteControl.call(project, CodeIntelligence.Definition, :definition, [
       document,

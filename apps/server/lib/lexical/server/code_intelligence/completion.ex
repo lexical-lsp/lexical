@@ -10,6 +10,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
+  alias Lexical.Server.CodeIntelligence.Completion.Translations.StructField
   alias Lexical.Server.Project.Intelligence
 
   require InsertTextFormat
@@ -51,7 +52,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       prefix_tokens == [] ->
         empty_completion_list()
 
-      match?([{:operator, :do}], prefix_tokens) and Env.empty?(env.suffix) ->
+      match?([{:operator, :do, _}], prefix_tokens) and Env.empty?(env.suffix) ->
         do_end_snippet = "do\n$0\nend"
 
         env
@@ -61,12 +62,31 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
         Completion.List.new(items: [], is_incomplete: true)
 
+      Env.in_context?(env, :struct_arguments) and not Env.in_context?(env, :value) and
+          not prefix_is_trigger?(env) ->
+        {line, column} = Env.prefix_alias_position(env)
+        poisiton = Position.new(line, column)
+
+        project
+        |> RemoteControl.Api.complete_struct_fields(env.document, poisiton)
+        |> StructField.translate(Env, env)
+
       true ->
         {document, position} = Env.strip_struct_reference(env)
 
         project
         |> RemoteControl.Api.complete(document, position)
         |> to_completion_items(project, env, context)
+    end
+  end
+
+  defp prefix_is_trigger?(env) do
+    case Env.prefix_tokens(env, 1) do
+      [{_, token, _}] ->
+        to_string(token) in trigger_characters()
+
+      _ ->
+        false
     end
   end
 

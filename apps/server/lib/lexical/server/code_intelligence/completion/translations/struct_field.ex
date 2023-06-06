@@ -16,4 +16,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
       kind: :field
     )
   end
+
+  def translate(struct_fields, _builder, %Env{} = env) when is_list(struct_fields) do
+    for name <- struct_fields do
+      value = to_string(name)
+
+      label = "#{name}: #{value}"
+      insert_text = "#{name}: ${1:#{value}}"
+
+      Env.snippet(env, insert_text,
+        kind: :field,
+        label: label,
+        sort_text: label
+      )
+    end
+  end
 end
