@@ -87,4 +87,132 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
   end
+
+  describe "in struct arguments" do
+    def wrap_with_module(text) do
+      """
+      defmodule MyModule do
+        #{text}
+      end
+      """
+    end
+
+    test "should complete when after the curly", %{project: project} do
+      {:ok, [completion, _]} =
+        project
+        |> complete(wrap_with_module("%Project.Structs.Account{|}"))
+        |> fetch_completion(kind: :field)
+
+      expected = "%Project.Structs.Account{last_login_at: ${1:last_login_at}}"
+      assert apply_completion(completion) =~ expected
+    end
+
+    test "should complete when typed a field character", %{project: project} do
+      {:ok, [completion, _]} =
+        project
+        |> complete(wrap_with_module("%Project.Structs.Account{la|}"))
+        |> fetch_completion(kind: :field)
+
+      expected = "%Project.Structs.Account{last_login_at: ${1:last_login_at}}"
+      assert apply_completion(completion) =~ expected
+    end
+
+    test "should complete when after the comma", %{project: project} do
+      {:ok, [_, completion]} =
+        project
+        |> complete(wrap_with_module("%Project.Structs.Account{last_login_at: nil, |}"))
+        |> fetch_completion(kind: :field)
+
+      expected = "%Project.Structs.Account{last_login_at: nil, user: ${1:user}}"
+      assert apply_completion(completion) =~ expected
+    end
+
+    test "should complete nothing when after the colon", %{project: project} do
+      assert {:error, :not_found} ==
+               project
+               |> complete(wrap_with_module("%Project.Structs.Account{last_login_at: |}"))
+               |> fetch_completion(kind: :field)
+    end
+
+    test "should complete when typed a field character after the comma", %{
+      project: project
+    } do
+      source = ~q[
+        defmodule MyModule do
+          alias Project.Structs.Account
+
+          def extract_user(account) do
+            %Account{last_login_at: last_login_at, us|} = account
+          end
+        end
+      ]
+
+      expected = ~q[
+        defmodule MyModule do
+          alias Project.Structs.Account
+
+          def extract_user(account) do
+            %Account{last_login_at: last_login_at, user: ${1:user}} = account
+          end
+        end
+      ]
+
+      {:ok, [_, completion]} =
+        project
+        |> complete(source)
+        |> fetch_completion(kind: :field)
+
+      assert apply_completion(completion) == expected
+    end
+
+    test "should complete even the struct module is aliased", %{project: project} do
+      source = ~q[
+        defmodule MyModule do
+          alias Project.Structs.Account, as: LocalAccount
+
+          def account(%LocalAccount{|} = account) do
+            account
+          end
+        end
+      ]
+
+      expected = ~q[
+        defmodule MyModule do
+          alias Project.Structs.Account, as: LocalAccount
+
+          def account(%LocalAccount{last_login_at: ${1:last_login_at}} = account) do
+            account
+          end
+        end
+      ]
+
+      {:ok, [completion, _]} =
+        project
+        |> complete(source)
+        |> fetch_completion(kind: :field)
+
+      assert apply_completion(completion) == expected
+    end
+
+    test "complete nothing when in the value position", %{project: project} do
+      assert {:error, :not_found} ==
+               project
+               |> complete("%Project.Structs.Account{last_login_at: |}")
+               |> fetch_completion(kind: :field)
+    end
+
+    test "complete nothing when the prefix is a tigger", %{project: project} do
+      assert {:error, :not_found} ==
+               project
+               |> complete("%Project.Structs.Account{l.|}")
+               |> fetch_completion(kind: :field)
+    end
+
+    test "complete nothing when the module is not a struct", %{project: project} do
+      assert {:error, :not_found} ==
+               project
+               |> complete("%Project.Structs.NotAStruct{|}")
+               |> fetch_completion(kind: :field)
+    end
+  end
 end

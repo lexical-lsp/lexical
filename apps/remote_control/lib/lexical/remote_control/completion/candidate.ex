@@ -105,6 +105,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
     def new(%{} = elixir_sense_map) do
       struct(__MODULE__, elixir_sense_map)
     end
+
+    def new(name, origin) do
+      %__MODULE__{name: name, origin: origin, call?: false}
+    end
   end
 
   defmodule MapField do
