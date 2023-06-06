@@ -228,6 +228,131 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     end
   end
 
+  describe "in_context?(env, :struct_arguments)" do
+    def wrap_with_module(text) do
+      """
+      defmodule MyModule do
+        #{text}
+      end
+      """
+    end
+
+    def wrap_with_function(text) do
+      """
+      def func do
+        #{text}
+      end
+      """
+    end
+
+    def wrap_with_function_arguments(text) do
+      """
+      def func(#{text}) do
+      end
+      """
+    end
+
+    test "is true if the cursor is directly after the opening curly" do
+      env = "%User{|}" |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true when the struct is in the function variable" do
+      env = "%User{|}" |> wrap_with_function() |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true when the struct is in the function arguments" do
+      env = "%User{|}" |> wrap_with_function_arguments() |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor is after the field name" do
+      env = "%User{name: |}" |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor is after the field value" do
+      env = "%User{name: \"John\"|}" |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor starts in the middle of the struct" do
+      env = "%User{name: \"John\", |}" |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is false if the cursor is after the closing curly" do
+      env = "%User{}|" |> wrap_with_module() |> new_env()
+      refute in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor is in current module arguments" do
+      env = "%__MODULE__{|}" |> wrap_with_function() |> wrap_with_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the struct alias spans multiple lines" do
+      source = ~q[
+        %User{
+          name: "John",
+          |
+        }
+      ]
+      env = new_env(source)
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true even if the value of a struct key is a tuple" do
+      env = new_env("%User{favorite_numbers: {3}|")
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true even if the cursor is at a nested struct" do
+      env = new_env("%User{address: %Address{}|")
+      assert in_context?(env, :struct_arguments)
+    end
+  end
+
+  describe "in_context?(env, :struct_field_value)" do
+    test "is true if the cursor is after a value character" do
+      env = new_env("%User{foo: 1|}")
+      assert in_context?(env, :struct_field_value)
+    end
+
+    test "is true if the cursor is after a colon" do
+      env = new_env("%User{foo: |}")
+      assert in_context?(env, :struct_field_value)
+    end
+
+    test "is false if the cursor is in a multiple lines key positon" do
+      source = ~q[
+        %User{
+          foo: 1,
+          |
+        }
+      ]
+
+      env = new_env(source)
+      refute in_context?(env, :struct_field_value)
+    end
+
+    test "is false in static keywords" do
+      env = "[foo: |]" |> wrap_with_module() |> new_env()
+      refute in_context?(env, :struct_field_value)
+    end
+
+    test "is false when is in static keywords and starts with a character" do
+      env = "[foo: :a|]" |> wrap_with_module() |> new_env()
+      refute in_context?(env, :struct_field_value)
+    end
+
+    test "is false in map field value position" do
+      env = "%{foo: |}" |> wrap_with_module() |> new_env()
+      refute in_context?(env, :struct_field_value)
+    end
+  end
+
   describe "in_context?(env, :struct_reference)" do
     test "is true if the reference starts on the beginning of the line" do
       env = new_env("%User|")

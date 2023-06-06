@@ -272,16 +272,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.Aliases do
   end
 
   def at(%Document{} = doc, %Position{} = position) do
-    %{line: line} = position
-    # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
-    position = Position.new(line + 1, 1)
-
-    document_fragment = Document.fragment(doc, position)
-
-    case Code.Fragment.container_cursor_to_quoted(document_fragment,
-           columns: true,
-           token_metadata: true
-         ) do
+    case safe_container_cursor_to_quoted(doc, position) do
       {:ok, quoted} ->
         reducer = Reducer.new()
 
@@ -297,5 +288,33 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.Aliases do
 
   defp collect(elem, %Reducer{} = reducer) do
     {elem, Reducer.update(reducer, elem)}
+  end
+
+  defp safe_container_cursor_to_quoted(doc, position) do
+    # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
+    # Note: because of the above issue: Using `cursor_context` + `container_cursor_to_quoted`
+    # can't deal with some cases like: `alias Foo.Bar, as: AnotherBar`,
+    # so we need to add a new line to make sure we can get the parrent node of the cursor
+    %{line: line} = position
+    added_new_line_position = Position.new(line + 1, 1)
+    document_fragment = Document.fragment(doc, added_new_line_position)
+
+    case container_cursor_to_quoted(document_fragment) do
+      {:ok, quoted} ->
+        {:ok, quoted}
+
+      _error ->
+        # NOTE: Adding new line doesn't always work,
+        # so we need to try again without adding new line
+        document_fragment = Document.fragment(doc, position)
+        container_cursor_to_quoted(document_fragment)
+    end
+  end
+
+  defp container_cursor_to_quoted(document_fragment) do
+    Code.Fragment.container_cursor_to_quoted(document_fragment,
+      columns: true,
+      token_metadata: true
+    )
   end
 end

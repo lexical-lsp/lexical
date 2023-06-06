@@ -62,12 +62,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
         Completion.List.new(items: [], is_incomplete: true)
 
+      Env.in_context?(env, :struct_arguments) and not Env.in_context?(env, :struct_field_value) and
+          not prefix_is_trigger?(env) ->
+        project
+        |> RemoteControl.Api.complete_struct_fields(env.document, env.position)
+        |> Enum.map(&Translatable.translate(&1, Env, env))
+
       true ->
         {document, position} = Env.strip_struct_reference(env)
 
         project
         |> RemoteControl.Api.complete(document, position)
         |> to_completion_items(project, env, context)
+    end
+  end
+
+  defp prefix_is_trigger?(env) do
+    case Env.prefix_tokens(env, 1) do
+      [{_, token, _}] ->
+        to_string(token) in trigger_characters()
+
+      _ ->
+        false
     end
   end
 

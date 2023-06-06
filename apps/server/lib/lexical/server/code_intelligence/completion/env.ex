@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Future.Code, as: Code
+  alias Lexical.Ast
   alias Lexical.Completion.Builder
   alias Lexical.Completion.Environment
   alias Lexical.Document
@@ -109,6 +110,35 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
       _ ->
         false
+    end
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :struct_arguments) do
+    cursor_path = Ast.cursor_path(env.document, env.position)
+
+    Enum.any?(cursor_path, fn
+      # struct leading by current module: `%__MODULE__.Struct{|}`
+      # or leading by a module alias: `%Alias.Struct{|}`
+      # or just a struct: `%Struct{|}`
+      {:%, _, [{:__aliases__, _, _aliases} | _]} -> true
+      # current module struct: `%__MODULE__{|}`
+      {:%, _, [{:__MODULE__, _, _} | _]} -> true
+      _ -> false
+    end)
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :struct_field_value) do
+    if in_context?(env, :struct_arguments) do
+      env
+      |> prefix_tokens(2)
+      |> Enum.any?(fn
+        {:kw_identifier, _, _} -> true
+        _ -> false
+      end)
+    else
+      false
     end
   end
 
