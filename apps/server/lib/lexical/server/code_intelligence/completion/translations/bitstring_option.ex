@@ -20,21 +20,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
 
   defp prefix_length(%Env{} = env) do
     case Env.prefix_tokens(env, 1) do
-      [{:operator, :"::"}] ->
+      [{:operator, :"::", _}] ->
         0
 
-      [{:operator, :in}] ->
+      [{:operator, :in, _}] ->
         # they're typing integer and got "in" out, which the lexer thinks
         # is Kernel.in/2
         2
 
-      [{_, token}] when is_binary(token) ->
+      [{_, token, _}] when is_binary(token) ->
         String.length(token)
 
-      [{_, token}] when is_list(token) ->
+      [{_, token, _}] when is_list(token) ->
         length(token)
 
-      [{_, token}] when is_atom(token) ->
+      [{_, token, _}] when is_atom(token) ->
         token |> Atom.to_string() |> String.length()
     end
   end

@@ -28,7 +28,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   describe "prefix_tokens/2" do
     test "works with bitstring specifiers" do
       env = new_env("<<foo::int|")
-      assert [{:identifier, 'int'}, {:operator, :"::"}] = prefix_tokens(env, 2)
+
+      assert [{:identifier, 'int', _}, {:operator, :"::", _}] = prefix_tokens(env, 2)
     end
 
     test "works with floats" do
@@ -37,7 +38,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:float, 27.88}] = tokens
+      assert [{:float, 27.88, _}] = tokens
     end
 
     test "works with strings" do
@@ -46,7 +47,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:string, "hello"}] = tokens
+      assert [{:string, "hello", _}] = tokens
     end
 
     test "works with interpolated strings" do
@@ -55,7 +56,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:interpolated_string, ["hello" | _]}] = tokens
+      assert [{:interpolated_string, ["hello" | _], _}] = tokens
     end
 
     test "works with maps with atom keys" do
@@ -65,11 +66,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:curly, :"}"},
-               {:int, 3},
-               {:kw_identifier, 'a'},
-               {:curly, :"{"},
-               {:map_new, :%{}}
+               {:curly, :"}", _},
+               {:int, 3, _},
+               {:kw_identifier, 'a', _},
+               {:curly, :"{", _},
+               {:map_new, :%{}, _}
              ] = tokens
     end
 
@@ -80,12 +81,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(8)
 
       assert [
-               {:curly, :"}"},
-               {:int, 3},
-               {:assoc_op, nil},
-               {:string, "a"},
-               {:curly, :"{"},
-               {:map_new, :%{}}
+               {:curly, :"}", _},
+               {:int, 3, _},
+               {:assoc_op, nil, _},
+               {:string, "a", _},
+               {:curly, :"{", _},
+               {:map_new, :%{}, _}
              ] = tokens
     end
 
@@ -95,11 +96,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(3)
 
-      assert tokens == [
-               {:int, 5},
-               {:operator, :+},
-               {:int, 3}
-             ]
+      assert [
+               {:int, 5, _},
+               {:operator, :+, _},
+               {:int, 3, _}
+             ] = tokens
     end
 
     test "works with remote function calls" do
@@ -109,9 +110,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:identifier, 'map'},
-               {:operator, :.},
-               {:alias, 'Enum'}
+               {:identifier, 'map', _},
+               {:operator, :., _},
+               {:alias, 'Enum', _}
              ] = tokens
     end
 
@@ -122,10 +123,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:paren, :"("},
-               {:paren_identifier, 'local'},
-               {:match_op, nil},
-               {:identifier, 'foo'}
+               {:paren, :"(", _},
+               {:paren_identifier, 'local', _},
+               {:match_op, nil, _},
+               {:identifier, 'foo', _}
              ] = tokens
     end
 
@@ -135,7 +136,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(900)
 
-      assert [{:identifier, 'tri'}, {:operator, :.}, {:alias, 'String'}] = tokens
+      assert [
+               {:identifier, 'tri', _},
+               {:operator, :., _},
+               {:alias, 'String', _}
+             ] = tokens
     end
 
     test "works with macros" do
@@ -144,11 +149,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(3)
 
-      assert tokens == [
-               {:operator, :do},
-               {:alias, 'MyModule'},
-               {:identifier, 'defmacro'}
-             ]
+      assert [
+               {:operator, :do, _},
+               {:alias, 'MyModule', _},
+               {:identifier, 'defmacro', _}
+             ] = tokens
     end
 
     test "works with lists of integers" do
@@ -157,15 +162,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(7)
 
-      assert tokens == [
-               {:operator, :"]"},
-               {:int, 3},
-               {:comma, :","},
-               {:int, 2},
-               {:comma, :","},
-               {:int, 1},
-               {:operator, :"["}
-             ]
+      assert [
+               {:operator, :"]", _},
+               {:int, 3, _},
+               {:comma, :",", _},
+               {:int, 2, _},
+               {:comma, :",", _},
+               {:int, 1, _},
+               {:operator, :"[", _}
+             ] = tokens
     end
   end
 
@@ -228,10 +233,130 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     end
   end
 
+  describe "in_context?(env, :struct_arguments)" do
+    def my_module(text) do
+      """
+      defmodule MyModule do
+        #{text}
+      end
+      """
+    end
+
+    def func_variable(text) do
+      """
+      def func do
+        #{text}
+      end
+      """
+    end
+
+    def func_args(text) do
+      """
+      def func(#{text}) do
+      end
+      """
+    end
+
+    test "is true if the cursor after curly" do
+      env = "%User{|}" |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true when the struct is in the function variable" do
+      env = "%User{|}" |> func_variable() |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true when the struct is in the function arguments" do
+      env = "%User{|}" |> func_args() |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is false when the cursor is not in a container" do
+      env = new_env("%User{|}")
+      refute in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor after the field name" do
+      env = "%User{name: |}" |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor after the field value" do
+      env = "%User{name: \"John\"|}" |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor starts in the middle of the struct" do
+      env = "%User{name: \"John\", |}" |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is false if the cursor after the closing curly" do
+      env = "%User{}|" |> my_module() |> new_env()
+      refute in_context?(env, :struct_arguments)
+    end
+
+    test "is true if the cursor in current module arguments" do
+      env = "%__MODULE__{|}" |> func_variable() |> my_module() |> new_env()
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true even the struct alias is at the above line" do
+      source = ~q[
+        %User{
+          name: "John",
+          |
+        }
+      ]
+      env = new_env(source)
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true even if the value of a struct key is a tuple" do
+      env = new_env("%User{favorite_numbers: {3}|")
+      assert in_context?(env, :struct_arguments)
+    end
+
+    test "is true even if the cursor is at a nested struct" do
+      env = new_env("%User{address: %Address{}|")
+      assert in_context?(env, :struct_arguments)
+    end
+  end
+
+  describe "in_context?(env, :value)" do
+    test "is true if the cursor is after a value character" do
+      env = new_env("%{foo: 1|}")
+      assert in_context?(env, :value)
+    end
+
+    test "is ture if the cursor is after a colon" do
+      env = new_env("%{foo: |}")
+      assert in_context?(env, :value)
+    end
+
+    test "is false if the cursor is in a multiple lines key positon" do
+      source = ~q[
+        %{
+          foo: 1,
+          |
+        }
+      ]
+
+      env = new_env(source)
+      refute in_context?(env, :value)
+    end
+  end
+
   describe "in_context?(env, :struct_reference)" do
     test "is true if the reference starts on the beginning of the line" do
       env = new_env("%User|")
       assert in_context?(env, :struct_reference)
+    end
+
+    test "is false if the cursor in curly" do
+      env = new_env("%User{|}")
+      refute in_context?(env, :struct_reference)
     end
 
     test "is true if the reference starts in function arguments" do
@@ -737,6 +862,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
 
       assert [^global_max, ^group_a_max, ^group_a_min, ^group_b_max, ^group_b_min] =
                sort_items(items)
+    end
+  end
+
+  describe "prefix_alias_position/1" do
+    test "when in current module" do
+      source = ~q<
+        defmodule User do
+          defstruct [:name, :age]
+
+          def name(%__MODULE__{|}) do
+          end
+        end
+      >
+
+      assert {4, 13} == source |> new_env() |> prefix_alias_position()
     end
   end
 end

@@ -76,16 +76,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     env
     |> prefix_token_stream()
     |> Enum.reduce_while(false, fn
-      {:paren, :")"}, _ ->
+      {:paren, :")", _}, _ ->
         {:halt, false}
 
-      {:operator, :&}, _ ->
+      {:operator, :&, _}, _ ->
         {:halt, true}
 
-      {:int, _} = maybe_arity, _ ->
+      {:int, _, _} = maybe_arity, _ ->
         {:cont, maybe_arity}
 
-      {:operator, :/}, {:int, _} ->
+      {:operator, :/, _}, {:int, _, _} ->
         # if we encounter a trailing /<arity> in the prefix, the
         # function capture is complete, and we're not inside it
         {:halt, false}
@@ -113,20 +113,41 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
+  def in_context?(%__MODULE__{} = env, :struct_arguments) do
+    env
+    |> cursor_path()
+    |> Enum.find_value(false, fn
+      {:%, _, [{:__aliases__, _, _aliases} | _]} -> true
+      {:%, _, [{:__MODULE__, _, _} | _]} -> true
+      _ -> false
+    end)
+  end
+
+  @impl Environment
+  def in_context?(%__MODULE__{} = env, :value) do
+    env
+    |> prefix_tokens(2)
+    |> Enum.find_value(false, fn
+      {:kw_identifier, _, _} -> true
+      _ -> false
+    end)
+  end
+
+  @impl Environment
   def in_context?(%__MODULE__{} = env, :pipe) do
     env
     |> prefix_token_stream()
     |> Enum.reduce_while(false, fn
-      {:identifier, _}, _ ->
+      {:identifier, _, _}, _ ->
         {:cont, false}
 
-      {:operator, :.}, _ ->
+      {:operator, :., _}, _ ->
         {:cont, false}
 
-      {:alias, _}, _ ->
+      {:alias, _, _}, _ ->
         {:cont, false}
 
-      {:arrow_op, nil}, _ ->
+      {:arrow_op, nil, _}, _ ->
         {:halt, true}
 
       _x, _acc ->
@@ -141,8 +162,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     |> Enum.reduce_while(
       false,
       fn
-        {:operator, :">>"}, _ -> {:halt, false}
-        {:operator, :"<<"}, _ -> {:halt, true}
+        {:operator, :">>", _}, _ -> {:halt, false}
+        {:operator, :"<<", _}, _ -> {:halt, true}
         _, _ -> {:cont, false}
       end
     )
@@ -167,27 +188,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     |> prefix_token_stream()
     |> Stream.with_index()
     |> Enum.reduce_while(false, fn
-      {{:curly, :"{"}, _index}, :eol ->
+      {{:curly, :"{", _}, _index}, :eol ->
         {:cont, false}
 
-      {{:comma, _}, _index}, :eol ->
+      {{:comma, _, _}, _index}, :eol ->
         {:cont, false}
 
-      {{:eol, _}, _index}, _acc ->
+      {{:eol, _, _}, _index}, _acc ->
         {:cont, :eol}
 
-      {_, _}, :eol ->
+      {{_, _, _}, _}, :eol ->
         {:halt, false}
 
-      {{:curly, :"}"}, _index}, _ ->
+      {{:curly, :"}", _}, _index}, _ ->
         {:halt, false}
 
-      {{:identifier, 'alias'}, 0}, _ ->
+      {{:identifier, 'alias', _}, 0}, _ ->
         # there is nothing after the alias directive, so we're not
         # inside the context *yet*
         {:halt, false}
 
-      {{:identifier, 'alias'}, _index}, _ ->
+      {{:identifier, 'alias', _}, _index}, _ ->
         {:halt, true}
 
       _, _ ->
@@ -291,6 +312,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     end
   end
 
+  @spec prefix_alias_position(Env.t()) :: {integer(), integer()} | nil
+  def prefix_alias_position(env) do
+    env
+    |> cursor_path()
+    |> Enum.find_value(fn
+      {:%, _, [{:__aliases__, [line: line, column: column], _aliases} | _]} -> {line, column}
+      {:%, _, [{:__MODULE__, [line: line, column: column], _} | _]} -> {line, column}
+      _ -> nil
+    end)
+  end
+
   # private
 
   defp do_strip_struct_reference(%__MODULE__{} = env) do
@@ -338,10 +370,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     env
     |> prefix_token_stream()
     |> Enum.reduce_while(false, fn
-      {:identifier, ^context_name}, _ ->
+      {:identifier, ^context_name, _}, _ ->
         {:halt, true}
 
-      {:eol, _}, _ ->
+      {:eol, _, _}, _ ->
         {:halt, false}
 
       _, _ ->
@@ -360,47 +392,52 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   defp normalize_token(token) do
     case token do
       :eol ->
-        {:eol, '\n'}
+        {:eol, '\n', []}
 
-      {:bin_string, _, [string_value]} ->
-        {:string, string_value}
+      {:bin_string, context, [string_value]} ->
+        {:string, string_value, to_position(context)}
 
-      {:bin_string, _, interpolated} ->
-        {:interpolated_string, interpolated}
+      {:bin_string, context, interpolated} ->
+        {:interpolated_string, interpolated, to_position(context)}
 
-      {:capture_op, _context, value} ->
-        {:operator, value}
+      {:capture_op, context, value} ->
+        {:operator, value, to_position(context)}
 
-      {:dual_op, _context, value} ->
-        {:operator, value}
+      {:dual_op, context, value} ->
+        {:operator, value, to_position(context)}
 
-      {:type_op, _context, _value} ->
-        {:operator, :"::"}
+      {:type_op, context, _value} ->
+        {:operator, :"::", to_position(context)}
 
-      {:mult_op, _, operator} ->
-        {:operator, operator}
+      {:mult_op, context, operator} ->
+        {:operator, operator, to_position(context)}
 
-      {:in_op, _, _} ->
-        {:operator, :in}
+      {:in_op, context, _} ->
+        {:operator, :in, to_position(context)}
 
-      {:operator, _, value} ->
-        {:operator, value}
+      {:operator, context, value} ->
+        {:operator, value, to_position(context)}
 
-      {:sigil, _, sigil_char, _sigil_context, _, _opts, delim} ->
-        {:sigil, [sigil_char], delim}
+      {:sigil, {line, column, _}, sigil_char, _sigil_context, _, _opts, delim} ->
+        # NOTE: should we need to return context too?
+        {:sigil, [sigil_char], {line, column}, delim}
 
-      {type, {_, _, nil}, value} when is_list(value) ->
-        {normalize_type(type), value}
+      {type, {line, column, nil}, value} when is_list(value) ->
+        {normalize_type(type), value, {line, column}}
 
-      {type, {_, _, token_value}, _} ->
-        {normalize_type(type), token_value}
+      {type, {line, column, token_value}, _} ->
+        {normalize_type(type), token_value, {line, column}}
 
-      {type, _context, value} when is_atom(value) ->
-        {normalize_type(type), value}
+      {type, context, value} when is_atom(value) ->
+        {normalize_type(type), value, to_position(context)}
 
-      {operator, _} ->
-        {map_operator(operator), operator}
+      {operator, context} ->
+        {map_operator(operator), operator, to_position(context)}
     end
+  end
+
+  defp to_position({line, column, _}) do
+    {line, column}
   end
 
   defp map_operator(:"("), do: :paren
@@ -478,6 +515,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
 
       {:error, _, _, _, tokens} ->
         {:ok, tokens, ''}
+    end
+  end
+
+  defp cursor_path(env) do
+    fragment = Document.fragment(env.document, env.position)
+
+    case Code.Fragment.container_cursor_to_quoted(fragment, columns: true) do
+      {:ok, quoted} ->
+        quoted
+        |> Macro.path(&match?({:__cursor__, _, _}, &1))
+        |> List.wrap()
+
+      _ ->
+        []
     end
   end
 end
