@@ -2,8 +2,6 @@ defmodule Lexical.Protocol.JsonRpc do
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
 
-  require Logger
-
   @crlf "\r\n"
 
   def decode(message_string) do
@@ -32,8 +30,7 @@ defmodule Lexical.Protocol.JsonRpc do
     {:ok, json_rpc}
   end
 
-  defp do_decode(%{"id" => id, "result" => nil}) do
-    Logger.info("Reply for id #{id} had no body")
+  defp do_decode(%{"id" => _id, "result" => nil}) do
     :error
   end
 
