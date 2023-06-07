@@ -6,11 +6,60 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   use Translatable.Impl, for: Result.Macro
 
-  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception)
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test)
 
   def translate(%Result.Macro{name: name}, _builder, _env)
       when name in ["__before_compile__", "__using__", "__after_compile__"] do
     :skip
+  end
+
+  def translate(%Result.Macro{name: "test", arity: 1} = macro, builder, env) do
+    label = "#{macro.name} (Define an empty test/1)"
+
+    snippet = """
+    test "${0:name}"
+    """
+
+    builder.snippet(env, snippet,
+      detail: macro.spec,
+      kind: :class,
+      label: label,
+      sort_text: builder.boost(label, 10)
+    )
+  end
+
+  def translate(%Result.Macro{name: "test", arity: 2} = macro, builder, env) do
+    label = "#{macro.name} (Define test/2)"
+
+    snippet = """
+    test "${1:name}" do
+      $0
+    end
+    """
+
+    builder.snippet(env, snippet,
+      detail: macro.spec,
+      kind: :class,
+      label: label,
+      sort_text: builder.boost(label, 10)
+    )
+  end
+
+  def translate(%Result.Macro{name: "test", arity: 3} = macro, builder, env) do
+    label = "#{macro.name} (Define test/3)"
+
+    snippet = """
+    test "${1:name}", %{${2:context}} do
+      $0
+    end
+    """
+
+    builder.snippet(env, snippet,
+      detail: macro.spec,
+      kind: :class,
+      label: label,
+      sort_text: builder.boost(label, 10)
+    )
   end
 
   def translate(%Result.Macro{name: "def", arity: 2} = macro, builder, env) do

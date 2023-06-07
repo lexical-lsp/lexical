@@ -612,4 +612,29 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.sort_text == "dunder_macro/0"
     end
   end
+
+  test "test has three completions", %{project: project} do
+    # Error:
+    # right: {:error, :not_found}
+    assert {:ok, completion} =
+             project
+             |> complete("test|")
+             |> fetch_completion("test ")
+
+    assert %Completion.Item{} = completion
+  end
+
+  test "test", %{project: project} do
+    # Error:
+    # right: {:error, :not_found}
+    assert {:ok, completion} =
+             project
+             |> complete("test|")
+             |> fetch_completion("test ")
+
+    assert completion.detail
+    # assert completion.label == "defp (Define a private function)"
+    # assert completion.insert_text_format == :snippet
+    # assert completion.insert_text == "defp ${1:name}($2) do\n  $0\nend\n"
+  end
 end
