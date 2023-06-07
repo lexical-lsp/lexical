@@ -15,7 +15,7 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.Diagnostic.Result do
         message: diagnostic.message,
         range: lsp_range,
         severity: diagnostic.severity,
-        source: "Elixir"
+        source: diagnostic.source
       }
 
       {:ok, proto_diagnostic}

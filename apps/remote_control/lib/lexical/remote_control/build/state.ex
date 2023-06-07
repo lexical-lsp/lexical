@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.ModuleMappings
+  alias Lexical.RemoteControl.Plugin
 
   require Logger
 
@@ -14,23 +15,27 @@ defmodule Lexical.RemoteControl.Build.State do
 
   use Build.Progress
 
-  defstruct project: nil, uri_to_source_and_edit_time: %{}
+  defstruct project: nil, build_number: 0, uri_to_source_and_edit_time: %{}
 
   def new(%Project{} = project) do
     %__MODULE__{project: project}
   end
 
   def on_tick(%__MODULE__{} = state) do
-    compiled_uris =
-      for {uri, {document, edit_time}} <- state.uri_to_source_and_edit_time,
-          should_compile?(edit_time) do
-        Logger.debug("On-type compiling #{document.path}")
-        compile_file(state.project, document)
-        uri
-      end
+    {new_state, compiled_uris} =
+      Enum.reduce(state.uri_to_source_and_edit_time, {state, []}, fn
+        {uri, {document, edit_time}}, {state, compiled_uris} ->
+          if should_compile?(edit_time) do
+            new_state = increment_build_number(state)
+            compile_file(new_state, document)
+            {new_state, [uri | compiled_uris]}
+          else
+            {state, compiled_uris}
+          end
+      end)
 
     %__MODULE__{
-      state
+      new_state
       | uri_to_source_and_edit_time: Map.drop(state.uri_to_source_and_edit_time, compiled_uris)
     }
   end
@@ -51,10 +56,15 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   def compile_project(%__MODULE__{} = state, force?) do
+    state = increment_build_number(state)
     project = state.project
 
     Build.with_lock(fn ->
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(state.project, force?) end)
+      compile_requested_message =
+        project_compile_requested(project: project, build_number: state.build_number)
+
+      RemoteControl.notify_listener(compile_requested_message)
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile_project(project, force?) end)
       elapsed_ms = to_ms(elapsed_us)
 
       {compile_message, diagnostics} =
@@ -75,11 +85,17 @@ defmodule Lexical.RemoteControl.Build.State do
             {message, List.wrap(diagnostics)}
         end
 
-      diagnostics_message = project_diagnostics(project: project, diagnostics: diagnostics)
+      diagnostics_message =
+        project_diagnostics(
+          project: project,
+          build_number: state.build_number,
+          diagnostics: diagnostics
+        )
 
       RemoteControl.notify_listener(compile_message)
       RemoteControl.notify_listener(diagnostics_message)
       CodeIntelligence.Structs.discover_deps_structs()
+      Plugin.diagnose(project, state.build_number)
     end)
   end
 
@@ -91,7 +107,9 @@ defmodule Lexical.RemoteControl.Build.State do
     }
   end
 
-  def compile_file(%Project{} = project, %Document{} = document) do
+  def compile_file(%__MODULE__{} = state, %Document{} = document) do
+    project = state.project
+
     Build.with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: document.uri))
 
@@ -104,8 +122,9 @@ defmodule Lexical.RemoteControl.Build.State do
           {:ok, diagnostics} ->
             message =
               file_compiled(
-                status: :success,
                 project: project,
+                build_number: state.build_number,
+                status: :success,
                 uri: document.uri,
                 elapsed_ms: elapsed_ms
               )
@@ -115,8 +134,9 @@ defmodule Lexical.RemoteControl.Build.State do
           {:error, diagnostics} ->
             message =
               file_compiled(
-                status: :error,
                 project: project,
+                build_number: state.build_number,
+                status: :error,
                 uri: document.uri,
                 elapsed_ms: elapsed_ms
               )
@@ -127,12 +147,14 @@ defmodule Lexical.RemoteControl.Build.State do
       diagnostics =
         file_diagnostics(
           project: project,
+          build_number: state.build_number,
           uri: document.uri,
           diagnostics: List.wrap(diagnostics)
         )
 
       RemoteControl.notify_listener(compile_message)
       RemoteControl.notify_listener(diagnostics)
+      Plugin.diagnose(project, state.build_number, document)
     end)
   end
 
@@ -238,6 +260,10 @@ defmodule Lexical.RemoteControl.Build.State do
       Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
     end
 
+    with_progress "loading plugins", fn ->
+      Plugin.Discovery.run()
+    end
+
     Mix.Task.run("clean")
   end
 
@@ -339,5 +365,9 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp edit_window_millis do
     Application.get_env(:remote_control, :edit_window_millis, 250)
+  end
+
+  defp increment_build_number(%__MODULE__{} = state) do
+    %__MODULE__{state | build_number: state.build_number + 1}
   end
 end

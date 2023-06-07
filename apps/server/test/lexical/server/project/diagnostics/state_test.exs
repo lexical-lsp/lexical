@@ -42,7 +42,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     document
   end
 
-  def compiler_diagnostic(opts \\ []) do
+  def diagnostic(opts \\ []) do
     file_uri =
       opts
       |> Keyword.get(:file, existing_file_path())
@@ -54,10 +54,60 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     Diagnostic.Result.new(file_uri, position, message, severity, "Elixir")
   end
 
-  test "it allows you to add a global diagnostic", %{state: state} do
-    diagnostic = compiler_diagnostic(message: "This code is awful")
+  describe "add/3" do
+    test "allows you to add a diagnostic to a new uri", %{state: state} do
+      diagnostic = diagnostic(message: "this code is bad!")
 
-    state = State.add(state, diagnostic)
+      state = State.add(state, 1, diagnostic)
+
+      assert [%Diagnostic.Result{}] = State.get(state, diagnostic.uri)
+    end
+
+    test "allows you to add multiple diagnostics with the same build number", %{state: state} do
+      diag_1 = diagnostic(message: "hey!")
+      diag_2 = diagnostic(message: "there")
+
+      state =
+        state
+        |> State.add(1, diag_1)
+        |> State.add(1, diag_2)
+
+      assert [^diag_1, ^diag_2] = State.get(state, diag_1.uri)
+    end
+
+    test "diagnostics with older build numbers are overwritten", %{state: state} do
+      diag_1 = diagnostic(message: "one")
+      diag_2 = diagnostic(message: "two")
+      diag_3 = diagnostic(message: "three")
+
+      state =
+        state
+        |> State.add(1, diag_1)
+        |> State.add(1, diag_2)
+        |> State.add(2, diag_3)
+
+      assert [^diag_3] = State.get(state, diag_3.uri)
+    end
+
+    test "duplicate diagnostics are collapsed", %{state: state} do
+      diag_1 = diagnostic(message: "dupe")
+      diag_2 = diagnostic(message: "two")
+      diag_3 = diagnostic(message: "dupe")
+
+      state =
+        state
+        |> State.add(1, diag_1)
+        |> State.add(1, diag_2)
+        |> State.add(1, diag_3)
+
+      assert [^diag_1, ^diag_2] = State.get(state, diag_1.uri)
+    end
+  end
+
+  test "it allows you to add a global diagnostic", %{state: state} do
+    diagnostic = diagnostic(message: "This code is awful")
+
+    state = State.add(state, 1, diagnostic)
 
     assert [%Diagnostic.Result{}] = State.get(state, diagnostic.uri)
   end
@@ -69,7 +119,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
         |> document()
         |> change_with("hello2")
 
-      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, 1, diagnostic(message: "The code is awful"))
 
       old_diagnostics = State.get(state, document.uri)
       state = State.clear_all_flushed(state)
@@ -83,7 +133,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
       script_file_path = Path.join([Project.root_path(project), "test", "*.exs"])
       document = document("assert f() == 0", script_file_path)
 
-      state = State.add(state, compiler_diagnostic(message: "undefined function f/0"))
+      state = State.add(state, 1, diagnostic(message: "undefined function f/0"))
 
       old_diagnostics = State.get(state, document.uri)
       state = State.clear_all_flushed(state)
@@ -93,7 +143,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is just open", %{state: state} do
       document = document("hello")
 
-      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, 1, diagnostic(message: "The code is awful"))
 
       state = State.clear_all_flushed(state)
       diagnostics = State.get(state, document.uri)
@@ -104,7 +154,7 @@ defmodule Lexical.Project.Diagnostics.StateTest do
     test "it should clear a file's diagnostics if it is closed", %{state: state} do
       document = document("hello")
 
-      state = State.add(state, compiler_diagnostic(message: "The code is awful"))
+      state = State.add(state, 1, diagnostic(message: "The code is awful"))
 
       :ok = Document.Store.close(document.uri)
 

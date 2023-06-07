@@ -1,11 +1,21 @@
 defmodule Lexical.RemoteControl.Api.Messages do
   import Record
-  defrecord :project_compiled, project: nil, status: :successful, diagnostics: [], elapsed_ms: 0
+  defrecord :project_compile_requested, project: nil, build_number: 0
 
-  defrecord :file_compile_requested, uri: nil
+  defrecord :project_compiled,
+    project: nil,
+    build_number: 0,
+    status: :successful,
+    diagnostics: [],
+    elapsed_ms: 0
+
+  defrecord :file_changed, uri: nil, from_version: nil, to_version: nil, open?: false
+
+  defrecord :file_compile_requested, project: nil, build_number: 0, uri: nil
 
   defrecord :file_compiled,
     project: nil,
+    build_number: 0,
     uri: nil,
     status: :successful,
     diagnostics: [],
@@ -13,8 +23,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :module_updated, file: nil, name: nil, functions: [], macros: [], struct: nil
 
-  defrecord :project_diagnostics, project: nil, diagnostics: []
-  defrecord :file_diagnostics, project: nil, uri: nil, diagnostics: []
+  defrecord :project_diagnostics, project: nil, build_number: 0, diagnostics: []
+  defrecord :file_diagnostics, project: nil, build_number: 0, uri: nil, diagnostics: []
 
   defrecord :project_progress, label: nil, message: nil, stage: :report
 
@@ -24,20 +34,40 @@ defmodule Lexical.RemoteControl.Api.Messages do
   @type name_and_arity :: {atom, non_neg_integer}
   @type field_list :: Keyword.t() | [atom]
   @type diagnostics :: [Mix.Task.Compiler.Diagnostic.t()]
+  @type maybe_version :: nil | non_neg_integer()
 
+  @type project_compile_requested ::
+          record(:project_compile_requested,
+            project: Lexical.Project.t(),
+            build_number: non_neg_integer()
+          )
   @type project_compiled ::
           record(:project_compiled,
             project: Lexical.Project.t(),
+            build_number: non_neg_integer(),
             status: compile_status,
             elapsed_ms: non_neg_integer
           )
 
-  @type file_compile_requested :: record(:file_compile_requested, uri: Lexical.uri())
+  @type file_updated ::
+          record(:file_changed,
+            uri: Lexical.uri(),
+            from_version: maybe_version,
+            to_version: maybe_version,
+            open?: boolean()
+          )
+  @type file_compile_requested ::
+          record(:file_compile_requested,
+            project: Lexical.Project.t(),
+            build_number: non_neg_integer(),
+            uri: Lexical.uri()
+          )
 
   @type file_compiled ::
           record(:file_compiled,
-            uri: Lexical.uri(),
             project: Lexical.Project.t(),
+            build_number: non_neg_integer(),
+            uri: Lexical.uri(),
             status: compile_status,
             elapsed_ms: non_neg_integer
           )

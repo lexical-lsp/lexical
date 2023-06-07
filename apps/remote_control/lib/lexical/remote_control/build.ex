@@ -63,7 +63,7 @@ defmodule Lexical.RemoteControl.Build do
 
   @impl GenServer
   def handle_call({:force_compile_file, %Document{} = document}, _from, %State{} = state) do
-    State.compile_file(state.project, document)
+    State.compile_file(state, document)
     {:reply, :ok, state}
   end
 
