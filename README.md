@@ -59,7 +59,6 @@ To install lexical fetch the source code from git, then do the following:
 
  ```
  mix deps.get
- mix deps.compile
  mix release lexical
  ```
 
