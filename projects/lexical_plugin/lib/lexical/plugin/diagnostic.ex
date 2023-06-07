@@ -1,15 +1,24 @@
 defmodule Lexical.Plugin.Diagnostic do
   alias Lexical.Document
   alias Lexical.Plugin.Diagnostic
+  alias Lexical.Project
 
-  @callback diagnose(Document.t()) :: [Diagnostic.Result.t()]
+  @type state :: any()
+  @type results :: [Diagnostic.Result.t()]
 
-  defmacro __using__(_) do
-    quote do
+  @type diagnosable :: Project.t() | Document.t()
+  @type diagnostics_reply :: {:ok, results} | {:error, any()}
+
+  @callback handle(diagnosable) :: diagnostics_reply()
+
+  defmacro __using__(opts) do
+    name = Keyword.get(opts, :name)
+
+    quote location: :keep do
+      require Logger
       Module.register_attribute(__MODULE__, :lexical_plugin, persist: true)
-
       @lexical_plugin true
-      @behaviour Lexical.Plugin.Diagnostic
+      @behaviour unquote(__MODULE__)
 
       def __lexical_plugin__ do
         __MODULE__
@@ -19,11 +28,19 @@ defmodule Lexical.Plugin.Diagnostic do
         :diagnostic
       end
 
+      def name do
+        unquote(name)
+      end
+
       def init do
         :ok
       end
 
-      defoverridable init: 0
+      def handle(_) do
+        {:ok, []}
+      end
+
+      defoverridable init: 0, handle: 1
     end
   end
 end

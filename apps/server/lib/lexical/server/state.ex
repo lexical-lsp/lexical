@@ -28,6 +28,7 @@ defmodule Lexical.Server.State do
   require CodeAction.Kind
   require Logger
 
+  import Api.Messages
   defstruct configuration: nil, initialized?: false, shutdown_received?: false
 
   @supported_code_actions [
@@ -95,13 +96,22 @@ defmodule Lexical.Server.State do
   def apply(%__MODULE__{} = state, %DidChange{lsp: event}) do
     uri = event.text_document.uri
     version = event.text_document.version
+    project = state.configuration.project
 
     case Document.Store.get_and_update(
            uri,
            &Document.apply_content_changes(&1, version, event.content_changes)
          ) do
       {:ok, updated_source} ->
-        Api.diagnose(state.configuration.project, updated_source)
+        updated_message =
+          file_changed(
+            uri: updated_source.uri,
+            open?: true,
+            from_version: version,
+            to_version: updated_source.version
+          )
+
+        Project.Dispatch.broadcast(project, updated_message)
         Api.compile_document(state.configuration.project, updated_source)
         {:ok, state}
 

@@ -58,16 +58,7 @@ faster.
 To install lexical fetch the source code from git, then do the following:
 
  ```
- mix deps.get
- mix deps.compile
- mix release lexical
+make release.namespaced
  ```
 
  Lexical will now be available in `_build/dev/rel/lexical`
-
-To use lexical as a language server while working on lexical source code,
-use the following to produce the release and avoid bugs:
-
- ```
- mix release lexical && NAMESPACE=1 mix release lexical --overwrite
- ```
