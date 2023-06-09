@@ -31,12 +31,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         [:deprecated]
       end
 
-    Env.snippet(env, insert_text,
+    env
+    |> Env.snippet(insert_text,
       kind: :function,
       label: label(callable, env),
-      sort_text: sort_text(callable),
       tags: tags
     )
+    |> maybe_boost(callable)
   end
 
   def capture_completions(%callable_module{} = callable, %Env{} = env)
@@ -44,20 +45,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     name_and_arity = name_and_arity(callable)
 
     complete_capture =
-      Env.plain_text(env, name_and_arity,
+      env
+      |> Env.plain_text(name_and_arity,
         detail: "(Capture)",
         kind: :function,
-        label: name_and_arity,
-        sort_text: "&" <> sort_text(callable)
+        label: name_and_arity
       )
+      |> maybe_boost(callable, 4)
 
     call_capture =
-      Env.snippet(env, callable_snippet(callable, env),
+      env
+      |> Env.snippet(callable_snippet(callable, env),
         detail: "(Capture with arguments)",
         kind: :function,
-        label: label(callable, env),
-        sort_text: "&" <> sort_text(callable)
+        label: label(callable, env)
       )
+      |> maybe_boost(callable, 4)
 
     [complete_capture, call_capture]
   end
@@ -88,14 +91,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp sort_text(%_{name: name, arity: arity}) do
-    normalized = String.replace(name, "__", "")
-    fun = "#{normalized}/#{arity}"
-
+  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
     if String.starts_with?(name, "__") or name in @default_functions do
-      fun
+      item
     else
-      Env.boost(fun)
+      Env.boost(item, default_boost)
     end
   end
 

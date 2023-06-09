@@ -92,23 +92,23 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     end
   end
 
-  describe "sort_text" do
-    test "dunder functions have the dunder removed in their sort_text", %{project: project} do
+  describe "sorting" do
+    test "dunder functions aren't boosted", %{project: project} do
       assert {:ok, completion} =
                project
                |> complete("Enum.|")
                |> fetch_completion("__info__")
 
-      assert completion.sort_text == "info/1"
+      refute boosted?(completion)
     end
 
-    test "dunder macros have the dunder removed in their sort_text", %{project: project} do
+    test "dunder macros aren't boosted", %{project: project} do
       assert {:ok, completion} =
                project
                |> complete("Project.__dunder_macro__|")
                |> fetch_completion("__dunder_macro__")
 
-      assert completion.sort_text == "dunder_macro/0"
+      refute boosted?(completion)
     end
   end
 
@@ -119,12 +119,18 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     all_completions = [
       %Result.Behaviour{name: "#{name}-behaviour", full_name: full_name},
       %Result.BitstringOption{name: "#{name}-bitstring", type: "integer"},
-      %Result.Callback{name: "#{name}-callback", origin: full_name},
+      %Result.Callback{
+        name: "#{name}-callback",
+        origin: full_name,
+        argument_names: [],
+        metadata: %{}
+      },
       %Result.Exception{name: "#{name}-exception", full_name: full_name},
       %Result.Function{name: "my_func", origin: full_name, argument_names: [], metadata: %{}},
       %Result.Macro{name: "my_macro", origin: full_name, argument_names: [], metadata: %{}},
       %Result.MixTask{name: "#{name}-mix-task", full_name: full_name},
       %Result.Module{name: "#{name}-module", full_name: full_name},
+      %Result.Module{name: "#{name}-submodule", full_name: "#{full_name}.Bar"},
       %Result.ModuleAttribute{name: "#{name}-module-attribute"},
       %Result.Protocol{name: "#{name}-protocol", full_name: full_name},
       %Result.Struct{name: "#{name}-struct", full_name: full_name},
@@ -151,6 +157,39 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert {:ok, _} = fetch_completion(completions, label: "Foo-module")
       assert {:ok, _} = fetch_completion(completions, label: "Foo-protocol")
       assert {:ok, _} = fetch_completion(completions, label: "Foo-struct")
+    end
+
+    test "modules are sorted before functions", %{project: project} do
+      code = ~q[
+        def in_function do
+          Foo.|
+        end
+      ]
+
+      completions =
+        project
+        |> complete(code)
+        |> Enum.sort_by(fn result -> result.sort_text || result.insert_text end)
+
+      module_index = Enum.find_index(completions, &(&1.label == "Foo-module"))
+      behaviour_index = Enum.find_index(completions, &(&1.label == "Foo-behaviour"))
+      submodule_index = Enum.find_index(completions, &(&1.label == "Foo-submodule"))
+
+      function_index = Enum.find_index(completions, &(&1.label == "my_function()"))
+      macro_index = Enum.find_index(completions, &(&1.label == "my_macro()"))
+      callback_index = Enum.find_index(completions, &(&1.label == "Foo-callback()"))
+
+      assert submodule_index < function_index
+      assert submodule_index < macro_index
+      assert submodule_index < callback_index
+
+      assert module_index < function_index
+      assert module_index < macro_index
+      assert module_index < callback_index
+
+      assert behaviour_index < function_index
+      assert behaviour_index < macro_index
+      assert behaviour_index < callback_index
     end
   end
 end

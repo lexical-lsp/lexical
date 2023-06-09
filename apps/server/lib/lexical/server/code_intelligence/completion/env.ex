@@ -226,6 +226,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     |> Keyword.put(:insert_text, snippet_text)
     |> Keyword.put(:insert_text_format, :snippet)
     |> Completion.Item.new()
+    |> boost(0)
   end
 
   @impl Builder
@@ -233,6 +234,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     options
     |> Keyword.put(:insert_text, insert_text)
     |> Completion.Item.new()
+    |> boost(0)
   end
 
   @impl Builder
@@ -244,6 +246,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     options
     |> Keyword.put(:text_edit, edits)
     |> Completion.Item.new()
+    |> boost(0)
   end
 
   @impl Builder
@@ -256,6 +259,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     |> Keyword.put(:text_edit, edits)
     |> Keyword.put(:insert_text_format, :snippet)
     |> Completion.Item.new()
+    |> boost(0)
   end
 
   @impl Builder
@@ -264,15 +268,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   def fallback(detail, _), do: detail
 
   @impl Builder
-  def boost(text, amount \\ 5)
+  def boost(item, amount \\ 5)
 
-  def boost(text, amount) when amount in 0..10 do
-    boost_char = ?* - amount
-    IO.iodata_to_binary([boost_char, text])
+  def boost(%Completion.Item{} = item, amount) when amount in 0..99 do
+    boost =
+      (99 - amount)
+      |> Integer.to_string()
+      |> String.pad_leading(3, "0")
+
+    sort_text = boost <> "_" <> item.label
+    %Completion.Item{item | sort_text: sort_text}
   end
 
-  def boost(text, _) do
-    boost(text, 0)
+  def boost(%Completion.Item{} = item, _) do
+    boost(%Completion.Item{} = item, 0)
   end
 
   # end builder behaviour

@@ -81,5 +81,15 @@ defmodule Lexical.Completion.Builder do
               translated_item()
 
   @callback fallback(any, any) :: any
-  @callback boost(String.t(), 0..10) :: String.t()
+
+  @doc """
+  Boosts a translated item.
+
+  Provides the ability to boost the relevance of an item above its peers.
+  The boost is hierarchical, a single-digit boost will elevate items above other items of the same kind.
+  use single-digit boosts to increase (or decrease) the prominence of individual functions or modules.
+  Use the second digit to boost a certain kind of item above other kinds. For example, modules are sorted
+  above functions, so they carry a default boost of 20, which will put them above functions.
+  """
+  @callback boost(translated_item, 0..99) :: translated_item
 end
