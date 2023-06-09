@@ -21,6 +21,7 @@ defmodule Lexical.LanguageServer.MixProject do
     [
       {:ex_doc, "~> 0.29.1", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test]},
+      {:lexical_credo, path: "projects/lexical_credo", only: [:dev, :test]},
       Mix.Dialyzer.dependency()
     ]
   end
