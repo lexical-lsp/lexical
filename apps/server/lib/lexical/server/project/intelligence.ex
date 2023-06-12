@@ -2,10 +2,11 @@ defmodule Lexical.Server.Project.Intelligence do
   defmodule State do
     alias Lexical.Formats
     alias Lexical.Project
+
     defstruct project: nil, struct_modules: MapSet.new()
 
     def new(%Project{} = project) do
-      discover_existing_structs(%__MODULE__{project: project})
+      %__MODULE__{project: project}
     end
 
     def delete_struct_module(%__MODULE__{} = state, module_name) do
@@ -50,35 +51,6 @@ defmodule Lexical.Server.Project.Intelligence do
 
     defp prefixes_match?(_, _, _) do
       false
-    end
-
-    require Logger
-
-    defp discover_existing_structs(%__MODULE__{} = state) do
-      # This might be a performance / memory issue on larger projects. It
-      # iterates through all modules, loading each as necessary and then removing them
-      # if they're not already loaded to try and claw back some memory
-
-      for {module_name_charlist, _, loaded?} <- :code.all_available(),
-          elixir_module?(module_name_charlist),
-          module_name = List.to_atom(module_name_charlist),
-          Code.ensure_loaded(module_name),
-          is_list(module_name.__info__(:struct)),
-          reduce: state do
-        state ->
-          new_state = add_struct_module(state, module_name)
-
-          unless loaded? do
-            :code.delete(module_name)
-            :code.purge(module_name)
-          end
-
-          new_state
-      end
-    end
-
-    defp elixir_module?(module_name_charlist) do
-      List.starts_with?(module_name_charlist, 'Elixir.')
     end
   end
 
@@ -185,7 +157,7 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [module_updated()])
+    Dispatch.register(project, [module_updated(), struct_discovered()])
     state = State.new(project)
     {:ok, state}
   end
@@ -212,6 +184,12 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def handle_info(module_updated(name: module_name), %State{} = state) do
+    state = State.add_struct_module(state, module_name)
+    {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_info(struct_discovered(module: module_name), %State{} = state) do
     state = State.add_struct_module(state, module_name)
     {:noreply, state}
   end
