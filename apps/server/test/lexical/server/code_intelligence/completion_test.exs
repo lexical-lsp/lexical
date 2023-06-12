@@ -169,7 +169,7 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       completions =
         project
         |> complete(code)
-        |> Enum.sort_by(fn result -> result.sort_text || result.insert_text end)
+        |> Enum.sort_by(& &1.sort_text)
 
       module_index = Enum.find_index(completions, &(&1.label == "Foo-module"))
       behaviour_index = Enum.find_index(completions, &(&1.label == "Foo-behaviour"))

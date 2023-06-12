@@ -114,7 +114,6 @@ defmodule Lexical.Test.Server.CompletionCase do
         if expected_amount == :any do
           actual_boost < 99
         else
-          IO.puts("bost: #{99 - expected_amount}")
           actual_boost == 99 - expected_amount
         end
 

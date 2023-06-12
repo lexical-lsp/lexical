@@ -28,7 +28,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(10)
+    |> builder.boost(9)
   end
 
   def translate(%Result.Macro{name: "defp", arity: 2} = macro, builder, env) do
@@ -46,7 +46,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(9)
+    |> builder.boost(8)
   end
 
   def translate(%Result.Macro{name: "defmodule"} = macro, builder, env) do
@@ -64,7 +64,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(8)
+    |> builder.boost(7)
   end
 
   def translate(%Result.Macro{name: "defmacro", arity: 2} = macro, builder, env) do
@@ -82,7 +82,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(7)
+    |> builder.boost(6)
   end
 
   def translate(%Result.Macro{name: "defmacrop", arity: 2} = macro, builder, env) do
@@ -100,7 +100,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(6)
+    |> builder.boost(5)
   end
 
   def translate(%Result.Macro{name: "defprotocol"} = macro, builder, env) do

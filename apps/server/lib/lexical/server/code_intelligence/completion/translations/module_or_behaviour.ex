@@ -61,7 +61,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     env
     |> builder.plain_text(module_name, label: module_name, kind: :module, detail: detail)
-    |> builder.boost(20)
+    |> builder.boost(0, 2)
   end
 
   defp local_module_name(parent_module, child_module) do

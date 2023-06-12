@@ -268,20 +268,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   def fallback(detail, _), do: detail
 
   @impl Builder
-  def boost(item, amount \\ 5)
+  def boost(item, local_boost \\ 1, global_boost \\ 0)
 
-  def boost(%Completion.Item{} = item, amount) when amount in 0..99 do
-    boost =
-      (99 - amount)
-      |> Integer.to_string()
-      |> String.pad_leading(3, "0")
+  def boost(%Completion.Item{} = item, local_boost, global_boost)
+      when local_boost in 0..9 and global_boost in 0..9 do
+    global_boost = Integer.to_string(9 - global_boost)
+    local_boost = Integer.to_string(9 - local_boost)
 
-    sort_text = boost <> "_" <> item.label
+    sort_text = "0#{global_boost}#{local_boost}_#{item.label}"
     %Completion.Item{item | sort_text: sort_text}
-  end
-
-  def boost(%Completion.Item{} = item, _) do
-    boost(%Completion.Item{} = item, 0)
   end
 
   # end builder behaviour

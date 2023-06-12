@@ -91,5 +91,7 @@ defmodule Lexical.Completion.Builder do
   Use the second digit to boost a certain kind of item above other kinds. For example, modules are sorted
   above functions, so they carry a default boost of 20, which will put them above functions.
   """
-  @callback boost(translated_item, 0..99) :: translated_item
+  @callback boost(translated_item, 0..9, 0..9) :: translated_item
+  @callback boost(translated_item, 0..9) :: translated_item
+  @callback boost(translated_item) :: translated_item
 end

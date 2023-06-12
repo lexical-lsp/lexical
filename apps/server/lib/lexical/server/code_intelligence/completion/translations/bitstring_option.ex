@@ -15,7 +15,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
       kind: :unit,
       label: option.name
     )
-    |> builder.boost(10)
+    |> builder.boost(5)
   end
 
   defp prefix_length(%Env{} = env) do
