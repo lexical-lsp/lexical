@@ -185,6 +185,7 @@ defmodule Lexical.RemoteControl.Build.State do
         Mix.Task.clear()
 
         with_progress building_label(project), fn ->
+          Mix.Task.run(:loadconfig)
           result = Mix.Task.run(:compile, mix_compile_opts(force?))
           Mix.Task.run(:loadpaths)
           result
@@ -295,6 +296,7 @@ defmodule Lexical.RemoteControl.Build.State do
           Mix.ProjectStack.pop()
         end
 
+        Mix.Task.run(:loadconfig)
         Code.compile_quoted(quoted_ast, document.path)
       rescue
         exception ->
