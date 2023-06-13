@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribute do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
-  use Translatable.Impl, for: Result.ModuleAttribute
+  use Translatable.Impl, for: Candidate.ModuleAttribute
 
-  def translate(%Result.ModuleAttribute{name: "@moduledoc"}, builder, env) do
+  def translate(%Candidate.ModuleAttribute{name: "@moduledoc"}, builder, env) do
     doc_snippet = ~s(
       @moduledoc """
       $0
@@ -28,7 +28,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
     [with_doc, without_doc]
   end
 
-  def translate(%Result.ModuleAttribute{name: "@doc"}, builder, env) do
+  def translate(%Candidate.ModuleAttribute{name: "@doc"}, builder, env) do
     doc_snippet = ~s(
       @doc """
       $0
@@ -52,7 +52,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
     [with_doc, without_doc]
   end
 
-  def translate(%Result.ModuleAttribute{} = attribute, builder, env) do
+  def translate(%Candidate.ModuleAttribute{} = attribute, builder, env) do
     builder.plain_text(env, attribute.name,
       detail: "module attribute",
       kind: :constant,

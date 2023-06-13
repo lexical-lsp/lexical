@@ -1,7 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
   alias Lexical.Document
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
 
   use Lexical.Test.Server.CompletionCase
@@ -117,26 +117,26 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     full_name = "A.B.Foo"
 
     all_completions = [
-      %Result.Behaviour{name: "#{name}-behaviour", full_name: full_name},
-      %Result.BitstringOption{name: "#{name}-bitstring", type: "integer"},
-      %Result.Callback{
+      %Candidate.Behaviour{name: "#{name}-behaviour", full_name: full_name},
+      %Candidate.BitstringOption{name: "#{name}-bitstring", type: "integer"},
+      %Candidate.Callback{
         name: "#{name}-callback",
         origin: full_name,
         argument_names: [],
         metadata: %{}
       },
-      %Result.Exception{name: "#{name}-exception", full_name: full_name},
-      %Result.Function{name: "my_func", origin: full_name, argument_names: [], metadata: %{}},
-      %Result.Macro{name: "my_macro", origin: full_name, argument_names: [], metadata: %{}},
-      %Result.MixTask{name: "#{name}-mix-task", full_name: full_name},
-      %Result.Module{name: "#{name}-module", full_name: full_name},
-      %Result.Module{name: "#{name}-submodule", full_name: "#{full_name}.Bar"},
-      %Result.ModuleAttribute{name: "#{name}-module-attribute"},
-      %Result.Protocol{name: "#{name}-protocol", full_name: full_name},
-      %Result.Struct{name: "#{name}-struct", full_name: full_name},
-      %Result.StructField{name: "#{name}-struct-field", origin: full_name},
-      %Result.Typespec{name: "#{name}-typespec"},
-      %Result.Variable{name: "#{name}-variable"}
+      %Candidate.Exception{name: "#{name}-exception", full_name: full_name},
+      %Candidate.Function{name: "my_func", origin: full_name, argument_names: [], metadata: %{}},
+      %Candidate.Macro{name: "my_macro", origin: full_name, argument_names: [], metadata: %{}},
+      %Candidate.MixTask{name: "#{name}-mix-task", full_name: full_name},
+      %Candidate.Module{name: "#{name}-module", full_name: full_name},
+      %Candidate.Module{name: "#{name}-submodule", full_name: "#{full_name}.Bar"},
+      %Candidate.ModuleAttribute{name: "#{name}-module-attribute"},
+      %Candidate.Protocol{name: "#{name}-protocol", full_name: full_name},
+      %Candidate.Struct{name: "#{name}-struct", full_name: full_name},
+      %Candidate.StructField{name: "#{name}-struct-field", origin: full_name},
+      %Candidate.Typespec{name: "#{name}-typespec"},
+      %Candidate.Variable{name: "#{name}-variable"}
     ]
 
     patch(Lexical.RemoteControl.Api, :complete, all_completions)

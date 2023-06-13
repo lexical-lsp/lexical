@@ -1,5 +1,5 @@
-defmodule Lexical.RemoteControl.Completion.Result.ArgumentNamesTest do
-  alias Lexical.RemoteControl.Completion.Result.ArgumentNames
+defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNamesTest do
+  alias Lexical.RemoteControl.Completion.Candidate.ArgumentNames
 
   use ExUnit.Case
   import ArgumentNames

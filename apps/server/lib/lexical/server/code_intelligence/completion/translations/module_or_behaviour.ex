@@ -1,21 +1,21 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
 
-  use Translatable.Impl, for: [Result.Module, Result.Behaviour, Result.Protocol]
+  use Translatable.Impl, for: [Candidate.Module, Candidate.Behaviour, Candidate.Protocol]
 
-  def translate(%Result.Module{} = module, builder, %Env{} = env) do
+  def translate(%Candidate.Module{} = module, builder, %Env{} = env) do
     do_translate(module, builder, env)
   end
 
-  def translate(%Result.Behaviour{} = behaviour, builder, %Env{} = env) do
+  def translate(%Candidate.Behaviour{} = behaviour, builder, %Env{} = env) do
     do_translate(behaviour, builder, env)
   end
 
-  def translate(%Result.Protocol{} = protocol, builder, %Env{} = env) do
+  def translate(%Candidate.Protocol{} = protocol, builder, %Env{} = env) do
     do_translate(protocol, builder, env)
   end
 
