@@ -59,7 +59,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   def completion(%Env{} = env, builder, module_name, detail \\ nil) do
     detail = builder.fallback(detail, "#{module_name} (Module)")
 
-    builder.plain_text(env, module_name, label: module_name, kind: :module, detail: detail)
+    env
+    |> builder.plain_text(module_name, label: module_name, kind: :module, detail: detail)
+    |> builder.boost(0, 2)
   end
 
   defp local_module_name(parent_module, child_module) do

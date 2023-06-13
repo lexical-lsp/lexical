@@ -9,12 +9,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
   def translate(%Result.BitstringOption{} = option, builder, %Env{} = env) do
     start_character = env.position.character - prefix_length(env)
 
-    builder.text_edit(env, option.name, {start_character, env.position.character},
+    env
+    |> builder.text_edit(option.name, {start_character, env.position.character},
       filter_text: option.name,
       kind: :unit,
-      label: option.name,
-      sort_text: builder.boost(option.name, 10)
+      label: option.name
     )
+    |> builder.boost(5)
   end
 
   defp prefix_length(%Env{} = env) do

@@ -603,13 +603,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
   end
 
   describe "sort_text" do
-    test "dunder macros have the dunder removed in their sort_text", %{project: project} do
+    test "dunder macros aren't boosted", %{project: project} do
       assert {:ok, completion} =
                project
                |> complete("Project.__dunder_macro__|")
                |> fetch_completion("__dunder_macro__")
 
-      assert completion.sort_text == "dunder_macro/0"
+      refute boosted?(completion)
     end
   end
 end
