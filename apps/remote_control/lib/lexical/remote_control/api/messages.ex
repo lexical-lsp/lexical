@@ -18,6 +18,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :project_progress, label: nil, message: nil, stage: :report
 
+  defrecord :struct_discovered, module: nil, fields: []
+
   @type compile_status :: :successful | :error
   @type name_and_arity :: {atom, non_neg_integer}
   @type field_list :: Keyword.t() | [atom]
@@ -67,4 +69,6 @@ defmodule Lexical.RemoteControl.Api.Messages do
             message: String.t() | integer(),
             stage: :prepare | :begin | :report | :complete
           )
+
+  @type struct_discovered :: record(:struct_discovered, module: module(), fields: field_list())
 end

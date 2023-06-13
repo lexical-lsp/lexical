@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.ModuleMappings
 
   require Logger
@@ -78,6 +79,7 @@ defmodule Lexical.RemoteControl.Build.State do
 
       RemoteControl.notify_listener(compile_message)
       RemoteControl.notify_listener(diagnostics_message)
+      CodeIntelligence.Structs.discover_deps_structs()
     end)
   end
 

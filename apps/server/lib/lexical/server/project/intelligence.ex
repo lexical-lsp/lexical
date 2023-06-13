@@ -2,6 +2,7 @@ defmodule Lexical.Server.Project.Intelligence do
   defmodule State do
     alias Lexical.Formats
     alias Lexical.Project
+
     defstruct project: nil, struct_modules: MapSet.new()
 
     def new(%Project{} = project) do
@@ -156,7 +157,7 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [module_updated()])
+    Dispatch.register(project, [module_updated(), struct_discovered()])
     state = State.new(project)
     {:ok, state}
   end
@@ -183,6 +184,12 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def handle_info(module_updated(name: module_name), %State{} = state) do
+    state = State.add_struct_module(state, module_name)
+    {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_info(struct_discovered(module: module_name), %State{} = state) do
     state = State.add_struct_module(state, module_name)
     {:noreply, state}
   end

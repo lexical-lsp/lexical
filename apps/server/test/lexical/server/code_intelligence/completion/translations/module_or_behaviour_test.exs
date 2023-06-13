@@ -201,7 +201,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     test "should offer no other types of completions", %{project: project} do
       assert [] = complete(project, "%MapSet.|")
-      assert [account, order, order_line, user] = complete(project, "%Project.|")
+
+      assert [account, order, order_line, user] =
+               project
+               |> complete("%Project.|")
+               |> Enum.sort_by(& &1.label)
 
       assert account.label == "Structs.Account"
       assert order.label == "Structs.Order"
@@ -214,7 +218,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     } do
       source = ~q[
         alias Project.Structs.Order
-        %O|
+        %Ord|
       ]
 
       [order_line, order] = complete(project, source)
