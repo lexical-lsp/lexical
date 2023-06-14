@@ -488,6 +488,23 @@ defmodule Lexical.BuildTest do
     end
   end
 
+  describe "app config" do
+    setup [:with_metadata_project]
+
+    test "allows config to be read", %{project: project} do
+      initial = ~S[
+        defmodule WithConfig do
+          @date_module Application.compile_env(:project_metadata, :date_module)
+          @date_module.utc_today()
+        end
+      ]
+
+      compile_document(project, initial)
+      assert_receive file_compile_requested(uri: file_uri), 500
+      assert_receive file_diagnostics(uri: ^file_uri, diagnostics: []), 500
+    end
+  end
+
   def loaded?(project, module) do
     RemoteControl.call(project, Code, :ensure_loaded?, [module])
   end

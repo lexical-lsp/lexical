@@ -81,5 +81,18 @@ defmodule Lexical.Completion.Builder do
               translated_item()
 
   @callback fallback(any, any) :: any
-  @callback boost(String.t(), 0..10) :: String.t()
+
+  @doc """
+  Boosts a translated item.
+
+  Provides the ability to boost the relevance of an item above its peers.
+  The boost is hierarchical, and split into a local boost and a global boost.
+  Use the local boost to increase (or decrease) the prominence of individual functions or modules relative to another
+  item of the same type. For example, you can use the local boost to increase the prominence of test functions inside of test files.
+  Use the global boost to boost a certain kind of item above other kinds. For example, modules are sorted
+  above functions, so they carry a global boost of 2, which will put them above functions, which have no global boost.
+  """
+  @callback boost(translated_item, local_boost :: 0..9, global_boost :: 0..9) :: translated_item
+  @callback boost(translated_item, local_bost :: 0..9) :: translated_item
+  @callback boost(translated_item) :: translated_item
 end

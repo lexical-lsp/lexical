@@ -10,4 +10,8 @@ defmodule Lexical.Server.Provider.Queue.Supervisor do
   def run_in_task(provider_fn) do
     Task.Supervisor.async_nolink(name(), provider_fn)
   end
+
+  def cancel(%Task{} = task) do
+    Task.Supervisor.terminate_child(name(), task.pid)
+  end
 end

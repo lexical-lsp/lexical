@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Compilation.Dispatch do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
-  alias Lexical.RemoteControl.Plugin
 
   import Messages
   use GenServer
@@ -24,7 +23,6 @@ defmodule Lexical.RemoteControl.Compilation.Dispatch do
     module_updated(name: module_name, file: filename) = message
     ModuleMappings.update(module_name, filename)
     RemoteControl.notify_listener(message)
-    Plugin.on_module_updated(module_name)
     maybe_report_progress(filename)
     {:noreply, state}
   end
