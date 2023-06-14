@@ -56,7 +56,7 @@ defmodule Lexical.Plugin.V1.Diagnostic do
   @type diagnosable :: Project.t() | Document.t()
   @type diagnostics_reply :: {:ok, results} | {:error, any()}
 
-  @callback handle(diagnosable) :: diagnostics_reply()
+  @callback diagnose(diagnosable) :: diagnostics_reply()
 
   defmacro __using__(opts) do
     name = Keyword.get(opts, :name)
@@ -83,11 +83,11 @@ defmodule Lexical.Plugin.V1.Diagnostic do
         :ok
       end
 
-      def handle(_) do
+      def diagnose(_) do
         {:ok, []}
       end
 
-      defoverridable init: 0, handle: 1
+      defoverridable init: 0, diagnose: 1
     end
   end
 end

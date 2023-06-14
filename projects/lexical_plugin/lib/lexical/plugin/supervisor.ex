@@ -9,6 +9,6 @@ defmodule Lexical.Plugin.Supervisor do
   end
 
   def async(plugin_module, subject) do
-    Task.Supervisor.async_nolink(__MODULE__, plugin_module, :handle, [subject])
+    Task.Supervisor.async_nolink(__MODULE__, plugin_module, :diagnose, [subject])
   end
 end

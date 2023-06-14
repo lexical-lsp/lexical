@@ -16,7 +16,7 @@ defmodule LexicalCredo do
     %Document{}
   end
 
-  def handle(%Document{} = doc) do
+  def diagnose(%Document{} = doc) do
     doc_contents = Document.to_string(doc)
 
     execution_args = [
@@ -44,7 +44,7 @@ defmodule LexicalCredo do
     {:ok, diagnostics}
   end
 
-  def handle(%Project{}) do
+  def diagnose(%Project{}) do
     results =
       Credo.Execution.build()
       |> Credo.Execution.run()
