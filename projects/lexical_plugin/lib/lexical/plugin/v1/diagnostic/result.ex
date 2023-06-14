@@ -16,7 +16,7 @@ defmodule Lexical.Plugin.V1.Diagnostic.Result do
   `position` - Where the message occurred (see the `Positions` section for details)
 
   `severity` - How important the issue is. Can be one of (from least severe to most severe)
-  `:hint`, `:information`, `warning`, `error`
+  `:hint`, `:information`, `:warning`, `:error`
 
   `source` - The name of the plugin that produced this as a human-readable string.
 

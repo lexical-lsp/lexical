@@ -1,4 +1,6 @@
 defmodule Lexical.Convertible.Helpers do
+  @moduledoc false
+
   alias Lexical.Document
 
   def apply(%{} = map, func, context_document) do
@@ -40,15 +42,40 @@ defmodule Lexical.Convertible.Helpers do
 end
 
 defprotocol Lexical.Convertible do
+  @moduledoc """
+  A protocol that details conversions to and from Language Server idioms
+
+  The [Language Server specification](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)
+  defines a couple of data structures that differ wildly from similar data structures and concepts in Elixir. Among these are
+  positions and ranges. Elixir's parser thinks in terms of UTF-8 graphemes and uses one-based line and column numbers, while the
+  language server speaks in UTF-16 code unit offsets and uses zero-based line and character (a misnomer, in reality this is a
+  UTF-16 code unit) offsets. If not handled centrally, this leads to a profusion of conversion code throughout the language
+  server codebase.
+
+  That's where this protocol comes in. Using this protocol allows us to define native `Lexical.Document.Position` and
+  `Lexical.Document.Range` structs and have them automatically convert into their Language Server counterparts, centralizing
+  the conversion logic in a single pace.
+
+  Note: You do not need to do conversions manually, If you define a new type, it is sufficient to implement this
+  protocol for your new type
+  """
   alias Lexical.Document
 
   @fallback_to_any true
 
+  @typedoc "Any type that can be converted using this protocol"
   @type t :: term()
+
+  @typedoc "A native term that contains ranges, positions or both"
   @type native :: term()
+
+  @typedoc "A Language server term"
   @type lsp :: term()
 
+  @typedoc "The result of converting a lsp term into a native term"
   @type native_response :: {:ok, native()} | {:error, term}
+
+  @typedoc "The result of converting a native term into a lsp term"
   @type lsp_response :: {:ok, lsp()} | {:error, term}
 
   @doc """

@@ -14,6 +14,10 @@ defmodule Lexical.Document.Lines do
 
   @type t :: %__MODULE__{}
 
+  @doc """
+  Create a new line store with the given text at the given starting index
+  """
+  @spec new(String.t(), non_neg_integer) :: t
   def new(text, starting_index \\ @default_starting_index) do
     lines =
       text
@@ -23,22 +27,35 @@ defmodule Lexical.Document.Lines do
     %__MODULE__{lines: lines, starting_index: starting_index}
   end
 
+  @doc """
+  Turnss a line store into an iolist
+  """
+  @spec to_iodata(t) :: iodata()
   def to_iodata(%__MODULE__{} = document) do
     reduce(document, [], fn line(text: text, ending: ending), acc ->
       [acc | [text | ending]]
     end)
   end
 
+  @doc """
+  Turns a line store into a string
+  """
   def to_string(%__MODULE__{} = document) do
     document
     |> to_iodata()
     |> IO.iodata_to_binary()
   end
 
+  @doc """
+  Returns the number of lines in the line store
+  """
   def size(%__MODULE__{} = document) do
     tuple_size(document.lines)
   end
 
+  @doc """
+  Gets the current line with the given index using fetch semantics
+  """
   def fetch_line(%__MODULE__{lines: lines, starting_index: starting_index}, index)
       when index - starting_index >= tuple_size(lines) or index < starting_index do
     :error
@@ -55,6 +72,7 @@ defmodule Lexical.Document.Lines do
     end
   end
 
+  @doc false
   def reduce(%__MODULE__{} = document, initial, reducer_fn) do
     size = size(document)
 

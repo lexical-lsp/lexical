@@ -1,6 +1,6 @@
 defmodule Mix.Dialyzer do
   def dependency do
-    {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false}
+    {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false, optional: true}
   end
 
   def config do
