@@ -14,6 +14,8 @@
 -include("future_elixir.hrl").
 -define(system, 'Elixir.System').
 
+-dialyzer(no_missing_calls).
+
 %% Top level types
 %% TODO: Remove char_list type on v2.0
 -export_type([charlist/0, char_list/0, nonempty_charlist/0, struct/0, as_boolean/1, keyword/0, keyword/1]).
