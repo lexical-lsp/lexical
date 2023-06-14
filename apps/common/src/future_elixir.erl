@@ -1,6 +1,5 @@
 %% Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/src/elixir.erl
 %% And I changed string_to_tokens/5 to use the future_elixir_tokenizer module
-%% and tokens_to_quoted/3 need to use the future_elixir_parser module
 %% Main entry point for Elixir functions. All of those functions are
 %% private to the Elixir compiler and reserved to be used by Elixir only.
 -module(future_elixir).
@@ -466,7 +465,7 @@ string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(Sta
 tokens_to_quoted(Tokens, WarningFile, Opts) ->
   handle_parsing_opts(WarningFile, Opts),
 
-  try future_elixir_parser:parse(Tokens) of
+  try elixir_parser:parse(Tokens) of
     {ok, Forms} ->
       {ok, Forms};
     {error, {Line, _, [{ErrorPrefix, ErrorSuffix}, Token]}} ->
