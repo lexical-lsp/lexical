@@ -1,11 +1,11 @@
 defmodule Lexical.Document.LineParser do
   @moduledoc """
-  A parser that parses a binary into `Line` records.any()
+  A parser that parses a binary into `Lexical.Document.Line` records.
 
   The approach taken by the parser is to first go through the binary to find out where
   the lines break, what their endings are and if the line is ascii. As we go through the
   binary, we store this information, and when we're done, go back and split up the binary
-  using binary_slice. This performs 3x faster than iterating through the binary and collecting
+  using `binary_slice`. This performs 3x faster than iterating through the binary and collecting
   IOlists that represent each line.
 
   I determines if a line is ascii (and what it really means is utf8 ascii) by checking to see if
@@ -19,6 +19,13 @@ defmodule Lexical.Document.LineParser do
   @endings ["\r\n", "\r", "\n"]
   @max_ascii_character 127
 
+  @doc """
+  Parses the text into lines
+
+  Parses the given text into lines, and uses `starting_index` as the first line's line number.
+  Passing 0 as starting_index yields a zero-based collection, while passing 1 yields a 1-based
+  collection.
+  """
   def parse(text, starting_index) do
     text
     |> traverse(starting_index)

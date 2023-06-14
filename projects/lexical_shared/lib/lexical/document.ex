@@ -3,7 +3,7 @@ defmodule Lexical.Document do
   A representation of a LSP text document
 
   A document is the fundamental data structure of the Lexical language server.
-  All language server documents are represented and backed by source files, which
+  All language server documents are represented and backed by documents, which
   provide functionality for fetching lines, applying changes, and tracking versions.
   """
   alias Lexical.Convertible
@@ -54,6 +54,8 @@ defmodule Lexical.Document do
 
   @doc """
   Returns the number of lines in the document
+
+  This is a constant time operation.
   """
   @spec size(t) :: non_neg_integer()
   def size(%__MODULE__{} = document) do
@@ -62,6 +64,8 @@ defmodule Lexical.Document do
 
   @doc """
   Marks the document file as dirty
+
+  This function is mainly used internally by lexical
   """
   @spec mark_dirty(t) :: t
   def mark_dirty(%__MODULE__{} = document) do
@@ -70,17 +74,21 @@ defmodule Lexical.Document do
 
   @doc """
   Marks the document file as clean
-  """
 
+  This function is mainly used internally by lexical
+  """
   @spec mark_clean(t) :: t
   def mark_clean(%__MODULE__{} = document) do
     %__MODULE__{document | dirty?: false}
   end
 
   @doc """
-  Fetches the text at the given line
+  Get the text at the given line using `fetch` semantics
 
-  Returns {:ok, text} if the line exists, and :error if it doesn't
+  Returns `{:ok, text}` if the line exists, and `:error` if it doesn't. The line text is
+  returned without the line end character(s).
+
+  This is a constant time operation.
   """
   @spec fetch_text_at(t, version()) :: {:ok, String.t()} | :error
   def fetch_text_at(%__MODULE__{} = document, line_number) do
@@ -90,6 +98,11 @@ defmodule Lexical.Document do
     end
   end
 
+  @doc """
+  Get the `Lexical>Document.Line` at the given index using `fetch` semantics.
+
+  This function is of limited utility, you probably want `fetch_text_at/2` instead.
+  """
   @spec fetch_line_at(t, version()) :: {:ok, Line.t()} | :error
   def fetch_line_at(%__MODULE__{} = document, line_number) do
     case Lines.fetch_line(document.lines, line_number) do
@@ -104,7 +117,7 @@ defmodule Lexical.Document do
   Builds a string that represents the text of the document from the two positions given.
   The from position, defaults to `:beginning` meaning the start of the document.
   Positions can be a `Document.Position.t` or anything that will convert to a position using
-  `Convertible.to_native/2`.
+  `Lexical.Convertible.to_native/2`.
   """
   @spec fragment(t, fragment_position() | :beginning, fragment_position()) :: String.t()
   @spec fragment(t, fragment_position()) :: String.t()
@@ -151,6 +164,7 @@ defmodule Lexical.Document do
     |> IO.iodata_to_binary()
   end
 
+  @doc false
   @spec apply_content_changes(t, version(), [Convertible.t() | nil]) ::
           {:ok, t} | change_application_error()
   def apply_content_changes(%__MODULE__{version: current_version}, new_version, _)
@@ -189,6 +203,12 @@ defmodule Lexical.Document do
     end
   end
 
+  @doc """
+  Converts a document to a string
+
+  This function converts the given document back into a string, with line endings
+  preserved.
+  """
   def to_string(%__MODULE__{} = document) do
     document
     |> to_iodata()

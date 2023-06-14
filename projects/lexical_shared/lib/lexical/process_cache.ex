@@ -4,6 +4,8 @@ defmodule Lexical.ProcessCache do
   """
 
   defmodule Entry do
+    @moduledoc false
+
     defstruct [:value, :expiry]
 
     def new(value, timeout_ms) do

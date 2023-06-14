@@ -1,4 +1,22 @@
 defprotocol Lexical.Document.Container do
+  @moduledoc """
+  A protocol used to find relevant documents in structs
+
+  When converting positions from lsp formats to native and vice versa, you need the
+  line of text from the relevant document. However, due to the nature of the protocol
+  structs, there isn't a single place where the document (or a reference) to the document
+  sits. This protocol allows generic access to the relevant document regardless of the
+  structure.
+
+  Note: This protocol only needs to be implemented for structs that don't have a `document`
+  field, or don't have a `text_document` field with a `uri` sub-field. The following structs
+  would _not_ need an implementation:
+
+  ```
+  %MyStruct{document: %Lexical.Document{}}
+  %MyStruct{text_document: %{uri: "file:///path/to/document.ex"}}
+  ```
+  """
   alias Lexical.Document
   @fallback_to_any true
   @type maybe_context_document :: Document.t() | nil
