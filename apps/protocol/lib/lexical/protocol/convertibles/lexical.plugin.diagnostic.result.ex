@@ -1,9 +1,9 @@
-defimpl Lexical.Convertible, for: Lexical.Plugin.Diagnostic.Result do
+defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Math
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types
   alias Lexical.Text

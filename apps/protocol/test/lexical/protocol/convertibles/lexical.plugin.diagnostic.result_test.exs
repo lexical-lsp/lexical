@@ -1,6 +1,6 @@
-defmodule Lexical.Convertibles.Lexical.Plugin.Diagnostic.ResultTest do
+defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   use Lexical.Test.Protocol.ConvertibleSupport
 
   import Lexical.Test.CodeSigil

@@ -29,7 +29,7 @@ defmodule Lexical.Server.Project.Diagnostics.State do
   end
 
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
 
   defstruct project: nil, entries_by_uri: %{}

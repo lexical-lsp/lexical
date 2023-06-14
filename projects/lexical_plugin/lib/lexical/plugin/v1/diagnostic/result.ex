@@ -1,4 +1,4 @@
-defmodule Lexical.Plugin.Diagnostic.Result do
+defmodule Lexical.Plugin.V1.Diagnostic.Result do
   @moduledoc """
   The result of a diagnostic run
 

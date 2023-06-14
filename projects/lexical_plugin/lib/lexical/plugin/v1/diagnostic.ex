@@ -1,6 +1,6 @@
-defmodule Lexical.Plugin.Diagnostic do
+defmodule Lexical.Plugin.V1.Diagnostic do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
 
   @type state :: any()
