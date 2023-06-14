@@ -23,7 +23,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
       {:error, :failed}
     end
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject]}
     end
   end
@@ -36,7 +36,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   defmodule Echo do
     use Plugin.V1.Diagnostic, name: :echo
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject]}
     end
   end
@@ -44,7 +44,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   defmodule MultipleResults do
     use Plugin.V1.Diagnostic, name: :multiple_results
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject, subject]}
     end
   end
@@ -69,7 +69,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     defmodule TimesOut do
       use Plugin.V1.Diagnostic, name: :times_out
 
-      def handle(subject) do
+      def diagnose(subject) do
         Process.sleep(5000)
         {:ok, [subject]}
       end
@@ -78,7 +78,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     defmodule Crashes do
       use Plugin.V1.Diagnostic, name: :crashes
 
-      def handle(subject) do
+      def diagnose(subject) do
         45 = subject
         {:ok, [subject]}
       end
@@ -87,7 +87,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     defmodule Errors do
       use Plugin.V1.Diagnostic, name: :errors
 
-      def handle(_) do
+      def diagnose(_) do
         {:error, :invalid_subject}
       end
     end
@@ -95,7 +95,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     defmodule BadReturn do
       use Plugin.V1.Diagnostic, name: :bad_return
 
-      def handle(subject) do
+      def diagnose(subject) do
         {:ok, subject}
       end
     end

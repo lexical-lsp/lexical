@@ -41,7 +41,7 @@ defmodule NoisyPlugin do
 
   use Diagnostic, name: :noisy_example_plugin
 
-  def handle(%Document{} = doc) do
+  def diagnose(%Document{} = doc) do
     results =
       if Document.size(doc) >= 1 do
         [build_result(doc.path)]
@@ -52,7 +52,7 @@ defmodule NoisyPlugin do
     {:ok, results}
   end
 
-  def handle(%Project{} = project) do
+  def diagnose(%Project{} = project) do
     root_path = Project.root_path(project)
 
     glob =
@@ -91,18 +91,14 @@ end
 ...and that's it. Now, you can install that plugin in your project by adding it to the project's `mix.exs`, and when lexical starts, it will detect the plugin and every file in your project will have a little noisy error at the top.
 
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `lexical_plugin` to your list of dependencies in `mix.exs`:
+Install this dependency as an optional dep in your project
 
 ```elixir
 def deps do
   [
-    {:lexical_plugin, "~> 0.1.0"}
+    {:lexical_plugin, "~> 0.1.0", optional: true}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/lexical_plugin>.
+Documentation can be found at <https://hexdocs.pm/lexical_plugin>.
