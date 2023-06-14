@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Completion.Result.ArgumentNames do
+defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNames do
   @moduledoc """
   Elixir sense, for whatever reason returns all the argument names when asked to do a completion on a function.
   This means that the arity of the function might differ from the argument names returned. Furthermore, the

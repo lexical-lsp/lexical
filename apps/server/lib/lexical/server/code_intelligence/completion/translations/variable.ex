@@ -1,11 +1,11 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Variable do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
-  use Translatable.Impl, for: Result.Variable
+  use Translatable.Impl, for: Candidate.Variable
 
-  def translate(%Result.Variable{} = variable, builder, %Env{} = env) do
+  def translate(%Candidate.Variable{} = variable, builder, %Env{} = env) do
     builder.plain_text(env, variable.name,
       detail: variable.name,
       kind: :variable,
