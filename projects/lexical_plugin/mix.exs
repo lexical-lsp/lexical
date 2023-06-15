@@ -30,14 +30,13 @@ defmodule Lexical.Plugin.MixProject do
   defp deps do
     [
       env_dep(
-        prod: {:lexical_shared, "> 0.0.0"},
+        hex: {:lexical_shared, "> 0.0.0"},
         else: {:lexical_shared, path: "../lexical_shared"}
       ),
       env_dep(
-        prod: {:ex_doc, "~> 0.29", only: [], optional: true},
-        else: {:ex_doc, "~> 0.29", only: [:dev, :prod], optional: true}
+        hex: {:ex_doc, "~> 0.29", only: [], optional: true},
+        else: {:ex_doc, "~> 0.29", only: [:dev, :hex], optional: true}
       ),
-
       dialyzer_dep()
     ]
   end
