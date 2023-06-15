@@ -2,7 +2,8 @@ name: Release Lexical
 
 on:
   push:
-    branches: ["main"]
+    tags:
+      - v*
 
 jobs:
   release:
@@ -40,43 +41,16 @@ jobs:
       - name: Build release
         run: mix release lexical
 
-      - name: Generate short sha
-        id: short-sha
-        uses: actions/github-script@v6
-        with:
-          script: return "${{ github.sha }}".slice(0, 7)
-          result-encoding: string
-
-      - name: Generate timestamp
-        id: timestamp
-        uses: actions/github-script@v6
-        with:
-          script: return (new Date()).toISOString().slice(0, -5)
-          result-encoding: string
-
       - name: Archive release
         run: |
           cd _build/dev/rel/lexical
           zip -r lexical.zip *
           cp lexical.zip ../../../../lexical.zip
-          cp lexical.zip ../../../../lexical-${{ steps.timestamp.outputs.result }}.zip
-
-      - name: Create Git tag for commit
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "refs/tags/${{ steps.short-sha.outputs.result }}",
-              sha: context.sha
-            })
+          cp lexical.zip ../../../../lexical-${{ github.ref_name }}.zip
 
       - name: Publish release
         uses: ncipollo/release-action@v1
         with:
           artifacts: lexical*.zip
-          tag: ${{ steps.short-sha.outputs.result }}
-          name: ${{ steps.timestamp.outputs.result }}
           makeLatest: true
           generateReleaseNotes: true

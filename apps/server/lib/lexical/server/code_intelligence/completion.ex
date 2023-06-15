@@ -7,7 +7,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
 
@@ -140,23 +140,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     struct_reference? = Env.in_context?(env, :struct_reference)
 
     cond do
-      struct_reference? and struct_module == Result.Struct ->
+      struct_reference? and struct_module == Candidate.Struct ->
         true
 
-      struct_reference? and struct_module == Result.Module ->
+      struct_reference? and struct_module == Candidate.Module ->
         Intelligence.defines_struct?(env.project, result.full_name, to: :child)
 
-      struct_reference? and match?(%Result.Macro{name: "__MODULE__"}, result) ->
+      struct_reference? and match?(%Candidate.Macro{name: "__MODULE__"}, result) ->
         true
 
       struct_reference? ->
         false
 
       Env.in_context?(env, :bitstring) ->
-        struct_module in [Result.BitstringOption, Result.Variable]
+        struct_module in [Candidate.BitstringOption, Candidate.Variable]
 
       Env.in_context?(env, :alias) ->
-        struct_module in [Result.Behaviour, Result.Module, Result.Protocol, Result.Struct]
+        struct_module in [
+          Candidate.Behaviour,
+          Candidate.Module,
+          Candidate.Protocol,
+          Candidate.Struct
+        ]
 
       true ->
         true
@@ -168,10 +173,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
          trigger_character: "%"
        }) do
     case result do
-      %Result.Module{} = result ->
+      %Candidate.Module{} = result ->
         Intelligence.defines_struct?(project, result.full_name, from: :child, to: :child)
 
-      %Result.Struct{} ->
+      %Candidate.Struct{} ->
         true
 
       _other ->

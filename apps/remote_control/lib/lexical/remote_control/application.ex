@@ -15,8 +15,7 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.ModuleMappings,
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer,
-          RemoteControl.Compilation.Dispatch,
-          RemoteControl.Plugin.Supervisor
+          RemoteControl.Compilation.Dispatch
         ]
       else
         []

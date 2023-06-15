@@ -1,21 +1,21 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
 
-  use Translatable.Impl, for: [Result.Module, Result.Behaviour, Result.Protocol]
+  use Translatable.Impl, for: [Candidate.Module, Candidate.Behaviour, Candidate.Protocol]
 
-  def translate(%Result.Module{} = module, builder, %Env{} = env) do
+  def translate(%Candidate.Module{} = module, builder, %Env{} = env) do
     do_translate(module, builder, env)
   end
 
-  def translate(%Result.Behaviour{} = behaviour, builder, %Env{} = env) do
+  def translate(%Candidate.Behaviour{} = behaviour, builder, %Env{} = env) do
     do_translate(behaviour, builder, env)
   end
 
-  def translate(%Result.Protocol{} = protocol, builder, %Env{} = env) do
+  def translate(%Candidate.Protocol{} = protocol, builder, %Env{} = env) do
     do_translate(protocol, builder, env)
   end
 
@@ -59,7 +59,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   def completion(%Env{} = env, builder, module_name, detail \\ nil) do
     detail = builder.fallback(detail, "#{module_name} (Module)")
 
-    builder.plain_text(env, module_name, label: module_name, kind: :module, detail: detail)
+    env
+    |> builder.plain_text(module_name, label: module_name, kind: :module, detail: detail)
+    |> builder.boost(0, 2)
   end
 
   defp local_module_name(parent_module, child_module) do

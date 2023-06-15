@@ -1,12 +1,12 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
-  alias Lexical.RemoteControl.Completion.Result
+  alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
-  use Translatable.Impl, for: Result.Struct
+  use Translatable.Impl, for: Candidate.Struct
 
-  def translate(%Result.Struct{} = struct, builder, %Env{} = env) do
+  def translate(%Candidate.Struct{} = struct, builder, %Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
       completion(env, builder, struct.name, struct.full_name)
     else

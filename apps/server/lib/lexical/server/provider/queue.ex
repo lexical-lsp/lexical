@@ -44,7 +44,7 @@ defmodule Lexical.Server.Provider.Queue do
     @spec cancel(t, pos_integer()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.tasks_by_id, request_id),
-           true <- Process.exit(task.pid, :cancelled) do
+           :ok <- Queue.Supervisor.cancel(task) do
         error = ResponseError.new(message: "Request cancelled", code: :request_cancelled)
         reply = %{id: request_id, error: error}
         Transport.write(reply)

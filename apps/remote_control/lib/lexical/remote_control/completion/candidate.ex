@@ -1,5 +1,5 @@
-defmodule Lexical.RemoteControl.Completion.Result do
-  alias Lexical.RemoteControl.Completion.Result.ArgumentNames
+defmodule Lexical.RemoteControl.Completion.Candidate do
+  alias Lexical.RemoteControl.Completion.Candidate.ArgumentNames
 
   defmodule Function do
     @moduledoc false
