@@ -1,6 +1,6 @@
 defmodule LexicalCredo do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
 
   use Diagnostic, name: :lexical_credo

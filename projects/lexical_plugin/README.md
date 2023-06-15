@@ -6,7 +6,7 @@ Extend lexical's functionality
 Plugins are used to extend lexical's functionality and provide opt-in diagnostics, completion, and code intelligence features without having to build inside of Lexical itself.
 
 ## Plugin Types
-The goal of the plugin project is to have different types of plugins that affect lexical in different ways. Presently, only diagnostic plugins are supported. A diagnostic examines a mix project or a document and emits `Lexical.Plugin.Diagnostic.Result` structs to direct the user's attention to any issues it finds.
+The goal of the plugin project is to have different types of plugins that affect lexical in different ways. Presently, only diagnostic plugins are supported. A diagnostic examines a mix project or a document and emits `Lexical.Plugin.V1.Diagnostic.Result` structs to direct the user's attention to any issues it finds.
 Diagnostic plugins can be used to integrate code linters like `credo` or to enforce project-specific rules and coding practices.
 
 ### Creating a diagnostic plugin
@@ -36,7 +36,7 @@ Now we implement the plugin module. In our module, we're going to emit an error 
 ```elixir
 defmodule NoisyPlugin do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
 
   use Diagnostic, name: :noisy_example_plugin

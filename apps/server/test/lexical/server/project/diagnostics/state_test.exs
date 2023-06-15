@@ -1,7 +1,7 @@
 defmodule Lexical.Project.Diagnostics.StateTest do
   alias Lexical.Document
   alias Lexical.Document.Edit
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
   alias Lexical.Server.Project.Diagnostics.State
 

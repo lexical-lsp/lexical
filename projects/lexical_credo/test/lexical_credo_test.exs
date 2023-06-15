@@ -1,5 +1,5 @@
 defmodule LexicalCredoTest do
-  alias Lexical.Plugin.Diagnostic.Result
+  alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.Document
 
   import LexicalCredo

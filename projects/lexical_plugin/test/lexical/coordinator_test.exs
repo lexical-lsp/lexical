@@ -20,7 +20,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
     alias Lexical.Document
     alias Lexical.Project
 
-    use Lexical.Plugin.Diagnostic, name: :report_back
+    use Lexical.Plugin.V1.Diagnostic, name: :report_back
 
     def handle(%Document{} = doc) do
       {:ok, [doc]}
@@ -77,7 +77,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
 
   describe "handling exceptional conditions" do
     defmodule Crashy do
-      use Lexical.Plugin.Diagnostic, name: :crashy
+      use Lexical.Plugin.V1.Diagnostic, name: :crashy
 
       def handle(_) do
         raise "Bad"
@@ -85,7 +85,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
     end
 
     defmodule Slow do
-      use Lexical.Plugin.Diagnostic, name: :slow
+      use Lexical.Plugin.V1.Diagnostic, name: :slow
 
       def handle(_) do
         Process.sleep(500)
@@ -94,7 +94,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
     end
 
     defmodule BadReturn do
-      use Lexical.Plugin.Diagnostic, name: :bad_return
+      use Lexical.Plugin.V1.Diagnostic, name: :bad_return
 
       def handle(_) do
         {:ok, 34}
@@ -102,7 +102,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
     end
 
     defmodule Exits do
-      use Lexical.Plugin.Diagnostic, name: :exits
+      use Lexical.Plugin.V1.Diagnostic, name: :exits
 
       def handle(_) do
         exit(:bad)

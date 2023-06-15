@@ -1,6 +1,6 @@
 defmodule Lexical.BuildTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
