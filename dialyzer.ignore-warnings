@@ -1,7 +1,1 @@
-src/future_elixir.erl:63:61: Unknown function prim_tty:isatty/1
-src/future_elixir.erl:207:7: Unknown function 'Elixir.IEx.CLI':deprecated/0
-src/future_elixir.erl:214:49: Unknown function 'Elixir.IEx':cli/0
-src/future_elixir.erl:31:42: Call to missing or unexported function code:add_pathsa/2
-src/future_elixir.erl:195:3: Call to missing or unexported function elixir_config:booted/0
-src/future_elixir.erl:213:9: Call to missing or unexported function elixir_config:wait_until_booted/0
-src/future_elixir.erl:214:10: Call to missing or unexported function shell:whereis/0
+src/
