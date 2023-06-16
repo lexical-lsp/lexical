@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
+  alias Future.Code, as: Code
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable

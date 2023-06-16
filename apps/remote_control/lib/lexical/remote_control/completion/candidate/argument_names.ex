@@ -7,6 +7,9 @@ defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNames do
   The functions below match the arity of the argument names to the given arity, and strip out the defaults,
   rendering the results useful for completion.
   """
+
+  alias Future.Code, as: Code
+
   @type argument_names :: [String.t()]
   @default_specifier ~S(\\)
 
