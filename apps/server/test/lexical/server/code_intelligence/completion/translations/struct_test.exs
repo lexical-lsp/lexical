@@ -168,37 +168,70 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
     test "it should complete module structs", %{project: project} do
       source = ~q{
         defmodule NewStruct do
-        defstruct [:name, :value]
+          defstruct [:name, :value]
 
-        def my_function(%__|)
+          def my_function(%__|)
       }
+
+      expected = ~q<
+        defmodule NewStruct do
+          defstruct [:name, :value]
+
+          def my_function(%__MODULE__{$1})
+      >
 
       assert {:ok, completion} =
                project
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.label == "%__MODULE__{}"
-      assert completion.detail == "%__MODULE__{}"
-      assert completion.kind == :struct
+      assert apply_completion(completion) == expected
     end
 
     test "it should complete module structs after characters are typed", %{project: project} do
       source = ~q{
         defmodule NewStruct do
-        defstruct [:name, :value]
+          defstruct [:name, :value]
 
-        def my_function(%__MO|)
+          def my_function(%__MO|)
       }
+
+      expected = ~q<
+        defmodule NewStruct do
+          defstruct [:name, :value]
+
+          def my_function(%__MODULE__{$1})
+      >
 
       assert {:ok, completion} =
                project
                |> complete(source)
                |> fetch_completion(kind: :struct)
 
-      assert completion.label == "%__MODULE__{}"
-      assert completion.detail == "%__MODULE__{}"
-      assert completion.kind == :struct
+      assert apply_completion(completion) == expected
+    end
+
+    test "it should complete module structs when completing module type", %{project: project} do
+      source = ~q<
+        defmodule NewStruct do
+          defstruct [:name, :value]
+
+          @type t :: %_|
+      >
+
+      expected = ~q<
+        defmodule NewStruct do
+          defstruct [:name, :value]
+
+          @type t :: %__MODULE__{$1}
+      >
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :struct)
+
+      assert apply_completion(completion) == expected
     end
 
     test "can be aliased", %{project: project} do

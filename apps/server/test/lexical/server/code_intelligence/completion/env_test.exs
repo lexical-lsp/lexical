@@ -365,8 +365,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
     end
 
     test "is true if a module reference starts in function arguments" do
-      env = new_env("def my_function(%__|)")
+      env = new_env("def my_function(%_|)")
       assert in_context?(env, :struct_reference)
+    end
+
+    test "is ture if a module reference start in a t type spec" do
+      env = new_env("@type t :: %_|")
+      assert in_context?(env, :struct_reference)
+    end
+
+    test "is false if module reference not starts with %" do
+      env = new_env("def something(my_thing|, %Struct{})")
+      refute in_context?(env, :struct_reference)
     end
 
     test "is true if the reference is for %__MOD in a function definition " do

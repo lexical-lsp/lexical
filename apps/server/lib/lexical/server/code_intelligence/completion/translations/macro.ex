@@ -3,6 +3,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
 
   use Translatable.Impl, for: Candidate.Macro
 
@@ -440,12 +441,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
     if Env.in_context?(env, :struct_reference) do
-      env
-      |> builder.snippet("%__MODULE__{$1}",
-        detail: "%__MODULE__{}",
-        label: "%__MODULE__{}",
-        kind: :struct
-      )
+      Struct.completion(env, builder, macro.name, macro.name)
     else
       env
       |> builder.plain_text("__MODULE__",
