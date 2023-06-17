@@ -103,10 +103,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       {:ok, _line, {:struct, _}} ->
         true
 
-      {:ok, line, {:local_or_var, [?_, ?_ | rest]}} ->
+      {:ok, _line, {:local_or_var, [?_ | _rest]}} ->
         # a reference to `%__MODULE`, often in a function head, as in
         # def foo(%__)
-        String.starts_with?("MODULE", List.to_string(rest)) and String.contains?(line, "%__")
+
+        starts_with_percent? =
+          env
+          |> prefix_tokens(2)
+          |> Enum.any?(fn
+            {:percent, :%, _} -> true
+            _ -> false
+          end)
+
+        starts_with_percent? and (ancestor_is_def?(env) or ancestor_is_type?(env))
 
       _ ->
         false
@@ -514,5 +523,29 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
       {:error, _, _, _, tokens} ->
         {:ok, tokens, ~c""}
     end
+  end
+
+  defp ancestor_is_def?(env) do
+    env.document
+    |> Ast.cursor_path(env.position)
+    |> Enum.any?(fn
+      {:def, _, _} ->
+        true
+
+      {:defp, _, _} ->
+        true
+
+      _ ->
+        false
+    end)
+  end
+
+  defp ancestor_is_type?(env) do
+    env.document
+    |> Ast.cursor_path(env.position)
+    |> Enum.any?(fn
+      {:type, _, _} -> true
+      _ -> false
+    end)
   end
 end

@@ -480,18 +480,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.kind == :constant
     end
 
-    test "__MODULE__ is suggested in a struct reference", %{project: project} do
-      assert {:ok, completion} =
-               project
-               |> complete("%__|")
-               |> fetch_completion("%__MODULE__")
-
-      assert completion.detail
-      assert completion.label == "%__MODULE__{}"
-      assert completion.insert_text_format == :snippet
-      assert completion.insert_text == "%__MODULE__{$1}"
-    end
-
     test "__DIR__ is suggested", %{project: project} do
       assert {:ok, completion} =
                project

@@ -69,19 +69,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
           prefix_end
 
         {:struct, typed_module_name} ->
-          edit_begin =
-            case left_offset_of(typed_module_name, ?.) do
-              {:ok, offset} ->
-                env.position.character - offset
+          beginning_of_edit(env, typed_module_name)
 
-              :error ->
-                env.position.character - length(typed_module_name)
-            end
-
-          edit_begin
+        {:local_or_var, [?_ | _rest] = typed} ->
+          beginning_of_edit(env, typed)
       end
 
     {edit_begin, env.position.character}
+  end
+
+  defp beginning_of_edit(env, typed_module_name) do
+    case left_offset_of(typed_module_name, ?.) do
+      {:ok, offset} ->
+        env.position.character - offset
+
+      :error ->
+        env.position.character - length(typed_module_name)
+    end
   end
 
   defp left_offset_of(string, character) do
