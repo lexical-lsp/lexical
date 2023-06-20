@@ -9,12 +9,12 @@ of code intelligence.
 
 In order to have this level of intelligence of elixir code, we need to
 search both beam files and source code to discover relevant parts and
-locations of elixir and erlang code, index them an make them
+locations of elixir and erlang code, index them and make them
 searchable. This is a large task that will not be accomplished in one
 commit, and this document will help to lay out the scope of the work,
 as well as collect thoughts and drive the implementation.
 
-Code intelligence will be oragnized into the following discrete areas:
+Code intelligence will be organized into the following discrete areas:
 
 * **Discovery** - Finding points of interest in the project's codebase, dependencies and elixir core modules
 * **Caching** - Writing the discovered items to disk and ensuring the index is up to date with the state of the project at *all times*. The goal here is to never have to delete the `.lexical` directory.
@@ -56,7 +56,7 @@ on-disk representation of the index.
 
 Such a representation will need to take the following into account:
 
-  * Branches can while the language server is running, invalidating large portions of the cache
+  * Branches can change while the language server is running, invalidating large portions of the cache
   * Project level search and replace can affect large numbers of files at once
   * The versions of elixir and erlang can change via `asdf` whenever the user wants
 
