@@ -106,6 +106,15 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
     end
   end
 
+  defmodule MapField do
+    @moduledoc false
+    defstruct [:call?, :name]
+
+    def new(%{} = elixir_sense_map) do
+      struct(__MODULE__, elixir_sense_map)
+    end
+  end
+
   defmodule ModuleAttribute do
     @moduledoc false
     defstruct [:name]
@@ -212,6 +221,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   def from_elixir_sense(%{type: :field, subtype: :struct_field} = elixir_sense_map) do
     StructField.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(%{type: :field, subtype: :map_key} = elixir_sense_map) do
+    MapField.new(elixir_sense_map)
   end
 
   def from_elixir_sense(%{type: :callback} = elixir_sense_map) do
