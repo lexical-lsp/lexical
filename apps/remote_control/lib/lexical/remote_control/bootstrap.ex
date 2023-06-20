@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
 
   def init(%Project{} = project, listener_pid, remote_control_config) do
     true = Code.append_path(hex_path())
-    RemoteControl.set_project(project)
+
     RemoteControl.set_project_listener_pid(listener_pid)
     Application.put_all_env(remote_control: remote_control_config)
 
@@ -22,6 +22,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
          {:ok, _} <- Application.ensure_all_started(:elixir),
          {:ok, _} <- Application.ensure_all_started(:mix),
          {:ok, _} <- Application.ensure_all_started(:logger) do
+      project = maybe_load_mix_exs(project)
+      RemoteControl.set_project(project)
       Mix.env(:test)
       ExUnit.start()
       start_logger(project)
@@ -82,4 +84,41 @@ defmodule Lexical.RemoteControl.Bootstrap do
       File.cd!(configured_root)
     end
   end
+
+  defp maybe_load_mix_exs(%Project{} = project) do
+    # The reason this function exists is to support projects that have the same name as
+    # one of their dependencies. Prior to this, the project name was based off the directory
+    # name of the project, and if that's the same as a dependency, the mix project stack will
+    # raise an error during `deps.safe_compile`, as a project with the same name was already defined.
+    # Mix itself uses the name of the module that the mix.exs defines as the project name, and I figured
+    # this was a safe default.
+
+    with path when is_binary(path) <- Project.mix_exs_path(project),
+         compiled = Code.compile_file(path),
+         {:ok, project_module} <- find_mix_project_module(compiled) do
+      # We've found the mix project module, but it's now been added to the
+      # project stack. We need to clear the stack because we use `in_mix_project`, and
+      # that will fail if the current project is already in the project stack.
+      # Restarting mix will clear the stack without using private APIs.
+      Application.stop(:mix)
+      Application.ensure_all_started(:mix)
+      Project.set_project_module(project, project_module)
+    else
+      _ ->
+        project
+    end
+  end
+
+  defp find_mix_project_module(module_list) do
+    case Enum.find(module_list, &project_module?/1) do
+      {module, _bytecode} -> {:ok, module}
+      nil -> :error
+    end
+  end
+
+  defp project_module?({module, _bytecode}) do
+    function_exported?(module, :project, 0)
+  end
+
+  defp project_module?(_), do: false
 end
