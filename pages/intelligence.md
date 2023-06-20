@@ -1,6 +1,6 @@
 # Code intelligence
 
-We'd like to replace elixir_sense with our own implmentation for the following bits
+We'd like to replace elixir_sense with our own implementation for the following bits
 of code intelligence.
 
  * Go to definition
