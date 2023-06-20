@@ -18,7 +18,7 @@ Code intelligence will be oragnized into the following discrete areas:
 
 * **Discovery** - Finding points of interest in the project's codebase, dependencies and elixir core modules
 * **Caching** - Writing the discovered items to disk and ensuring the index is up to date with the state of the project at *all times*. The goal here is to never have to delete the `.lexical` directory.
-* **Indexing** - Storing the discovered artifacts in a local in-memory index that enable fast searching.
+* **Indexing** - Storing the discovered artifacts in a local in-memory index that enables fast searching.
 * **Searching** ideally using something like the [sublime text's fuzzy search](https://www.forrestthewoods.com/blog/reverse_engineering_sublime_texts_fuzzy_match/), but we definitely need some type of fuzzy search.
 * **Recognition** For several of the above examples (go to definition, find references), we need to be able to recognize what our cursor is hovering over. Is it a module? An atom? a variable? etc.
 
