@@ -1,8 +1,8 @@
-defmodule Lexical.Plugin.Coordinator do
+defmodule Lexical.Plugin.Runner.Coordinator do
   @moduledoc false
 
   alias Lexical.Formats
-  alias Lexical.Plugin.Coordinator.State
+  alias Lexical.Plugin.Runner.Coordinator.State
 
   require Logger
   use GenServer

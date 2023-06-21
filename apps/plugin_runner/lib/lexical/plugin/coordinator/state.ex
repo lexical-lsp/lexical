@@ -1,7 +1,7 @@
-defmodule Lexical.Plugin.Coordinator.State do
+defmodule Lexical.Plugin.Runner.Coordinator.State do
   @moduledoc false
 
-  alias Lexical.Plugin
+  alias Lexical.Plugin.Runner
 
   defstruct tasks: [], failures: %{}
 
@@ -16,8 +16,8 @@ defmodule Lexical.Plugin.Coordinator.State do
   def run_all(%__MODULE__{} = state, subject, plugin_type, timeout) do
     tasks =
       plugin_type
-      |> Plugin.plugins_of_type()
-      |> Enum.map(&Plugin.Supervisor.async(&1, subject))
+      |> Runner.plugins_of_type()
+      |> Enum.map(&Runner.Supervisor.async(&1, subject))
 
     await_results(state, tasks, timeout)
   end
@@ -89,7 +89,7 @@ defmodule Lexical.Plugin.Coordinator.State do
   defp maybe_shutdown(plugin_module, failure_map) do
     case Map.get(failure_map, plugin_module, 0) do
       count when count >= @max_plugin_errors ->
-        Plugin.disable(plugin_module)
+        Runner.disable(plugin_module)
 
       _ ->
         :ok

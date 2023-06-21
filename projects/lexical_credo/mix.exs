@@ -2,7 +2,7 @@ defmodule LexicalCredo.MixProject do
   use Mix.Project
 
   @repo_url "https://github.com/lexical-lsp/lexical/"
-  @version "0.1.0"
+  @version "0.1.1"
 
   def project do
     [

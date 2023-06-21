@@ -5,6 +5,7 @@ defmodule Mix.Tasks.Namespace do
       remote_control: Lexical.RemoteControl,
       lexical_shared: Lexical.Shared,
       lexical_plugin: Lexical.Plugin,
+      plugin_runner: Lexical.Plugin.Runner,
       sourceror: Sourceror,
       path_glob: PathGlob,
       server: Lexical.Server,

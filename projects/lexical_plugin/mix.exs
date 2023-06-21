@@ -1,7 +1,7 @@
 defmodule Lexical.Plugin.MixProject do
   use Mix.Project
 
-  @version "0.0.1"
+  @version "0.0.2"
   def project do
     [
       app: :lexical_plugin,
@@ -18,14 +18,6 @@ defmodule Lexical.Plugin.MixProject do
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      extra_applications: [:logger],
-      mod: {Lexical.Plugin.Application, []}
-    ]
-  end
-
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -34,8 +26,8 @@ defmodule Lexical.Plugin.MixProject do
         else: {:lexical_shared, path: "../lexical_shared"}
       ),
       env_dep(
-        hex: {:ex_doc, "~> 0.29", only: [], optional: true},
-        else: {:ex_doc, "~> 0.29", only: [:dev, :hex], optional: true}
+        hex: {:ex_doc, "~> 0.29", only: :hex, runtime: false},
+        else: {:ex_doc, "~> 0.29", only: :dev, runtime: false}
       ),
       dialyzer_dep()
     ]
@@ -58,14 +50,7 @@ defmodule Lexical.Plugin.MixProject do
     [
       description: "The package you need to build plugins for the lexical language server",
       licenses: ["Apache-2.0"],
-      links: %{"Lexical LSP" => "https://github.com/lexical-lsp/lexical"},
-      files: [
-        "lib/lexical/plugin/v1/*",
-        ".formatter.exs",
-        "mix.exs",
-        "README*",
-        "LICENSE*"
-      ]
+      links: %{"Lexical LSP" => "https://github.com/lexical-lsp/lexical"}
     ]
   end
 
