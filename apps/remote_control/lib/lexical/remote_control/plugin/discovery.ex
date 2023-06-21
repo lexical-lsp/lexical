@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   If a plugin is found, the app is then registered with the plugin system.
 
   If we're running in a namespaced build, we must apply the same namespace to the plugin's modules, or it
-  will be looking for structs like `Lexical.Document', and be passed in structs like `LXRelease.Document`,
+  will be looking for structs like `Lexical.Document`, and be passed in structs like `LXRelease.Document`,
   and the plugin will crash.
   """
   alias Lexical.Plugin
