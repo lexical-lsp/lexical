@@ -1,22 +1,27 @@
 defmodule LexicalCredo do
+  @moduledoc false
+
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
 
   use Diagnostic, name: :lexical_credo
   require Logger
 
+  @doc false
   def init do
     with {:ok, _} <- Application.ensure_all_started(:credo) do
       :ok
     end
   end
 
+  @doc false
   def document do
     %Document{}
   end
 
-  def handle(%Document{} = doc) do
+  @doc false
+  def diagnose(%Document{} = doc) do
     doc_contents = Document.to_string(doc)
 
     execution_args = [
@@ -44,7 +49,8 @@ defmodule LexicalCredo do
     {:ok, diagnostics}
   end
 
-  def handle(%Project{}) do
+  @doc false
+  def diagnose(%Project{}) do
     results =
       Credo.Execution.build()
       |> Credo.Execution.run()
@@ -54,6 +60,7 @@ defmodule LexicalCredo do
     {:ok, results}
   end
 
+  @doc false
   def with_stdin(stdin_contents, function) when is_function(function, 0) do
     {:ok, stdio} = StringIO.open(stdin_contents)
     caller = self()

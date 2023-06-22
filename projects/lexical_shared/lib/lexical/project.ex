@@ -12,7 +12,8 @@ defmodule Lexical.Project do
             mix_project?: false,
             mix_env: nil,
             mix_target: nil,
-            env_variables: %{}
+            env_variables: %{},
+            project_module: nil
 
   @type message :: String.t()
   @type restart_notification :: {:restart, Logger.level(), String.t()}
@@ -35,25 +36,43 @@ defmodule Lexical.Project do
     |> maybe_set_mix_exs_uri()
   end
 
+  @spec set_project_module(t(), module() | nil) :: t()
+  def set_project_module(%__MODULE__{} = project, nil) do
+    project
+  end
+
+  def set_project_module(%__MODULE__{} = project, module) when is_atom(module) do
+    %__MODULE__{project | project_module: module}
+  end
+
   @doc """
   Retrieves the name of the project
   """
   @spec name(t) :: String.t()
-  def name(%__MODULE__{} = project) do
+
+  def name(%__MODULE__{project_module: nil} = project) do
     project
     |> root_path()
     |> Path.split()
     |> List.last()
   end
 
+  def name(%__MODULE__{project_module: project_module}) do
+    Atom.to_string(project_module)
+  end
+
   @doc """
   Retrieves the name of the project as an atom
   """
   @spec atom_name(t) :: atom
-  def atom_name(%__MODULE__{} = project) do
+  def atom_name(%__MODULE__{project_module: nil} = project) do
     project
     |> name()
     |> String.to_atom()
+  end
+
+  def atom_name(%__MODULE__{} = project) do
+    project.project_module
   end
 
   @doc """

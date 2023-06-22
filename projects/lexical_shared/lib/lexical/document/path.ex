@@ -1,12 +1,23 @@
 defmodule Lexical.Document.Path do
+  @moduledoc """
+  A collection of functions dealing with converting filesystem paths to URIs and back
+  """
   @file_scheme "file"
 
+  @type uri_or_path :: Lexical.uri() | Lexical.path()
+  @doc """
+  Given a uri or a path, either return the uri unmodified or converts the path to a uri
+  """
   def ensure_uri("file://" <> _ = uri), do: uri
 
   def ensure_uri(path), do: to_uri(path)
 
   def ensure_path("file://" <> _ = uri), do: from_uri(uri)
 
+  @doc """
+  Given a uri or a path, either return the path unmodified or converts the uri to a path
+  """
+  @spec ensure_uri(uri_or_path()) :: Lexical.uri()
   def ensure_path(path), do: path
 
   @doc """
@@ -26,15 +37,17 @@ defmodule Lexical.Document.Path do
   def from_uri(%URI{scheme: @file_scheme, path: path}) do
     decoded_path = URI.decode(path)
 
-    if windows?() and String.match?(decoded_path, ~r/^\/[a-zA-Z]:/) do
-      # Windows drive letter path
-      # drop leading `/` and downcase drive letter
-      <<"/", letter::binary-size(1), path_rest::binary>> = decoded_path
-      "#{String.downcase(letter)}#{path_rest}"
-    else
-      decoded_path
-    end
-    |> convert_separators_to_native()
+    path =
+      if windows?() and String.match?(decoded_path, ~r/^\/[a-zA-Z]:/) do
+        # Windows drive letter path
+        # drop leading `/` and downcase drive letter
+        <<"/", letter::binary-size(1), path_rest::binary>> = decoded_path
+        "#{String.downcase(letter)}#{path_rest}"
+      else
+        decoded_path
+      end
+
+    convert_separators_to_native(path)
   end
 
   def from_uri(%URI{scheme: scheme}) do
@@ -53,6 +66,9 @@ defmodule Lexical.Document.Path do
     uri
   end
 
+  @doc """
+  Converts a path into a URI
+  """
   def to_uri(path) do
     path =
       path

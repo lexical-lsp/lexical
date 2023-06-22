@@ -1,7 +1,7 @@
 defmodule Lexical.Plugin.Coordinator.StateTest do
   alias Lexical.Document
-  alias Lexical.Plugin
   alias Lexical.Plugin.Coordinator.State
+  alias Lexical.Plugin
 
   use ExUnit.Case
 
@@ -17,13 +17,13 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   end
 
   defmodule FailsInit do
-    use Plugin.Diagnostic, name: :fails_init
+    use Plugin.V1.Diagnostic, name: :fails_init
 
     def init do
       {:error, :failed}
     end
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject]}
     end
   end
@@ -34,17 +34,17 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   end
 
   defmodule Echo do
-    use Plugin.Diagnostic, name: :echo
+    use Plugin.V1.Diagnostic, name: :echo
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject]}
     end
   end
 
   defmodule MultipleResults do
-    use Plugin.Diagnostic, name: :multiple_results
+    use Plugin.V1.Diagnostic, name: :multiple_results
 
-    def handle(subject) do
+    def diagnose(subject) do
       {:ok, [subject, subject]}
     end
   end
@@ -67,35 +67,35 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
 
   describe "failure modes" do
     defmodule TimesOut do
-      use Plugin.Diagnostic, name: :times_out
+      use Plugin.V1.Diagnostic, name: :times_out
 
-      def handle(subject) do
+      def diagnose(subject) do
         Process.sleep(5000)
         {:ok, [subject]}
       end
     end
 
     defmodule Crashes do
-      use Plugin.Diagnostic, name: :crashes
+      use Plugin.V1.Diagnostic, name: :crashes
 
-      def handle(subject) do
+      def diagnose(subject) do
         45 = subject
         {:ok, [subject]}
       end
     end
 
     defmodule Errors do
-      use Plugin.Diagnostic, name: :errors
+      use Plugin.V1.Diagnostic, name: :errors
 
-      def handle(_) do
+      def diagnose(_) do
         {:error, :invalid_subject}
       end
     end
 
     defmodule BadReturn do
-      use Plugin.Diagnostic, name: :bad_return
+      use Plugin.V1.Diagnostic, name: :bad_return
 
-      def handle(subject) do
+      def diagnose(subject) do
         {:ok, subject}
       end
     end

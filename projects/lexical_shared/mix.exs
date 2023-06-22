@@ -1,17 +1,20 @@
 defmodule Lexical.Shared.MixProject do
-  Code.require_file("../mix_dialyzer.exs", "..")
   use Mix.Project
+  @repo_url "https://github.com/lexical-lsp/lexical"
+  @version "0.0.1"
 
   def project do
     [
       app: :lexical_shared,
-      version: "0.1.0",
-      elixir: "~> 1.14",
+      version: @version,
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       deps_path: "../../deps",
       build_path: "../../_build",
-      dialyzer: Mix.Dialyzer.config()
+      dialyzer: dialyzer_config(),
+      package: package(),
+      docs: docs()
     ]
   end
 
@@ -27,8 +30,49 @@ defmodule Lexical.Shared.MixProject do
   defp deps do
     [
       {:stream_data, "~> 0.5", only: [:test], runtime: false},
+      {:ex_doc, "~> 0.29", only: [:dev]},
       {:patch, "~> 0.12", runtime: false, only: [:dev, :test]},
-      Mix.Dialyzer.dependency()
+      dialyzer_dep()
     ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      description: "Shared data structures and protocols for the lexical language server",
+      links: %{"Lexical LSP" => "https://github.com/lexical-lsp/lexical"},
+      exclude_patterns: [
+        "lib/lexical/document/store.ex"
+      ]
+    ]
+  end
+
+  defp docs do
+    [
+      extras: ["README.md": [title: "Overview"]],
+      main: "Lexical",
+      homepage_url: @repo_url,
+      source_ref: "v#{@version}",
+      source_url: @repo_url
+    ]
+  end
+
+  def dialyzer_dep do
+    path = Path.join([Path.dirname(__ENV__.file), "..", "..", "mix_dialyzer.exs"])
+
+    if File.exists?(path) do
+      Code.require_file(path)
+      Mix.Dialyzer.dependency()
+    else
+      {:dialyxir, "> 0.0.0", only: [], runtime: false, optional: true}
+    end
+  end
+
+  def dialyzer_config do
+    if function_exported?(Mix.Dialyzer, :config, 0) do
+      Mix.Dialyzer.config()
+    else
+      []
+    end
   end
 end

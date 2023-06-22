@@ -1,6 +1,6 @@
 defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
   alias Lexical.Server.Project

@@ -1,21 +1,19 @@
-# Lexical
+# Lexical Core data structures and modules
 
-**TODO: Add description**
+This package contains some of the core data structures used in the Lexical Language
+server, and for building Lexical Plugins.
 
 ## Installation
+If you're building a plugin, this package should be included when you add `lexical_plugin` to your deps.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `lexical` to your list of dependencies in `mix.exs`:
+If, for some reason, you want to include it manually, do the following:
 
 ```elixir
 def deps do
   [
-    {:lexical, "~> 0.1.0"}
+    {:lexical_shared, "~> 0.1.0", optional: true}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/lexical>.
-
+Complete documenation here: <https://hexdocs.pm/lexical_shared>.

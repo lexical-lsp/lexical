@@ -6,6 +6,7 @@ defmodule Lexical.Document.Store do
   immediately by querying the ETS table, while writes go through a GenServer process (which is the owner of the ETS table).
   """
   defmodule State do
+    @moduledoc false
     alias Lexical.Document
     require Logger
 

@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Definition do
+  alias Future.Code, as: Code
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position

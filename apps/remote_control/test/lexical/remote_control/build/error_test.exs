@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Build.ErrorTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Diagnostic
+  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.RemoteControl.Build.Error
 
   use ExUnit.Case, async: true

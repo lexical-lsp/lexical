@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Env do
+  alias Future.Code, as: Code
   alias Lexical.Completion.Builder
   alias Lexical.Completion.Environment
   alias Lexical.Document

@@ -1,19 +1,30 @@
 defmodule Lexical.Document.Changes do
   @moduledoc """
-  A Document container for text edits.
+  A `Lexical.Document.Container` for text edits.
 
-  If you have a list of text edits in a response, wrap them in this struct and they'll be converted into a list of text edits cleanly.
+  This struct is helpful if you need to express one or several text edits in an LSP response.
+  It will convert cleanly into either a single `TextEdit` or a list of `TextEdit`s depending on
+  whether you passed a single edit or a list of edits.
+
+  Using this struct allows efficient conversions at the language server border, as the document
+  doesn't have to be looked up (and possibly read off the filesystem) by the language server.
   """
   defstruct [:document, :edits]
   alias Lexical.Document
 
   use Lexical.StructAccess
 
+  @type edits :: Document.Edit.t() | [Document.Edit.t()]
   @type t :: %__MODULE__{
           document: Document.t(),
-          edits: [Document.Edit]
+          edits: edits
         }
 
+  @doc """
+  Creates a new Changes struct given a document and edits.
+
+  """
+  @spec new(Document.t(), edits()) :: t()
   def new(document, edits) do
     %__MODULE__{document: document, edits: edits}
   end
