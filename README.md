@@ -55,7 +55,8 @@ fix typos, warnings, unused variables and a whole host of errors when they occur
 faster.
 
 ## Installation
-To install lexical fetch the source code from git, then do the following:
+
+Follow the [Detailed Installation Instructions](pages/installation.md)
 
  ```
 make release.namespaced

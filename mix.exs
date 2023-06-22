@@ -28,9 +28,13 @@ defmodule Lexical.LanguageServer.MixProject do
 
   defp docs do
     [
-      main: "Lexical",
+      main: "readme",
       deps: [jason: "https://hexdocs.pm/jason/Jason.html"],
-      extras: ~w(README.md pages/architecture.md),
+      extras: ~w(
+        README.md
+        pages/installation.md
+        pages/architecture.md
+      ),
       filter_modules: fn mod_name, _ ->
         case Module.split(mod_name) do
           ["Lexical", "Protocol", "Requests" | _] -> true
