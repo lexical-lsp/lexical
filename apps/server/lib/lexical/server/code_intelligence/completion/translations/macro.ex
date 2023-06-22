@@ -20,12 +20,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     test "${0:name}"
     """
 
-    builder.snippet(env, snippet,
+    env
+    |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label,
-      sort_text: builder.boost(label, 10)
+      label: label
     )
+    |> builder.boost()
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 2} = macro, builder, env) do
@@ -37,12 +38,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     end
     """
 
-    builder.snippet(env, snippet,
+    env
+    |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label,
-      sort_text: builder.boost(label, 10)
+      label: label
     )
+    |> builder.boost()
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 3} = macro, builder, env) do
@@ -54,12 +56,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     end
     """
 
-    builder.snippet(env, snippet,
+    env
+    |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label,
-      sort_text: builder.boost(label, 10)
+      label: label
     )
+    |> builder.boost()
   end
 
   def translate(%Candidate.Macro{name: "def", arity: 2} = macro, builder, env) do
