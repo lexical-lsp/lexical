@@ -11,7 +11,7 @@ defmodule Lexical.RemoteControl.ProjectNodeSupervisor do
   end
 
   def start_link(%Project{} = project) do
-    DynamicSupervisor.start_link(__MODULE__, project, name: __MODULE__)
+    DynamicSupervisor.start_link(__MODULE__, project, name: __MODULE__, strategy: :one_for_one)
   end
 
   def start_project_node(%Project{} = project) do

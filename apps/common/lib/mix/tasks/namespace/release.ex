@@ -87,17 +87,27 @@ defmodule Mix.Tasks.Namespace.Release do
     {load_info, new_modules}
   end
 
-  defp update_module_list({:apply, {:application, mode, [{:application, app_name, app_info}]}}) do
-    new_app_info =
-      Keyword.update(app_info, :modules, [], fn modules ->
-        Enum.map(modules, &Namespace.Module.apply/1)
-      end)
+  defp update_module_list({:apply, {:application, mode, [{:application, app_name, app_keys}]}}) do
+    new_app_keys = Enum.map(app_keys, &namespace_app_key/1)
 
-    {:apply, {:application, mode, [{:application, app_name, new_app_info}]}}
+    {:apply, {:application, mode, [{:application, app_name, new_app_keys}]}}
   end
 
   defp update_module_list(original) do
     original
+  end
+
+  defp namespace_app_key({:modules, module_list}) do
+    namespaced_modules = Enum.map(module_list, &Namespace.Module.apply/1)
+    {:modules, namespaced_modules}
+  end
+
+  defp namespace_app_key({:mod, {app_module, args}}) do
+    {:mod, {Namespace.Module.apply(app_module), args}}
+  end
+
+  defp namespace_app_key(app_key) do
+    app_key
   end
 
   defp apply_namespace(modules_list) when is_list(modules_list) do

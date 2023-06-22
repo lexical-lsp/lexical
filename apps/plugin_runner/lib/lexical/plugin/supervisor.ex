@@ -8,8 +8,10 @@ defmodule Lexical.Plugin.Runner.Supervisor do
     }
   end
 
+  @spec async(module(), term()) :: {Task.t(), module()}
   def async(plugin_module, subject) do
-    Task.Supervisor.async_nolink(name(), plugin_module, :diagnose, [subject])
+    task = Task.Supervisor.async_nolink(name(), plugin_module, :diagnose, [subject])
+    {task, plugin_module}
   end
 
   defp name do

@@ -1,6 +1,6 @@
 defmodule LexicalCredoTest do
-  alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.Document
+  alias Lexical.Plugin.V1.Diagnostic.Result
 
   import LexicalCredo
   use ExUnit.Case
@@ -19,7 +19,7 @@ defmodule LexicalCredoTest do
       end
       """
       |> doc()
-      |> handle()
+      |> diagnose()
 
     assert {:ok, [%Result{} = result]} = has_inspect
     assert result.position == {3, 5}

@@ -469,7 +469,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
     line_charlist = String.to_charlist(line_text)
     current_context = line_charlist ++ context
 
-    case :elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
+    case :future_elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
       {:ok, _, _, _, tokens} ->
         {:ok, Enum.reverse(tokens), ''}
 

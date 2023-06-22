@@ -8,7 +8,7 @@ defmodule LexicalCredo.MixProject do
     [
       app: :lexical_credo,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),

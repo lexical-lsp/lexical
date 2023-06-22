@@ -12,12 +12,9 @@ defmodule Lexical.Server.Project.NodeTest do
   setup do
     project = project()
 
-    {:ok, _} =
-      start_supervised(
-        {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}
-      )
-
+    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+
     :ok = Server.Project.Dispatch.register(project, [project_compiled()])
 
     {:ok, project: project}

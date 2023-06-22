@@ -18,12 +18,9 @@ defmodule Lexical.Test.Server.CompletionCase do
   setup_all do
     project = project()
 
-    {:ok, _} =
-      start_supervised(
-        {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}
-      )
-
+    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+
     Dispatch.register(project, [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000

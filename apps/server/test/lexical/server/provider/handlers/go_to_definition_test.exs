@@ -19,10 +19,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
     start_supervised(Document.Store)
     project = project(:navigations)
 
-    {:ok, _} =
-      start_supervised(
-        {DynamicSupervisor, name: Server.Project.Supervisor.dynamic_supervisor_name()}
-      )
+    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
 
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 
