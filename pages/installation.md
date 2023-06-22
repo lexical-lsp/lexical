@@ -72,7 +72,7 @@ emacs configuration), insert the following code:
 
 ```
 
-Restart emacs, and Lexical should start when you open a file with an
+Restart emacs, and Lexical should start when you open a file with a
 `.ex` extension.
 
 
@@ -85,7 +85,9 @@ Lexical, and is not supported at this time.
 ## Visual Studio Code
 
 Click on the extensions button on the sidebar, then search for
-`lexical`, then click `install`.  To change to a local executable, go
-to `Settings -> Extensions -> Lexical` and type
-`/my/home/projects/lexical/_build/dev/rel/lexical` into the text box
-in the `Server: Release path override` section.
+`lexical`, then click `install`.  By default, the extension will automatically
+download the latest version of Lexical.
+
+To change to a local executable, go to `Settings -> Extensions -> Lexical` and
+type `/my/home/projects/lexical/_build/dev/rel/lexical` into the text box in
+the `Server: Release path override` section.
