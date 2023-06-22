@@ -614,27 +614,48 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
   end
 
   test "test has three completions", %{project: project} do
-    # Error:
-    # right: {:error, :not_found}
-    assert {:ok, completion} =
+    assert {:ok, completions} =
              project
-             |> complete("test|")
+             |> complete(inside_exunit_context("test|"))
              |> fetch_completion("test ")
 
-    assert %Completion.Item{} = completion
+    assert [%Completion.Item{}, %Completion.Item{}, %Completion.Item{}] = completions
   end
 
-  test "test", %{project: project} do
-    # Error:
-    # right: {:error, :not_found}
-    assert {:ok, completion} =
+  test "test completion snippets", %{project: project} do
+    assert {:ok, completions} =
              project
-             |> complete("test|")
+             |> complete(inside_exunit_context("test|"))
              |> fetch_completion("test ")
 
-    assert completion.detail
-    # assert completion.label == "defp (Define a private function)"
-    # assert completion.insert_text_format == :snippet
-    # assert completion.insert_text == "defp ${1:name}($2) do\n  $0\nend\n"
+    assert %Completion.Item{
+             label: "test (Define an empty test/1)",
+             detail: "",
+             insert_text_format: :snippet,
+             insert_text: "test \"${0:name}\"\n"
+           } = get_in(completions, [Access.at(0)])
+
+    assert %Completion.Item{
+             label: "test (Define test/2)",
+             detail: "",
+             insert_text_format: :snippet,
+             insert_text: "test \"${1:name}\" do\n  $0\nend\n"
+           } = get_in(completions, [Access.at(1)])
+
+    assert %Completion.Item{
+             label: "test (Define test/3)",
+             detail: "",
+             insert_text_format: :snippet,
+             insert_text: "test \"${1:name}\", %{${2:context}} do\n  $0\nend\n"
+           } = get_in(completions, [Access.at(2)])
+  end
+
+  defp inside_exunit_context(text) do
+    ~q[
+      defmodule Test do
+        use ExUnit.Case
+
+        #{text}
+    ]
   end
 end

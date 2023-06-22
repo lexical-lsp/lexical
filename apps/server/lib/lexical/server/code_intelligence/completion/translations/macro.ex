@@ -13,58 +13,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     :skip
   end
 
-  def translate(%Candidate.Macro{name: "test", arity: 1} = macro, builder, env) do
-    label = "#{macro.name} (Define an empty test/1)"
-
-    snippet = """
-    test "${0:name}"
-    """
-
-    env
-    |> builder.snippet(snippet,
-      detail: macro.spec,
-      kind: :class,
-      label: label
-    )
-    |> builder.boost()
-  end
-
-  def translate(%Candidate.Macro{name: "test", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define test/2)"
-
-    snippet = """
-    test "${1:name}" do
-      $0
-    end
-    """
-
-    env
-    |> builder.snippet(snippet,
-      detail: macro.spec,
-      kind: :class,
-      label: label
-    )
-    |> builder.boost()
-  end
-
-  def translate(%Candidate.Macro{name: "test", arity: 3} = macro, builder, env) do
-    label = "#{macro.name} (Define test/3)"
-
-    snippet = """
-    test "${1:name}", %{${2:context}} do
-      $0
-    end
-    """
-
-    env
-    |> builder.snippet(snippet,
-      detail: macro.spec,
-      kind: :class,
-      label: label
-    )
-    |> builder.boost()
-  end
-
   def translate(%Candidate.Macro{name: "def", arity: 2} = macro, builder, env) do
     label = "#{macro.name} (Define a function)"
 
@@ -488,6 +436,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label
     )
     |> builder.boost()
+  end
+
+  def translate(%Candidate.Macro{name: "test", arity: 1} = macro, builder, env) do
+    label = "#{macro.name} (Define an empty test/1)"
+
+    snippet = """
+    test "${0:name}"
+    """
+
+    env
+    |> builder.snippet(snippet,
+      detail: "",
+      kind: :class,
+      label: label
+    )
+    |> builder.boost(3)
+  end
+
+  def translate(%Candidate.Macro{name: "test", arity: 2} = macro, builder, env) do
+    label = "#{macro.name} (Define test/2)"
+
+    snippet = """
+    test "${1:name}" do
+      $0
+    end
+    """
+
+    env
+    |> builder.snippet(snippet,
+      detail: "",
+      kind: :class,
+      label: label
+    )
+    |> builder.boost(2)
+  end
+
+  def translate(%Candidate.Macro{name: "test", arity: 3} = macro, builder, env) do
+    label = "#{macro.name} (Define test/3)"
+
+    snippet = """
+    test "${1:name}", %{${2:context}} do
+      $0
+    end
+    """
+
+    env
+    |> builder.snippet(snippet,
+      detail: "",
+      kind: :class,
+      label: label
+    )
+    |> builder.boost(1)
   end
 
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
