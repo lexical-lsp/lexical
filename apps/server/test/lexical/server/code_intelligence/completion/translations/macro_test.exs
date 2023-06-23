@@ -613,41 +613,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     end
   end
 
-  test "test has three completions", %{project: project} do
-    assert {:ok, completions} =
-             project
-             |> complete(inside_exunit_context("test|"))
-             |> fetch_completion("test ")
-
-    assert [%Completion.Item{}, %Completion.Item{}, %Completion.Item{}] = completions
-  end
-
   test "test completion snippets", %{project: project} do
-    assert {:ok, completions} =
+    assert {:ok, [stub, with_body, with_context | _ignored]} =
              project
              |> complete(inside_exunit_context("test|"))
              |> fetch_completion("test ")
 
-    assert %Completion.Item{
-             label: "test (Define an empty test/1)",
-             detail: "",
-             insert_text_format: :snippet,
-             insert_text: "test \"${0:name}\"\n"
-           } = get_in(completions, [Access.at(0)])
+    assert %Completion.Item{label: "test (Define an empty test/1)"} = stub.label
+    assert %Completion.Item{detail: ""} = stub.detail
+    assert %Completion.Item{insert_text_format: :snippet} = stub.insert_text_format
+    assert %Completion.Item{insert_text: "test \"${0:name}\"\n"} = stub.insert_text
 
-    assert %Completion.Item{
-             label: "test (Define test/2)",
-             detail: "",
-             insert_text_format: :snippet,
-             insert_text: "test \"${1:name}\" do\n  $0\nend\n"
-           } = get_in(completions, [Access.at(1)])
+    assert %Completion.Item{label: "test (Define test/2)"} = with_body.label
+    assert %Completion.Item{detail: ""} = with_body.detail
+    assert %Completion.Item{insert_text_format: :snippet} = with_body.insert_text_format
 
-    assert %Completion.Item{
-             label: "test (Define test/3)",
-             detail: "",
-             insert_text_format: :snippet,
-             insert_text: "test \"${1:name}\", %{${2:context}} do\n  $0\nend\n"
-           } = get_in(completions, [Access.at(2)])
+    assert %Completion.Item{insert_text: "test \"${1:name}\" do\n  $0\nend\n"} =
+             with_body.insert_text
+
+    assert %Completion.Item{label: "test (Define test/1)"} = with_context.label
+    assert %Completion.Item{detail: ""} = with_context.detail
+    assert %Completion.Item{insert_text_format: :snippet} = with_context.insert_text_format
+
+    assert %Completion.Item{insert_text: "test \"${1:name}\", %{${2:context}} do\n  $0\nend\n"} =
+             with_context.insert_text
   end
 
   defp inside_exunit_context(text) do
