@@ -1,8 +1,8 @@
-defmodule Lexical.Plugin do
+defmodule Lexical.Plugin.Runner do
   @moduledoc false
 
   alias Lexical.Document
-  alias Lexical.Plugin
+  alias Lexical.Plugin.Runner
   alias Lexical.Project
 
   require Logger
@@ -31,12 +31,12 @@ defmodule Lexical.Plugin do
 
   @doc false
   def diagnose(%Project{} = project, on_complete) do
-    Plugin.Coordinator.run_all(project, :diagnostic, on_complete, 2000)
+    Runner.Coordinator.run_all(project, :diagnostic, on_complete, 2000)
   end
 
   @doc false
   def diagnose(%Document{} = document, on_complete) do
-    Plugin.Coordinator.run_all(document, :diagnostic, on_complete, 50)
+    Runner.Coordinator.run_all(document, :diagnostic, on_complete, 50)
   end
 
   @doc false

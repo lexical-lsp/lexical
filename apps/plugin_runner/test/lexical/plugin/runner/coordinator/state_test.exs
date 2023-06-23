@@ -1,13 +1,14 @@
 defmodule Lexical.Plugin.Coordinator.StateTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Coordinator.State
-  alias Lexical.Plugin
+  alias Lexical.Plugin.Runner
+  alias Lexical.Plugin.Runner.Coordinator.State
+  alias Lexical.Plugin.V1
 
   use ExUnit.Case
 
   setup do
-    start_supervised!(Plugin.Supervisor)
-    Plugin.clear_config()
+    start_supervised!(Runner.Supervisor)
+    Runner.clear_config()
 
     {:ok, state: State.new()}
   end
@@ -17,7 +18,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   end
 
   defmodule FailsInit do
-    use Plugin.V1.Diagnostic, name: :fails_init
+    use V1.Diagnostic, name: :fails_init
 
     def init do
       {:error, :failed}
@@ -29,12 +30,12 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   end
 
   test "a plugin is deactivated if it fails to initialize" do
-    assert :error = Plugin.register(FailsInit)
-    refute :fails_init in Plugin.enabled_plugins()
+    assert :error = Runner.register(FailsInit)
+    refute :fails_init in Runner.enabled_plugins()
   end
 
   defmodule Echo do
-    use Plugin.V1.Diagnostic, name: :echo
+    use V1.Diagnostic, name: :echo
 
     def diagnose(subject) do
       {:ok, [subject]}
@@ -42,7 +43,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
   end
 
   defmodule MultipleResults do
-    use Plugin.V1.Diagnostic, name: :multiple_results
+    use V1.Diagnostic, name: :multiple_results
 
     def diagnose(subject) do
       {:ok, [subject, subject]}
@@ -51,14 +52,14 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
 
   describe "plugins completing successfully" do
     test "results are returned for a single plugin", %{state: state} do
-      Plugin.register(Echo)
+      Runner.register(Echo)
       doc = %Document{}
       assert {[^doc], _} = State.run_all(state, doc, :diagnostic, 50)
     end
 
     test "results are aggregated for multiple plugins", %{state: state} do
-      Plugin.register(Echo)
-      Plugin.register(MultipleResults)
+      Runner.register(Echo)
+      Runner.register(MultipleResults)
 
       doc = %Document{}
       assert {[^doc, ^doc, ^doc], _} = State.run_all(state, doc, :diagnostic, 50)
@@ -67,7 +68,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
 
   describe "failure modes" do
     defmodule TimesOut do
-      use Plugin.V1.Diagnostic, name: :times_out
+      use V1.Diagnostic, name: :times_out
 
       def diagnose(subject) do
         Process.sleep(5000)
@@ -76,7 +77,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     end
 
     defmodule Crashes do
-      use Plugin.V1.Diagnostic, name: :crashes
+      use V1.Diagnostic, name: :crashes
 
       def diagnose(subject) do
         45 = subject
@@ -85,7 +86,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     end
 
     defmodule Errors do
-      use Plugin.V1.Diagnostic, name: :errors
+      use V1.Diagnostic, name: :errors
 
       def diagnose(_) do
         {:error, :invalid_subject}
@@ -93,7 +94,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     end
 
     defmodule BadReturn do
-      use Plugin.V1.Diagnostic, name: :bad_return
+      use V1.Diagnostic, name: :bad_return
 
       def diagnose(subject) do
         {:ok, subject}
@@ -101,43 +102,43 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
     end
 
     test "timeouts are logged", %{state: state} do
-      Plugin.register(TimesOut)
+      Runner.register(TimesOut)
 
       assert {[], state} = State.run_all(state, %Document{}, :diagnostic, 50)
       assert State.failure_count(state, TimesOut) == 1
     end
 
     test "crashing plugins are logged", %{state: state} do
-      Plugin.register(Crashes)
+      Runner.register(Crashes)
       assert {[], state} = State.run_all(state, %Document{}, :diagnostic, 50)
       assert State.failure_count(state, Crashes) == 1
     end
 
     test "a plugin that returns an error is logged", %{state: state} do
-      Plugin.register(Errors)
+      Runner.register(Errors)
 
       assert {[], state} = State.run_all(state, %Document{}, :diagnostic, 50)
       assert State.failure_count(state, Errors) == 1
     end
 
     test "a plugin that doesn't return a list is logged", %{state: state} do
-      Plugin.register(BadReturn)
+      Runner.register(BadReturn)
 
       assert {[], state} = State.run_all(state, %Document{}, :diagnostic, 50)
       assert State.failure_count(state, BadReturn) == 1
     end
 
     test "a plugin is disabled if it fails 3 times", %{state: state} do
-      Plugin.register(Crashes)
+      Runner.register(Crashes)
 
-      assert :crashes in Plugin.enabled_plugins()
+      assert :crashes in Runner.enabled_plugins()
 
       Enum.reduce(1..10, state, fn _, state ->
         {_, state} = State.run_all(state, %Document{}, :diagnostic, 50)
         state
       end)
 
-      refute :crashes in Plugin.enabled_plugins()
+      refute :crashes in Runner.enabled_plugins()
     end
   end
 end

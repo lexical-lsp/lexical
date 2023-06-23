@@ -1,16 +1,16 @@
-defmodule Lexical.Plugin.CoordinatorTest do
+defmodule Lexical.Runner.CoordinatorTest do
   alias Lexical.Document
-  alias Lexical.Plugin
+  alias Lexical.Plugin.Runner
   alias Lexical.Project
 
   use ExUnit.Case
 
   setup do
-    {:ok, _} = start_supervised(Plugin.Supervisor)
-    {:ok, _} = start_supervised(Plugin.Coordinator)
+    {:ok, _} = start_supervised(Runner.Supervisor)
+    {:ok, _} = start_supervised(Runner.Coordinator)
 
     on_exit(fn ->
-      Plugin.clear_config()
+      Runner.clear_config()
     end)
 
     :ok
@@ -32,7 +32,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
   end
 
   def with_echo_plugin(_) do
-    Plugin.register(Echo)
+    Runner.register(Echo)
   end
 
   def notifier do
@@ -42,17 +42,17 @@ defmodule Lexical.Plugin.CoordinatorTest do
 
   describe "registering a plugin" do
     test "works the first time" do
-      assert :ok = Plugin.register(Echo)
-      assert :report_back in Plugin.enabled_plugins()
+      assert :ok = Runner.register(Echo)
+      assert :report_back in Runner.enabled_plugins()
     end
 
     test "fails the second time" do
-      assert :ok = Plugin.register(Echo)
-      assert :error = Plugin.register(Echo)
+      assert :ok = Runner.register(Echo)
+      assert :error = Runner.register(Echo)
     end
 
     test "fails for modules that aren't plugins" do
-      assert :error = Plugin.register(GenServer)
+      assert :error = Runner.register(GenServer)
     end
   end
 
@@ -62,14 +62,14 @@ defmodule Lexical.Plugin.CoordinatorTest do
     test "works with documents" do
       doc = %Document{uri: "bad uri"}
 
-      Plugin.diagnose(doc, notifier())
+      Runner.diagnose(doc, notifier())
 
       assert_receive [^doc]
     end
 
     test "works with projects" do
       project = %Project{root_uri: "file:///fooo/bar"}
-      Plugin.diagnose(project, notifier())
+      Runner.diagnose(project, notifier())
 
       assert_receive [^project]
     end
@@ -112,16 +112,16 @@ defmodule Lexical.Plugin.CoordinatorTest do
 
     defp make_it_crash do
       for _ <- 1..10 do
-        Plugin.diagnose(%Document{}, notifier())
+        Runner.diagnose(%Document{}, notifier())
       end
     end
 
     test "an exiting plugin will not crash the coordinator" do
-      Plugin.register(Exits)
+      Runner.register(Exits)
 
-      old_pid = Process.whereis(Plugin.Coordinator)
-      assert :exits in Plugin.enabled_plugins()
-      Plugin.diagnose(%Document{}, notifier())
+      old_pid = Process.whereis(Runner.Coordinator)
+      assert :exits in Runner.enabled_plugins()
+      Runner.diagnose(%Document{}, notifier())
 
       assert_receive []
 
@@ -129,9 +129,9 @@ defmodule Lexical.Plugin.CoordinatorTest do
     end
 
     test "crashing plugins are disabled" do
-      Plugin.register(Crashy)
+      Runner.register(Crashy)
 
-      assert :crashy in Plugin.enabled_plugins()
+      assert :crashy in Runner.enabled_plugins()
 
       make_it_crash()
 
@@ -139,13 +139,13 @@ defmodule Lexical.Plugin.CoordinatorTest do
       assert_receive []
       assert_receive []
 
-      refute :crashy in Plugin.enabled_plugins()
+      refute :crashy in Runner.enabled_plugins()
     end
 
     test "slow plugins are disabled" do
-      Plugin.register(Slow)
+      Runner.register(Slow)
 
-      assert :slow in Plugin.enabled_plugins()
+      assert :slow in Runner.enabled_plugins()
 
       make_it_crash()
 
@@ -153,13 +153,13 @@ defmodule Lexical.Plugin.CoordinatorTest do
       assert_receive []
       assert_receive []
 
-      refute :slow in Plugin.enabled_plugins()
+      refute :slow in Runner.enabled_plugins()
     end
 
     test "plugins that don't return lists are disabled" do
-      Plugin.register(BadReturn)
+      Runner.register(BadReturn)
 
-      assert :bad_return in Plugin.enabled_plugins()
+      assert :bad_return in Runner.enabled_plugins()
 
       make_it_crash()
 
@@ -167,7 +167,7 @@ defmodule Lexical.Plugin.CoordinatorTest do
       assert_receive []
       assert_receive []
 
-      refute :bad_return in Plugin.enabled_plugins()
+      refute :bad_return in Runner.enabled_plugins()
     end
   end
 end
