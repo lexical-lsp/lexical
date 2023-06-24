@@ -58,7 +58,18 @@ defmodule Lexical.Project do
   end
 
   def name(%__MODULE__{project_module: project_module}) do
-    Atom.to_string(project_module)
+    module_string = to_string(project_module)
+
+    with ["Elixir" | tail] <- String.split(module_string, "."),
+         true <- ends_with_mix_project?(tail) do
+      tail |> List.delete_at(-1) |> Enum.join(".")
+    else
+      _ -> module_string
+    end
+  end
+
+  defp ends_with_mix_project?(module_path) do
+    List.last(module_path) == "MixProject"
   end
 
   @doc """
