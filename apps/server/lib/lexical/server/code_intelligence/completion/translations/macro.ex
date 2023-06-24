@@ -6,7 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   use Translatable.Impl, for: Candidate.Macro
 
-  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception)
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test)
 
   def translate(%Candidate.Macro{name: name}, _builder, _env)
       when name in ["__before_compile__", "__using__", "__after_compile__"] do
@@ -436,6 +436,62 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label
     )
     |> builder.boost()
+  end
+
+  @stub_label ~S(test "message"           )
+  @plain_label ~S(test "message" do...     )
+  @context_label ~S(test "message", %{} do...)
+
+  def translate(%Candidate.Macro{name: "test", arity: 1}, builder, env) do
+    stub_label = @stub_label
+
+    stub_snippet = """
+    test "${0:message}"
+    """
+
+    env
+    |> builder.snippet(stub_snippet,
+      detail: "A stub test",
+      kind: :class,
+      label: stub_label
+    )
+    |> builder.boost(1)
+  end
+
+  def translate(%Candidate.Macro{name: "test", arity: 2}, builder, env) do
+    plain_label = @plain_label
+
+    plain_snippet = """
+    test "${1:message}" do
+      $0
+    end
+    """
+
+    env
+    |> builder.snippet(plain_snippet,
+      detail: "A test",
+      kind: :class,
+      label: plain_label
+    )
+    |> builder.boost(2)
+  end
+
+  def translate(%Candidate.Macro{name: "test", arity: 3}, builder, env) do
+    context_label = @context_label
+
+    context_snippet = """
+    test "${1:message}", %{${2:context}} do
+      $0
+    end
+    """
+
+    env
+    |> builder.snippet(context_snippet,
+      detail: "A test that receives context",
+      kind: :class,
+      label: context_label
+    )
+    |> builder.boost(3)
   end
 
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
