@@ -49,6 +49,7 @@ source code is `/my/home/projects/lexical`.
 1. [Vanilla Emacs with lsp-mode](#vanilla-emacs-with-lsp-mode)
 2. [Vanilla Emacs with eglot](#vanilla-emacs-with-eglot)
 3. [Visual Studio Code](#visual-studio-code)
+4. [neovim](#neovim)
 
 ## Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
@@ -91,3 +92,34 @@ download the latest version of Lexical.
 To change to a local executable, go to `Settings -> Extensions -> Lexical` and
 type `/my/home/projects/lexical/_build/dev/rel/lexical` into the text box in
 the `Server: Release path override` section.
+
+## neovim
+
+The key is to append the custom LS configuration to [lspconfig](https://github.com/neovim/nvim-lspconfig), so regardless of whether you are using mason or others, you can use this minimal configuration below as a reference:
+
+```lua
+    local lspconfig = require("lspconfig")
+    local configs = require("lspconfig.configs")
+
+    local lexical_config = {
+      filetypes = { "elixir", "eelixir", },
+      cmd = { "/my/home/projects/_build/dev/rel/lexical/start_lexical.sh" },
+      settings = {},
+    }
+
+    if not configs.lexical then
+      configs.lexical = {
+        default_config = {
+          filetypes = lexical_config.filetypes,
+          cmd = lexical_config.cmd,
+          root_dir = function(fname)
+            return lspconfig.util.root_pattern("mix.exs", ".git")(fname) or vim.loop.os_homedir()
+          end,
+          -- optional settings
+          settings = lexical_config.settings,
+        },
+      }
+    end
+
+    lspconfig.lexical.setup({})
+```
