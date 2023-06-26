@@ -10,8 +10,6 @@ defmodule Lexical.Shared.MixProject do
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      deps_path: "../../deps",
-      build_path: "../../_build",
       dialyzer: dialyzer_config(),
       package: package(),
       docs: docs()
