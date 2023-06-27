@@ -68,6 +68,8 @@ defmodule Lexical.BuildTest do
       Build.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :success), 500
+      assert_receive project_progress(label: "Building " <> project_name), 500
+      assert project_name == "project_metadata"
     end
 
     test "receives metadata about the defined modules" do
@@ -101,6 +103,9 @@ defmodule Lexical.BuildTest do
       assert {:arity_0, 0} in functions
       assert {:arity_1, 1} in functions
       assert {:arity_2, 2} in functions
+
+      assert_receive project_progress(label: "Building " <> project_name), 500
+      assert project_name == "umbrella"
     end
   end
 

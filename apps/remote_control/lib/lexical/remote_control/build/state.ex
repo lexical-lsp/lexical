@@ -185,7 +185,7 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   def building_label(%Project{} = project) do
-    "Building #{Project.name(project)}"
+    "Building #{Project.display_name(project)}"
   end
 
   defp now do

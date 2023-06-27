@@ -51,14 +51,22 @@ defmodule Lexical.Project do
   @spec name(t) :: String.t()
 
   def name(%__MODULE__{project_module: nil} = project) do
-    project
-    |> root_path()
-    |> Path.split()
-    |> List.last()
+    folder_name(project)
   end
 
   def name(%__MODULE__{project_module: project_module}) do
     Atom.to_string(project_module)
+  end
+
+  @doc """
+  Returns the the name definied in the `project/0` of mix.exs file
+  """
+  def display_name(%__MODULE__{project_module: nil} = project) do
+    folder_name(project)
+  end
+
+  def display_name(%__MODULE__{project_module: project_module} = project) do
+    Keyword.get(project_module.project(), :name, folder_name(project))
   end
 
   @doc """
@@ -246,5 +254,12 @@ defmodule Lexical.Project do
 
   defp mix_exs_exists?(mix_exs_path) do
     File.exists?(mix_exs_path)
+  end
+
+  defp folder_name(project) do
+    project
+    |> root_path()
+    |> Path.split()
+    |> List.last()
   end
 end
