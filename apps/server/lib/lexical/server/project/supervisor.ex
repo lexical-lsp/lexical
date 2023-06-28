@@ -13,6 +13,10 @@ defmodule Lexical.Server.Project.Supervisor do
     Lexical.Server.ProjectSupervisor
   end
 
+  def options do
+    [name: dynamic_supervisor_name(), strategy: :one_for_one]
+  end
+
   def start_link(%Project{} = project) do
     Supervisor.start_link(__MODULE__, project, name: supervisor_name(project))
   end

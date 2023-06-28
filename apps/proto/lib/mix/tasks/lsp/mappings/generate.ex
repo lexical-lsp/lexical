@@ -75,8 +75,8 @@ defmodule Mix.Tasks.Lsp.Mappings.Generate do
     end
 
     keywords
-    |> Keyword.replace_lazy(:only, &split_comma_delimited/1)
-    |> Keyword.replace_lazy(:roots, &split_comma_delimited/1)
+    |> replace_lazy(:only, &split_comma_delimited/1)
+    |> replace_lazy(:roots, &split_comma_delimited/1)
   end
 
   defp map_lsp_types(types_to_map, %DataModel{} = data_model, %Mappings{} = mappings) do
@@ -220,5 +220,12 @@ defmodule Mix.Tasks.Lsp.Mappings.Generate do
     string
     |> String.split(",")
     |> Enum.map(&String.trim/1)
+  end
+
+  defp replace_lazy(keywords, key, function) do
+    case Keyword.fetch(keywords, key) do
+      {:ok, value} -> Keyword.replace(keywords, key, function.(value))
+      :error -> keywords
+    end
   end
 end

@@ -12,7 +12,7 @@ defmodule Lexical.Server.Application do
     children = [
       Lexical.Document.Store,
       Lexical.Server,
-      {DynamicSupervisor, name: Lexical.Server.Project.Supervisor.dynamic_supervisor_name()},
+      {DynamicSupervisor, Lexical.Server.Project.Supervisor.options()},
       Provider.Queue.Supervisor.child_spec(),
       Provider.Queue.child_spec(),
       {Transport.StdIO, [:standard_io, &Lexical.Server.protocol_message/1]}

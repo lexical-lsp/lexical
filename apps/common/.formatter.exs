@@ -7,7 +7,12 @@ eventual_assertions = [
 ]
 
 [
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: [
+    "{mix,.formatter}.exs",
+    "{config,test}/**/*.{ex,exs}",
+    "lib/lexical/**/*.{ex,ex}",
+    "lib/mix/**/*.{ex,exs}"
+  ],
   locals_without_parens: eventual_assertions,
   export: [locals_without_parens: eventual_assertions]
 ]

@@ -7,7 +7,7 @@ defmodule Lexical.Plugin.MixProject do
       app: :lexical_plugin,
       aliases: aliases(),
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer_config(),

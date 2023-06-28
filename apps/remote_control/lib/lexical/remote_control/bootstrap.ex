@@ -11,7 +11,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
   require Logger
 
   def init(%Project{} = project, listener_pid, remote_control_config) do
-    true = Code.append_path(hex_path())
+    maybe_append_hex_path()
 
     RemoteControl.set_project_listener_pid(listener_pid)
     Application.put_all_env(remote_control: remote_control_config)
@@ -32,16 +32,19 @@ defmodule Lexical.RemoteControl.Bootstrap do
     end
   end
 
-  defp hex_path do
+  defp maybe_append_hex_path do
     hex_ebin = Path.join(["hex-*", "**", "ebin"])
 
-    [hex_path] =
+    hex_path =
       :archives
       |> Mix.path_for()
       |> Path.join(hex_ebin)
       |> Path.wildcard()
 
-    hex_path
+    case hex_path do
+      [archives] -> Code.append_path(archives)
+      _ -> :ok
+    end
   end
 
   defp start_logger(%Project{} = project) do

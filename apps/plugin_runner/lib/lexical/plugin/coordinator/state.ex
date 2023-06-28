@@ -14,12 +14,13 @@ defmodule Lexical.Plugin.Runner.Coordinator.State do
   end
 
   def run_all(%__MODULE__{} = state, subject, plugin_type, timeout) do
-    tasks =
+    tasks_to_plugin_modules =
       plugin_type
       |> Runner.plugins_of_type()
       |> Enum.map(&Runner.Supervisor.async(&1, subject))
+      |> Map.new()
 
-    await_results(state, tasks, timeout)
+    await_results(state, tasks_to_plugin_modules, timeout)
   end
 
   def failure_count(%__MODULE__{} = state, plugin_module) do
@@ -31,8 +32,11 @@ defmodule Lexical.Plugin.Runner.Coordinator.State do
     %__MODULE__{state | tasks: new_tasks}
   end
 
-  defp await_results(%__MODULE__{} = state, tasks, timeout) do
-    raw_result = Task.yield_many(tasks, timeout)
+  defp await_results(%__MODULE__{} = state, tasks_to_plugin_modules, timeout) do
+    raw_result =
+      tasks_to_plugin_modules
+      |> Map.keys()
+      |> Task.yield_many(timeout)
 
     {successes, failed} =
       raw_result
@@ -61,12 +65,12 @@ defmodule Lexical.Plugin.Runner.Coordinator.State do
     new_state =
       Enum.reduce(failed, state, fn
         {:log, %Task{} = task, reason}, state ->
-          {plugin_module, _, _} = task.mfa
+          plugin_module = Map.get(tasks_to_plugin_modules, task)
           Logger.error("Task #{plugin_module} failed because #{inspect(reason)}")
           mark_failed(state, plugin_module)
 
         {:shutdown, %Task{} = task}, state ->
-          {plugin_module, _, _} = task.mfa
+          plugin_module = Map.get(tasks_to_plugin_modules, task)
           Logger.error("Task #{plugin_module} did not complete in #{timeout}ms ")
           Task.shutdown(task, :brutal_kill)
           mark_failed(state, plugin_module)
