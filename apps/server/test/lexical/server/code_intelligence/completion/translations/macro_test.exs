@@ -612,4 +612,38 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       refute boosted?(completion)
     end
   end
+
+  test "test completion snippets", %{project: project} do
+    assert {:ok, [stub, with_body, with_context | _ignored]} =
+             project
+             |> complete(inside_exunit_context("test|"))
+             |> fetch_completion("test ")
+
+    assert ~S(test "message"           ) = stub.label
+    assert "A stub test" = stub.detail
+    assert :snippet = stub.insert_text_format
+    assert "test \"${0:message}\"\n" = stub.insert_text
+
+    assert ~S(test "message" do...     ) = with_body.label
+    assert "A test" = with_body.detail
+    assert :snippet = with_body.insert_text_format
+
+    assert "test \"${1:message}\" do\n  ${0:body}\nend\n" = with_body.insert_text
+
+    assert ~S(test "message", %{} do...) = with_context.label
+    assert "A test that receives context" = with_context.detail
+    assert :snippet = with_context.insert_text_format
+
+    assert "test \"${1:message}\", %{${2:context}} do\n  ${0:body}\nend\n" =
+             with_context.insert_text
+  end
+
+  defp inside_exunit_context(text) do
+    ~q[
+      defmodule Test do
+        use ExUnit.Case
+
+        #{text}
+    ]
+  end
 end
