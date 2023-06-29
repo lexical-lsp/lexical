@@ -13,27 +13,28 @@ on:
 # Sets the ENV `MIX_ENV` to `test` for running tests
 env:
   MIX_ENV: test
+  # Default elixir and otp are the ones that we validate
+  # against. Formatting and types can change from version to version,
+  # so keeping credo, dialyzer and formatting checks in the matrix
+  # would create an impossible situation, as different versions would have
+  # different rules
+  DEFAULT_ELIXIR: 1.14.3-otp-25
+  DEFAULT_OTP: 25.3
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  static_analysis:
     runs-on: ubuntu-latest
-    name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    strategy:
-      # Specify the OTP and Elixir versions to use when building
-      # and running the workflow steps.
-      matrix:
-        otp: ["25.2.1"] # Define the OTP version [required]
-        elixir: ["1.14.3-otp-25"] # Define the elixir version [required]
+    name: Static analysis
     steps:
-      # Step: Setup Elixir + Erlang image as the base.
+      # Step: Setup Elixir + Erlang image as the base
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
+          otp-version: ${{ env.DEFAULT_OTP }}
+          elixir-version: ${{ env.DEFAULT_ELIXIR }}
 
       # Step: Check out the code.
       - name: Checkout code
@@ -60,13 +61,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-${{ env.cache-name }}-
 
-      - name: Cache dialyzer plt files
-        id: cache-plt
-        uses: actions/cache@v3
-        with:
-          path: "priv/plts"
-          key: ${{ matrix.otp }}-${{ matrix.elixir}}-plts-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
-
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
       - name: Install and compile dependencies
@@ -84,20 +78,120 @@ jobs:
       - name: Credo static analysis
         run: mix credo
 
+  dialyzer:
+    runs-on: ubuntu-latest
+    name: Run Dialyzer
+    steps:
+      # Step: Setup Elixir + Erlang image as the base.
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.DEFAULT_OTP }}
+          elixir-version: ${{ env.DEFAULT_ELIXIR }}
+
+      # Step: Check out the code.
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set Variables
+        id: set_mix_lock_hash
+        run: |
+          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
+          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
+
+      # Step: Define how to cache deps. Restores existing cache if present.
+      - name: Cache deps
+        id: cache-deps
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-elixir-deps
+        with:
+          path: |
+            deps
+            _build
+
+          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.cache-name }}-
+
+      # Step: Create dialyzer .plt files if they're not present
+      - name: Cache dialyzer plt files
+        id: cache-plt
+        uses: actions/cache@v3
+        with:
+          path: "priv/plts"
+          key: lexical-plts-${{ env.DEFAULT_OTP }}-${{ env.DEFAULT_ELIXIR }}-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
+
+      # Step: Download project dependencies. If unchanged, uses
+      # the cached version.
+      - name: Install and compile dependencies
+        run: |
+          mix deps.get
+          mix deps.compile --skip-umbrella-children
+
       - name: Compile
         run: make compile.all
-
 
       - name: Maybe create plt files
         if: steps.cache-plt.outputs.cache-hit != 'true'
         run: |
           mkdir -p priv/plts
-          mix dialyzer --plt
+          make dialyzer.plt.all
 
       - name: Run dialyzer
         run: |
           mix compile.protocols
           make dialyzer.all
+
+  test:
+    runs-on: ubuntu-latest
+    name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    strategy:
+      # Specify the OTP and Elixir versions to use when building
+      # and running the workflow steps.
+      matrix:
+        include:
+          - elixir: '1.14.5-otp-25'
+            otp: '25.3'
+          - elixir: '1.13.4-otp-25'
+            otp: '25.3'
+    steps:
+      # Step: Check out the code.
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step: Setup Elixir + Erlang image as the base.
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+
+      - name: Set Variables
+        id: set_mix_lock_hash
+        run: |
+          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
+          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
+
+      # Step: Define how to cache deps. Restores existing cache if present.
+      - name: Cache deps
+        id: cache-deps
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-elixir-deps
+        with:
+          path: |
+            deps
+            _build
+
+          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.cache-name }}-
+
+      # Step: Download project dependencies. If unchanged, uses
+      # the cached version.
+      - name: Install and compile the app
+        run: make compile.all
 
       # Step: Execute the tests.
       - name: Run tests

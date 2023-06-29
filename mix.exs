@@ -13,7 +13,7 @@ defmodule Lexical.LanguageServer.MixProject do
       docs: docs(),
       name: "Lexical",
       consolidate_protocols: Mix.env() != :test,
-      dialyzer: Mix.Dialyzer.config()
+      dialyzer: Mix.Dialyzer.config(:lexical)
     ]
   end
 

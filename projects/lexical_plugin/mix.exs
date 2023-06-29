@@ -73,7 +73,7 @@ defmodule Lexical.Plugin.MixProject do
 
   def dialyzer_config do
     if function_exported?(Mix.Dialyzer, :config, 0) do
-      Mix.Dialyzer.config()
+      Mix.Dialyzer.config(:lexical_plugin)
     else
       []
     end
