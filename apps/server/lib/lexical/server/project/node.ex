@@ -78,7 +78,7 @@ defmodule Lexical.Server.Project.Node do
 
   @impl GenServer
   def handle_info({:nodedown, _}, %State{} = state) do
-    Logger.warn("The node has died. Restarting after deleting the build directory")
+    Logger.warning("The node has died. Restarting after deleting the build directory")
 
     with :ok <- delete_build_artifacts(state.project),
          {:ok, new_state} <- start_node(state.project) do

@@ -91,7 +91,7 @@ defmodule Lexical.Server.Provider.Queue do
       do: maybe_log_task(reason, request_id)
 
     defp maybe_log_task(reason, request_id),
-      do: Logger.warn("Request id #{request_id} failed with reason #{inspect(reason)}")
+      do: Logger.warning("Request id #{request_id} failed with reason #{inspect(reason)}")
 
     defp as_task(%{id: _} = request, func) do
       handler = fn ->

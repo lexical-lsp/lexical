@@ -5,7 +5,7 @@ defmodule Lexical.Server do
   alias Lexical.Server.Provider
   alias Lexical.Server.State
 
-  import Logger
+  require Logger
 
   use GenServer
 
@@ -50,7 +50,10 @@ defmodule Lexical.Server do
           new_state
 
         error ->
-          error("Could not handle message #{inspect(message.__struct__)} #{inspect(error)}")
+          Logger.error(
+            "Could not handle message #{inspect(message.__struct__)} #{inspect(error)}"
+          )
+
           state
       end
 
@@ -58,12 +61,12 @@ defmodule Lexical.Server do
   end
 
   def handle_cast(other, %State{} = state) do
-    info("got other: #{inspect(other)}")
+    Logger.info("got other: #{inspect(other)}")
     {:noreply, state}
   end
 
   def handle_info(:default_config, %State{configuration: nil} = state) do
-    warn(
+    Logger.warning(
       "Did not receive workspace/didChangeConfiguration notification after 5 seconds. " <>
         "Using default settings."
     )
@@ -105,7 +108,7 @@ defmodule Lexical.Server do
         success
 
       error ->
-        error("Failed to handle #{message.__struct__}, #{inspect(error)}")
+        Logger.error("Failed to handle #{message.__struct__}, #{inspect(error)}")
     end
   end
 
