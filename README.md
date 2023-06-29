@@ -63,3 +63,12 @@ make release.namespaced
  ```
 
  Lexical will now be available in `_build/dev/rel/lexical`
+
+## Development
+
+Besides following the Detailed Installation Instructions:
+
+```
+# get format and credo git hooks
+mix hooks
+```
