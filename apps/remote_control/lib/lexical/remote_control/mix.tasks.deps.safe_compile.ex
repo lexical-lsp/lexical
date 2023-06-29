@@ -48,22 +48,26 @@ defmodule Mix.Tasks.Deps.SafeCompile do
 
   @impl true
   def run(args) do
-    unless "--no-archives-check" in args do
-      Mix.Task.run("archive.check", args)
-    end
+    if Version.match?(System.version(), ">= 1.15.0") do
+      Mix.Tasks.Deps.Compile.run(args)
+    else
+      unless "--no-archives-check" in args do
+        Mix.Task.run("archive.check", args)
+      end
 
-    Mix.Project.get!()
-    deps = Mix.Dep.load_and_cache()
+      Mix.Project.get!()
+      deps = Mix.Dep.load_and_cache()
 
-    case OptionParser.parse(args, switches: @switches) do
-      {opts, [], _} ->
-        # Because this command may be invoked explicitly with
-        # deps.compile, we simply try to compile any available
-        # or local dependency.
-        compile(filter_available_and_local_deps(deps), opts)
+      case OptionParser.parse(args, switches: @switches) do
+        {opts, [], _} ->
+          # Because this command may be invoked explicitly with
+          # deps.compile, we simply try to compile any available
+          # or local dependency.
+          compile(filter_available_and_local_deps(deps), opts)
 
-      {opts, tail, _} ->
-        compile(Mix.Dep.filter_by_name(tail, deps, opts), opts)
+        {opts, tail, _} ->
+          compile(Mix.Dep.filter_by_name(tail, deps, opts), opts)
+      end
     end
   end
 
@@ -224,7 +228,7 @@ defmodule Mix.Tasks.Deps.SafeCompile do
 
     # Copy priv/ after compilation too if it was created then
     if File.exists?(dep_priv) and not File.exists?(build_priv) do
-      Mix.Utils.symlink_or_copy(config[:build_embedded], dep_priv, build_priv)
+      Mix.Utils.symlink_or_copy(dep_priv, build_priv)
     end
 
     Code.prepend_path(Path.join(build_path, "ebin"))
