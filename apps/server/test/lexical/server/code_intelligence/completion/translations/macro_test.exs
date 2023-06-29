@@ -628,14 +628,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     assert "A test" = with_body.detail
     assert :snippet = with_body.insert_text_format
 
-    assert "test \"${1:message}\" do\n  ${0:body}\nend\n" = with_body.insert_text
+    assert "test \"${1:message}\" do\n  $0\nend\n" = with_body.insert_text
 
     assert ~S(test "message", %{} do...) = with_context.label
     assert "A test that receives context" = with_context.detail
     assert :snippet = with_context.insert_text_format
 
-    assert "test \"${1:message}\", %{${2:context}} do\n  ${0:body}\nend\n" =
-             with_context.insert_text
+    assert "test \"${1:message}\", %{${2:context}} do\n  $0\nend\n" = with_context.insert_text
   end
 
   defp inside_exunit_context(text) do
