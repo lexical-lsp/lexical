@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
                   opts
 
                 :error ->
-                  Logger.warn("Could not find formatter options for file #{file_path}")
+                  Logger.warning("Could not find formatter options for file #{file_path}")
                   []
               end
 

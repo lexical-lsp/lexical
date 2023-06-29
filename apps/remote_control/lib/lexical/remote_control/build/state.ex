@@ -253,7 +253,7 @@ defmodule Lexical.RemoteControl.Build.State do
         Mix.Task.run("deps.get")
       end
     else
-      Logger.warn("Could not connect to hex.pm, dependencies will not be fetched")
+      Logger.warning("Could not connect to hex.pm, dependencies will not be fetched")
     end
 
     with_progress "mix deps.compile", fn ->

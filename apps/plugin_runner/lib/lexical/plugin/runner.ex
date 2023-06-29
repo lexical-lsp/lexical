@@ -71,7 +71,7 @@ defmodule Lexical.Plugin.Runner do
       :ok
     else
       error ->
-        Logger.warn(
+        Logger.warning(
           "Could not register plugin #{inspect(plugin_module)} because #{inspect(error)}"
         )
 

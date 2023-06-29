@@ -88,7 +88,7 @@ defmodule Lexical.RemoteControl.Build do
 
   @impl GenServer
   def handle_info(msg, %Project{} = project) do
-    Logger.warn("Undefined message: #{inspect(msg)}")
+    Logger.warning("Undefined message: #{inspect(msg)}")
     {:noreply, project}
   end
 

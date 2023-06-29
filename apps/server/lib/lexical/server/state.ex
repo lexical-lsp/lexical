@@ -70,7 +70,7 @@ defmodule Lexical.Server.State do
   end
 
   def apply(%__MODULE__{shutdown_received?: true} = state, %Exit{}) do
-    Logger.warn("Received an Exit notification. Halting the server in 150ms")
+    Logger.warning("Received an Exit notification. Halting the server in 150ms")
     :timer.apply_after(50, System, :halt, [0])
     {:ok, state}
   end
@@ -143,7 +143,10 @@ defmodule Lexical.Server.State do
         {:ok, state}
 
       error ->
-        Logger.warn("Received textDocument/didClose for a file that wasn't open. URI was #{uri}")
+        Logger.warning(
+          "Received textDocument/didClose for a file that wasn't open. URI was #{uri}"
+        )
+
         error
     end
   end
