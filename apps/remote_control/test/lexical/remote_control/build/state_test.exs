@@ -81,7 +81,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     test "it compiles after a timeout", %{state: state, document: document} do
       state = State.on_file_compile(state, document)
 
-      refute_eventually(State.compile_scheduled?(State.on_tick(state), document.uri), 500)
+      refute_eventually State.compile_scheduled?(State.on_tick(state), document.uri), 500
     end
   end
 end
