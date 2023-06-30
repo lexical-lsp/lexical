@@ -15,6 +15,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     {:ok, _} = start_supervised(Build.CaptureServer)
     {:ok, _} = start_supervised(RemoteControl.ModuleMappings)
     {:ok, _} = start_supervised(Lexical.Plugin.Runner.Coordinator)
+    {:ok, _} = start_supervised(Lexical.Plugin.Runner.Supervisor)
     :ok
   end
 

@@ -3,7 +3,8 @@ defmodule Lexical.Runner.CoordinatorTest do
   alias Lexical.Plugin.Runner
   alias Lexical.Project
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false
+  import Lexical.Test.EventualAssertions
 
   setup do
     {:ok, _} = start_supervised(Runner.Supervisor)
@@ -33,6 +34,10 @@ defmodule Lexical.Runner.CoordinatorTest do
 
   def with_echo_plugin(_) do
     Runner.register(Echo)
+
+    on_exit(fn ->
+      Runner.disable(Echo)
+    end)
   end
 
   def notifier do
@@ -113,6 +118,7 @@ defmodule Lexical.Runner.CoordinatorTest do
     defp make_it_crash do
       for _ <- 1..10 do
         Runner.diagnose(%Document{}, notifier())
+        assert_receive _
       end
     end
 
@@ -121,6 +127,7 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       old_pid = Process.whereis(Runner.Coordinator)
       assert :exits in Runner.enabled_plugins()
+
       Runner.diagnose(%Document{}, notifier())
 
       assert_receive [], 500
@@ -135,11 +142,7 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       make_it_crash()
 
-      assert_receive [], 500
-      assert_receive [], 500
-      assert_receive [], 500
-
-      refute :crashy in Runner.enabled_plugins()
+      refute_eventually :crashy in Runner.enabled_plugins()
     end
 
     test "slow plugins are disabled" do
@@ -149,11 +152,7 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       make_it_crash()
 
-      assert_receive []
-      assert_receive []
-      assert_receive []
-
-      refute :slow in Runner.enabled_plugins()
+      refute_eventually :slow in Runner.enabled_plugins()
     end
 
     test "plugins that don't return lists are disabled" do
@@ -163,11 +162,7 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       make_it_crash()
 
-      assert_receive [], 500
-      assert_receive [], 500
-      assert_receive [], 500
-
-      refute :bad_return in Runner.enabled_plugins()
+      refute_eventually :bad_return in Runner.enabled_plugins()
     end
   end
 end
