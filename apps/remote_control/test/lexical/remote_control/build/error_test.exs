@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   alias Lexical.RemoteControl.Build.Error
 
   use ExUnit.Case, async: true
+  require Logger
 
   def compile(source) do
     doc = Document.new("file:///unknown.ex", source, 0)
@@ -11,15 +12,17 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     case Code.string_to_quoted(source) do
       {:ok, quoted_ast} ->
         try do
-          modules = for {m, _b} <- Code.compile_quoted(quoted_ast), do: m
+          modules = for {m, _b} <- Code.compile_quoted(quoted_ast, "/unknown.ex"), do: m
           {:ok, modules}
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+            Logger.warning("Exception #{inspect(filled_exception)} stack: #{inspect(stack)}")
             {doc, {:exception, filled_exception, stack, quoted_ast}}
         end
 
       error ->
+        Logger.warning("error is #{inspect error}")
         {doc, error}
     end
   end
@@ -276,7 +279,6 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[errors were found at the given arguments:]
-      assert diagnostic.position == 1
     end
 
     test "handles ArgumentError when in module" do

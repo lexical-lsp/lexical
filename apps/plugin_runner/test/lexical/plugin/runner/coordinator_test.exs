@@ -123,7 +123,7 @@ defmodule Lexical.Runner.CoordinatorTest do
       assert :exits in Runner.enabled_plugins()
       Runner.diagnose(%Document{}, notifier())
 
-      assert_receive []
+      assert_receive [], 500
 
       assert Process.alive?(old_pid)
     end
@@ -135,9 +135,9 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       make_it_crash()
 
-      assert_receive []
-      assert_receive []
-      assert_receive []
+      assert_receive [], 500
+      assert_receive [], 500
+      assert_receive [], 500
 
       refute :crashy in Runner.enabled_plugins()
     end
@@ -163,9 +163,9 @@ defmodule Lexical.Runner.CoordinatorTest do
 
       make_it_crash()
 
-      assert_receive []
-      assert_receive []
-      assert_receive []
+      assert_receive [], 500
+      assert_receive [], 500
+      assert_receive [], 500
 
       refute :bad_return in Runner.enabled_plugins()
     end

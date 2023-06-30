@@ -3,10 +3,10 @@ defmodule Mix.Dialyzer do
     {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false, optional: true}
   end
 
-  def config do
+  def config(name \\ :dialyzer) do
     [
       plt_core_path: absolute_path("priv/plts"),
-      plt_file: {:no_warn, absolute_path("priv/plts/dialyzer.plt")},
+      plt_file: {:no_warn, absolute_path("priv/plts/#{name}.plt")},
       plt_add_deps: :apps_direct,
       plt_add_apps: [:wx, :mix, :ex_unit, :compiler],
       ignore_warnings: absolute_path("dialyzer.ignore-warnings")
