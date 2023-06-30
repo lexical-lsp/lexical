@@ -287,7 +287,8 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.Aliases do
 
         {_ast, reducer} = Macro.prewalk(quoted, reducer, &collect/2)
 
-        Reducer.aliases(reducer)
+        aliases = Reducer.aliases(reducer)
+        {:ok, aliases}
 
       error ->
         error

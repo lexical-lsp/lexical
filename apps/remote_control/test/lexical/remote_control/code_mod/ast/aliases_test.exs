@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
 
   describe "top level aliases" do
     test "a useless alias" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           alias Foo
           |
@@ -30,7 +30,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias outside of a module" do
-      aliases =
+      {:ok, aliases} =
         ~q[
         alias Foo.Bar.Baz
         defmodule Parent do
@@ -43,7 +43,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias inside the body of a module" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Basic do
             alias Foo.Bar
@@ -56,7 +56,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias using as" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule TopLevel do
             alias Foo.Bar, as: FooBar
@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "multiple aliases off of single alias" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule TopLevel do
             alias Foo.{First, Second, Third.Fourth}
@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "multiple aliases off of nested alias" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule TopLevel do
             alias Foo.Bar.{First, Second, Third.Fourth}
@@ -100,7 +100,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "aliasing __MODULE__" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Something.Is.Nested do
             alias __MODULE__|
@@ -113,7 +113,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "multiple aliases leading by current module" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule TopLevel do
             alias __MODULE__.{First, Second}
@@ -127,7 +127,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "multiple aliases leading by current module's child" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule TopLevel do
             alias __MODULE__.Child.{First, Second}
@@ -141,7 +141,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "aliases expanding other aliases" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           alias Foo.Bar.Baz
           alias Baz.Quux|
@@ -153,7 +153,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "aliases expanding current module" do
-      aliases = ~q[
+      {:ok, aliases} = ~q[
         defmodule TopLevel do
           alias __MODULE__.Foo|
         end
@@ -163,7 +163,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "aliases expanding current module using as" do
-      aliases = ~q[
+      {:ok, aliases} = ~q[
         defmodule TopLevel do
           alias __MODULE__.Foo|, as: OtherAlias
         end
@@ -173,7 +173,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "allows overrides" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           alias Foo.Bar.Baz
           alias Other.Baz
@@ -186,7 +186,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
 
   describe "nested modules" do
     test "no aliases are defined for modules with dots" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule GrandParent.Parent.Child do
            |
@@ -198,7 +198,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "with children get their parents name" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Grandparent.Parent do
             defmodule Child do
@@ -215,7 +215,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
 
   describe "alias scopes" do
     test "aliases are removed when leaving a module" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Basic do
             alias Foo.Bar
@@ -227,7 +227,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "aliases inside of nested modules" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             alias Foo.Grandparent
@@ -247,7 +247,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "multiple nested module are aliased after definition" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             alias Foo.Grandparent
@@ -269,7 +269,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a named function" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             def fun do
@@ -284,7 +284,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a named function doesn't leak" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             def fun do
@@ -298,7 +298,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a private named function" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             defp fun do
@@ -313,7 +313,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a private named function doesn't leak" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
             defp fun do
@@ -327,7 +327,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a DSL" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
              my_dsl do
@@ -342,7 +342,7 @@ defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
     end
 
     test "an alias defined in a DSL does not leak" do
-      aliases =
+      {:ok, aliases} =
         ~q[
           defmodule Parent do
              my_dsl do
