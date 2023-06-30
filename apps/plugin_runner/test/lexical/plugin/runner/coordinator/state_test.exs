@@ -128,7 +128,7 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
       assert State.failure_count(state, BadReturn) == 1
     end
 
-    test "a plugin is disabled if it fails 3 times", %{state: state} do
+    test "a plugin is disabled if it fails 10 times", %{state: state} do
       Runner.register(Crashes)
 
       assert :crashes in Runner.enabled_plugins()
