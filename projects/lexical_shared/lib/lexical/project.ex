@@ -157,9 +157,15 @@ defmodule Lexical.Project do
   end
 
   @doc """
-  Creates lexical's workspace directory if it doesn't already exist
+  Creates and initializes lexical's workspace directory if it doesn't already exist
   """
-  def ensure_workspace_exists(%__MODULE__{} = project) do
+  def ensure_workspace(%__MODULE__{} = project) do
+    with :ok <- ensure_workspace_directory(project) do
+      ensure_git_ignore(project)
+    end
+  end
+
+  defp ensure_workspace_directory(project) do
     workspace_path = workspace_path(project)
 
     cond do
@@ -175,7 +181,19 @@ defmodule Lexical.Project do
     end
   end
 
-  # private
+  defp ensure_git_ignore(project) do
+    contents = """
+    *
+    """
+
+    path = workspace_path(project, ".gitignore")
+
+    if File.exists?(path) do
+      :ok
+    else
+      File.write(path, contents)
+    end
+  end
 
   defp maybe_set_root_uri(%__MODULE__{} = project, nil),
     do: %__MODULE__{project | root_uri: nil}

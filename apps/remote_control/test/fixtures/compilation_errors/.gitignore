@@ -24,5 +24,3 @@ compilation_errors-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
-
-.lexical

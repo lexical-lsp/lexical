@@ -28,7 +28,7 @@ defmodule Lexical.RemoteControl.Bootstrap do
       ExUnit.start()
       start_logger(project)
       maybe_change_directory(project)
-      Project.ensure_workspace_exists(project)
+      Project.ensure_workspace(project)
     end
   end
 
