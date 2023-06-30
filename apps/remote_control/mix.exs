@@ -12,7 +12,8 @@ defmodule Lexical.RemoteControl.MixProject do
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      aliases: aliases()
     ]
   end
 
@@ -51,5 +52,9 @@ defmodule Lexical.RemoteControl.MixProject do
       {:path_glob, "~> 0.2", optional: true},
       {:sourceror, "~> 0.12"}
     ]
+  end
+
+  defp aliases do
+    [test: "test --no-start"]
   end
 end
