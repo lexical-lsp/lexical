@@ -36,7 +36,7 @@ defmodule Lexical.Plugin.Runner do
 
   @doc false
   def diagnose(%Document{} = document, on_complete) do
-    Runner.Coordinator.run_all(document, :diagnostic, on_complete, 50)
+    Runner.Coordinator.run_all(document, :diagnostic, on_complete, 250)
   end
 
   @doc false
