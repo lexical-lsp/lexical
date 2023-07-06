@@ -51,7 +51,22 @@ defmodule Lexical.Project do
   @spec name(t) :: String.t()
 
   def name(%__MODULE__{project_module: nil} = project) do
-    folder_name(project)
+    sanitized =
+      project
+      |> folder_name()
+      |> String.replace(~r/[^a-zA-Z0-9_]/, "_")
+
+    # This might be a litte verbose, but this code is hot.
+    case sanitized do
+      <<c::utf8, _rest::binary>> when c in ?a..?z ->
+        sanitized
+
+      <<c::utf8, rest::binary>> when c in ?A..?Z ->
+        String.downcase("#{[c]}") <> rest
+
+      other ->
+        "p_#{other}"
+    end
   end
 
   def name(%__MODULE__{project_module: project_module}) do
@@ -277,7 +292,6 @@ defmodule Lexical.Project do
   defp folder_name(project) do
     project
     |> root_path()
-    |> Path.split()
-    |> List.last()
+    |> Path.basename()
   end
 end
