@@ -9,6 +9,7 @@ Lexical is a next-generation language server for the Elixir programming language
   * Advanced error highlighting
   * Code actions
   * Code Formatting
+  * Go To Definition
   * Completely isolated build environment
 
 ## What makes Lexical different?
