@@ -7,9 +7,9 @@ you.
 
 ## Caveats
 
- * Presently, Lexical only works on Elixir 1.14 under Erlang 25. Our
-aim in the near future is to support Elixir 1.13 to 1.15 and erlang
-versions >= 24. Pull requests gladly accepted.
+ * Presently, Lexical works on Elixir 1.13 and 1.14 under Erlang
+ 24 and 25. We are actively working on supporting Elixir 1.15, and then
+ erlang 26.
 
  * While it's within Lexical's capabilities to run your project in a
  different elixir and erlang version than Lexical is built with,
