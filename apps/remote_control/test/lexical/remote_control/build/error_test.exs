@@ -9,26 +9,77 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   def compile(source) do
     doc = Document.new("file:///unknown.ex", source, 0)
 
-    case Code.string_to_quoted(source) do
+    case Code.string_to_quoted(source, columns: true) do
       {:ok, quoted_ast} ->
+        if System.version() >= "1.15" do
+          do_compile_after_1_15(doc, quoted_ast)
+        else
+          do_compile(doc, quoted_ast)
+        end
+
+      error ->
+        Logger.warning("error is #{inspect(error)}")
+        {doc, error}
+    end
+  end
+
+  defp do_compile(doc, quoted_ast) do
+    try do
+      modules = for {m, _b} <- Code.compile_quoted(quoted_ast, "/unknown.ex"), do: m
+      {:ok, modules}
+    rescue
+      exception ->
+        {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+        Logger.warning("Exception #{inspect(filled_exception)} stack: #{inspect(stack)}")
+        {doc, {:exception, filled_exception, stack, quoted_ast}}
+    end
+  end
+
+  defp do_compile_after_1_15(doc, quoted_ast) do
+    Code.put_compiler_option(:ignore_module_conflict, true)
+    Code.put_compiler_option(:parser_options, columns: true)
+
+    {result, all_errors_and_warnings} =
+      Code.with_diagnostics([log: true], fn ->
         try do
           modules = for {m, _b} <- Code.compile_quoted(quoted_ast, "/unknown.ex"), do: m
           {:ok, modules}
         rescue
           exception ->
             {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            Logger.warning("Exception #{inspect(filled_exception)} stack: #{inspect(stack)}")
-            {doc, {:exception, filled_exception, stack, quoted_ast}}
+            {:exception, filled_exception, stack, quoted_ast}
         end
+      end)
 
-      error ->
-        Logger.warning("error is #{inspect error}")
-        {doc, error}
+    case {result, all_errors_and_warnings} do
+      {{:ok, modules}, []} ->
+        {:ok, modules}
+
+      {{:ok, _}, all_errors_and_warnings} ->
+        {doc, all_errors_and_warnings}
+
+      {other, all_errors_and_warnings} ->
+        {doc, other, all_errors_and_warnings}
     end
   end
 
   def parse_error({source, {:error, {a, b, c}}}) do
     Error.parse_error_to_diagnostics(source, a, b, c)
+  end
+
+  def error_to_diagnostic(
+        {doc, {:exception, exception, stack, quoted_ast}, all_errors_and_warnings}
+      ) do
+    converted = Error.error_to_diagnostic(doc, exception, stack, quoted_ast)
+    maybe_diagnostics = Error.diagnostics_from_mix(doc, all_errors_and_warnings)
+    diagnostics = [converted | maybe_diagnostics] |> Enum.reverse() |> Error.uniq()
+    [diagnostic] = diagnostics
+    diagnostic
+  end
+
+  def error_to_diagnostic({doc, all_errors_and_warnings}) when is_list(all_errors_and_warnings) do
+    [diagnostic] = Error.diagnostics_from_mix(doc, all_errors_and_warnings)
+    diagnostic
   end
 
   def error_to_diagnostic({source, {:exception, exception, stack, quoted_ast}}) do
@@ -92,11 +143,13 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> parse_error()
 
-      assert [error, detail] = errors
+      # assert [error, detail] = errors
+      assert [detail, error] = errors
+
       assert error.message =~ "unexpected reserved word: end"
       assert error.position == {15, 9}
 
-      assert detail.message =~ ~S[The "(" here is missing terminator ")"]
+      assert detail.message =~ ~S["(" here is missing terminator ")"]
       assert detail.position == 4
     end
 
@@ -108,8 +161,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
       assert [error] = errors
 
-      assert error.message ==
-               ~S[unexpected token: ). The "fn" at line 1 is missing terminator "end")]
+      assert error.message =~
+               ~S[unexpected token: )]
 
       assert error.position == {1, 24}
     end
@@ -225,7 +278,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function :slave.stop/0 is undefined or private.]
-      assert diagnostic.position == 3
+      assert diagnostic.position == {3, 17}
+      # assert diagnostic.position == 3
     end
 
     test "handles UndefinedError for erlang function without defined module" do
@@ -238,7 +292,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function :slave.stop/2 is undefined or private.]
-      assert diagnostic.position == 3
+      # assert diagnostic.position == 3
+      assert diagnostic.position == {3, 17}
     end
 
     test "handles UndefinedError" do
@@ -256,6 +311,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.message =~
                ~s[undefined function print/1]
 
+      # NOTE: main is {4, 13}
       assert diagnostic.position == 4
     end
 
@@ -269,7 +325,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> error_to_diagnostic()
 
       assert diagnostic.message =~ ~s[function IO.ins/0 is undefined or private]
-      assert diagnostic.position == 3
+      # assert diagnostic.position == 3
+      assert diagnostic.position == {3, 14}
     end
 
     test "handles ArgumentError" do

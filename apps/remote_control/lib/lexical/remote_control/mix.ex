@@ -19,6 +19,8 @@ defmodule Lexical.RemoteControl.Mix do
 
     Build.with_lock(fn ->
       try do
+        Mix.ProjectStack.post_config(prune_code_paths: false)
+
         build_path = Project.build_path(project)
         project_root = Project.root_path(project)
 

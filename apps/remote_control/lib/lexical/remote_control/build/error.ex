@@ -49,21 +49,36 @@ defmodule Lexical.RemoteControl.Build.Error do
     )
   end
 
-  defp uniq(diagnostics) do
+  def uniq(diagnostics) do
     # We need to uniq by position because the same position can be reported
     # and the `end_line_diagnostic` is always the precise one
     extract_line = fn
       %Result{position: {line, _column}} -> line
       %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
-      %Result{position: line} when is_integer(line) -> line
+      %Result{position: line} -> line
     end
 
-    Enum.uniq_by(diagnostics, extract_line)
+    # Note: Sometimes error and warning appear on one line at the same time
+    # So we need to uniq by line and severity,
+    # and :error is always more important than :warning
+    extract_line_and_severity = &{extract_line.(&1), &1.severity}
+
+    diagnostics
+    |> Enum.sort_by(extract_line_and_severity)
+    |> Enum.uniq_by(extract_line)
+    |> reject_zero_line()
   end
 
   defp build_end_line_diagnostics(%Document{} = source, context, message_info, token) do
     [end_line_message | _] = String.split(message_info, "\n")
-    message = "#{end_line_message}#{token}"
+
+    message =
+      if String.ends_with?(end_line_message, token) do
+        end_line_message
+      else
+        "#{end_line_message}#{token}"
+      end
+
     diagnostic = Result.new(source.uri, context_to_position(context), message, :error, "Elixir")
     [diagnostic]
   end
@@ -94,6 +109,55 @@ defmodule Lexical.RemoteControl.Build.Error do
       _ ->
         []
     end
+  end
+
+  @doc """
+  The `diagnostics_from_mix/2` is only for Elixir version > 1.15
+
+  From 1.15 onwards with_diagnostics can return some compile-time errors,
+  more details: https://github.com/elixir-lang/elixir/pull/12742
+  """
+  def diagnostics_from_mix(%Document{} = doc, all_errors_and_warnings)
+      when is_list(all_errors_and_warnings) do
+    for error_or_wanning <- all_errors_and_warnings do
+      %{position: position, message: message, severity: severity} = error_or_wanning
+      Result.new(doc.uri, position, message, severity, @elixir_source)
+    end
+  end
+
+  @doc """
+  Format a diagnostic message to make it more readable
+  """
+  def format(%Result{message: message} = diagnostic) do
+    %{diagnostic | message: format(message)}
+  end
+
+  def format("undefined" <> _ = message) do
+    parts = String.split(message, " (")
+    List.first(parts)
+  end
+
+  def format(message) when is_binary(message) do
+    maybe_format_unused(message)
+  end
+
+  defp maybe_format_unused(message) do
+    case String.split(message, "is unused (", parts: 2) do
+      [prefix, _] ->
+        prefix <> "is unused"
+
+      _ ->
+        message
+    end
+  end
+
+  defp reject_zero_line(diagnostics) do
+    # Since 1.15, Elixir has some nonsensical error on line 0,
+    # e.g.: Can't compile this file
+    # We can simply ignore it, as there is a more accurate one
+    Enum.reject(diagnostics, fn diagnostic ->
+      diagnostic.position == 0
+    end)
   end
 
   def error_to_diagnostic(
@@ -179,7 +243,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     [{_, _, _, context}, {_, call, _, second_to_last_context} | _] = reversed_stack
 
     pipe_or_struct? = call in [:|>, :__struct__]
-    expanding_macro? = second_to_last_context[:file] == 'expanding macro'
+    expanding_macro? = second_to_last_context[:file] == ~c"expanding macro"
     message = Exception.message(argument_error)
 
     position =

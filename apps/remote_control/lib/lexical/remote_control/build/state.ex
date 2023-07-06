@@ -219,7 +219,7 @@ defmodule Lexical.RemoteControl.Build.State do
           diagnostics =
             diagnostics
             |> List.wrap()
-            |> Enum.map(&Build.Error.normalize_diagnostic/1)
+            |> Enum.map(&normalize_and_format/1)
 
           {:error, diagnostics}
 
@@ -230,9 +230,15 @@ defmodule Lexical.RemoteControl.Build.State do
               inspect(diagnostics)
           )
 
-          Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)
+          Enum.map(diagnostics, &normalize_and_format/1)
       end
     end)
+  end
+
+  defp normalize_and_format(error) do
+    error
+    |> Build.Error.normalize_diagnostic()
+    |> Build.Error.format()
   end
 
   defp prepare_for_project_build(false = _force?) do
@@ -270,12 +276,64 @@ defmodule Lexical.RemoteControl.Build.State do
   defp safe_compile(%Document{} = document) do
     old_modules = ModuleMappings.modules_in_file(document.path)
 
-    compile = fn ->
-      case RemoteControl.Mix.in_project(fn _ -> compile_code(document) end) do
+    compile_code_func =
+      if System.version() >= "1.15" do
+        &compile_code_after_1_15/1
+      else
+        &compile_code/1
+      end
+
+    compile_func = fn document ->
+      case RemoteControl.Mix.in_project(fn _ -> compile_code_func.(document) end) do
         {:ok, result} -> result
         other -> other
       end
     end
+
+    if System.version() >= "1.15" do
+      do_compile(compile_func, document, old_modules)
+    else
+      capture_compile_io(compile_func, document, old_modules)
+    end
+  end
+
+  defp do_compile(compile_func, document, old_modules) do
+    case compile_func.(document) do
+      {{:ok, modules}, []} ->
+        purge_removed_modules(old_modules, modules)
+        {:ok, []}
+
+      {{:ok, modules}, all_errors_and_warnings} ->
+        purge_removed_modules(old_modules, modules)
+
+        diagnostics =
+          document
+          |> Build.Error.diagnostics_from_mix(all_errors_and_warnings)
+          |> Build.Error.uniq()
+          |> Enum.map(&Build.Error.format/1)
+
+        {:ok, diagnostics}
+
+      {:error, {meta, message_info, token}} ->
+        errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
+        {:error, errors}
+
+      {{:exception, exception, stack, quoted_ast}, all_errors_and_warnings} ->
+        converted = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
+        maybe_diagnostics = Build.Error.diagnostics_from_mix(document, all_errors_and_warnings)
+
+        diagnostics =
+          [converted | maybe_diagnostics]
+          |> Enum.reverse()
+          |> Build.Error.uniq()
+          |> Enum.map(&Build.Error.format/1)
+
+        {:error, diagnostics}
+    end
+  end
+
+  defp capture_compile_io(compile_func, document, old_modules) do
+    compile = fn -> compile_func.(document) end
 
     case capture_io(:stderr, compile) do
       {captured_messages, {:error, {:exception, {exception, _inner_stack}, stack}}} ->
@@ -332,6 +390,35 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
+  @dialyzer {:nowarn_function, compile_code_after_1_15: 1}
+
+  defp compile_code_after_1_15(%Document{} = document) do
+    source_string = Document.to_string(document)
+    parser_options = [file: document.path] ++ parser_options()
+    Code.put_compiler_option(:ignore_module_conflict, true)
+
+    with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
+      Code.with_diagnostics(fn ->
+        try do
+          if Path.basename(document.path) == "mix.exs" do
+            Mix.ProjectStack.pop()
+          end
+
+          Mix.Task.run(:loadconfig)
+
+          modules = Code.compile_quoted(quoted_ast, document.path)
+          Code.put_compiler_option(:ignore_module_conflict, false)
+
+          {:ok, modules}
+        rescue
+          exception ->
+            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
+            {:exception, filled_exception, stack, quoted_ast}
+        end
+      end)
+    end
+  end
+
   defp purge_removed_modules(old_modules, new_modules) do
     new_modules = MapSet.new(new_modules, fn {module, _bytecode} -> module end)
     old_modules = MapSet.new(old_modules)
@@ -349,7 +436,7 @@ defmodule Lexical.RemoteControl.Build.State do
     # it seems reasonable to gate pulling dependenices on a resolution check for hex.pm.
     # Yes, it's entirely possible that the DNS server is local, and that the entry is in cache,
     # but that's an edge case, and the build will just time out anyways.
-    case :inet_res.getbyname('hex.pm', :a, 250) do
+    case :inet_res.getbyname(~c"hex.pm", :a, 250) do
       {:ok, _} -> true
       _ -> false
     end
