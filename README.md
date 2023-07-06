@@ -59,7 +59,7 @@ faster.
 Follow the [Detailed Installation Instructions](pages/installation.md)
 
  ```
-make release.namespaced
+NAMESPACE=1 mix release lexical --overwrite
  ```
 
  Lexical will now be available in `_build/dev/rel/lexical`

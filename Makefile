@@ -36,7 +36,3 @@ compile.projects:
 	cd projects
 	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix deps.get && mix do clean, compile --warnings-as-errors && cd ../..;)
 
-release.namespaced:
-	mix do deps.clean --all, clean, deps.get 
-	mix release lexical --overwrite 
-	NAMESPACE=1 mix release lexical --overwrite
