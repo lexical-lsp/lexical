@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - v*
+env:
+  NAMESPACE: 1
 
 jobs:
   release:

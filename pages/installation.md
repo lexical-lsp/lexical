@@ -35,7 +35,7 @@ cd lexical
 ...and build the project
 
 ```shell
-make release.namespaced
+NAMESPACE=1 mix release lexical --overwrite
 ```
 
 If things complete successfully, you will then have a release in your
