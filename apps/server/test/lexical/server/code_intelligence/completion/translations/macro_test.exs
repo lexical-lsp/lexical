@@ -637,6 +637,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     assert "test \"${1:message}\", %{${2:context}} do\n  $0\nend\n" = with_context.insert_text
   end
 
+  test "describe blocks", %{project: project} do
+    assert {:ok, describe} =
+             project
+             |> complete(inside_exunit_context("descr|"))
+             |> fetch_completion("describe ")
+
+    assert describe.label == "describe \"message\""
+    assert describe.insert_text_format == :snippet
+    assert describe.insert_text == "describe \"${1:message}\" do\n  $0\nend\n"
+  end
+
+  test "syntax macros", %{project: project} do
+    assert [] = complete(project, "a =|")
+    assert [] = complete(project, "a ==|")
+    assert [] = complete(project, "a ..|")
+    assert [] = complete(project, "a !|")
+    assert [] = complete(project, "a !=|")
+    assert [] = complete(project, "a !==|")
+    assert [] = complete(project, "a &&|")
+  end
+
   defp inside_exunit_context(text) do
     ~q[
       defmodule Test do

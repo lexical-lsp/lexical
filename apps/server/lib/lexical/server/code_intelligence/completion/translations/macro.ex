@@ -494,6 +494,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.boost(3)
   end
 
+  def translate(%Candidate.Macro{name: "describe"}, builder, env) do
+    snippet = """
+    describe "${1:message}" do
+      $0
+    end
+    """
+
+    env
+    |> builder.snippet(snippet,
+      detail: "A describe block",
+      kind: :class,
+      label: ~S(describe "message")
+    )
+    |> builder.boost(1)
+  end
+
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
     if Env.in_context?(env, :struct_reference) do
       env
