@@ -4,6 +4,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @callables [Candidate.Function, Candidate.Macro, Candidate.Callback]
 
+  @syntax_macros ~w(= == == === =~ .. ..// ! != !== &&)
+
+  def completion(%_callable_module{name: name}, _env)
+      when name in @syntax_macros do
+    :skip
+  end
+
   def completion(%callable_module{arity: 0} = callable, %Env{} = env)
       when callable_module in @callables do
     unless Env.in_context?(env, :pipe) do
