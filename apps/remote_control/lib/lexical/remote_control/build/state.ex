@@ -263,7 +263,8 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     with_progress "mix deps.compile", fn ->
-      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
+      deps_compile = if System.version() >= "1.15", do: "deps.compile", else: "deps.safe_compile"
+      Mix.Task.run(deps_compile, ~w(--skip-umbrella-children))
     end
 
     with_progress "loading plugins", fn ->
