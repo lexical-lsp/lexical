@@ -24,7 +24,7 @@ cond do
       backends: [JsonRpcBackend]
 
     config :logger, JsonRpcBackend,
-      level: :debug,
+      level: :error,
       format: "$message",
       metadata: []
 
