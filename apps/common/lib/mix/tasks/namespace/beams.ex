@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Namespace.Beams do
       |> Path.wildcard()
 
     consolidated_beams =
-      [Mix.Project.consolidation_path(), "**", "Elixir.*Lexical*.beam"]
+      [Mix.Project.consolidation_path(), "**", "*.beam"]
       |> Path.join()
       |> Path.wildcard()
 
