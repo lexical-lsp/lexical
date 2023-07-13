@@ -92,49 +92,21 @@ defmodule Lexical.LanguageServer.MixProject do
     ]
   end
 
-  def unconsolidate_jason(%Mix.Release{} = release) do
-    # Consolidating Jason breaks the server for some reason. We need to investigate this
-    jason_beam = Path.join([release.version_path, "consolidated", "Elixir.Jason.Encoder.beam"])
-    File.rm(jason_beam)
-    release
-  end
-
   defp release_steps do
     if System.get_env("NAMESPACE") do
-      [&namespace/1, :assemble, &namespace_release/1, &unconsolidate_jason/1]
+      [:assemble, &namespace_release/1]
     else
       [:assemble]
     end
   end
 
-  defp namespace(%Mix.Release{} = release) do
-    Mix.Task.run("namespace.beams", [release.path])
-    release
-  end
-
   defp namespace_release(%Mix.Release{} = release) do
-    Mix.Task.run("namespace.release")
+    Mix.Task.run("namespace", [release.path])
     release
-  end
-
-  defp clean(_) do
-    Mix.Task.clear()
-    Mix.Task.run("deps.clean", ~w(--all))
-    Mix.Task.run("clean")
-    Mix.Task.run("deps.get")
-  end
-
-  defp release_alias do
-    if System.get_env("NAMESPACE") do
-      [&clean/1, "release", &clean/1]
-    else
-      "release"
-    end
   end
 
   defp aliases do
     [
-      release: release_alias(),
       compile: "compile --docs --debug-info",
       docs: "docs --html",
       test: "test --no-start"

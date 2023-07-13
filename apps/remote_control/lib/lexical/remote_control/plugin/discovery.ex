@@ -9,12 +9,15 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   will be looking for structs like `Lexical.Document`, and be passed in structs like `LXRelease.Document`,
   and the plugin will crash.
   """
+
   alias Lexical.Plugin.Runner
   alias Mix.Tasks.Namespace
 
   require Logger
 
   def run do
+    Namespace.init()
+
     for {app_name, _, _} <- :application.loaded_applications(),
         Runner.plugin_app?(app_name) do
       load_plugin_app(app_name)
@@ -47,7 +50,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
     module
     |> :code.which()
     |> List.to_string()
-    |> Namespace.Transform.transform()
+    |> Namespace.Transform.Beams.apply()
   end
 
   defp unload_module(module) do
