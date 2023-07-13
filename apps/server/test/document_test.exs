@@ -724,5 +724,17 @@ defmodule Lexical.DocumentTest do
 
       assert "e\nt" == doc
     end
+
+    test "works if the start line is the end line" do
+      doc =
+        "this is the first line\nthis is the second"
+        |> document()
+        |> Document.fragment(
+          Position.new(line: 0, character: 5),
+          Position.new(line: 0, character: 7)
+        )
+
+      assert doc == "is"
+    end
   end
 end

@@ -144,6 +144,10 @@ defmodule Lexical.Document do
             line_text = text <> ending
 
             cond do
+              line_number == from_line and line_number == to_line ->
+                slice_length = to_character - from_character
+                String.slice(line_text, from_character, slice_length)
+
               line_number == from_line ->
                 slice_length = String.length(line_text) - from_character
                 String.slice(line_text, from_character, slice_length)
