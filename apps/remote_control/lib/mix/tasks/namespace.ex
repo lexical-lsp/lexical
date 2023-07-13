@@ -25,6 +25,12 @@ defmodule Mix.Tasks.Namespace do
     "server" => Lexical
   }
 
+  @deps_apps Lexical.RemoteControl.MixProject.project()
+             |> Keyword.get(:deps)
+             |> Enum.map(&elem(&1, 0))
+             |> then(fn dep_names -> dep_names -- @dev_deps end)
+             |> Enum.map(&to_string/1)
+
   require Logger
 
   def run([base_directory]) do
@@ -38,22 +44,8 @@ defmodule Mix.Tasks.Namespace do
   end
 
   def init do
-    # using apply because of dialyzer complaining
-    # credo:disable-for-next-line
-    mix_module_info = apply(Lexical.RemoteControl.MixProject, :module_info, [])
-
-    mix_path =
-      mix_module_info
-      |> get_in([:compile, :source])
-      |> List.to_string()
-      |> Path.dirname()
-
-    deps_apps =
-      Mix.Project.in_project(remote_control_app_name(), mix_path, fn _ ->
-        Mix.Project.deps_apps() -- @dev_deps
-      end)
-
-    deps_apps
+    @deps_apps
+    |> Enum.map(&String.to_atom/1)
     |> root_modules_for_apps()
     |> Map.merge(extra_apps())
     |> register_mappings()
