@@ -7,7 +7,27 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   @elixir_source "Elixir"
 
-  def normalize_diagnostic(%Compiler.Diagnostic{} = diagnostic) do
+  @doc """
+  Diagnostics can come from compiling the whole project,
+  from compiling individual files, or from erlang's diagnostics (Code.with_diagnostics since elixir1.15),
+  so we need to do some post-processing.
+
+  Includes:
+    1. Normalize each one to the standard result
+    2. Format the message to make it readable in the editor
+    3. Remove duplicate messages on the same line
+  """
+  def refine_diagnostics(diagnostics) do
+    diagnostics
+    |> Enum.map(fn diagnostic ->
+      diagnostic
+      |> normalize()
+      |> format()
+    end)
+    |> uniq()
+  end
+
+  defp normalize(%Compiler.Diagnostic{} = diagnostic) do
     Result.new(
       diagnostic.file,
       diagnostic.position,
@@ -15,6 +35,70 @@ defmodule Lexical.RemoteControl.Build.Error do
       diagnostic.severity,
       diagnostic.compiler_name
     )
+  end
+
+  defp normalize(%Result{} = result) do
+    result
+  end
+
+  defp format(%Result{} = result) do
+    %Result{result | message: format_message(result.message)}
+  end
+
+  defp format_message("undefined" <> _ = message) do
+    # All undefined messages explain the *same* thing inside the parentheses,
+    # like: `undefined function print/1 (expected Foo to define such a function or for it to be imported,
+    #        but none are available)`
+    # that makes no sense and just creates noise.
+    # So we can remove the things in parentheses
+
+    message
+    |> String.split(" (")
+    |> List.first()
+  end
+
+  defp format_message(message) when is_binary(message) do
+    maybe_format_unused(message)
+  end
+
+  defp maybe_format_unused(message) do
+    # Same reason as the `undefined` message above, we can remove the things in parentheses
+    case String.split(message, "is unused (", parts: 2) do
+      [prefix, _] ->
+        prefix <> "is unused"
+
+      _ ->
+        message
+    end
+  end
+
+  defp reject_zero_line(diagnostics) do
+    # Since 1.15, Elixir has some nonsensical error on line 0,
+    # e.g.: Can't compile this file
+    # We can simply ignore it, as there is a more accurate one
+    Enum.reject(diagnostics, fn diagnostic ->
+      diagnostic.position == 0
+    end)
+  end
+
+  defp uniq(diagnostics) do
+    # We need to uniq by position because the same position can be reported
+    # and the `end_line_diagnostic` is always the precise one
+    extract_line = fn
+      %Result{position: {line, _column}} -> line
+      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
+      %Result{position: line} -> line
+    end
+
+    # Note: Sometimes error and warning appear on one line at the same time
+    # So we need to uniq by line and severity,
+    # and :error is always more important than :warning
+    extract_line_and_severity = &{extract_line.(&1), &1.severity}
+
+    diagnostics
+    |> Enum.sort_by(extract_line_and_severity)
+    |> Enum.uniq_by(extract_line)
+    |> reject_zero_line()
   end
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
@@ -49,26 +133,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     )
   end
 
-  def uniq(diagnostics) do
-    # We need to uniq by position because the same position can be reported
-    # and the `end_line_diagnostic` is always the precise one
-    extract_line = fn
-      %Result{position: {line, _column}} -> line
-      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
-      %Result{position: line} -> line
-    end
-
-    # Note: Sometimes error and warning appear on one line at the same time
-    # So we need to uniq by line and severity,
-    # and :error is always more important than :warning
-    extract_line_and_severity = &{extract_line.(&1), &1.severity}
-
-    diagnostics
-    |> Enum.sort_by(extract_line_and_severity)
-    |> Enum.uniq_by(extract_line)
-    |> reject_zero_line()
-  end
-
   defp build_end_line_diagnostics(%Document{} = source, context, message_info, token) do
     [end_line_message | _] = String.split(message_info, "\n")
 
@@ -76,7 +140,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       if String.ends_with?(end_line_message, token) do
         end_line_message
       else
-        "#{end_line_message}#{token}"
+        end_line_message <> token
       end
 
     diagnostic = Result.new(source.uri, context_to_position(context), message, :error, "Elixir")
@@ -123,41 +187,6 @@ defmodule Lexical.RemoteControl.Build.Error do
       %{position: position, message: message, severity: severity} = error_or_wanning
       Result.new(doc.uri, position, message, severity, @elixir_source)
     end
-  end
-
-  @doc """
-  Format a diagnostic message to make it more readable
-  """
-  def format(%Result{message: message} = diagnostic) do
-    %{diagnostic | message: format(message)}
-  end
-
-  def format("undefined" <> _ = message) do
-    parts = String.split(message, " (")
-    List.first(parts)
-  end
-
-  def format(message) when is_binary(message) do
-    maybe_format_unused(message)
-  end
-
-  defp maybe_format_unused(message) do
-    case String.split(message, "is unused (", parts: 2) do
-      [prefix, _] ->
-        prefix <> "is unused"
-
-      _ ->
-        message
-    end
-  end
-
-  defp reject_zero_line(diagnostics) do
-    # Since 1.15, Elixir has some nonsensical error on line 0,
-    # e.g.: Can't compile this file
-    # We can simply ignore it, as there is a more accurate one
-    Enum.reject(diagnostics, fn diagnostic ->
-      diagnostic.position == 0
-    end)
   end
 
   def error_to_diagnostic(

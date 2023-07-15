@@ -5,12 +5,9 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
-  alias Lexical.RemoteControl.ModuleMappings
   alias Lexical.RemoteControl.Plugin
-
   require Logger
 
-  import Build.CaptureIO
   import Messages
 
   use Build.Progress
@@ -113,7 +110,11 @@ defmodule Lexical.RemoteControl.Build.State do
     Build.with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: document.uri))
 
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile(document) end)
+      safe_compile_func = fn ->
+        RemoteControl.Mix.in_project(fn _ -> Build.File.compile(document) end)
+      end
+
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile_func.() end)
 
       elapsed_ms = to_ms(elapsed_us)
 
@@ -219,7 +220,7 @@ defmodule Lexical.RemoteControl.Build.State do
           diagnostics =
             diagnostics
             |> List.wrap()
-            |> Enum.map(&normalize_and_format/1)
+            |> Build.Error.refine_diagnostics()
 
           {:error, diagnostics}
 
@@ -230,15 +231,9 @@ defmodule Lexical.RemoteControl.Build.State do
               inspect(diagnostics)
           )
 
-          Enum.map(diagnostics, &normalize_and_format/1)
+          Build.Error.refine_diagnostics(diagnostics)
       end
     end)
-  end
-
-  defp normalize_and_format(error) do
-    error
-    |> Build.Error.normalize_diagnostic()
-    |> Build.Error.format()
   end
 
   defp prepare_for_project_build(false = _force?) do
@@ -263,7 +258,13 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     with_progress "mix deps.compile", fn ->
-      deps_compile = if System.version() >= "1.15", do: "deps.compile", else: "deps.safe_compile"
+      deps_compile =
+        if Version.match?(System.version(), "~> 1.15") do
+          "deps.compile"
+        else
+          "deps.safe_compile"
+        end
+
       Mix.Task.run(deps_compile, ~w(--skip-umbrella-children))
     end
 
@@ -272,164 +273,6 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     Mix.Task.run("clean")
-  end
-
-  defp safe_compile(%Document{} = document) do
-    old_modules = ModuleMappings.modules_in_file(document.path)
-
-    compile_code_func =
-      if System.version() >= "1.15" do
-        &compile_code_after_1_15/1
-      else
-        &compile_code/1
-      end
-
-    compile_func = fn document ->
-      case RemoteControl.Mix.in_project(fn _ -> compile_code_func.(document) end) do
-        {:ok, result} -> result
-        other -> other
-      end
-    end
-
-    if System.version() >= "1.15" do
-      do_compile(compile_func, document, old_modules)
-    else
-      capture_compile_io(compile_func, document, old_modules)
-    end
-  end
-
-  defp do_compile(compile_func, document, old_modules) do
-    case compile_func.(document) do
-      {{:ok, modules}, []} ->
-        purge_removed_modules(old_modules, modules)
-        {:ok, []}
-
-      {{:ok, modules}, all_errors_and_warnings} ->
-        purge_removed_modules(old_modules, modules)
-
-        diagnostics =
-          document
-          |> Build.Error.diagnostics_from_mix(all_errors_and_warnings)
-          |> Build.Error.uniq()
-          |> Enum.map(&Build.Error.format/1)
-
-        {:ok, diagnostics}
-
-      {:error, {meta, message_info, token}} ->
-        errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
-        {:error, errors}
-
-      {{:exception, exception, stack, quoted_ast}, all_errors_and_warnings} ->
-        converted = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
-        maybe_diagnostics = Build.Error.diagnostics_from_mix(document, all_errors_and_warnings)
-
-        diagnostics =
-          [converted | maybe_diagnostics]
-          |> Enum.reverse()
-          |> Build.Error.uniq()
-          |> Enum.map(&Build.Error.format/1)
-
-        {:error, diagnostics}
-    end
-  end
-
-  defp capture_compile_io(compile_func, document, old_modules) do
-    compile = fn -> compile_func.(document) end
-
-    case capture_io(:stderr, compile) do
-      {captured_messages, {:error, {:exception, {exception, _inner_stack}, stack}}} ->
-        error = Build.Error.error_to_diagnostic(document, exception, stack, [])
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, [error | diagnostics]}
-
-      {captured_messages, {:error, {meta, message_info, token}}} ->
-        errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, errors ++ diagnostics}
-
-      {captured_messages, {:exception, exception, stack, quoted_ast}} ->
-        error = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, [error | diagnostics]}
-
-      {"", modules} ->
-        purge_removed_modules(old_modules, modules)
-        {:ok, []}
-
-      {captured_warnings, modules} ->
-        purge_removed_modules(old_modules, modules)
-
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_warnings)
-
-        {:ok, diagnostics}
-    end
-  end
-
-  defp compile_code(%Document{} = document) do
-    source_string = Document.to_string(document)
-    parser_options = [file: document.path] ++ parser_options()
-
-    with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
-      try do
-        # If we're compiling a mix.exs file, the after compile callback from
-        # `use Mix.Project` will blow up if we add the same project to the project stack
-        # twice. Preemptively popping it prevents that error from occurring.
-        if Path.basename(document.path) == "mix.exs" do
-          Mix.ProjectStack.pop()
-        end
-
-        Mix.Task.run(:loadconfig)
-        Code.compile_quoted(quoted_ast, document.path)
-      rescue
-        exception ->
-          {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-          {:exception, filled_exception, stack, quoted_ast}
-      end
-    end
-  end
-
-  @dialyzer {:nowarn_function, compile_code_after_1_15: 1}
-
-  defp compile_code_after_1_15(%Document{} = document) do
-    source_string = Document.to_string(document)
-    parser_options = [file: document.path] ++ parser_options()
-    Code.put_compiler_option(:ignore_module_conflict, true)
-
-    with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
-      Code.with_diagnostics(fn ->
-        try do
-          if Path.basename(document.path) == "mix.exs" do
-            Mix.ProjectStack.pop()
-          end
-
-          Mix.Task.run(:loadconfig)
-
-          modules = Code.compile_quoted(quoted_ast, document.path)
-          Code.put_compiler_option(:ignore_module_conflict, false)
-
-          {:ok, modules}
-        rescue
-          exception ->
-            {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-            {:exception, filled_exception, stack, quoted_ast}
-        end
-      end)
-    end
-  end
-
-  defp purge_removed_modules(old_modules, new_modules) do
-    new_modules = MapSet.new(new_modules, fn {module, _bytecode} -> module end)
-    old_modules = MapSet.new(old_modules)
-
-    old_modules
-    |> MapSet.difference(new_modules)
-    |> Enum.each(fn to_remove ->
-      :code.purge(to_remove)
-      :code.delete(to_remove)
-    end)
   end
 
   defp connected_to_internet? do
