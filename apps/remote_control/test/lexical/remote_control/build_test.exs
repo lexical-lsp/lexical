@@ -205,7 +205,12 @@ defmodule Lexical.BuildTest do
       assert diagnostic.uri
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
-      assert diagnostic.position == 2
+
+      if version_after_1_15?() do
+        assert diagnostic.position == {2, 9}
+      else
+        assert diagnostic.position == 2
+      end
     end
 
     test "handles function clause errors", %{project: project} do
@@ -255,9 +260,14 @@ defmodule Lexical.BuildTest do
 
       assert diagnostic.uri
       assert diagnostic.severity == :warning
-      assert diagnostic.position == 4
-      assert diagnostic.message =~ ~S[warning: variable "unused" is unused]
-      assert diagnostic.details == {WithWarnings, :error, 0}
+      assert diagnostic.message =~ ~S[variable "unused" is unused]
+
+      if version_after_1_15?() do
+        assert diagnostic.position == {4, 13}
+      else
+        assert diagnostic.details == {WithWarnings, :error, 0}
+        assert diagnostic.position == 4
+      end
     end
 
     test "reports missing parens", %{project: project} do
@@ -274,17 +284,25 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :success), 500
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 500
-
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic | _]), 500
       assert diagnostic.uri
-      assert diagnostic.severity == :warning
-      assert diagnostic.position == 4
 
-      assert diagnostic.message =~
-               ~S[warning: variable "calc" does not exist and is being expanded to "calc()"]
+      if version_after_1_15?() do
+        assert diagnostic.severity == :error
 
-      assert diagnostic.details == {WithWarnings, :error, 0}
+        assert diagnostic.message =~
+                 ~s[undefined variable "calc"]
+
+        assert diagnostic.position == {4, 13}
+      else
+        assert_receive file_compiled(status: :success), 500
+        assert diagnostic.severity == :warning
+        assert diagnostic.details == {WithWarnings, :error, 0}
+        assert diagnostic.position == 4
+
+        assert diagnostic.message =~
+                 ~S[warning: variable "calc" does not exist and is being expanded to "calc()"]
+      end
     end
 
     test "reports unused defp functions", %{project: project} do
@@ -302,7 +320,7 @@ defmodule Lexical.BuildTest do
       assert diagnostic.uri
       assert diagnostic.severity == :warning
       assert diagnostic.position == 3
-      assert diagnostic.message =~ ~S[warning: function unused/0 is unused]
+      assert diagnostic.message =~ ~S[function unused/0 is unused]
       assert diagnostic.details == nil
     end
 
@@ -339,9 +357,14 @@ defmodule Lexical.BuildTest do
       compile_document(project, source)
 
       assert_receive file_compiled(status: :error), 500
-      assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 500
 
-      assert length(diagnostics) == 5
+      if version_after_1_15?() do
+        assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics), 500
+        assert length(diagnostics) == 3
+      else
+        assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 500
+        assert length(diagnostics) == 5
+      end
     end
 
     test "adding a new module notifies the listener", %{project: project} do
@@ -591,5 +614,9 @@ defmodule Lexical.BuildTest do
       assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAType)
     end
+  end
+
+  defp version_after_1_15? do
+    Version.match?(System.version(), "~> 1.15")
   end
 end
