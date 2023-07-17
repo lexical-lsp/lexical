@@ -15,14 +15,14 @@ defmodule Mix.Tasks.Namespace do
 
   @dev_deps [:patch]
 
-  # These app names are strings to avoid them being namespaced
+  # These app names and root modules are strings to avoid them being namespaced
   # by this task. Plugin discovery uses this task, which happens after
   # namespacing.
   @extra_apps %{
-    "lexical_shared" => Lexical,
-    "proto" => Lexical,
-    "remote_control" => Lexical,
-    "server" => Lexical
+    "lexical_shared" => "Lexical",
+    "proto" => "Lexical",
+    "remote_control" => "Lexical",
+    "server" => "Lexical"
   }
 
   @deps_apps Lexical.RemoteControl.MixProject.project()
@@ -34,21 +34,12 @@ defmodule Mix.Tasks.Namespace do
   require Logger
 
   def run([base_directory]) do
-    init()
     Transform.Apps.apply_to_all(base_directory)
     Transform.Beams.apply_to_all(base_directory)
     Transform.Scripts.apply_to_all(base_directory)
     # The boot file transform just turns script files into boot files
     # so it must come after the script file transform
     Transform.Boots.apply_to_all(base_directory)
-  end
-
-  def init do
-    @deps_apps
-    |> Enum.map(&String.to_atom/1)
-    |> root_modules_for_apps()
-    |> Map.merge(extra_apps())
-    |> register_mappings()
   end
 
   def app_names do
@@ -62,7 +53,13 @@ defmodule Mix.Tasks.Namespace do
   end
 
   def app_to_root_modules do
-    :persistent_term.get(__MODULE__)
+    case :persistent_term.get(__MODULE__, :not_loaded) do
+      :not_loaded ->
+        init()
+
+      term ->
+        term
+    end
   end
 
   defp register_mappings(app_to_root_modules) do
@@ -106,6 +103,21 @@ defmodule Mix.Tasks.Namespace do
   end
 
   defp extra_apps do
-    Map.new(@extra_apps, fn {k, v} -> {String.to_atom(k), v} end)
+    Map.new(@extra_apps, fn {k, v} ->
+      root_module =
+        v
+        |> List.wrap()
+        |> Module.concat()
+
+      {String.to_atom(k), [root_module]}
+    end)
+  end
+
+  defp init do
+    @deps_apps
+    |> Enum.map(&String.to_atom/1)
+    |> root_modules_for_apps()
+    |> Map.merge(extra_apps())
+    |> register_mappings()
   end
 end

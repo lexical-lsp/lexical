@@ -1,6 +1,7 @@
 defmodule Mix.Tasks.Namespace.Module do
   alias Mix.Tasks.Namespace
 
+  @namespace_prefix "LX"
   @modules_to_skip ~w(Lexical.Proto)
   @apps_to_skip [:proto]
 
@@ -49,11 +50,11 @@ defmodule Mix.Tasks.Namespace.Module do
   end
 
   defp namespace("Lexical") do
-    "LXRelease"
+    "#{@namespace_prefix}Release"
   end
 
   defp namespace(orig) do
-    "LX#{orig}"
+    @namespace_prefix <> orig
   end
 
   defp can_namespace?(string_module_name) do

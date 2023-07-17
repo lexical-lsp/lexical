@@ -15,9 +15,11 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
 
   require Logger
 
-  def run do
-    Namespace.init()
+  @namespaced_document_module [:Lexical, :Document]
+                              |> Module.concat()
+                              |> Namespace.Module.apply()
 
+  def run do
     for {app_name, _, _} <- :application.loaded_applications(),
         Runner.plugin_app?(app_name) do
       load_plugin_app(app_name)
@@ -37,8 +39,8 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   defp maybe_namespace(modules) when is_list(modules) do
     if namespaced?() do
       Enum.each(modules, fn module ->
-        unload_module(module)
         namespace_module(module)
+        unload_module(module)
         Code.ensure_loaded(module)
       end)
     end
@@ -54,14 +56,17 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   end
 
   defp unload_module(module) do
-    :code.purge(module)
-    :code.delete(module)
+    unless :code.delete(module) do
+      :code.purge(module)
+      :code.delete(module)
+    end
+  end
+
+  def namespaced_doc do
+    @namespaced_document_module
   end
 
   defp namespaced? do
-    case Code.ensure_loaded(LXRelease.Document) do
-      {:module, _} -> true
-      _ -> false
-    end
+    Code.ensure_loaded?(@namespaced_document_module)
   end
 end
