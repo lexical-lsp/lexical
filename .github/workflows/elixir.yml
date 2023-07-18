@@ -19,7 +19,7 @@ env:
   # would create an impossible situation, as different versions would have
   # different rules
   DEFAULT_ELIXIR: 1.14.3-otp-25
-  DEFAULT_OTP: 25.3
+  DEFAULT_OTP: 25.3.2.4
 
 permissions:
   contents: read
