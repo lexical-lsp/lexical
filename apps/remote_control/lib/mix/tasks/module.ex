@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Namespace.Module do
   end
 
   defp namespace("Lexical") do
-    "#{@namespace_prefix}Release"
+    "#{@namespace_prefix}ical"
   end
 
   defp namespace(orig) do
