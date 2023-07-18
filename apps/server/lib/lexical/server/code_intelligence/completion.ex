@@ -11,6 +11,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
+  alias Mix.Tasks.Namespace
 
   require InsertTextFormat
   require Logger
@@ -115,24 +116,29 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp displayable?(%Project{} = project, result) do
-    # Don't exclude a dependency if we're working on that project!
-    if Project.name(project) in @lexical_deps do
-      true
-    else
-      suggested_module =
-        case result do
-          %_{full_name: full_name} -> full_name
-          %_{origin: origin} -> origin
-          _ -> ""
-        end
+    suggested_module =
+      case result do
+        %_{full_name: full_name} -> full_name
+        %_{origin: origin} -> origin
+        _ -> ""
+      end
 
-      Enum.reduce_while(@lexical_dep_modules, true, fn module, _ ->
-        if String.starts_with?(suggested_module, module) do
-          {:halt, false}
-        else
-          {:cont, true}
-        end
-      end)
+    cond do
+      Namespace.Module.prefixed?(suggested_module) ->
+        false
+
+      # If we're working on the dependency, we should include it!
+      Project.name(project) in @lexical_deps ->
+        true
+
+      true ->
+        Enum.reduce_while(@lexical_dep_modules, true, fn module, _ ->
+          if String.starts_with?(suggested_module, module) do
+            {:halt, false}
+          else
+            {:cont, true}
+          end
+        end)
     end
   end
 

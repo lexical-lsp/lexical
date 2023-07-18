@@ -20,6 +20,24 @@ defmodule Mix.Tasks.Namespace.Module do
     end
   end
 
+  def prefixed?(module) when is_atom(module) do
+    module
+    |> Atom.to_string()
+    |> prefixed?()
+  end
+
+  def prefixed?("Elixir." <> rest),
+    do: prefixed?(rest)
+
+  def prefixed?(@namespace_prefix <> _),
+    do: true
+
+  def prefixed?("lx_" <> _),
+    do: true
+
+  def prefixed?(_),
+    do: false
+
   defp apply_namespace("Elixir." <> rest) do
     Namespace.root_modules()
     |> Enum.map(fn module -> module |> Module.split() |> List.first() end)
