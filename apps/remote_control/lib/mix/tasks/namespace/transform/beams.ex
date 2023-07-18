@@ -37,10 +37,14 @@ defmodule Mix.Tasks.Namespace.Transform.Beams do
 
     with {:ok, forms} <- abstract_code(erlang_path),
          rewritten_forms = Abstract.rewrite(forms),
+         true <- changed?(forms, rewritten_forms),
          {:ok, module_name, binary} <- Code.compile(rewritten_forms) do
       write_module_beam(path, module_name, binary)
     end
   end
+
+  defp changed?(same, same), do: false
+  defp changed?(_, _), do: true
 
   defp block_until_done(same, same) do
     Mix.Shell.IO.info("done")
