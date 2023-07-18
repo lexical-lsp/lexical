@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert error.message =~ "unexpected reserved word: end"
       assert error.position == {15, 9}
 
-      assert detail.message =~ ~S["(" here is missing terminator ")"]
+      assert String.downcase(detail.message) =~ ~S[the "(" here is missing terminator ")"]
       assert detail.position == 4
     end
 
