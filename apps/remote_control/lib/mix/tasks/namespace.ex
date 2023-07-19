@@ -21,7 +21,9 @@ defmodule Mix.Tasks.Namespace do
   @extra_apps %{
     "lexical_shared" => "Lexical",
     "proto" => "Lexical",
+    "protocol" => "Lexical",
     "remote_control" => "Lexical",
+    "plugin_runner" => "Lexical",
     "server" => "Lexical"
   }
 
