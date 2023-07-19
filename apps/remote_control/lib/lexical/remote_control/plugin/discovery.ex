@@ -9,10 +9,15 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   will be looking for structs like `Lexical.Document`, and be passed in structs like `LXRelease.Document`,
   and the plugin will crash.
   """
+
   alias Lexical.Plugin.Runner
   alias Mix.Tasks.Namespace
 
   require Logger
+
+  @namespaced_document_module [:Lexical, :Document]
+                              |> Module.concat()
+                              |> Namespace.Module.apply()
 
   def run do
     for {app_name, _, _} <- :application.loaded_applications(),
@@ -34,8 +39,8 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   defp maybe_namespace(modules) when is_list(modules) do
     if namespaced?() do
       Enum.each(modules, fn module ->
-        unload_module(module)
         namespace_module(module)
+        unload_module(module)
         Code.ensure_loaded(module)
       end)
     end
@@ -47,18 +52,21 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
     module
     |> :code.which()
     |> List.to_string()
-    |> Namespace.Transform.transform()
+    |> Namespace.Transform.Beams.apply()
   end
 
   defp unload_module(module) do
-    :code.purge(module)
-    :code.delete(module)
+    unless :code.delete(module) do
+      :code.purge(module)
+      :code.delete(module)
+    end
+  end
+
+  def namespaced_doc do
+    @namespaced_document_module
   end
 
   defp namespaced? do
-    case Code.ensure_loaded(LXRelease.Document) do
-      {:module, _} -> true
-      _ -> false
-    end
+    Code.ensure_loaded?(@namespaced_document_module)
   end
 end
