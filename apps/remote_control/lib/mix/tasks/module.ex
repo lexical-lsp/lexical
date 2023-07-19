@@ -2,12 +2,10 @@ defmodule Mix.Tasks.Namespace.Module do
   alias Mix.Tasks.Namespace
 
   @namespace_prefix "LX"
-  @modules_to_skip ~w(Lexical.Proto)
-  @apps_to_skip [:proto]
 
   def apply(module_name) do
     cond do
-      module_name in @apps_to_skip ->
+      prefixed?(module_name) ->
         module_name
 
       module_name in Namespace.app_names() ->
@@ -42,7 +40,7 @@ defmodule Mix.Tasks.Namespace.Module do
     Namespace.root_modules()
     |> Enum.map(fn module -> module |> Module.split() |> List.first() end)
     |> Enum.reduce_while(rest, fn root_module, module ->
-      if has_root_module?(root_module, module) and can_namespace?(module) do
+      if has_root_module?(root_module, module) do
         namespaced_module =
           module
           |> String.replace(root_module, namespace(root_module), global: false)
@@ -64,7 +62,7 @@ defmodule Mix.Tasks.Namespace.Module do
   defp has_root_module?(root_module, root_module), do: true
 
   defp has_root_module?(root_module, candidate) do
-    String.contains?(candidate, root_module <> ".")
+    String.contains?(candidate, append_trailing_period(root_module))
   end
 
   defp namespace("Lexical") do
@@ -75,7 +73,7 @@ defmodule Mix.Tasks.Namespace.Module do
     @namespace_prefix <> orig
   end
 
-  defp can_namespace?(string_module_name) do
-    not Enum.any?(@modules_to_skip, &String.contains?(string_module_name, &1))
+  defp append_trailing_period(str) do
+    str <> "."
   end
 end
