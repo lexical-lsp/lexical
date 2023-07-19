@@ -2,6 +2,8 @@ defmodule CompilationWarnings.MixProject do
   use Mix.Project
 
   def project do
+    Code.put_compiler_option(:ignore_module_conflict, true)
+
     [
       app: :compilation_warnings,
       version: "0.1.0",

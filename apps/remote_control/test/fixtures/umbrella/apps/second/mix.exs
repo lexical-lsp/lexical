@@ -2,6 +2,8 @@ defmodule Umbrella.Second.MixProject do
   use Mix.Project
 
   def project do
+    Code.put_compiler_option(:ignore_module_conflict, true)
+
     [
       app: :second,
       version: "0.1.0",
