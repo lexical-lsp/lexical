@@ -2,6 +2,8 @@ defmodule Umbrella.MixProject do
   use Mix.Project
 
   def project do
+    Code.put_compiler_option(:ignore_module_conflict, true)
+
     [
       apps_path: "apps",
       version: "0.1.0",
