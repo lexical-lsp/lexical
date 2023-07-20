@@ -45,16 +45,11 @@ defmodule Lexical.RemoteControl.Build.Error do
     %Result{result | message: format_message(result.message)}
   end
 
-  defp format_message("undefined" <> _ = message) do
-    # All undefined messages explain the *same* thing inside the parentheses,
-    # like: `undefined function print/1 (expected Foo to define such a function or for it to be imported,
-    #        but none are available)`
-    # that makes no sense and just creates noise.
-    # So we can remove the things in parentheses
+  @undefined_function_pattern ~r/ \(expected ([A-Za-z0-9_\.]*) to [^\)]+\)/
 
-    message
-    |> String.split(" (")
-    |> List.first()
+  defp format_message("undefined" <> _ = message) do
+    # All undefined function messages explain the *same* thing inside the parentheses
+    String.replace(message, @undefined_function_pattern, "")
   end
 
   defp format_message(message) when is_binary(message) do
