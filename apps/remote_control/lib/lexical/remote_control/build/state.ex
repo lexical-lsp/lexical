@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Build.State do
+  alias Elixir.Features
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
@@ -259,7 +260,7 @@ defmodule Lexical.RemoteControl.Build.State do
 
     with_progress "mix deps.compile", fn ->
       deps_compile =
-        if Version.match?(System.version(), "~> 1.15") do
+        if Features.compile_wont_change_directory?() do
           "deps.compile"
         else
           "deps.safe_compile"

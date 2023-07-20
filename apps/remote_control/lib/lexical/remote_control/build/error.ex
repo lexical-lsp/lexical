@@ -72,7 +72,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     end
   end
 
-  defp reject_zero_line(diagnostics) do
+  defp reject_zeroth_line(diagnostics) do
     # Since 1.15, Elixir has some nonsensical error on line 0,
     # e.g.: Can't compile this file
     # We can simply ignore it, as there is a more accurate one
@@ -98,7 +98,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     diagnostics
     |> Enum.sort_by(extract_line_and_severity)
     |> Enum.uniq_by(extract_line)
-    |> reject_zero_line()
+    |> reject_zeroth_line()
   end
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.

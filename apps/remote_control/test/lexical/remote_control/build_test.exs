@@ -1,4 +1,5 @@
 defmodule Lexical.BuildTest do
+  alias Elixir.Features
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.Project
@@ -206,7 +207,7 @@ defmodule Lexical.BuildTest do
       assert diagnostic.severity == :error
       assert diagnostic.message =~ ~S[undefined function doesnt_exist/0]
 
-      if version_after_1_15?() do
+      if Features.with_diagnostics?() do
         assert diagnostic.position == {2, 9}
       else
         assert diagnostic.position == 2
@@ -262,7 +263,7 @@ defmodule Lexical.BuildTest do
       assert diagnostic.severity == :warning
       assert diagnostic.message =~ ~S[variable "unused" is unused]
 
-      if version_after_1_15?() do
+      if Features.with_diagnostics?() do
         assert diagnostic.position == {4, 13}
       else
         assert diagnostic.details == {WithWarnings, :error, 0}
@@ -287,7 +288,7 @@ defmodule Lexical.BuildTest do
       assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic | _]), 500
       assert diagnostic.uri
 
-      if version_after_1_15?() do
+      if Features.with_diagnostics?() do
         assert diagnostic.severity == :error
 
         assert diagnostic.message =~
@@ -358,7 +359,7 @@ defmodule Lexical.BuildTest do
 
       assert_receive file_compiled(status: :error), 500
 
-      if version_after_1_15?() do
+      if Features.with_diagnostics?() do
         assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics), 500
         assert length(diagnostics) == 3
       else
@@ -614,9 +615,5 @@ defmodule Lexical.BuildTest do
       assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAType)
     end
-  end
-
-  defp version_after_1_15? do
-    Version.match?(System.version(), "~> 1.15")
   end
 end

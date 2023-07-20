@@ -10,10 +10,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   use Patch
 
   setup do
-    if not Version.match?(System.version(), "~> 1.15") do
-      start_supervised!(CaptureServer)
-    end
-
+    start_supervised!(CaptureServer)
     :ok
   end
 

@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Build.File do
+  alias Elixir.Features
   alias Lexical.Document
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.ModuleMappings
@@ -10,7 +11,7 @@ defmodule Lexical.RemoteControl.Build.File do
       {:ok, quoted} ->
         prepare_compile(document.path)
 
-        if Version.match?(System.version(), "~> 1.15") do
+        if Features.with_diagnostics?() do
           do_compile(quoted, document)
         else
           do_compile_and_capture_io(quoted, document)
