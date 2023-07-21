@@ -170,7 +170,7 @@ defmodule Lexical.RemoteControl do
   end
 
   defp reset_env(:rtx, root_path) do
-    {env, _} = System.cmd("rtx", ~w(), cd: root_path)
+    {env, _} = System.cmd("rtx", ~w(env), cd: root_path)
 
     env
     |> String.trim()
