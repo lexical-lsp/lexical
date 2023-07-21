@@ -178,7 +178,7 @@ defmodule Lexical.RemoteControl do
     |> Enum.map(fn "export " <> key_and_value ->
       [key, value] =
         key_and_value
-        |> String.split("=")
+        |> String.split("=", parts: 2)
         |> Enum.map(&String.trim/1)
 
       {key, value}
