@@ -156,12 +156,16 @@ jobs:
       # and running the workflow steps.
       matrix:
         include:
-          - elixir: '1.15.3-otp-25'
-            otp: '25.3'
-          - elixir: '1.14.5-otp-25'
-            otp: '25.3'
-          - elixir: '1.13.4-otp-25'
-            otp: '25.3'
+          - elixir: "1.15.3-otp-25"
+            otp: "25.3"
+          - elixir: "1.14.5-otp-25"
+            otp: "25.3"
+          - elixir: "1.14.5-otp-24"
+            otp: "24.3.4.12"
+          - elixir: "1.13.4-otp-25"
+            otp: "25.3"
+          - elixir: "1.13.4-otp-24"
+            otp: "24.3.4.12"
     steps:
       # Step: Check out the code.
       - name: Checkout code
