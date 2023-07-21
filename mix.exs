@@ -5,7 +5,7 @@ defmodule Lexical.LanguageServer.MixProject do
   def project do
     [
       apps_path: "apps",
-      version: "0.2.0",
+      version: "0.2.1",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: releases(),
@@ -64,7 +64,7 @@ defmodule Lexical.LanguageServer.MixProject do
           mix: :load
         ],
         include_executables_for: [:unix],
-        include_erts: true,
+        include_erts: false,
         cookie: "lexical",
         rel_templates_path: "rel/deploy",
         strip_beams: false,
