@@ -28,7 +28,15 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     def start(%__MODULE__{} = state, paths, from) do
       port_wrapper = port_wrapper_executable()
-      {:ok, elixir_executable} = RemoteControl.elixir_executable(state.project)
+
+      {:ok, elixir_executable, environment_variables} =
+        RemoteControl.elixir_executable(state.project)
+
+      erlang_env =
+        Enum.map(environment_variables, fn {key, value} ->
+          {String.to_charlist(key), String.to_charlist(value)}
+        end)
+
       node_name = node_name(state.project)
 
       args = [
@@ -46,7 +54,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
       port =
         Port.open({:spawn_executable, port_wrapper},
           args: args,
-          cd: Project.root_path(state.project)
+          cd: Project.root_path(state.project),
+          env: erlang_env
         )
 
       %{state | port: port, started_by: from}

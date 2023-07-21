@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl do
   def elixir_executable(%Project{} = project) do
     root_path = Project.root_path(project)
     version_manager = version_manager()
-    env = reset_env(version_manager)
+    env = reset_env(version_manager, root_path)
 
     path_result =
       case version_manager() do
@@ -124,7 +124,7 @@ defmodule Lexical.RemoteControl do
         {:error, :no_elixir}
 
       executable when is_binary(executable) ->
-        {:ok, executable}
+        {:ok, executable, env}
     end
   end
 
@@ -158,7 +158,7 @@ defmodule Lexical.RemoteControl do
   # We launch lexical by asking the version managers to provide an environment,
   # which contains path munging. This initial environment is present in the running
   # VM, and needs to be undone so we can find the correct elixir executable in the project.
-  defp reset_env(:asdf) do
+  defp reset_env(:asdf, _root_path) do
     orig_path = System.get_env("PATH_SAVE", System.get_env("PATH"))
 
     Enum.map(System.get_env(), fn
@@ -169,7 +169,23 @@ defmodule Lexical.RemoteControl do
     end)
   end
 
-  defp reset_env(_) do
+  defp reset_env(:rtx, root_path) do
+    {env, _} = System.cmd("rtx", ~w(), cd: root_path)
+
+    env
+    |> String.trim()
+    |> String.split("\n")
+    |> Enum.map(fn "export " <> key_and_value ->
+      [key, value] =
+        key_and_value
+        |> String.split("=")
+        |> Enum.map(&String.trim/1)
+
+      {key, value}
+    end)
+  end
+
+  defp reset_env(_, _) do
     System.get_env()
   end
 end
