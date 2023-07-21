@@ -7,18 +7,28 @@ you.
 
 ## Caveats
 
- * Presently, Lexical works on Elixir 1.13 and 1.14 under Erlang
- 24 and 25. Additionally, we support versions >= 1.15.3 (there are
- compiler bugs in 1.15.0 - 1.15.2 that prevent lexical from working).
- Erlang 26 support is still a work in progress.
+Lexical supports the following versions of Elixir and Erlang:
 
- * While it's within Lexical's capabilities to run your project in a
- different elixir and erlang version than Lexical is built with,
- presently, we don't support running your project in a different
- elixir and or erlang version.  We aim to fix this very shortly, as
- this dramatically limits Lexical's usefulness when working with
- multiple projects.
+| Erlang      | Version range    | Notes  |
+| ----------- |----------------- | ------ |
+|  24         | `>= 24.3.4.12`   | Might run on older versions; this was the lowest that would compile on arm |
+|  25         | `>= 25.0`        |        |
+|  26         | In progress      |        |
 
+| Elixir   | Version Range  | Notes    |
+| -------- | -------------- | -------- |
+| 1.13     |    `>= 1.13.4` |          |
+| 1.14     |    `all`       |          |
+| 1.15     | `>= 1.15.3`    | `1.15.0` - `1.15.2` had compiler bugs that prevented lexical from working |
+
+Lexical can run projects in any version of Elixir and Erlang that it supports, but it's important to understand that Lexical needs to be compiled under the lowest version of elixir and erlang that you intend to use it with. That means if you have the following projects:
+ 
+   * `first`: elixir `1.14.4` erlang `24.3.2`
+   * `second`: elixir `1.14.3` erlang `25.0`
+   * `third`: elixir: `1.13.3` erlang `25.2.3`
+
+Lexical would need to be compiled with Erlang `24.3.2` and Elixir `1.13.3`. 
+Lexical's prepackaged builds use Erlang `24.3.4.12` and Elixir `1.13.4`
 
 ## Prerequisites
 
