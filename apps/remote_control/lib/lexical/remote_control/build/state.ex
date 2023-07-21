@@ -1,16 +1,14 @@
 defmodule Lexical.RemoteControl.Build.State do
+  alias Elixir.Features
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
-  alias Lexical.RemoteControl.ModuleMappings
   alias Lexical.RemoteControl.Plugin
-
   require Logger
 
-  import Build.CaptureIO
   import Messages
 
   use Build.Progress
@@ -113,7 +111,11 @@ defmodule Lexical.RemoteControl.Build.State do
     Build.with_lock(fn ->
       RemoteControl.notify_listener(file_compile_requested(uri: document.uri))
 
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile(document) end)
+      safe_compile_func = fn ->
+        RemoteControl.Mix.in_project(fn _ -> Build.File.compile(document) end)
+      end
+
+      {elapsed_us, result} = :timer.tc(fn -> safe_compile_func.() end)
 
       elapsed_ms = to_ms(elapsed_us)
 
@@ -219,7 +221,7 @@ defmodule Lexical.RemoteControl.Build.State do
           diagnostics =
             diagnostics
             |> List.wrap()
-            |> Enum.map(&Build.Error.normalize_diagnostic/1)
+            |> Build.Error.refine_diagnostics()
 
           {:error, diagnostics}
 
@@ -230,7 +232,7 @@ defmodule Lexical.RemoteControl.Build.State do
               inspect(diagnostics)
           )
 
-          Enum.map(diagnostics, &Build.Error.normalize_diagnostic/1)
+          Build.Error.refine_diagnostics(diagnostics)
       end
     end)
   end
@@ -257,7 +259,14 @@ defmodule Lexical.RemoteControl.Build.State do
     end
 
     with_progress "mix deps.compile", fn ->
-      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
+      deps_compile =
+        if Features.compile_wont_change_directory?() do
+          "deps.compile"
+        else
+          "deps.safe_compile"
+        end
+
+      Mix.Task.run(deps_compile, ~w(--skip-umbrella-children))
     end
 
     with_progress "loading plugins", fn ->
@@ -267,89 +276,12 @@ defmodule Lexical.RemoteControl.Build.State do
     Mix.Task.run("clean")
   end
 
-  defp safe_compile(%Document{} = document) do
-    old_modules = ModuleMappings.modules_in_file(document.path)
-
-    compile = fn ->
-      case RemoteControl.Mix.in_project(fn _ -> compile_code(document) end) do
-        {:ok, result} -> result
-        other -> other
-      end
-    end
-
-    case capture_io(:stderr, compile) do
-      {captured_messages, {:error, {:exception, {exception, _inner_stack}, stack}}} ->
-        error = Build.Error.error_to_diagnostic(document, exception, stack, [])
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, [error | diagnostics]}
-
-      {captured_messages, {:error, {meta, message_info, token}}} ->
-        errors = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, errors ++ diagnostics}
-
-      {captured_messages, {:exception, exception, stack, quoted_ast}} ->
-        error = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
-
-        {:error, [error | diagnostics]}
-
-      {"", modules} ->
-        purge_removed_modules(old_modules, modules)
-        {:ok, []}
-
-      {captured_warnings, modules} ->
-        purge_removed_modules(old_modules, modules)
-
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_warnings)
-
-        {:ok, diagnostics}
-    end
-  end
-
-  defp compile_code(%Document{} = document) do
-    source_string = Document.to_string(document)
-    parser_options = [file: document.path] ++ parser_options()
-
-    with {:ok, quoted_ast} <- Code.string_to_quoted(source_string, parser_options) do
-      try do
-        # If we're compiling a mix.exs file, the after compile callback from
-        # `use Mix.Project` will blow up if we add the same project to the project stack
-        # twice. Preemptively popping it prevents that error from occurring.
-        if Path.basename(document.path) == "mix.exs" do
-          Mix.ProjectStack.pop()
-        end
-
-        Mix.Task.run(:loadconfig)
-        Code.compile_quoted(quoted_ast, document.path)
-      rescue
-        exception ->
-          {filled_exception, stack} = Exception.blame(:error, exception, __STACKTRACE__)
-          {:exception, filled_exception, stack, quoted_ast}
-      end
-    end
-  end
-
-  defp purge_removed_modules(old_modules, new_modules) do
-    new_modules = MapSet.new(new_modules, fn {module, _bytecode} -> module end)
-    old_modules = MapSet.new(old_modules)
-
-    old_modules
-    |> MapSet.difference(new_modules)
-    |> Enum.each(fn to_remove ->
-      :code.purge(to_remove)
-      :code.delete(to_remove)
-    end)
-  end
-
   defp connected_to_internet? do
     # While there's no perfect way to check if a computer is connected to the internet,
     # it seems reasonable to gate pulling dependenices on a resolution check for hex.pm.
     # Yes, it's entirely possible that the DNS server is local, and that the entry is in cache,
     # but that's an edge case, and the build will just time out anyways.
-    case :inet_res.getbyname('hex.pm', :a, 250) do
+    case :inet_res.getbyname(~c"hex.pm", :a, 250) do
       {:ok, _} -> true
       _ -> false
     end
