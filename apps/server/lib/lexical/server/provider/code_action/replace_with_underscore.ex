@@ -40,9 +40,6 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
            line_number,
            variable_name
          ) do
-      {:ok, []} ->
-        :error
-
       {:ok, %Changes{} = document_edits} ->
         reply =
           CodeActionResult.new(
@@ -52,6 +49,9 @@ defmodule Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore do
           )
 
         {:ok, reply}
+
+      _ ->
+        :error
     end
   end
 
