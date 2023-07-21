@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Completion.Candidate do
   alias Lexical.RemoteControl.Completion.Candidate.ArgumentNames
+  require Logger
 
   defmodule Function do
     @moduledoc false
@@ -229,5 +230,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   def from_elixir_sense(%{type: :callback} = elixir_sense_map) do
     Callback.new(elixir_sense_map)
+  end
+
+  def from_elixir_sense(elixir_sense_map) do
+    Logger.warning("Unhandled compleetion suggestion: #{inspect(elixir_sense_map)}")
+    nil
   end
 end

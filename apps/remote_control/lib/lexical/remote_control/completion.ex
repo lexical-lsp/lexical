@@ -13,9 +13,11 @@ defmodule Lexical.RemoteControl.Completion do
     if String.trim(hint) == "" do
       []
     else
-      doc_string
-      |> ElixirSense.suggestions(line, character)
-      |> Enum.map(&Candidate.from_elixir_sense/1)
+      for suggestion <- ElixirSense.suggestions(doc_string, line, character),
+          candidate = Candidate.from_elixir_sense(suggestion),
+          candidate != nil do
+        candidate
+      end
     end
   end
 end
