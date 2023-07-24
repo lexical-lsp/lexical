@@ -85,6 +85,9 @@ defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNames do
 
   defp extract_name(argument, index) do
     case Code.Fragment.cursor_context(argument) do
+      {:unquoted_atom, atom} ->
+        ":#{atom}"
+
       {:local_or_var, name} ->
         List.to_string(name)
 
