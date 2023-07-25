@@ -28,7 +28,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
   describe "prefix_tokens/2" do
     test "works with bitstring specifiers" do
       env = new_env("<<foo::int|")
-      assert [{:identifier, 'int'}, {:operator, :"::"}] = prefix_tokens(env, 2)
+
+      assert [{:identifier, ~c"int", _}, {:operator, :"::", _}] = prefix_tokens(env, 2)
     end
 
     test "works with floats" do
@@ -37,7 +38,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:float, 27.88}] = tokens
+      assert [{:float, 27.88, _}] = tokens
     end
 
     test "works with strings" do
@@ -46,7 +47,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:string, "hello"}] = tokens
+      assert [{:string, "hello", _}] = tokens
     end
 
     test "works with interpolated strings" do
@@ -55,7 +56,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:interpolated_string, ["hello" | _]}] = tokens
+      assert [{:interpolated_string, ["hello" | _], _}] = tokens
     end
 
     test "works with maps with atom keys" do
@@ -65,11 +66,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:curly, :"}"},
-               {:int, 3},
-               {:kw_identifier, 'a'},
-               {:curly, :"{"},
-               {:map_new, :%{}}
+               {:curly, :"}", _},
+               {:int, 3, _},
+               {:kw_identifier, ~c"a", _},
+               {:curly, :"{", _},
+               {:map_new, :%{}, _}
              ] = tokens
     end
 
@@ -80,12 +81,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(8)
 
       assert [
-               {:curly, :"}"},
-               {:int, 3},
-               {:assoc_op, nil},
-               {:string, "a"},
-               {:curly, :"{"},
-               {:map_new, :%{}}
+               {:curly, :"}", _},
+               {:int, 3, _},
+               {:assoc_op, nil, _},
+               {:string, "a", _},
+               {:curly, :"{", _},
+               {:map_new, :%{}, _}
              ] = tokens
     end
 
@@ -95,11 +96,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(3)
 
-      assert tokens == [
-               {:int, 5},
-               {:operator, :+},
-               {:int, 3}
-             ]
+      assert [
+               {:int, 5, _},
+               {:operator, :+, _},
+               {:int, 3, _}
+             ] = tokens
     end
 
     test "works with remote function calls" do
@@ -109,9 +110,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:identifier, 'map'},
-               {:operator, :.},
-               {:alias, 'Enum'}
+               {:identifier, ~c"map", _},
+               {:operator, :., _},
+               {:alias, ~c"Enum", _}
              ] = tokens
     end
 
@@ -122,10 +123,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> prefix_tokens(9)
 
       assert [
-               {:paren, :"("},
-               {:paren_identifier, 'local'},
-               {:match_op, nil},
-               {:identifier, 'foo'}
+               {:paren, :"(", _},
+               {:paren_identifier, ~c"local", _},
+               {:match_op, nil, _},
+               {:identifier, ~c"foo", _}
              ] = tokens
     end
 
@@ -135,7 +136,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(900)
 
-      assert [{:identifier, 'tri'}, {:operator, :.}, {:alias, 'String'}] = tokens
+      assert [
+               {:identifier, ~c"tri", _},
+               {:operator, :., _},
+               {:alias, ~c"String", _}
+             ] = tokens
     end
 
     test "works with macros" do
@@ -144,11 +149,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(3)
 
-      assert tokens == [
-               {:operator, :do},
-               {:alias, 'MyModule'},
-               {:identifier, 'defmacro'}
-             ]
+      assert [
+               {:operator, :do, _},
+               {:alias, ~c"MyModule", _},
+               {:identifier, ~c"defmacro", _}
+             ] = tokens
     end
 
     test "works with lists of integers" do
@@ -157,15 +162,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.EnvTest do
         |> new_env()
         |> prefix_tokens(7)
 
-      assert tokens == [
-               {:operator, :"]"},
-               {:int, 3},
-               {:comma, :","},
-               {:int, 2},
-               {:comma, :","},
-               {:int, 1},
-               {:operator, :"["}
-             ]
+      assert [
+               {:operator, :"]", _},
+               {:int, 3, _},
+               {:comma, :",", _},
+               {:int, 2, _},
+               {:comma, :",", _},
+               {:int, 1, _},
+               {:operator, :"[", _}
+             ] = tokens
     end
   end
 

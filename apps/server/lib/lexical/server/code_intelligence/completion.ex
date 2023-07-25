@@ -52,7 +52,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       prefix_tokens == [] ->
         empty_completion_list()
 
-      match?([{:operator, :do}], prefix_tokens) and Env.empty?(env.suffix) ->
+      match?([{:operator, :do, _}], prefix_tokens) and Env.empty?(env.suffix) ->
         do_end_snippet = "do\n$0\nend"
 
         env
