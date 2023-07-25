@@ -70,5 +70,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNamesTest do
       assert :error == from_elixir_sense(args, 2)
       assert :error == from_elixir_sense(args, 4)
     end
+
+    test "handles atoms in names" do
+      # Note: having a raw atom in there crashed ArgumentNames before
+      assert ~w(handlerId :level level) = from_elixir_sense(~w(handlerId :level level), 3)
+    end
   end
 end
