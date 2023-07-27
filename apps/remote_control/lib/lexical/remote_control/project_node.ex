@@ -37,12 +37,10 @@ defmodule Lexical.RemoteControl.ProjectNode do
           {String.to_charlist(key), String.to_charlist(value)}
         end)
 
-      node_name = node_name(state.project)
-
       args = [
         elixir_executable,
         "--name",
-        node_name,
+        Project.node_name(state.project),
         "--cookie",
         state.cookie,
         "--no-halt",
@@ -62,12 +60,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
 
     def stop(%__MODULE__{} = state, from, stop_timeout) do
-      :rpc.call(node_name(state.project), System, :stop, [])
+      project_rpc(state, System, :stop)
       %{state | stopped_by: from, stop_timeout: stop_timeout, status: :stopping}
     end
 
     def halt(%__MODULE__{} = state) do
-      :rpc.call(node_name(state.project), System, :halt, [])
+      project_rpc(state, System, :halt)
       %{state | status: :stopped}
     end
 
@@ -80,15 +78,11 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
 
     def on_monitored_dead(%__MODULE__{} = state) do
-      if :rpc.call(node_name(state.project), Node, :alive?, []) do
+      if project_rpc(state, Node, :alive?) do
         halt(state)
       else
         %{state | status: :stopped}
       end
-    end
-
-    def node_name(%Project{} = project) do
-      :"#{Project.name(project)}@127.0.0.1"
     end
 
     defp path_append_arguments(paths) do
@@ -103,13 +97,19 @@ defmodule Lexical.RemoteControl.ProjectNode do
       |> :code.priv_dir()
       |> Path.join("port_wrapper.sh")
     end
+
+    defp project_rpc(%__MODULE__{} = state, module, function, args \\ []) do
+      state.project
+      |> Project.node_name()
+      |> :rpc.call(module, function, args)
+    end
   end
 
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
   def start(project, project_listener, paths) do
-    node_name = State.node_name(project)
+    node_name = Project.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
     with {:ok, node_pid} <- ProjectNodeSupervisor.start_project_node(project),
@@ -127,7 +127,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @stop_timeout 1_000
 
   def stop(%Project{} = project, stop_timeout \\ @stop_timeout) do
-    project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
+    project
+    |> name()
+    |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
   end
 
   def child_spec(%Project{} = project) do
@@ -146,7 +148,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
   @start_timeout 3_000
 
   defp start_node(project, paths) do
-    project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
+    project
+    |> name()
+    |> GenServer.call({:start, paths}, @start_timeout + 500)
   end
 
   @impl GenServer

@@ -74,6 +74,20 @@ defmodule Lexical.Project do
   end
 
   @doc """
+  The project node's name
+  """
+  def node_name(%__MODULE__{} = project) do
+    :"project-#{name(project)}-#{entropy(project)}@127.0.0.1"
+  end
+
+  def entropy(%__MODULE__{} = project) do
+    project
+    |> name()
+    |> :erlang.phash2()
+    |> rem(65_536)
+  end
+
+  @doc """
   Returns the the name definied in the `project/0` of mix.exs file
   """
   def display_name(%__MODULE__{project_module: nil} = project) do
