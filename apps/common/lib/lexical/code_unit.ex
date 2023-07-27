@@ -83,7 +83,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_count_utf16(<<c::utf8, rest::binary>>, count) do
-    do_count_utf16(rest, count + codepoint_size(c, :utf16))
+    do_count_utf16(rest, count + code_unit_size(c, :utf16))
   end
 
   defp do_count_utf8(<<>>, count) do
@@ -95,7 +95,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_count_utf8(<<c::utf8, rest::binary>>, count) do
-    increment = codepoint_size(c, :utf8)
+    increment = code_unit_size(c, :utf8)
     do_count_utf8(rest, count + increment)
   end
 
@@ -114,7 +114,7 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_utf16_offset(<<c::utf8, rest::binary>>, remaining, offset) do
-    increment = codepoint_size(c, :utf16)
+    increment = code_unit_size(c, :utf16)
     do_utf16_offset(rest, remaining - 1, offset + increment)
   end
 
@@ -135,8 +135,8 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_to_utf16(<<c::utf8, rest::binary>>, utf8_unit, utf16_unit) do
-    increment = codepoint_size(c, :utf16)
-    decrement = codepoint_size(c, :utf8)
+    increment = code_unit_size(c, :utf16)
+    decrement = code_unit_size(c, :utf8)
 
     do_to_utf16(rest, utf8_unit - decrement, utf16_unit + increment)
   end
@@ -158,8 +158,8 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_utf8_offset(<<c::utf8, rest::binary>>, remaining, offset) do
-    increment = codepoint_size(c, :utf8)
-    decrement = codepoint_size(c, :utf16)
+    increment = code_unit_size(c, :utf8)
+    decrement = code_unit_size(c, :utf16)
     do_utf8_offset(rest, remaining - decrement, offset + increment)
   end
 
@@ -180,21 +180,25 @@ defmodule Lexical.CodeUnit do
   end
 
   defp do_to_utf8(<<c::utf8, rest::binary>>, utf16_unit, utf8_unit) do
-    utf8_code_units = codepoint_size(c, :utf8)
-    utf16_code_units = codepoint_size(c, :utf16)
+    utf8_code_units = code_unit_size(c, :utf8)
+    utf16_code_units = code_unit_size(c, :utf16)
 
     do_to_utf8(rest, utf16_unit - utf16_code_units, utf8_unit + utf8_code_units)
   end
 
   @unicode_range 0..0x10_FFFF
 
-  defp codepoint_size(c, :utf16) when c in @unicode_range do
-    if c in 0x0000..0xD7FF or c in 0xE000..0xFFFF,
-      do: 1,
-      else: 2
+  defp code_unit_size(c, :utf16) when c in @unicode_range do
+    case c do
+      c when c in 0x0000..0xFFFF ->
+        1
+
+      _ ->
+        2
+    end
   end
 
-  defp codepoint_size(c, :utf8) when c in @unicode_range do
+  defp code_unit_size(c, :utf8) when c in @unicode_range do
     # See table at https://en.wikipedia.org/wiki/UTF-8#Encoding
     cond do
       c in 0x00..0x7F -> 1
