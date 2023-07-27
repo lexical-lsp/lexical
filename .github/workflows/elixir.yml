@@ -93,6 +93,7 @@ jobs:
         with:
           otp-version: ${{ env.DEFAULT_OTP }}
           elixir-version: ${{ env.DEFAULT_ELIXIR }}
+          version-type: "strict"
 
       # Step: Check out the code.
       - name: Checkout code
