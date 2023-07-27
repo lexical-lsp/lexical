@@ -19,6 +19,7 @@ jobs:
         with:
           otp-version: "24.3.4.12"
           elixir-version: "1.13.4-otp-24"
+          version-type: "strict"
 
       - name: Checkout code
         uses: actions/checkout@v3
