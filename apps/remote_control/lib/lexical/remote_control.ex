@@ -18,11 +18,10 @@ defmodule Lexical.RemoteControl do
     :ok = ensure_epmd_started()
     entropy = :rand.uniform(65_536)
     start_net_kernel(project, entropy)
-
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
-    node = node_name(project)
 
     with {:ok, node_pid} <- ProjectNode.start(project, project_listener, glob_paths()),
+         node = ProjectNode.node_name(project),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node, node_pid}
     end
@@ -60,12 +59,8 @@ defmodule Lexical.RemoteControl do
 
   def call(%Project{} = project, m, f, a \\ []) do
     project
-    |> node_name()
+    |> ProjectNode.node_name()
     |> :erpc.call(m, f, a)
-  end
-
-  defp node_name(%Project{} = project) do
-    :"#{Project.name(project)}@127.0.0.1"
   end
 
   defp start_net_kernel(%Project{} = project, entropy) do

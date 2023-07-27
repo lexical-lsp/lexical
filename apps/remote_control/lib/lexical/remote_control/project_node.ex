@@ -1,17 +1,18 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.Project
   alias Lexical.RemoteControl
+
   require Logger
 
   defmodule State do
     defstruct [
-      :project,
-      :port,
       :cookie,
-      :stopped_by,
-      :stop_timeout,
+      :port,
+      :project,
       :started_by,
-      :status
+      :status,
+      :stop_timeout,
+      :stopped_by
     ]
 
     def new(%Project{} = project) do
@@ -37,7 +38,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
           {String.to_charlist(key), String.to_charlist(value)}
         end)
 
-      node_name = node_name(state.project)
+      node_name = node_name(state)
 
       args = [
         elixir_executable,
@@ -62,12 +63,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
 
     def stop(%__MODULE__{} = state, from, stop_timeout) do
-      :rpc.call(node_name(state.project), System, :stop, [])
+      :rpc.call(node_name(state), System, :stop, [])
       %{state | stopped_by: from, stop_timeout: stop_timeout, status: :stopping}
     end
 
     def halt(%__MODULE__{} = state) do
-      :rpc.call(node_name(state.project), System, :halt, [])
+      :rpc.call(node_name(state), System, :halt, [])
       %{state | status: :stopped}
     end
 
@@ -80,15 +81,15 @@ defmodule Lexical.RemoteControl.ProjectNode do
     end
 
     def on_monitored_dead(%__MODULE__{} = state) do
-      if :rpc.call(node_name(state.project), Node, :alive?, []) do
+      if :rpc.call(node_name(state), Node, :alive?, []) do
         halt(state)
       else
         %{state | status: :stopped}
       end
     end
 
-    def node_name(%Project{} = project) do
-      :"#{Project.name(project)}@127.0.0.1"
+    def node_name(%State{} = state) do
+      :"project-#{Project.name(state.project)}@127.0.0.1"
     end
 
     defp path_append_arguments(paths) do
@@ -109,25 +110,31 @@ defmodule Lexical.RemoteControl.ProjectNode do
   use GenServer
 
   def start(project, project_listener, paths) do
-    node_name = State.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
     with {:ok, node_pid} <- ProjectNodeSupervisor.start_project_node(project),
          :ok <- start_node(project, paths),
-         :ok <-
-           :rpc.call(node_name, RemoteControl.Bootstrap, :init, [
-             project,
-             project_listener,
-             remote_control_config
-           ]) do
+         :ok <- bootstrap(project, project_listener, remote_control_config) do
       {:ok, node_pid}
     end
   end
 
   @stop_timeout 1_000
 
+  def node_name(%Project{} = project) do
+    if RemoteControl.project_node?() do
+      Node.self()
+    else
+      project
+      |> name()
+      |> GenServer.call(:node_name)
+    end
+  end
+
   def stop(%Project{} = project, stop_timeout \\ @stop_timeout) do
-    project |> name() |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
+    project
+    |> name()
+    |> GenServer.call({:stop, stop_timeout}, stop_timeout + 100)
   end
 
   def child_spec(%Project{} = project) do
@@ -145,14 +152,21 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   @start_timeout 3_000
 
-  defp start_node(project, paths) do
-    project |> name() |> GenServer.call({:start, paths}, @start_timeout + 500)
+  defp start_node(%Project{} = project, paths) do
+    project
+    |> name()
+    |> GenServer.call({:start, paths}, @start_timeout + 500)
   end
 
   @impl GenServer
   def init(state) do
     Process.flag(:trap_exit, true)
     {:ok, state}
+  end
+
+  @impl true
+  def handle_call(:node_name, _from, %State{} = state) do
+    {:reply, State.node_name(state), state}
   end
 
   @impl true
@@ -229,5 +243,15 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::node_process"
+  end
+
+  defp bootstrap(%Project{} = project, project_listener_pid, remote_control_config) do
+    project
+    |> node_name()
+    |> :rpc.call(RemoteControl.Bootstrap, :init, [
+      project,
+      project_listener_pid,
+      remote_control_config
+    ])
   end
 end

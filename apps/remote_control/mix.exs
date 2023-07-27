@@ -2,6 +2,8 @@ defmodule Lexical.RemoteControl.MixProject do
   use Mix.Project
 
   def project do
+    Code.put_compiler_option(:ignore_module_conflict, Mix.env() == :test)
+
     [
       app: :remote_control,
       version: "0.1.0",
