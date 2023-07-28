@@ -50,13 +50,13 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       {:error, [%Result{} = result]} =
         ~q[
         <%=
-        ]
+        ]t
         |> document_with_content()
         |> compile()
 
       # this assert is the best we can do; the error differs on different elixir versions
       assert result.message =~ "'%>'"
-      assert result.position == {2, 1}
+      assert result.position == {1, 4}
       assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri
