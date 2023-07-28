@@ -54,7 +54,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
         |> document_with_content()
         |> compile()
 
-      assert result.message =~ "missing token '%>'"
+      # this assert is the best we can do; the error differs on different elixir versions
+      assert result.message =~ "'%>'"
       assert result.position == {2, 1}
       assert result.severity == :error
       assert result.source == "EEx"
