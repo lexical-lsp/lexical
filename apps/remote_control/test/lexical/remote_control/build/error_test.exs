@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
 
   def compile(source) do
     doc = Document.new("file:///unknown.ex", source, 0)
-    Build.File.compile(doc)
+    Build.Document.compile(doc)
   end
 
   def diagnostics({:error, diagnostics}) do

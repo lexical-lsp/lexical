@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Build.File do
+defmodule Lexical.RemoteControl.Build.Document do
   alias Elixir.Features
   alias Lexical.Document
   alias Lexical.RemoteControl.Build
@@ -105,9 +105,9 @@ defmodule Lexical.RemoteControl.Build.File do
   @dialyzer {:nowarn_function, compile_quoted_with_diagnostics: 2}
 
   defp compile_quoted_with_diagnostics(quoted_ast, path) do
-    Code.with_diagnostics(fn ->
-      safe_compile_quoted(quoted_ast, path)
-    end)
+    # Using apply to prevent a compile warning on elixir < 1.15
+    # credo:disable-for-next-line
+    apply(Code, :with_diagnostics, [fn -> safe_compile_quoted(quoted_ast, path) end])
   end
 
   defp safe_compile_quoted(quoted_ast, path) do
