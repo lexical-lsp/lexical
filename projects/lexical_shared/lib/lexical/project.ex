@@ -13,13 +13,15 @@ defmodule Lexical.Project do
             mix_env: nil,
             mix_target: nil,
             env_variables: %{},
-            project_module: nil
+            project_module: nil,
+            entropy: 1
 
   @type message :: String.t()
   @type restart_notification :: {:restart, Logger.level(), String.t()}
   @type t :: %__MODULE__{
           root_uri: Lexical.uri() | nil,
-          mix_exs_uri: Lexical.uri() | nil
+          mix_exs_uri: Lexical.uri() | nil,
+          entropy: non_neg_integer()
           # mix_env: atom(),
           # mix_target: atom(),
           # env_variables: %{String.t() => String.t()}
@@ -31,7 +33,9 @@ defmodule Lexical.Project do
   # Public
   @spec new(Lexical.uri()) :: t
   def new(root_uri) do
-    %__MODULE__{}
+    entropy = :rand.uniform(65_536)
+
+    %__MODULE__{entropy: entropy}
     |> maybe_set_root_uri(root_uri)
     |> maybe_set_mix_exs_uri()
   end
@@ -71,6 +75,17 @@ defmodule Lexical.Project do
 
   def name(%__MODULE__{project_module: project_module}) do
     Atom.to_string(project_module)
+  end
+
+  @doc """
+  The project node's name
+  """
+  def node_name(%__MODULE__{} = project) do
+    :"project-#{name(project)}-#{entropy(project)}@127.0.0.1"
+  end
+
+  def entropy(%__MODULE__{} = project) do
+    project.entropy
   end
 
   @doc """
