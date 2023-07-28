@@ -56,7 +56,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
       # this assert is the best we can do; the error differs on different elixir versions
       assert result.message =~ "'%>'"
-      assert result.position == {1, 4}
+      assert {1, column} = result.position
+      # The error's column differs on different elixir versions.
+      assert column == 1 or column == 4
       assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri
