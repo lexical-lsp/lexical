@@ -128,8 +128,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert apply_completion(completion) == expected
     end
 
-    test "when using %, part child structs are returned", %{project: project} do
-      assert [account, order, user] =
+    test "when using %, child structs are returned", %{project: project} do
+      assert [account, order, order_line, user] =
                project
                |> complete("%Project.Structs.|", "%")
                |> Enum.sort_by(& &1.label)
@@ -137,33 +137,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert account.label == "Account"
       assert account.detail == "Project.Structs.Account"
 
+      assert user.label == "User"
+      assert user.detail == "Project.Structs.User"
+
       assert order.label == "Order"
       assert order.detail == "Project.Structs.Order"
 
-      assert user.label == "User"
-      assert user.detail == "Project.Structs.User"
-    end
-
-    @tag :skip
-    test "when using %, child structs are returned", %{project: project} do
-      assert [account, order, order_line, user] =
-               project
-               |> complete("%Project.Structs.|", "%")
-               |> Enum.sort_by(& &1.label)
-
-      assert account.label == "Structs.Account"
-      assert account.detail == "Project.Structs.Account"
-
-      assert user.label == "Structs.User"
-      assert user.detail == "Project.Structs.User"
-
-      assert order.label == "Structs.Order"
-      assert order.detail == "Project.Structs.Order"
-
-      # NOTE: though we have stripped the "%" symbol, ElixirSense still returns structs,
-      # so I think we need to handle it in the same way as the module,
-      # which will bring more consistency.
-      assert order_line.label == "Structs.Order...(1 more struct)"
+      assert order_line.label == "Order...(1 more struct)"
       assert order_line.detail == "Project.Structs.Order."
     end
 

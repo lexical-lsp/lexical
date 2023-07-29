@@ -5,9 +5,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
 
-  use Translatable.Impl, for: [Candidate.Module, Candidate.Behaviour, Candidate.Protocol]
+  use Translatable.Impl,
+    for: [Candidate.Module, Candidate.Struct, Candidate.Behaviour, Candidate.Protocol]
 
   def translate(%Candidate.Module{} = module, builder, %Env{} = env) do
+    do_translate(module, builder, env)
+  end
+
+  def translate(%Candidate.Struct{} = module, builder, %Env{} = env) do
     do_translate(module, builder, env)
   end
 
@@ -23,21 +28,43 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     if Env.in_context?(env, :struct_reference) do
       complete_in_struct_reference(env, builder, module)
     else
-      detail = builder.fallback(module.summary, module.name)
+      detail = builder.fallback(module.summary, module.full_name)
       completion(env, builder, module.name, detail)
     end
   end
 
-  defp complete_in_struct_reference(%Env{} = env, builder, module) do
+  defp complete_in_struct_reference(%Env{} = env, builder, %Candidate.Struct{} = struct) do
+    immediate_descendent_structs =
+      immediate_descendent_struct_modules(env.project, struct.full_name)
+
+    if Enum.empty?(immediate_descendent_structs) do
+      Translations.Struct.completion(env, builder, struct.name, struct.full_name)
+    else
+      do_complete_in_struct_reference(env, builder, struct, immediate_descendent_structs)
+    end
+  end
+
+  defp complete_in_struct_reference(%Env{} = env, builder, %Candidate.Module{} = module) do
     immediate_descendent_structs =
       immediate_descendent_struct_modules(env.project, module.full_name)
 
-    structs_map = Map.new(immediate_descendent_structs, fn module -> {module, true} end)
-    dot_counts = module_dot_counts(module.full_name)
+    do_complete_in_struct_reference(env, builder, module, immediate_descendent_structs)
+  end
+
+  defp do_complete_in_struct_reference(
+         %Env{} = env,
+         builder,
+         module_or_struct,
+         immediate_descendent_structs
+       ) do
+    structs_map =
+      Map.new(immediate_descendent_structs, fn module_or_struct -> {module_or_struct, true} end)
+
+    dot_counts = module_dot_counts(module_or_struct.full_name)
     ancestors = ancestors(immediate_descendent_structs, dot_counts)
 
     Enum.flat_map(ancestors, fn ancestor ->
-      local_name = local_module_name(module.full_name, ancestor, module.name)
+      local_name = local_module_name(module_or_struct.full_name, ancestor, module_or_struct.name)
 
       more =
         env.project
