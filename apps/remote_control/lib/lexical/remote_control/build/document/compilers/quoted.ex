@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Build.Document.Compilers.Ast do
+defmodule Lexical.RemoteControl.Build.Document.Compilers.Quoted do
   alias Elixir.Features
   alias Lexical.Document
   alias Lexical.RemoteControl.Build
@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Ast do
 
   import Lexical.RemoteControl.Build.CaptureIO, only: [capture_io: 2]
 
-  def compile_quoted(%Document{} = document, quoted_ast, compiler_name) do
+  def compile(%Document{} = document, quoted_ast, compiler_name) do
     prepare_compile(document.path)
 
     {status, diagnostics} =
