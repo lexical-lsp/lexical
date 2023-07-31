@@ -1,0 +1,60 @@
+defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
+  @moduledoc """
+  A compiler for elixir configuration
+  """
+  alias Elixir.Features
+  alias Lexical.Document
+  alias Lexical.Plugin.V1.Diagnostic
+  alias Lexical.RemoteControl.Build
+
+  @behaviour Build.Document.Compiler
+  require Logger
+
+  def recognizes?(%Document{} = document) do
+    in_config_dir? =
+      document.path
+      |> Path.dirname()
+      |> String.starts_with?(config_dir())
+
+    in_config_dir? and Path.extname(document.path) == ".exs"
+  end
+
+  def enabled? do
+    Features.config_reader?()
+  end
+
+  def compile(%Document{} = document) do
+    try do
+      contents = Document.to_string(document)
+      Config.Reader.eval!(document.path, contents)
+      {:ok, []}
+    rescue
+      e ->
+        {:error, [to_result(document, e)]}
+    end
+  end
+
+  defp config_dir do
+    # This function is called inside a call to `in_project` so we can
+    # call Mix.Project.config() directly
+    Mix.Project.config()
+    |> Keyword.get(:config_path)
+    |> Path.expand()
+    |> Path.dirname()
+  end
+
+  defp to_result(%Document{} = document, %CompileError{} = error) do
+    Diagnostic.Result.new(document.uri, error.line, Exception.message(error), :error, "Elixir")
+  end
+
+  defp to_result(%Document{} = document, %error_type{} = error)
+       when error_type in [SyntaxError, TokenMissingError] do
+    Diagnostic.Result.new(
+      document.uri,
+      {error.line, error.column},
+      Exception.message(error),
+      :error,
+      "Elixir"
+    )
+  end
+end
