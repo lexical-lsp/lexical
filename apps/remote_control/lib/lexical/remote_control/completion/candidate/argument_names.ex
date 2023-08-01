@@ -95,6 +95,9 @@ defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNames do
         argument
         |> String.split("=")
         |> find_local_in_pattern_match(index)
+
+      _ ->
+        argument
     end
   end
 

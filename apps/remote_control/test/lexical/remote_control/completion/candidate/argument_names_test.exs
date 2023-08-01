@@ -64,6 +64,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate.ArgumentNamesTest do
       assert ~w(arg_1) = from_elixir_sense(["{a, b, c}"], 1)
     end
 
+    test "handles empty arguments" do
+      assert ["foo", ""] == from_elixir_sense(["foo", ""], 2)
+    end
+
     test "handles incorrect arity" do
       args = ~w(first second third)
       assert :error == from_elixir_sense(args, 1)
