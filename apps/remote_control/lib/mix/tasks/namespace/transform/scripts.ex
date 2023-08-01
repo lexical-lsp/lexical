@@ -61,6 +61,10 @@ defmodule Mix.Tasks.Namespace.Transform.Scripts do
     {:primLoad, Enum.map(app_list, &Namespace.Module.apply/1)}
   end
 
+  defp visit({:path, paths}) do
+    {:path, Enum.map(paths, &Namespace.Path.apply/1)}
+  end
+
   defp visit({:apply, {:application, :load, load_apps}}) do
     {:apply, {:application, :load, Enum.map(load_apps, &visit/1)}}
   end

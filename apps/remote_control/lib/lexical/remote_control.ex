@@ -12,8 +12,6 @@ defmodule Lexical.RemoteControl do
   @excluded_apps [:patch, :nimble_parsec]
   @allowed_apps [:remote_control | Mix.Project.deps_apps()] -- @excluded_apps
 
-  @app_globs Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
-
   def start_link(%Project{} = project, project_listener) do
     :ok = ensure_epmd_started()
     start_net_kernel(project)
@@ -80,7 +78,7 @@ defmodule Lexical.RemoteControl do
     for entry <- :code.get_path(),
         entry_string = List.to_string(entry),
         entry_string != ".",
-        Enum.any?(@app_globs, &PathGlob.match?(entry_string, &1, match_dot: true)) do
+        Enum.any?(app_globs(), &PathGlob.match?(entry_string, &1, match_dot: true)) do
       entry
     end
   end
@@ -121,6 +119,10 @@ defmodule Lexical.RemoteControl do
       executable when is_binary(executable) ->
         {:ok, executable, env}
     end
+  end
+
+  defp app_globs do
+    Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
   end
 
   defp ensure_epmd_started do
