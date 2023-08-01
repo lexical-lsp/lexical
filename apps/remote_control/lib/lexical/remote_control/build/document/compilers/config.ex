@@ -24,14 +24,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
   end
 
   def compile(%Document{} = document) do
-    try do
-      contents = Document.to_string(document)
-      Config.Reader.eval!(document.path, contents)
-      {:ok, []}
-    rescue
-      e ->
-        {:error, [to_result(document, e)]}
-    end
+    do_compile(document)
   end
 
   defp config_dir do
@@ -41,6 +34,42 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
     |> Keyword.get(:config_path)
     |> Path.expand()
     |> Path.dirname()
+  end
+
+  defp do_compile(%Document{} = document) do
+    if Features.with_diagnostics?() do
+      compile_with_diagnostics(document)
+    else
+      raw_compile(document)
+    end
+  end
+
+  defp raw_compile(%Document{} = document) do
+    contents = Document.to_string(document)
+
+    try do
+      Config.Reader.eval!(document.path, contents)
+    rescue
+      e ->
+        {:error, [to_result(document, e)]}
+    end
+  end
+
+  defp compile_with_diagnostics(%Document{} = document) do
+    {result, diagnostics} =
+      Code.with_diagnostics(fn ->
+        raw_compile(document)
+      end)
+
+    diagnostic_results = Enum.map(diagnostics, &to_result(document, &1))
+
+    case result do
+      {:error, errors} ->
+        {:error, reject_logged_messages(errors ++ diagnostic_results)}
+
+      _ ->
+        {:ok, reject_logged_messages(diagnostic_results)}
+    end
   end
 
   defp to_result(%Document{} = document, %CompileError{} = error) do
@@ -56,5 +85,23 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
       :error,
       "Elixir"
     )
+  end
+
+  defp to_result(%Document{} = document, %{
+         position: position,
+         message: message,
+         severity: severity
+       }) do
+    Diagnostic.Result.new(
+      document.path,
+      position,
+      message,
+      severity,
+      "Elixir"
+    )
+  end
+
+  defp reject_logged_messages(results) do
+    Enum.reject(results, &(&1.message =~ "have been logged"))
   end
 end
