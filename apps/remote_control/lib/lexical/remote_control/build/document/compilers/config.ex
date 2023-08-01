@@ -57,9 +57,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
 
   defp compile_with_diagnostics(%Document{} = document) do
     {result, diagnostics} =
-      Code.with_diagnostics(fn ->
-        raw_compile(document)
-      end)
+      apply(Code, :with_diagnostics, [
+        # credo:disable-for-previous-line
+        fn ->
+          raw_compile(document)
+        end
+      ])
 
     diagnostic_results = Enum.map(diagnostics, &to_result(document, &1))
 
