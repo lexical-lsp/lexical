@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :sasl],
+      extra_applications: [:logger, :sasl, :eex],
       mod: {Lexical.RemoteControl.Application, []}
     ]
   end
