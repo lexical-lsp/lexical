@@ -119,7 +119,10 @@ defmodule Lexical.Server.Project.IntelligenceTest do
                Intelligence.collect_struct_modules(project, "Parent", from: :child, to: :child)
 
       assert ["Parent.Child.GrandchildWithStruct"] =
-               Intelligence.collect_struct_modules(project, Parent.Child, from: :child, to: :child)
+               Intelligence.collect_struct_modules(project, Parent.Child,
+                 from: :child,
+                 to: :child
+               )
     end
 
     test "collecting a range of structs", %{project: project} do
@@ -171,6 +174,15 @@ defmodule Lexical.Server.Project.IntelligenceTest do
 
       assert ["Parent.Child.GrandchildWithStruct"] =
                Intelligence.collect_struct_modules(project, "Parent", 2..3)
+    end
+
+    test "collecting modules using `:infinity`", %{project: project} do
+      collected = Intelligence.collect_struct_modules(project, "Parent", :infinity)
+
+      assert [grandchild_struct, child_struct] = collected
+
+      assert child_struct == "Parent.ChildWithStruct"
+      assert grandchild_struct == "Parent.Child.GrandchildWithStruct"
     end
   end
 end

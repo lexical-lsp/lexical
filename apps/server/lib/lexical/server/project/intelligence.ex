@@ -26,11 +26,11 @@ defmodule Lexical.Server.Project.Intelligence do
       Enum.any?(state.struct_modules, &prefixes_match?(module_path, &1, range))
     end
 
-    def descendent_struct_modules(%__MODULE__{} = state, prefix, %Range{} = range) do
+    def descendent_struct_modules(%__MODULE__{} = state, prefix, range_or_infinity) do
       module_path = module_path(prefix)
 
       for struct_path <- state.struct_modules,
-          prefixes_match?(module_path, struct_path, range) do
+          prefixes_match?(module_path, struct_path, range_or_infinity) do
         Enum.join(struct_path, ".")
       end
     end
@@ -39,6 +39,10 @@ defmodule Lexical.Server.Project.Intelligence do
       module_name
       |> Formats.module()
       |> String.split(".")
+    end
+
+    defp prefixes_match?([], _remainder, :infinity) do
+      true
     end
 
     defp prefixes_match?([], remainder, %Range{} = range) do
@@ -83,7 +87,7 @@ defmodule Lexical.Server.Project.Intelligence do
   @type module_spec :: module() | String.t()
   @type module_name :: String.t()
   @type generation_spec :: generation_name | non_neg_integer
-  @type generation_option :: {:from, generation_spec} | {:to, generation_spec}
+  @type generation_option :: {:from, generation_spec} | {:to, generation_spec} | {:to, :infinity}
   @type generation_options :: [generation_option]
 
   # Public api
@@ -104,7 +108,8 @@ defmodule Lexical.Server.Project.Intelligence do
    for child, etc) or named generations (`:self`, `:child`, `:grandchild`, etc). For example,
    the collectionn range: `from: :child, to: :great_grandchild` will collect all struct
    modules where the  root module is thier parent up to and including all modules where the
-   root module is their great grandparent, and is equivalent to the range `1..2`.
+   root module is their great grandparent, and is equivalent to the range `1..2`,
+   Of course, if you want to return all the struct_modules, you can simply use `to: :infinity`.
 
   `range`: A `Range` struct containing the starting and ending generations. The module passed in
   as `root_module` is generation 0, its child is generation 1, its grandchild is generation 2,
@@ -118,6 +123,12 @@ defmodule Lexical.Server.Project.Intelligence do
 
   def collect_struct_modules(%Project{} = project, root_module, opts) when is_list(opts) do
     collect_struct_modules(project, root_module, extract_range(opts))
+  end
+
+  def collect_struct_modules(%Project{} = project, root_module, :infinity) do
+    project
+    |> name()
+    |> GenServer.call({:collect_struct_modules, root_module, :infinity})
   end
 
   def collect_struct_modules(%Project{} = project, root_module, %Range{} = range) do
@@ -169,11 +180,11 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def handle_call(
-        {:collect_struct_modules, parent_module, %Range{} = range},
+        {:collect_struct_modules, parent_module, range_or_infinity},
         _from,
         %State{} = state
       ) do
-    {:reply, State.descendent_struct_modules(state, parent_module, range), state}
+    {:reply, State.descendent_struct_modules(state, parent_module, range_or_infinity), state}
   end
 
   @impl GenServer
@@ -198,6 +209,10 @@ defmodule Lexical.Server.Project.Intelligence do
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::intelligence"
+  end
+
+  defp extract_range(to: :infinity) do
+    :infinity
   end
 
   defp extract_range(opts) when is_list(opts) do

@@ -20,40 +20,55 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
   end
 
   defp do_translate(%_{} = module, builder, %Env{} = env) do
-    struct_reference? = Env.in_context?(env, :struct_reference)
+    if Env.in_context?(env, :struct_reference) do
+      complete_in_struct_reference(env, builder, module)
+    else
+      detail = builder.fallback(module.summary, module.name)
+      completion(env, builder, module.name, detail)
+    end
+  end
 
-    defines_struct? = Intelligence.defines_struct?(env.project, module.full_name)
-
+  defp complete_in_struct_reference(%Env{} = env, builder, module) do
     immediate_descendent_structs =
       immediate_descendent_struct_modules(env.project, module.full_name)
 
-    defines_struct_in_descendents? =
-      immediate_descendent_defines_struct?(env.project, module.full_name) and
-        length(immediate_descendent_structs) > 1
+    structs_map = Map.new(immediate_descendent_structs, fn module -> {module, true} end)
+    dot_counts = module_dot_counts(module.full_name)
+    ancestors = ancestors(immediate_descendent_structs, dot_counts)
 
-    cond do
-      struct_reference? and defines_struct_in_descendents? and defines_struct? ->
-        more = length(immediate_descendent_structs) - 1
+    Enum.flat_map(ancestors, fn ancestor ->
+      local_name = local_module_name(module.full_name, ancestor, module.name)
 
+      more =
+        env.project
+        |> Intelligence.collect_struct_modules(ancestor, to: :infinity)
+        |> Enum.count()
+
+      if struct?(ancestor, structs_map) do
         [
-          Translations.Struct.completion(env, builder, module.name, module.full_name, more),
-          Translations.Struct.completion(env, builder, module.name, module.full_name)
+          Translations.Struct.completion(env, builder, local_name, ancestor),
+          Translations.Struct.completion(env, builder, local_name, ancestor, more - 1)
         ]
+      else
+        [Translations.Struct.completion(env, builder, local_name, ancestor, more)]
+      end
+    end)
+  end
 
-      struct_reference? and defines_struct? ->
-        Translations.Struct.completion(env, builder, module.name, module.full_name)
+  defp struct?(module, structs_map) do
+    Map.has_key?(structs_map, module)
+  end
 
-      struct_reference? and
-          immediate_descendent_defines_struct?(env.project, module.full_name) ->
-        Enum.map(immediate_descendent_structs, fn child_module_name ->
-          local_name = local_module_name(module.full_name, child_module_name)
-          Translations.Struct.completion(env, builder, local_name, child_module_name)
-        end)
+  defp ancestors(results, dot_counts) do
+    results
+    |> Enum.map(fn module ->
+      module |> String.split(".") |> Enum.take(dot_counts + 1) |> Enum.join(".")
+    end)
+    |> Enum.uniq()
+  end
 
-      true ->
-        detail = builder.fallback(module.summary, module.name)
-        completion(env, builder, module.name, detail)
-    end
+  defp module_dot_counts(module_name) do
+    module_name |> String.graphemes() |> Enum.count(&(&1 == "."))
   end
 
   def completion(%Env{} = env, builder, module_name, detail \\ nil) do
@@ -64,7 +79,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     |> builder.boost(0, 2)
   end
 
-  defp local_module_name(parent_module, child_module) do
+  defp local_module_name(parent_module, child_module, aliased_module) do
     # Returns the "local" module name, so if you're completing
     # Types.Som and the module completion is "Types.Something.Else",
     # "Something.Else" is returned.
@@ -74,17 +89,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     local_module_name = Enum.join(parent_pieces, ".")
     local_module_length = String.length(local_module_name)
 
-    child_module
-    |> String.slice(local_module_length..-1)
-    |> strip_leading_period()
+    local_name =
+      child_module
+      |> String.slice(local_module_length..-1)
+      |> strip_leading_period()
+
+    if String.starts_with?(local_name, aliased_module) do
+      local_name
+    else
+      [_ | tail] = String.split(local_name, ".")
+      Enum.join([aliased_module | tail], ".")
+    end
   end
 
   defp strip_leading_period(<<".", rest::binary>>), do: rest
   defp strip_leading_period(string_without_period), do: string_without_period
-
-  defp immediate_descendent_defines_struct?(%Lexical.Project{} = project, module_name) do
-    Intelligence.defines_struct?(project, module_name, to: :grandchild)
-  end
 
   defp immediate_descendent_struct_modules(%Lexical.Project{} = project, module_name) do
     Intelligence.collect_struct_modules(project, module_name, to: :grandchild)

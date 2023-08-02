@@ -202,15 +202,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     test "should offer no other types of completions", %{project: project} do
       assert [] = complete(project, "%MapSet.|")
 
-      assert [account, order, order_line, user] =
-               project
-               |> complete("%Project.|")
-               |> Enum.sort_by(& &1.label)
+      assert [completion] = complete(project, "%Project.|")
 
-      assert account.label == "Structs.Account"
-      assert order.label == "Structs.Order"
-      assert order_line.label == "Structs.Order.Line"
-      assert user.label == "Structs.User"
+      assert completion.label == "Structs...(4 more structs)"
+      assert completion.detail == "Project.Structs."
     end
 
     test "should offer two completions when there are struct and its descendants", %{
@@ -221,9 +216,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         %Ord|
       ]
 
-      [order_line, order] = complete(project, source)
+      [order, order_line] = complete(project, source)
 
-      assert order_line.label == "Order...(1 more structs)"
+      assert order_line.label == "Order...(1 more struct)"
       assert order_line.kind == :module
       assert apply_completion(order_line) =~ "%Order."
 

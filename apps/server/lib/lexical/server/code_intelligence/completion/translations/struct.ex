@@ -1,5 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
   alias Future.Code, as: Code
+  alias Lexical.Formats
+
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
@@ -20,10 +22,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Struct do
     end
   end
 
+  def completion(%Env{} = _env, _builder, _module_name, _full_name, 0) do
+    nil
+  end
+
   def completion(%Env{} = env, builder, module_name, full_name, more) when is_integer(more) do
+    singular = "${count} more struct"
+    plural = "${count} more structs"
+
     builder_opts = [
       kind: :module,
-      label: "#{module_name}...(#{more} more structs)",
+      label: "#{module_name}...(#{Formats.plural(more, singular, plural)})",
       detail: "#{full_name}."
     ]
 

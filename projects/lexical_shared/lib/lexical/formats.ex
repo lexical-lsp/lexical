@@ -88,4 +88,17 @@ defmodule Lexical.Formats do
   defp to_milliseconds(millis, :millisecond) do
     millis
   end
+
+  def plural(count, singular, plural) do
+    case count do
+      0 -> templatize(count, plural)
+      1 -> templatize(count, singular)
+      _n -> templatize(count, plural)
+    end
+  end
+
+  defp templatize(count, template) do
+    count_string = Integer.to_string(count)
+    String.replace(template, "${count}", count_string)
+  end
 end
