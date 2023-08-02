@@ -57,9 +57,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
          module_or_struct,
          immediate_descendent_structs
        ) do
-    structs_map =
-      Map.new(immediate_descendent_structs, fn module_or_struct -> {module_or_struct, true} end)
-
+    structs_mapset = MapSet.new(immediate_descendent_structs)
     dot_counts = module_dot_counts(module_or_struct.full_name)
     ancestors = ancestors(immediate_descendent_structs, dot_counts)
 
@@ -71,7 +69,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         |> Intelligence.collect_struct_modules(ancestor, to: :infinity)
         |> Enum.count()
 
-      if struct?(ancestor, structs_map) do
+      if struct?(ancestor, structs_mapset) do
         [
           Translations.Struct.completion(env, builder, local_name, ancestor),
           Translations.Struct.completion(env, builder, local_name, ancestor, more - 1)
@@ -82,8 +80,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     end)
   end
 
-  defp struct?(module, structs_map) do
-    Map.has_key?(structs_map, module)
+  defp struct?(module, structs_mapset) do
+    MapSet.member?(structs_mapset, module)
   end
 
   defp ancestors(results, dot_counts) do
@@ -94,9 +92,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     |> Enum.uniq()
   end
 
-  defp module_dot_counts(module_name) do
-    module_name |> String.graphemes() |> Enum.count(&(&1 == "."))
-  end
+  # this skips grapheme translations
+  defp module_dot_counts(module_name), do: module_dot_counts(module_name, 0)
+
+  defp module_dot_counts(<<>>, count), do: count
+  defp module_dot_counts(<<".", rest::binary>>, count), do: module_dot_counts(rest, count + 1)
+  defp module_dot_counts(<<_::utf8, rest::binary>>, count), do: module_dot_counts(rest, count)
 
   def completion(%Env{} = env, builder, module_name, detail \\ nil) do
     detail = builder.fallback(detail, "#{module_name} (Module)")
