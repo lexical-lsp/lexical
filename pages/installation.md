@@ -106,7 +106,9 @@ the `Server: Release path override` section.
 
 ## neovim
 
-The key is to append the custom LS configuration to [lspconfig](https://github.com/neovim/nvim-lspconfig), so regardless of whether you are using mason or others, you can use this minimal configuration below as a reference:
+Lexical doesn't work in neovim `< 0.9.0`.
+
+In version `>= 0.9.0`, the key is to append the custom LS configuration to [lspconfig](https://github.com/neovim/nvim-lspconfig), so regardless of whether you are using mason or others, you can use this configuration below as a reference:
 
 ```lua
     local lspconfig = require("lspconfig")
@@ -134,3 +136,5 @@ The key is to append the custom LS configuration to [lspconfig](https://github.c
 
     lspconfig.lexical.setup({})
 ```
+
+If the configuration above doesn't work for you, please try this minimal [neovim configuration](https://github.com/scottming/nvim-mini-for-lexical), It can eliminate other plugin factors.
