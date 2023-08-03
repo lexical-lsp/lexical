@@ -42,6 +42,7 @@ defmodule Mix.Tasks.Namespace do
     # The boot file transform just turns script files into boot files
     # so it must come after the script file transform
     Transform.Boots.apply_to_all(base_directory)
+    Transform.AppDirectories.apply_to_all(base_directory)
   end
 
   def app_names do
