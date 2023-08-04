@@ -179,7 +179,9 @@ defmodule Lexical.RemoteControl do
         |> Enum.map(&String.trim/1)
 
       {key, value}
+     _ -> nil
     end)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp reset_env(_, _) do
