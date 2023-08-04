@@ -172,14 +172,17 @@ defmodule Lexical.RemoteControl do
     env
     |> String.trim()
     |> String.split("\n")
-    |> Enum.map(fn "export " <> key_and_value ->
-      [key, value] =
-        key_and_value
-        |> String.split("=", parts: 2)
-        |> Enum.map(&String.trim/1)
+    |> Enum.map(fn
+      "export " <> key_and_value ->
+        [key, value] =
+          key_and_value
+          |> String.split("=", parts: 2)
+          |> Enum.map(&String.trim/1)
 
-      {key, value}
-     _ -> nil
+        {key, value}
+
+      _ ->
+        nil
     end)
     |> Enum.reject(&is_nil/1)
   end
