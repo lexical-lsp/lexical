@@ -2,8 +2,15 @@
 current_directory = Path.dirname(__ENV__.file)
 
 impossible_to_format = [
-  Path.join(["test", "fixtures", "compilation_errors", "lib", "compilation_errors.ex"]),
-  Path.join(["test", "fixtures", "parse_errors", "lib", "parse_errors.ex"])
+  Path.join([
+    current_directory,
+    "test",
+    "fixtures",
+    "compilation_errors",
+    "lib",
+    "compilation_errors.ex"
+  ]),
+  Path.join([current_directory, "test", "fixtures", "parse_errors", "lib", "parse_errors.ex"])
 ]
 
 locals_without_parens = [with_progress: 2, with_progress: 3]
