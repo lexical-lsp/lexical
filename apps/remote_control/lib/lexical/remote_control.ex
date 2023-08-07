@@ -85,31 +85,11 @@ defmodule Lexical.RemoteControl do
 
   def elixir_executable(%Project{} = project) do
     root_path = Project.root_path(project)
-    version_manager = version_manager()
-    env = reset_env(version_manager, root_path)
 
-    path_result =
-      case version_manager() do
-        :asdf ->
-          case System.cmd("asdf", ~w(which elixir), cd: root_path, env: env) do
-            {path, 0} ->
-              String.trim(path)
-
-            _ ->
-              nil
-          end
-
-        :rtx ->
-          case System.cmd("rtx", ~w(which elixir), cd: root_path, env: env) do
-            {path, 0} ->
-              String.trim(path)
-
-            _ ->
-              nil
-          end
-
-        :none ->
-          File.cd!(root_path, fn -> System.find_executable("elixir") end)
+    {path_result, env} =
+      with nil <- version_manager_path_and_env("asdf", root_path),
+           nil <- version_manager_path_and_env("rtx", root_path) do
+        {File.cd!(root_path, fn -> System.find_executable("elixir") end), System.get_env()}
       end
 
     case path_result do
@@ -135,27 +115,21 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  defp version_manager do
-    cond do
-      asdf?() ->
-        :asdf
-
-      rtx?() ->
-        :rtx
-
-      true ->
-        :none
+  defp version_manager_path_and_env(manager, root_path) do
+    with true <- is_binary(System.find_executable(manager)),
+         env = reset_env(manager, root_path),
+         {path, 0} <- System.cmd(manager, ~w(which elixir), cd: root_path, env: env) do
+      {String.trim(path), env}
+    else
+      _ ->
+        nil
     end
   end
-
-  defp asdf?, do: is_binary(System.find_executable("asdf"))
-
-  defp rtx?, do: is_binary(System.find_executable("rtx"))
 
   # We launch lexical by asking the version managers to provide an environment,
   # which contains path munging. This initial environment is present in the running
   # VM, and needs to be undone so we can find the correct elixir executable in the project.
-  defp reset_env(:asdf, _root_path) do
+  defp reset_env("asdf", _root_path) do
     orig_path = System.get_env("PATH_SAVE", System.get_env("PATH"))
 
     Enum.map(System.get_env(), fn
@@ -166,7 +140,7 @@ defmodule Lexical.RemoteControl do
     end)
   end
 
-  defp reset_env(:rtx, root_path) do
+  defp reset_env("rtx", root_path) do
     {env, _} = System.cmd("rtx", ~w(env -s bash), cd: root_path)
 
     env
@@ -180,9 +154,5 @@ defmodule Lexical.RemoteControl do
 
       {key, value}
     end)
-  end
-
-  defp reset_env(_, _) do
-    System.get_env()
   end
 end
