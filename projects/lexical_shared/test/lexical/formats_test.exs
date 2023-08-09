@@ -33,4 +33,16 @@ defmodule Lexical.FormatsTest do
       assert "0.02 ms" = Formats.time(20)
     end
   end
+
+  describe "plural/3" do
+    test "returns singular when count is 1" do
+      assert Formats.plural(1, "${count} apple", "${count} apples") == "1 apple"
+    end
+
+    test "returns plural when count is not 1" do
+      assert Formats.plural(0, "${count} apple", "${count} apples") == "0 apples"
+      assert Formats.plural(2, "${count} apple", "${count} apples") == "2 apples"
+      assert Formats.plural(3, "${count} apple", "${count} apples") == "3 apples"
+    end
+  end
 end
