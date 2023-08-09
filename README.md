@@ -60,7 +60,15 @@ faster.
 Follow the [Detailed Installation Instructions](pages/installation.md)
 
  ```
-NAMESPACE=1 mix release lexical --overwrite
+ mix package
  ```
 
- Lexical will now be available in `_build/dev/rel/lexical`
+ Lexical will now be available in `_build/dev/package/lexical`
+
+If you would like to change the output directory, you can do so with the `--path` option
+
+```
+mix package --path /path/to/lexical
+```
+
+Lexical will be available in `/path/to/lexical`.

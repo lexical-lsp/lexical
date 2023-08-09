@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 set_up_version_manager() {
-    if [ -e $HOME/.asdf && ! asdf which erl ]; then
+    if [ -e $HOME/.asdf ] && asdf which erl -eq 0 ; then
         VERSION_MANAGER="asdf"
-    elif [ -e $HOME/.rtx && ! rtx which erl ]; then
+    elif [ -e $HOME/.rtx ] && rtx which erl -eq 0 ; then
         VERSION_MANAGER="rtx"
     else
         VERSION_MANAGER="none"
