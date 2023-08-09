@@ -21,13 +21,16 @@ Lexical supports the following versions of Elixir and Erlang:
 | 1.14     |    `all`       |          |
 | 1.15     | `>= 1.15.3`    | `1.15.0` - `1.15.2` had compiler bugs that prevented lexical from working |
 
-Lexical can run projects in any version of Elixir and Erlang that it supports, but it's important to understand that Lexical needs to be compiled under the lowest version of elixir and erlang that you intend to use it with. That means if you have the following projects:
- 
+Lexical can run projects in any version of Elixir and Erlang that it
+supports, but it's important to understand that Lexical needs to be
+compiled under the lowest version of elixir and erlang that you intend
+to use it with. That means if you have the following projects:
+
    * `first`: elixir `1.14.4` erlang `24.3.2`
    * `second`: elixir `1.14.3` erlang `25.0`
    * `third`: elixir: `1.13.3` erlang `25.2.3`
 
-Lexical would need to be compiled with Erlang `24.3.2` and Elixir `1.13.3`. 
+Lexical would need to be compiled with Erlang `24.3.2` and Elixir `1.13.3`.
 Lexical's prepackaged builds use Erlang `24.3.4.12` and Elixir `1.13.4`
 
 ## Prerequisites
@@ -46,11 +49,11 @@ cd lexical
 ...and build the project
 
 ```shell
-NAMESPACE=1 mix release lexical --overwrite
+mix package
 ```
 
 If things complete successfully, you will then have a release in your
-`build/dev/rel/lexical` directory. If you see errors, please file a
+`_build/dev/package/lexical` directory. If you see errors, please file a
 bug.
 
 For the following examples, assume the absolute path to your Lexical
@@ -81,7 +84,7 @@ emacs configuration), insert the following code:
 (use-package elixir-mode
   :ensure t
   :custom
-  (lsp-elixir-server-command '("/my/home/projects/_build/dev/rel/lexical/start_lexical.sh")))
+  (lsp-elixir-server-command '("/my/home/projects/_build/dev/package/lexical/start_lexical.sh")))
 
 ```
 
@@ -102,14 +105,18 @@ Click on the extensions button on the sidebar, then search for
 download the latest version of Lexical.
 
 To change to a local executable, go to `Settings -> Extensions -> Lexical` and
-type `/my/home/projects/lexical/_build/dev/rel/lexical` into the text box in
+type `/my/home/projects/lexical/_build/dev/package/lexical` into the text box in
 the `Server: Release path override` section.
 
 ### neovim
 
-Lexical doesn't work in neovim `< 0.9.0`.
+Lexical requires neovim `>= 0.9.0`.
 
-In version `>= 0.9.0`, the key is to append the custom LS configuration to [lspconfig](https://github.com/neovim/nvim-lspconfig), so regardless of whether you are using mason or others, you can use this configuration below as a reference:
+In version `>= 0.9.0`, the key is to append the custom LS
+configuration to
+[lspconfig](https://github.com/neovim/nvim-lspconfig), so regardless
+of whether you are using mason or others, you can use this
+configuration below as a reference:
 
 ```lua
     local lspconfig = require("lspconfig")
@@ -117,7 +124,7 @@ In version `>= 0.9.0`, the key is to append the custom LS configuration to [lspc
 
     local lexical_config = {
       filetypes = { "elixir", "eelixir", },
-      cmd = { "/my/home/projects/_build/dev/rel/lexical/start_lexical.sh" },
+      cmd = { "/my/home/projects/_build/dev/package/lexical/start_lexical.sh" },
       settings = {},
     }
 
@@ -142,8 +149,8 @@ If the configuration above doesn't work for you, please try this minimal [neovim
 
 ### Vim + Vim-LSP
 
-An example of configuring Lexical as the Elixir language server for 
-[Vim-LSP](https://github.com/prabirshrestha/vim-lsp). Uses the newer vim9script syntax but 
+An example of configuring Lexical as the Elixir language server for
+[Vim-LSP](https://github.com/prabirshrestha/vim-lsp). Uses the newer vim9script syntax but
 can be converted to Vim 8 etc (`:h vim9script`).
 
 ```
@@ -159,17 +166,17 @@ call minpac#add("prabirshrestha/vim-lsp")
 
 # Configure as the elixir language server
 if executable("elixir")
-	augroup lsp_lexical
-	autocmd!
-	autocmd User lsp_setup call lsp#register_server({ name: "lexical", cmd: (server_info) => "{{path_to_lexical}}/lexical-lsp/lexical/_build/dev/rel/lexical/start_lexical.sh", allowlist: ["elixir", "eelixir"] })
-	autocmd FileType elixir setlocal omnifunc=lsp#complete
-	autocmd FileType eelixir setlocal omnifunc=lsp#complete
-	augroup end
+    augroup lsp_lexical
+    autocmd!
+    autocmd User lsp_setup call lsp#register_server({ name: "lexical", cmd: (server_info) => "{{path_to_lexical}}/lexical-lsp/lexical/_build/dev/rel/lexical/start_lexical.sh", allowlist: ["elixir", "eelixir"] })
+    autocmd FileType elixir setlocal omnifunc=lsp#complete
+    autocmd FileType eelixir setlocal omnifunc=lsp#complete
+    augroup end
 endif
 
 ```
 
-If you use [Vim-LSP-Settings](mattn/vim-lsp-settings) for installing and configuring language servers, 
+If you use [Vim-LSP-Settings](mattn/vim-lsp-settings) for installing and configuring language servers,
 you can use the following flag to disable prompts to install elixir-ls:
 
 ```

@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - v*
-env:
-  NAMESPACE: 1
-
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,14 +39,11 @@ jobs:
         run: mix compile
 
       - name: Build release
-        run: mix release lexical
+        run: mix package --zip
 
       - name: Archive release
         run: |
-          cd _build/dev/rel/lexical
-          zip -r lexical.zip *
-          cp lexical.zip ../../../../lexical.zip
-          cp lexical.zip ../../../../lexical-${{ github.ref_name }}.zip
+          cp lexical.zip lexical-${{ github.ref_name }}.zip
 
       - name: Publish release
         uses: ncipollo/release-action@v1

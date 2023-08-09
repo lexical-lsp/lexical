@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.ProjectNode
   require Logger
 
   defmodule State do
@@ -27,7 +28,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     @dialyzer {:nowarn_function, start: 3}
 
     def start(%__MODULE__{} = state, paths, from) do
-      port_wrapper = port_wrapper_executable()
+      port_wrapper = ProjectNode.Launcher.path()
 
       {:ok, elixir_executable, environment_variables} =
         RemoteControl.elixir_executable(state.project)
@@ -89,12 +90,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
       Enum.flat_map(paths, fn path ->
         ["-pa", Path.expand(path)]
       end)
-    end
-
-    defp port_wrapper_executable do
-      :remote_control
-      |> :code.priv_dir()
-      |> Path.join("port_wrapper.sh")
     end
 
     defp project_rpc(%__MODULE__{} = state, module, function, args \\ []) do

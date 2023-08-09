@@ -57,19 +57,6 @@ defmodule Lexical.LanguageServer.MixProject do
 
   defp releases do
     [
-      lexical: [
-        applications: [
-          server: :permanent,
-          remote_control: :load,
-          mix: :load
-        ],
-        include_executables_for: [:unix],
-        include_erts: false,
-        cookie: "lexical",
-        rel_templates_path: "rel/deploy",
-        strip_beams: false,
-        steps: release_steps()
-      ],
       lexical_debug: [
         applications: [
           server: :permanent,
@@ -82,27 +69,8 @@ defmodule Lexical.LanguageServer.MixProject do
         cookie: "lexical",
         rel_templates_path: "rel/debug",
         strip_beams: false
-      ],
-      remote_control: [
-        applications: [remote_control: :permanent],
-        include_erts: false,
-        include_executables_for: [],
-        strip_beams: false
       ]
     ]
-  end
-
-  defp release_steps do
-    if System.get_env("NAMESPACE") do
-      [:assemble, &namespace_release/1]
-    else
-      [:assemble]
-    end
-  end
-
-  defp namespace_release(%Mix.Release{} = release) do
-    Mix.Task.run("namespace", [release.path])
-    release
   end
 
   defp aliases do

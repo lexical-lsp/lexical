@@ -24,7 +24,11 @@ defmodule Mix.Tasks.Namespace.Path do
         |> Namespace.Module.apply()
         |> Atom.to_string()
 
-      String.replace(path, string_name, namespaced_name)
+      if String.contains?(path, namespaced_name) do
+        path
+      else
+        String.replace(path, string_name, namespaced_name)
+      end
     end)
   end
 end
