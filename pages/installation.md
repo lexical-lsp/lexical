@@ -61,8 +61,9 @@ source code is `/my/home/projects/lexical`.
 2. [Vanilla Emacs with eglot](#vanilla-emacs-with-eglot)
 3. [Visual Studio Code](#visual-studio-code)
 4. [neovim](#neovim)
+5. [Vim + Vim-LSP](#vim--vim-lsp)
 
-## Vanilla Emacs with lsp-mode
+### Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
 really should be. In your `.emacs.d/init.el` (or wherever you put your
 emacs configuration), insert the following code:
@@ -88,13 +89,13 @@ Restart emacs, and Lexical should start when you open a file with a
 `.ex` extension.
 
 
-## Vanilla Emacs with eglot
+### Vanilla Emacs with eglot
 
 Eglot has a couple of utf8 related bugs that make it fail with
 Lexical, and is not supported at this time.
 
 
-## Visual Studio Code
+### Visual Studio Code
 
 Click on the extensions button on the sidebar, then search for
 `lexical`, then click `install`.  By default, the extension will automatically
@@ -104,7 +105,7 @@ To change to a local executable, go to `Settings -> Extensions -> Lexical` and
 type `/my/home/projects/lexical/_build/dev/rel/lexical` into the text box in
 the `Server: Release path override` section.
 
-## neovim
+### neovim
 
 Lexical doesn't work in neovim `< 0.9.0`.
 
@@ -138,3 +139,43 @@ In version `>= 0.9.0`, the key is to append the custom LS configuration to [lspc
 ```
 
 If the configuration above doesn't work for you, please try this minimal [neovim configuration](https://github.com/scottming/nvim-mini-for-lexical), It can eliminate other plugin factors.
+
+### Vim + Vim-LSP
+
+An example of configuring Lexical as the Elixir language server for 
+[Vim-LSP](https://github.com/prabirshrestha/vim-lsp). Uses the newer vim9script syntax but 
+can be converted to Vim 8 etc (`:h vim9script`).
+
+```
+vim9script
+
+# Loading vim-lsp with minpac:
+call minpac#add("prabirshrestha/vim-lsp")
+# ...or use your package manager of choice/Vim native packages
+
+# Useful for debugging vim-lsp:
+# g:lsp_log_verbose = 1
+# g:lsp_log_file = expand('~/vim-lsp.log')
+
+# Configure as the elixir language server
+if executable("elixir")
+	augroup lsp_lexical
+	autocmd!
+	autocmd User lsp_setup call lsp#register_server({ name: "lexical", cmd: (server_info) => "{{path_to_lexical}}/lexical-lsp/lexical/_build/dev/rel/lexical/start_lexical.sh", allowlist: ["elixir", "eelixir"] })
+	autocmd FileType elixir setlocal omnifunc=lsp#complete
+	autocmd FileType eelixir setlocal omnifunc=lsp#complete
+	augroup end
+endif
+
+```
+
+If you use [Vim-LSP-Settings](mattn/vim-lsp-settings) for installing and configuring language servers, 
+you can use the following flag to disable prompts to install elixir-ls:
+
+```
+g:lsp_settings_filetype_elixir = ["lexical"]
+
+```
+
+For more config, debugging help, or getting vim-lsp to work with ALE, see
+[this example vimrc](https://github.com/jHwls/dotfiles/blob/4425a4feef823512d96b92e5fd64feaf442485c9/vimrc#L239).
