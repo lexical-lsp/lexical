@@ -43,6 +43,7 @@ git clone git@github.com:lexical-lsp/lexical.git
 ```
 
 Then change to the lexical directory
+
 ```shell
 cd lexical
 ```

@@ -8,7 +8,6 @@ defmodule Lexical.LanguageServer.MixProject do
       version: "0.2.2",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      releases: releases(),
       aliases: aliases(),
       docs: docs(),
       name: "Lexical",
@@ -51,24 +50,6 @@ defmodule Lexical.LanguageServer.MixProject do
         "Protocol Notifications": ~r/Lexical.Protocol.Notifications/,
         "Protocol Responses": ~r/Lexical.Protocol.Responses/,
         Server: ~r/Lexical.Server/
-      ]
-    ]
-  end
-
-  defp releases do
-    [
-      lexical_debug: [
-        applications: [
-          server: :permanent,
-          remote_control: :load,
-          mix: :load
-        ],
-        include_executables_for: [:unix],
-        include_erts: false,
-        path: "lexical_debug",
-        cookie: "lexical",
-        rel_templates_path: "rel/debug",
-        strip_beams: false
       ]
     ]
   end
