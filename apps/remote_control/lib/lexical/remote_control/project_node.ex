@@ -224,6 +224,11 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
+  def handle_info({:EXIT, port, _}, state) when is_port(port) do
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info(:timeout, %State{} = state) do
     state = State.halt(state)
     GenServer.reply(state.stopped_by, :ok)

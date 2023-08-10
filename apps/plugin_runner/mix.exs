@@ -28,6 +28,7 @@ defmodule Lexical.Plugin.Runner.MixProject do
   defp deps do
     [
       {:common, in_umbrella: true},
+      {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:lexical_plugin, path: "../../projects/lexical_plugin", only: :test}
     ]
   end
