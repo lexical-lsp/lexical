@@ -41,4 +41,5 @@ export ERL_LIBS="${SCRIPT_DIR}/../lib"
                     -pa "${SCRIPT_DIR}/../config/" \
                     -pa "${SCRIPT_DIR}/../priv/" \
                     --eval "LXical.Server.Boot.start" \
+                    --cookie "lexical" \
                     --no-halt

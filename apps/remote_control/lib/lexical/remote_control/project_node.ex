@@ -35,7 +35,10 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
       erlang_env =
         Enum.map(environment_variables, fn {key, value} ->
-          {String.to_charlist(key), String.to_charlist(value)}
+          # using to_string ensures nil values won't blow things up
+          erl_key = key |> to_string() |> String.to_charlist()
+          erl_value = value |> to_string() |> String.to_charlist()
+          {erl_key, erl_value}
         end)
 
       args = [
@@ -70,12 +73,25 @@ defmodule Lexical.RemoteControl.ProjectNode do
       %{state | status: :stopped}
     end
 
-    def on_nodeup(%__MODULE__{} = state) do
-      %{state | status: :started}
+    def on_nodeup(%__MODULE__{} = state, node_name) do
+      if node_name == Project.node_name(state.project) do
+        {pid, _ref} = state.started_by
+        Process.monitor(pid)
+        GenServer.reply(state.started_by, :ok)
+
+        %{state | status: :started}
+      else
+        state
+      end
     end
 
-    def on_nodedown(%__MODULE__{} = state) do
-      %{state | status: :stopped}
+    def on_nodedown(%__MODULE__{} = state, node_name) do
+      if node_name == Project.node_name(state.project) do
+        GenServer.reply(state.stopped_by, :ok)
+        {:shutdown, %{state | status: :stopped}}
+      else
+        :continue
+      end
     end
 
     def on_monitored_dead(%__MODULE__{} = state) do
@@ -168,11 +184,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({:nodeup, _node, _}, %State{} = state) do
-    {pid, _ref} = state.started_by
-    Process.monitor(pid)
-    GenServer.reply(state.started_by, :ok)
-    state = State.on_nodeup(state)
+  def handle_info({:nodeup, node, _}, %State{} = state) do
+    state = State.on_nodeup(state, node)
     {:noreply, state}
   end
 
@@ -188,10 +201,14 @@ defmodule Lexical.RemoteControl.ProjectNode do
   end
 
   @impl true
-  def handle_info({:nodedown, _, _}, %State{} = state) do
-    GenServer.reply(state.stopped_by, :ok)
-    state = State.on_nodedown(state)
-    {:stop, :shutdown, state}
+  def handle_info({:nodedown, node_name, _}, %State{} = state) do
+    case State.on_nodedown(state, node_name) do
+      {:shutdown, new_state} ->
+        {:stop, :shutdown, new_state}
+
+      :continue ->
+        {:noreply, state}
+    end
   end
 
   @impl true
