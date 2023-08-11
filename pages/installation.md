@@ -92,7 +92,7 @@ emacs configuration), insert the following code:
 (use-package elixir-mode
   :ensure t
   :custom
-  (lsp-elixir-server-command '("/my/home/projects/_build/dev/package/lexical/start_lexical.sh")))
+  (lsp-elixir-server-command '("/my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh")))
 
 ```
 
@@ -132,7 +132,7 @@ configuration below as a reference:
 
     local lexical_config = {
       filetypes = { "elixir", "eelixir", },
-      cmd = { "/my/home/projects/_build/dev/package/lexical/start_lexical.sh" },
+      cmd = { "/my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh" },
       settings = {},
     }
 
@@ -176,7 +176,7 @@ call minpac#add("prabirshrestha/vim-lsp")
 if executable("elixir")
     augroup lsp_lexical
     autocmd!
-    autocmd User lsp_setup call lsp#register_server({ name: "lexical", cmd: (server_info) => "{{path_to_lexical}}/lexical-lsp/lexical/_build/dev/rel/lexical/start_lexical.sh", allowlist: ["elixir", "eelixir"] })
+    autocmd User lsp_setup call lsp#register_server({ name: "lexical", cmd: (server_info) => "{{path_to_lexical}}/lexical-lsp/lexical/_build/dev/package/lexical/bin/start_lexical.sh", allowlist: ["elixir", "eelixir"] })
     autocmd FileType elixir setlocal omnifunc=lsp#complete
     autocmd FileType eelixir setlocal omnifunc=lsp#complete
     augroup end
