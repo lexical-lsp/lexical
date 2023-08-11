@@ -47,6 +47,13 @@ Then change to the lexical directory
 ```shell
 cd lexical
 ```
+
+Then fetch lexical's dependencies
+
+```shell
+mix deps.get
+```
+
 ...and build the project
 
 ```shell
