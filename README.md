@@ -72,3 +72,92 @@ mix package --path /path/to/lexical
 ```
 
 Lexical will be available in `/path/to/lexical`.
+
+## Development
+
+You're going to need a local instance in order to develop lexical, so follow the [Detailed Installation Instructions](pages/installation.md) first.
+
+Then, install the git hooks with
+
+```
+mix hooks
+```
+
+These are pre-commit hooks that will check for correct formatting and run credo for you.
+
+After this, you're ready to put together a pull request for Lexical!
+
+
+### Debugging
+
+Lexical supports a debug shell, which will connect a remote shell to a
+currently-running language server process. To use it, `cd` into your
+lexical installation directory and run
+
+```
+./bin/debug_shell.sh <name of project>
+```
+
+For example, if I would like to run the debug server for a server
+running in your `lexical` project, run:
+
+```
+./bin/debug_shell.sh lexical
+```
+
+...and you will be connected to a remote IEx session _inside_ my
+language server. This allows you to investigate processes, make
+changes to the running code, or run `:observer`.
+
+While in the debugging shell, all the functions in
+`Lexical.Server.IEx.Helpers` are imported for you, and some common
+modules, like like `Lexical.Project` and `Lexical.Document` are
+aliased.
+
+You can also start the lexical server in interactive mode via
+`./bin/start_lexical.sh iex`. Combining this with the helpers that are
+imported will allow you to run projects and do completions entirely in
+the shell.
+
+  *Note*: The helpers assume that all of your projects are in folders that are siblings with your lexical project.
+
+Consider the example shell session:
+
+```
+./bin/start_lexical.sh iex
+iex(1)> start_project :other
+# the project in the ../other directory is started
+compile_project(:other)
+# the other project is compiled
+iex(2)> complete :other, "defmo|"
+[
+  #Protocol.Types.Completion.Item<[
+    detail: "",
+    insert_text: "defmacro ${1:name}($2) do\n  $0\nend\n",
+    insert_text_format: :snippet,
+    kind: :class,
+    label: "defmacro (Define a macro)",
+    sort_text: "093_defmacro (Define a macro)"
+  ]>,
+  #Protocol.Types.Completion.Item<[
+    detail: "",
+    insert_text: "defmacrop ${1:name}($2) do\n  $0\nend\n",
+    insert_text_format: :snippet,
+    kind: :class,
+    label: "defmacrop (Define a private macro)",
+    sort_text: "094_defmacrop (Define a private macro)"
+  ]>,
+  #Protocol.Types.Completion.Item<[
+    detail: "",
+    insert_text: "defmodule ${1:module name} do\n  $0\nend\n",
+    insert_text_format: :snippet,
+    kind: :class,
+    label: "defmodule (Define a module)",
+    sort_text: "092_defmodule (Define a module)"
+  ]>
+]
+```
+
+The same kind of support is available when you run `iex -S mix` in the
+lexical directory, and is helpful for narrowing down issues without
+disturbing your editor flow.
