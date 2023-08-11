@@ -8,7 +8,10 @@ defmodule Lexical.Plugin.Coordinator.StateTest do
 
   setup do
     start_supervised!(Runner.Supervisor)
-    Runner.clear_config()
+
+    on_exit(fn ->
+      Runner.clear_config()
+    end)
 
     {:ok, state: State.new()}
   end

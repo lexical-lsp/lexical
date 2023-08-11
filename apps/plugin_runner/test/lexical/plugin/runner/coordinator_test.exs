@@ -32,12 +32,16 @@ defmodule Lexical.Runner.CoordinatorTest do
     end
   end
 
-  def with_echo_plugin(_) do
-    Runner.register(Echo)
+  def register(plugin_module) do
+    Runner.register(plugin_module)
 
     on_exit(fn ->
-      Runner.disable(Echo)
+      Runner.disable(plugin_module)
     end)
+  end
+
+  def with_echo_plugin(_) do
+    register(Echo)
   end
 
   def notifier do
@@ -73,7 +77,8 @@ defmodule Lexical.Runner.CoordinatorTest do
     end
 
     test "works with projects" do
-      project = %Project{root_uri: "file:///fooo/bar"}
+      project = Project.new("file://" <> __DIR__)
+
       Runner.diagnose(project, notifier())
 
       assert_receive [^project]
@@ -123,46 +128,47 @@ defmodule Lexical.Runner.CoordinatorTest do
     end
 
     test "an exiting plugin will not crash the coordinator" do
-      Runner.register(Exits)
+      register(Exits)
 
       old_pid = Process.whereis(Runner.Coordinator)
       assert :exits in Runner.enabled_plugins()
 
       Runner.diagnose(%Document{}, notifier())
 
-      assert_receive [], 500
+      assert_receive results, 500
 
+      assert is_list(results)
       assert Process.alive?(old_pid)
     end
 
     test "crashing plugins are disabled" do
-      Runner.register(Crashy)
+      register(Crashy)
 
       assert :crashy in Runner.enabled_plugins()
 
       make_it_crash()
 
-      refute_eventually :crashy in Runner.enabled_plugins()
+      refute_eventually(:crashy in Runner.enabled_plugins())
     end
 
     test "slow plugins are disabled" do
-      Runner.register(Slow)
+      register(Slow)
 
       assert :slow in Runner.enabled_plugins()
 
       make_it_crash()
 
-      refute_eventually :slow in Runner.enabled_plugins()
+      refute_eventually(:slow in Runner.enabled_plugins())
     end
 
     test "plugins that don't return lists are disabled" do
-      Runner.register(BadReturn)
+      register(BadReturn)
 
       assert :bad_return in Runner.enabled_plugins()
 
       make_it_crash()
 
-      refute_eventually :bad_return in Runner.enabled_plugins()
+      refute_eventually(:bad_return in Runner.enabled_plugins())
     end
   end
 end
