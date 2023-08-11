@@ -27,7 +27,7 @@ defmodule Lexical.Shared.MixProject do
 
   defp deps do
     [
-      {:stream_data, "~> 0.5", only: [:test], runtime: false},
+      {:stream_data, "~> 0.6", only: [:test], runtime: false},
       {:ex_doc, "~> 0.29", only: [:dev]},
       {:patch, "~> 0.12", runtime: false, only: [:dev, :test]},
       dialyzer_dep()
