@@ -16,5 +16,5 @@
   "patch": {:hex, :patch, "0.12.0", "2da8967d382bade20344a3e89d618bfba563b12d4ac93955468e830777f816b0", [:mix], [], "hexpm", "ffd0e9a7f2ad5054f37af84067ee88b1ad337308a1cb227e181e3967127b0235"},
   "path_glob": {:hex, :path_glob, "0.2.0", "b9e34b5045cac5ecb76ef1aa55281a52bf603bf7009002085de40958064ca312", [:mix], [{:nimble_parsec, "~> 1.2.3", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm", "be2594cb4553169a1a189f95193d910115f64f15f0d689454bb4e8cfae2e7ebc"},
   "sourceror": {:hex, :sourceror, "0.12.3", "a2ad3a1a4554b486d8a113ae7adad5646f938cad99bf8bfcef26dc0c88e8fade", [:mix], [], "hexpm", "4d4e78010ca046524e8194ffc4683422f34a96f6b82901abbb45acc79ace0316"},
-  "stream_data": {:hex, :stream_data, "0.5.0", "b27641e58941685c75b353577dc602c9d2c12292dd84babf506c2033cd97893e", [:mix], [], "hexpm", "012bd2eec069ada4db3411f9115ccafa38540a3c78c4c0349f151fc761b9e271"},
+  "stream_data": {:hex, :stream_data, "0.6.0", "e87a9a79d7ec23d10ff83eb025141ef4915eeb09d4491f79e52f2562b73e5f47", [:mix], [], "hexpm", "b92b5031b650ca480ced047578f1d57ea6dd563f5b57464ad274718c9c29501c"},
 }
