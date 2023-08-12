@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Package do
     default_path = Path.join([Mix.Project.build_path(), "package", "lexical"])
     package_root = Keyword.get(opts, :path, default_path)
 
-    Mix.Shell.IO.info("Assembling buld in #{package_root}")
+    Mix.Shell.IO.info("Assembling build in #{package_root}")
     File.mkdir_p!(package_root)
 
     {:ok, scratch_directory} = prepare(package_root)
