@@ -47,7 +47,7 @@ defmodule Mix.Tasks.Namespace.Transform.Beams do
   defp changed?(_, _), do: true
 
   defp block_until_done(same, same) do
-    Mix.Shell.IO.info("\ndone")
+    Mix.Shell.IO.info("\n done")
   end
 
   defp block_until_done(current, max) do
