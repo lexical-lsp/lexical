@@ -97,31 +97,39 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
       """
     end
 
+    def find_by_label(completions, label_substring) do
+      Enum.find(completions, &String.contains?(&1.label, label_substring))
+    end
+
     test "should complete when after the curly", %{project: project} do
-      {:ok, [completion, _]} =
+      {:ok, completions} =
         project
         |> complete(wrap_with_module("%Project.Structs.Account{|}"))
         |> fetch_completion(kind: :field)
 
+      completion = find_by_label(completions, "last_login_at")
       expected = "%Project.Structs.Account{last_login_at: ${1:last_login_at}}"
       assert apply_completion(completion) =~ expected
     end
 
     test "should complete when typed a field character", %{project: project} do
-      {:ok, [completion, _]} =
+      {:ok, completions} =
         project
         |> complete(wrap_with_module("%Project.Structs.Account{la|}"))
         |> fetch_completion(kind: :field)
 
+      completion = find_by_label(completions, "last_login_at")
       expected = "%Project.Structs.Account{last_login_at: ${1:last_login_at}}"
       assert apply_completion(completion) =~ expected
     end
 
     test "should complete when after the comma", %{project: project} do
-      {:ok, [_, completion]} =
+      {:ok, completions} =
         project
         |> complete(wrap_with_module("%Project.Structs.Account{last_login_at: nil, |}"))
         |> fetch_completion(kind: :field)
+
+      completion = find_by_label(completions, "user")
 
       expected = "%Project.Structs.Account{last_login_at: nil, user: ${1:user}}"
       assert apply_completion(completion) =~ expected
@@ -157,11 +165,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
         end
       ]
 
-      {:ok, [_, completion]} =
+      {:ok, completions} =
         project
         |> complete(source)
         |> fetch_completion(kind: :field)
 
+      completion = find_by_label(completions, "user")
       assert apply_completion(completion) == expected
     end
 
@@ -186,11 +195,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
         end
       ]
 
-      {:ok, [completion, _]} =
+      {:ok, completions} =
         project
         |> complete(source)
         |> fetch_completion(kind: :field)
 
+      completion = find_by_label(completions, "last_login_at")
       assert apply_completion(completion) == expected
     end
 
