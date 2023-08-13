@@ -113,7 +113,7 @@ Click on the extensions button on the sidebar, then search for
 download the latest version of Lexical.
 
 To change to a local executable, go to `Settings -> Extensions -> Lexical` and
-type `/my/home/projects/lexical/_build/dev/package/lexical` into the text box in
+type `/my/home/projects/lexical/_build/dev/package/lexical/bin` into the text box in
 the `Server: Release path override` section.
 
 ### neovim
