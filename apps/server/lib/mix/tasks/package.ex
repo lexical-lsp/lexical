@@ -66,6 +66,7 @@ defmodule Mix.Tasks.Package do
   to the code search path with the `-pa` argument.
   """
 
+  alias Lexical.VM.Versions
   alias Mix.Tasks.Namespace
 
   @options [
@@ -93,6 +94,7 @@ defmodule Mix.Tasks.Package do
     copy_launchers(package_root)
     copy_priv_files(package_root)
     copy_config(package_root)
+    write_vm_versions(package_root)
     File.rm_rf!(scratch_directory)
 
     if Keyword.get(opts, :zip, false) do
@@ -255,6 +257,12 @@ defmodule Mix.Tasks.Package do
           :ok
       end
     end)
+  end
+
+  defp write_vm_versions(package_root) do
+    package_root
+    |> Path.join("priv")
+    |> Versions.write()
   end
 
   defp zip(package_root) do
