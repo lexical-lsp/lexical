@@ -23,7 +23,6 @@ defmodule Mix.Tasks.Namespace do
     "proto" => "Lexical",
     "protocol" => "Lexical",
     "remote_control" => "Lexical",
-    "plugin_runner" => "Lexical",
     "server" => "Lexical"
   }
 

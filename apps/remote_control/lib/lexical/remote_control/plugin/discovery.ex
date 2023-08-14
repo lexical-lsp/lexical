@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   and the plugin will crash.
   """
 
-  alias Lexical.Plugin.Runner
+  alias Lexical.RemoteControl.Plugin.Runner
   alias Mix.Tasks.Namespace
 
   require Logger

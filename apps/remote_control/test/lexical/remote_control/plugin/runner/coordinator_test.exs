@@ -1,7 +1,7 @@
-defmodule Lexical.Runner.CoordinatorTest do
+defmodule Lexical.RemoteControl.Plugin.Runner.CoordinatorTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Runner
   alias Lexical.Project
+  alias Lexical.RemoteControl.Plugin.Runner
 
   use ExUnit.Case, async: false
   import Lexical.Test.EventualAssertions

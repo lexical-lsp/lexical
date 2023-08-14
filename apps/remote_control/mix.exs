@@ -38,7 +38,6 @@ defmodule Lexical.RemoteControl.MixProject do
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
       {:common, in_umbrella: true},
-      {:plugin_runner, in_umbrella: true},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git"},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false},
       {:path_glob, "~> 0.2", optional: true},

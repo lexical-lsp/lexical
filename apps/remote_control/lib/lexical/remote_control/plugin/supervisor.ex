@@ -1,4 +1,4 @@
-defmodule Lexical.Plugin.Runner.Supervisor do
+defmodule Lexical.RemoteControl.Plugin.Runner.Supervisor do
   @moduledoc false
 
   def child_spec(_) do

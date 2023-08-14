@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.State
+  alias Lexical.RemoteControl.Plugin
 
   import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
@@ -14,8 +15,8 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   setup do
     {:ok, _} = start_supervised(Build.CaptureServer)
     {:ok, _} = start_supervised(RemoteControl.ModuleMappings)
-    {:ok, _} = start_supervised(Lexical.Plugin.Runner.Coordinator)
-    {:ok, _} = start_supervised(Lexical.Plugin.Runner.Supervisor)
+    {:ok, _} = start_supervised(Plugin.Runner.Coordinator)
+    {:ok, _} = start_supervised(Plugin.Runner.Supervisor)
     :ok
   end
 
@@ -81,7 +82,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     test "it compiles after a timeout", %{state: state, document: document} do
       state = State.on_file_compile(state, document)
 
-      refute_eventually State.compile_scheduled?(State.on_tick(state), document.uri), 500
+      refute_eventually(State.compile_scheduled?(State.on_tick(state), document.uri), 500)
     end
   end
 end
