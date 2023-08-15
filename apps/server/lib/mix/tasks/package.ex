@@ -96,8 +96,8 @@ defmodule Mix.Tasks.Package do
     File.rm_rf!(scratch_directory)
 
     if Keyword.get(opts, :zip, false) do
-      File.rm_rf(package_root)
       zip(package_root)
+      File.rm_rf(package_root)
     end
   end
 
