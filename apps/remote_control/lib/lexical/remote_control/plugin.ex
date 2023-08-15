@@ -1,9 +1,9 @@
 defmodule Lexical.RemoteControl.Plugin do
   alias Lexical.Document
-  alias Lexical.Plugin.Runner
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Plugin.Runner
 
   import Messages
 

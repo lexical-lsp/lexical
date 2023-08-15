@@ -1,8 +1,8 @@
-defmodule Lexical.Plugin.Coordinator.StateTest do
+defmodule Lexical.RemoteControl.Plugin.Coordinator.StateTest do
   alias Lexical.Document
-  alias Lexical.Plugin.Runner
-  alias Lexical.Plugin.Runner.Coordinator.State
   alias Lexical.Plugin.V1
+  alias Lexical.RemoteControl.Plugin.Runner
+  alias Lexical.RemoteControl.Plugin.Runner.Coordinator.State
 
   use ExUnit.Case
 
