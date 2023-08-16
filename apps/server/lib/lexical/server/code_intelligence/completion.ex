@@ -195,7 +195,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
               RemoteControl.Api.modules_with_prefix(
                 env.project,
                 full_name,
-                predicate(&macro_exported?(:"$1", :__using__, 1))
+                predicate(&macro_exported?(&1, :__using__, 1))
               )
 
             not Enum.empty?(with_prefix)
