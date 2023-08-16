@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
 set_up_version_manager() {
-    if asdf which elixir > /dev/null -eq 0; then
+    if command -v asdf > /dev/null && asdf which elixir > /dev/null -eq 0; then
         VERSION_MANAGER="asdf"
-    elif rtx which elixir > /dev/null -eq 0; then
+    elif command -v rtx > /dev/null &&  rtx which elixir > /dev/null -eq 0; then
         VERSION_MANAGER="rtx"
     else
         VERSION_MANAGER="none"
     fi
 }
-
 
 set_up_version_manager
 
