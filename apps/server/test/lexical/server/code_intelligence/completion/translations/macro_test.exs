@@ -107,7 +107,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert %Completion.Item{} = completion
     end
 
-    test "defmodule", %{project: project} do
+    test "defmodule for lib paths", %{project: project} do
       assert {:ok, completion} =
                project
                |> complete("defmodule|")
@@ -118,7 +118,58 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.insert_text_format == :snippet
 
       assert completion.insert_text == """
-             defmodule ${1:module name} do
+             defmodule ${1:File} do
+               $0
+             end
+             """
+    end
+
+    test "defmodule for test paths", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "test/foo/project/my_test.exs")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (Define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == """
+             defmodule ${1:Foo.Project.MyTest} do
+               $0
+             end
+             """
+    end
+
+    test "defmodule for test/support paths", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "test/support/path/to/file.ex")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (Define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == """
+             defmodule ${1:Path.To.File} do
+               $0
+             end
+             """
+    end
+
+    test "defmodule for other paths", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "/this/is/another/path.ex")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (Define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert completion.insert_text == """
+             defmodule ${1:Path} do
                $0
              end
              """

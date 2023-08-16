@@ -131,7 +131,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
     test "when using %, child structs are returned", %{project: project} do
       assert [account, order, order_line, user] =
                project
-               |> complete("%Project.Structs.|", "%")
+               |> complete("%Project.Structs.|", trigger_character: "%")
                |> Enum.sort_by(& &1.label)
 
       assert account.label == "Account"
@@ -150,7 +150,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
     test "when using % and child is not a struct, just `more` snippet is returned", %{
       project: project
     } do
-      assert [more] = complete(project, "%Project.|", "%")
+      assert [more] = complete(project, "%Project.|", trigger_character: "%")
       assert more.label == "Structs...(4 more structs)"
       assert more.detail == "Project.Structs."
     end
