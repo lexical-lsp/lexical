@@ -60,4 +60,14 @@ defmodule Lexical.RemoteControl.Api do
       position
     ])
   end
+
+  def modules_with_prefix(%Project{} = project, prefix)
+      when is_binary(prefix) or is_atom(prefix) do
+    RemoteControl.call(project, RemoteControl.Modules, :with_prefix, [prefix])
+  end
+
+  def modules_with_prefix(%Project{} = project, prefix, predicate)
+      when is_binary(prefix) or is_atom(prefix) do
+    RemoteControl.call(project, RemoteControl.Modules, :with_prefix, [prefix, predicate])
+  end
 end
