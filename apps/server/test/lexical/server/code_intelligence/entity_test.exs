@@ -1,11 +1,11 @@
-defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
+defmodule Lexical.Server.CodeIntelligence.EntityTest do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.ProjectNodeSupervisor
-  alias Lexical.Server.CodeIntelligence.Definition
+  alias Lexical.Server.CodeIntelligence.Entity
 
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
@@ -32,8 +32,13 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
   defp subject_module(project, content) do
     uri = subject_module_uri(project)
 
-    with :ok <- Document.Store.open(uri, content, 1) do
-      Document.Store.fetch(uri)
+    case Document.Store.open(uri, content, 1) do
+      :ok ->
+        Document.Store.fetch(uri)
+
+      {:error, :already_open} ->
+        :ok = Document.Store.close(uri)
+        subject_module(project, content)
     end
   end
 
@@ -251,7 +256,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
             @|b
           end
         end
-      ]
+        ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -270,7 +275,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
             end
           end
         end
-      ]
+        ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -288,7 +293,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
          %{project: project} do
       subject_module = ~q[
         String.to_integer|("1")
-      ]
+        ]
 
       {:ok, uri, definition_line} = definition(project, subject_module)
 
@@ -299,7 +304,7 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     test "find the definition when calling a erlang module", %{project: project} do
       subject_module = ~q[
         :erlang.binary_to_atom|("1")
-      ]
+        ]
       {:ok, uri, definition_line} = definition(project, subject_module)
 
       assert uri =~ "/src/erlang.erl"
@@ -307,20 +312,167 @@ defmodule Lexical.Server.CodeIntelligence.DefinitionTest do
     end
   end
 
-  defp caller_position(subject_module) do
-    {line, character} = cursor_position(subject_module)
-    Position.new(line, character)
+  describe "resolve/2" do
+    test "syntax error", %{project: project} do
+      code = ~q[
+        Some.Modul|e.
+        ]
+
+      assert {:error, _} = resolve(project, code)
+    end
+
+    test "modules", %{project: project} do
+      code = ~q[
+        At.The.End|
+        ]
+
+      assert {:ok, {:module, At.The.End}} = resolve(project, code)
+
+      code = ~q[
+        Beginning.Of.The.|End
+        ]
+
+      assert {:ok, {:module, Beginning.Of.The.End}} = resolve(project, code)
+
+      code = ~q[
+        End|.Of.The.Beginning
+        ]
+
+      assert {:ok, {:module, End.Of}} = resolve(project, code)
+
+      code = ~q[
+        I|n.The.Beginning
+        ]
+
+      assert {:ok, {:module, In}} = resolve(project, code)
+
+      code = ~q[
+        |At.The.Beginning
+        ]
+
+      assert {:ok, {:module, At}} = resolve(project, code)
+    end
+
+    test "explicit aliases", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          alias Long.Aliased.Module
+          Module|
+        end
+        ]
+
+      assert {:ok, {:module, Long.Aliased.Module}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          alias Long.Aliased.Module
+          Module.Nested|
+        end
+        ]
+
+      assert {:ok, {:module, Long.Aliased.Module.Nested}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          alias Long.Aliased.Module
+          Modul|e.Nested
+        end
+        ]
+
+      assert {:ok, {:module, Long.Aliased.Module}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          Modul|e.Nested
+          alias Long.Aliased.Module
+        end
+        ]
+
+      assert {:ok, {:module, Module}} = resolve(project, code)
+    end
+
+    test "implicit aliases", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          defmodule Inner do
+          end
+
+          Inner|
+        end
+        ]
+
+      assert {:ok, {:module, Example.Inner}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          Inner|
+
+          defmodule Inner do
+          end
+        end
+        ]
+
+      assert {:ok, {:module, Inner}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          __MODULE__|
+        end
+        ]
+
+      assert {:ok, {:module, Example}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          |__MODULE__
+        end
+        ]
+
+      assert {:ok, {:module, Example}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          __MODULE__.Nested|
+        end
+        ]
+
+      assert {:ok, {:module, Example.Nested}} = resolve(project, code)
+
+      code = ~q[
+        defmodule Example do
+          __MODULE_|_.Nested
+        end
+        ]
+
+      assert {:ok, {:module, Example}} = resolve(project, code)
+    end
+  end
+
+  defp resolve(project, code) do
+    with {position, code} <- pop_position(code),
+         {:ok, code_doc} <- subject_module(project, code) do
+      Entity.resolve(code_doc, position)
+    end
   end
 
   defp definition(project, subject_module) do
-    position = caller_position(subject_module)
-
-    with {:ok, subject_module_file} <- subject_module(project, strip_cursor(subject_module)),
+    with {position, subject_module} <- pop_position(subject_module),
+         {:ok, subject_module_doc} <- subject_module(project, subject_module),
          {:ok, %Location{} = location} <-
-           Definition.definition(project, subject_module_file, position),
+           Entity.definition(project, subject_module_doc, position),
          {:ok, definition_line} <- definition_line(location.document, location.range) do
       {:ok, location.document.uri, definition_line}
     end
+  end
+
+  defp pop_position(subject_module) do
+    position = caller_position(subject_module)
+    {position, strip_cursor(subject_module)}
+  end
+
+  defp caller_position(subject_module) do
+    {line, character} = cursor_position(subject_module)
+    Position.new(line, character)
   end
 
   defp definition_line(document, range) do

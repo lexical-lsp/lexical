@@ -49,7 +49,8 @@ defmodule Lexical.Server.MixProject do
       {:patch, "~> 0.12", runtime: false, only: [:dev, :test]},
       {:path_glob, "~> 0.2"},
       {:protocol, in_umbrella: true},
-      {:remote_control, in_umbrella: true, runtime: false}
+      {:remote_control, in_umbrella: true, runtime: false},
+      {:sourceror, "~> 0.12"}
     ]
   end
 end

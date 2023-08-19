@@ -85,14 +85,22 @@ defmodule Lexical.Ast do
   @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.zipper()} | {:error, parse_error()}
   def zipper_at(%Document{} = document, %Document.Position{} = position) do
     with {:ok, ast} <- from(document) do
-      zipper =
-        ast
-        |> Zipper.zip()
-        |> Zipper.find(fn node ->
-          within_range?(node, position)
-        end)
+      zipper_at_position(ast, position)
+    end
+  end
 
+  defp zipper_at_position(ast, position) do
+    zipper =
+      ast
+      |> Zipper.zip()
+      |> Zipper.find(fn node ->
+        within_range?(node, position)
+      end)
+
+    if zipper do
       {:ok, zipper}
+    else
+      {:error, :not_found}
     end
   end
 
@@ -170,7 +178,7 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Expands the aliases in the given `document`, `postion` and `module_aliases`.
+  Expands the aliases in the given `document`, `postioin` and `module_aliases`.
 
   When we refer to a module, it's usually a short name,
   so it's probably aliased or in a nested module,
@@ -189,7 +197,7 @@ defmodule Lexical.Ast do
     end
     ```
 
-  Then the the expanded module is `Project.Issue`.
+  Then the expanded module is `Project.Issue`.
 
   Another example:
 
@@ -218,10 +226,11 @@ defmodule Lexical.Ast do
           position :: Position.t(),
           module_aliases :: module_aliases()
         ) :: {:ok, module()} | :error
-  def expand_aliases(%Document{} = document, %Position{} = position, module_aliases)
-      when is_list(module_aliases) do
-    [first | rest] = module_aliases
-
+  def expand_aliases(
+        %Document{} = document,
+        %Position{} = position,
+        [first | rest] = module_aliases
+      ) do
     with {:ok, aliases_mapping} <- Aliases.at(document, position),
          {:ok, from} <- Map.fetch(aliases_mapping, first) do
       {:ok, Module.concat([from | rest])}
@@ -231,8 +240,8 @@ defmodule Lexical.Ast do
     end
   end
 
-  def expand_aliases(_, _, nil) do
-    Logger.warning("Aliases are nil, can't expand them")
+  def expand_aliases(_, _, empty) do
+    Logger.warning("Aliases are #{inspect(empty)}, can't expand them")
     :error
   end
 
