@@ -28,40 +28,45 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   @spec resolve(Document.t(), Position.t()) :: {:ok, resolved} | {:error, term()}
   def resolve(%Document{} = document, %Position{} = position) do
     with {:ok, ast} <- Ast.from(document),
-         {:ok, zipper} <- innermost_zipper_at(ast, position) do
-      resolve(Zipper.node(zipper), zipper, document, position)
+         {:ok, zipper} <- innermost_zipper_at(ast, position),
+         {:ok, resolved} <- resolve(Zipper.node(zipper), zipper, document, position) do
+      Logger.info("Resolved entity: #{inspect(resolved)}")
+      {:ok, resolved}
+    else
+      error ->
+        Logger.info("Resolve failed: #{inspect(error)}")
+        error
     end
   end
 
   defp resolve({:__aliases__, _, aliases} = node, zipper, document, position) do
-    %{start: start} = get_range(node)
+    with {:ok, %{start: start}} <- fetch_range(node) do
+      {aliases_with_columns, _} =
+        Enum.map_reduce(aliases, start[:column], fn
+          {:__MODULE__, _, nil}, column ->
+            {{:__MODULE__, column}, column + 10 + 1}
 
-    {with_offsets, _} =
-      Enum.map_reduce(aliases, start[:column], fn
-        {:__MODULE__, _, nil}, offset ->
-          {{:__MODULE__, offset}, offset + 10}
+          alias_name, column ->
+            alias_len = alias_name |> Atom.to_string() |> String.length()
+            {{alias_name, column}, column + alias_len + 1}
+        end)
 
-        name, offset ->
-          name_len = name |> Atom.to_string() |> String.length()
-          {{name, offset}, offset + name_len}
-      end)
-
-    before_position =
-      with_offsets
-      |> Enum.take_while(fn {_name, offset} ->
-        offset <= position.character
-      end)
-      |> Enum.map(&elem(&1, 0))
-
-    case before_position do
-      [:__MODULE__ | rest] ->
-        with {:ok, module_aliases} <- current_module_aliases(zipper) do
-          {:ok, {:module, Module.concat(module_aliases ++ rest)}}
+      at_or_before_position =
+        for {name, offset} <- aliases_with_columns,
+            offset <= position.character do
+          name
         end
 
-      aliases ->
-        {:ok, module} = Ast.expand_aliases(document, position, aliases)
-        {:ok, {:module, module}}
+      case at_or_before_position do
+        [:__MODULE__ | rest] ->
+          with {:ok, module_aliases} <- current_module_aliases(zipper) do
+            {:ok, {:module, Module.concat(module_aliases ++ rest)}}
+          end
+
+        aliases ->
+          {:ok, module} = Ast.expand_aliases(document, position, aliases)
+          {:ok, {:module, module}}
+      end
     end
   end
 
@@ -87,53 +92,72 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   defp innermost_zipper_at(ast, position) do
     %{line: line, character: char} = position
 
-    {_, innermost} =
+    {_, {innermost, _}} =
       ast
       |> Zipper.zip()
-      |> Zipper.traverse_while(nil, fn
-        {{_, _, _} = node, _} = zipper, current ->
-          range = get_range(node)
+      |> Zipper.traverse_while({nil, false}, fn
+        {{_, _, _} = node, _} = zipper, {current, found_line?} ->
+          case fetch_range(node) do
+            {:ok, range} ->
+              same_line? = line == range.start[:line] and line == range.end[:line]
+              line_in_range? = line >= range.start[:line] and line <= range.end[:line]
+              # sourceror column ranges are inclusive at the start and exclusive at the end
+              char_in_range? = char >= range.start[:column] and char < range.end[:column]
 
-          same_line? = line == range.start[:line] and line == range.end[:line]
-          line_in_range? = line >= range.start[:line] and line <= range.end[:line]
-          char_in_range? = char >= range.start[:column] and char <= range.end[:column]
+              cond do
+                same_line? and char_in_range? ->
+                  {:cont, zipper, {zipper, true}}
 
-          if (same_line? and char_in_range?) or (not same_line? and line_in_range?) do
-            {:cont, zipper, zipper}
-          else
-            {:skip, zipper, current}
+                found_line? or same_line? ->
+                  {:skip, zipper, {current, true}}
+
+                line_in_range? ->
+                  {:cont, zipper, {zipper, false}}
+
+                true ->
+                  {:skip, zipper, {current, found_line?}}
+              end
+
+            _ ->
+              {:cont, zipper, {current, found_line?}}
           end
 
-        zipper, current ->
-          {:cont, zipper, current}
+        zipper, acc ->
+          {:cont, zipper, acc}
       end)
 
-    case innermost do
-      nil -> {:error, :not_found}
-      zipper -> {:ok, zipper}
+    if innermost do
+      {:ok, innermost}
+    else
+      {:error, :not_found}
     end
   end
 
-  # corrects what appears to be a bug in Elixir's column count when dealing
-  # with non-simple-atom aliases, like __MODULE__, where the column is
-  # reported after the first token instead of at the beginning of it.
-  #
-  # Code.string_to_quoted!("Foo.Bar", columns: true)
-  # => {:__aliases__, [line: 1, column: 1], [:Foo, :Bar]}
-  #
-  # Code.string_to_quoted!("__MODULE__.Bar", columns: true)
-  # => {:__aliases__, [line: 1, column: 11], [{:__MODULE__, [line: 1, column: 1], nil}, :Bar]}
-  #
-  # Code.string_to_quoted!("@foo.Bar", columns: true)
-  # => {:__aliases__, [line: 1, column: 5],
-  #     [{:@, [line: 1, column: 1], [{:foo, [line: 1, column: 2], nil}]}, :Bar]}
-  #
-  defp get_range({:__aliases__, _, [{_, meta, _} | _]} = node) do
+  # Corrects aliases issue: https://github.com/doorgan/sourceror/issues/99
+  defp fetch_range({:__aliases__, _, [{_, meta, _} | _]} = node) do
     range = Sourceror.get_range(node)
-    put_in(range.start[:column], meta[:column])
+    {:ok, put_in(range.start[:column], meta[:column])}
   end
 
-  defp get_range(node), do: Sourceror.get_range(node)
+  # Corrects dot-call issue
+  defp fetch_range({:., _, [left, atom]}) when is_atom(atom) do
+    with {:ok, range} <- fetch_range(left) do
+      # Unhandled edge case: quoted atoms, e.g. Foo."bar-baz"
+      len = atom |> Atom.to_string() |> String.length()
+      {:ok, update_in(range.end[:column], &(&1 + 1 + len))}
+    end
+  end
+
+  # There are certain AST nodes that fail on Sourceror.get_range/1, like
+  # string interpolation segments, for instance. Instead of causing an
+  # error in the server, we just bail out on fetching the range.
+  defp fetch_range(node) do
+    {:ok, Sourceror.get_range(node)}
+  rescue
+    _ ->
+      Logger.warning("Couldn't get range for node: #{inspect(node)}")
+      {:error, :no_range}
+  end
 
   @doc """
   Returns the source location of the entity at the given position in the document.

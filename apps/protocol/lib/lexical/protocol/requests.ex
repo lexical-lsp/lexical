@@ -57,6 +57,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "textDocument/completion", Types.Completion.Params
   end
 
+  defmodule Hover do
+    use Proto
+
+    defrequest "textDocument/hover", Types.Hover.Params
+  end
+
   # Server -> Client requests
 
   defmodule RegisterCapability do

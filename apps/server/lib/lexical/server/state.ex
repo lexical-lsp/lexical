@@ -219,6 +219,7 @@ defmodule Lexical.Server.State do
         completion_provider: completion_options,
         definition_provider: true,
         document_formatting_provider: true,
+        hover_provider: true,
         text_document_sync: sync_options
       )
 

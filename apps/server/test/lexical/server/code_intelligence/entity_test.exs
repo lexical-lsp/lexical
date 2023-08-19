@@ -321,30 +321,38 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:error, _} = resolve(project, code)
     end
 
-    test "modules", %{project: project} do
+    test "returns an error if the cursor is not over an entity", %{project: project} do
       code = ~q[
-        At.The.End|
+        Beyond.The.End|
+        ]
+
+      assert {:error, :not_found} = resolve(project, code)
+
+      code = ~q[
+        | Beyond.The.End
+        ]
+
+      assert {:error, :not_found} = resolve(project, code)
+    end
+
+    test "returns module entities at and before the cursor", %{project: project} do
+      code = ~q[
+        At.The.En|d
         ]
 
       assert {:ok, {:module, At.The.End}} = resolve(project, code)
 
       code = ~q[
-        Beginning.Of.The.|End
+        Beginning.Of.The|.End
         ]
 
-      assert {:ok, {:module, Beginning.Of.The.End}} = resolve(project, code)
+      assert {:ok, {:module, Beginning.Of.The}} = resolve(project, code)
 
       code = ~q[
-        End|.Of.The.Beginning
+        En|d.Of.The.Beginning
         ]
 
-      assert {:ok, {:module, End.Of}} = resolve(project, code)
-
-      code = ~q[
-        I|n.The.Beginning
-        ]
-
-      assert {:ok, {:module, In}} = resolve(project, code)
+      assert {:ok, {:module, End}} = resolve(project, code)
 
       code = ~q[
         |At.The.Beginning
@@ -353,11 +361,65 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:ok, {:module, At}} = resolve(project, code)
     end
 
-    test "explicit aliases", %{project: project} do
+    # this test was added due to an off-by-one error that wasn't taking
+    # the separator into account when calculating offsets, causing the
+    # result to become more inaccurate as the alias grew longer
+    test "excludes the module segments after the hovered separator", %{project: project} do
+      code = ~q[
+        AAA|.BBB.CCC.DDD.EEE
+        ]
+
+      assert {:ok, {:module, AAA}} = resolve(project, code)
+
+      code = ~q[
+        AAA.BBB|.CCC.DDD.EEE
+        ]
+
+      assert {:ok, {:module, AAA.BBB}} = resolve(project, code)
+
+      code = ~q[
+        AAA.BBB.CCC|.DDD.EEE
+        ]
+
+      assert {:ok, {:module, AAA.BBB.CCC}} = resolve(project, code)
+
+      code = ~q[
+        AAA.BBB.CCC.DDD|.EEE
+        ]
+
+      assert {:ok, {:module, AAA.BBB.CCC.DDD}} = resolve(project, code)
+    end
+
+    test "returns module segments in nodes spanning multiple lines", %{project: project} do
+      code = ~q[
+        foo =
+          On.Another.Lin|e
+        ]
+
+      assert {:ok, {:module, On.Another.Line}} = resolve(project, code)
+
+      code = ~q[
+        On|.
+          Multiple.
+          Lines
+        ]
+
+      assert {:ok, {:module, On}} = resolve(project, code)
+
+      code = ~q[
+        Enu|m.map(1..10, fn i ->
+          i + 1
+        end)
+        ]
+
+      assert {:ok, {:module, Enum}} = resolve(project, code)
+    end
+
+    test "resolves explicit aliases", %{project: project} do
       code = ~q[
         defmodule Example do
           alias Long.Aliased.Module
-          Module|
+          Modul|e
         end
         ]
 
@@ -366,7 +428,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       code = ~q[
         defmodule Example do
           alias Long.Aliased.Module
-          Module.Nested|
+          Module.Neste|d
         end
         ]
 
@@ -391,13 +453,13 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:ok, {:module, Module}} = resolve(project, code)
     end
 
-    test "implicit aliases", %{project: project} do
+    test "resolves implicit aliases", %{project: project} do
       code = ~q[
         defmodule Example do
           defmodule Inner do
           end
 
-          Inner|
+          Inne|r
         end
         ]
 
@@ -405,7 +467,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
       code = ~q[
         defmodule Example do
-          Inner|
+          Inne|r
 
           defmodule Inner do
           end
@@ -416,7 +478,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
       code = ~q[
         defmodule Example do
-          __MODULE__|
+          __MODULE_|_
         end
         ]
 
@@ -432,7 +494,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
       code = ~q[
         defmodule Example do
-          __MODULE__.Nested|
+          __MODULE__.Neste|d
         end
         ]
 

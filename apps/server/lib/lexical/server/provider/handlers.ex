@@ -19,6 +19,9 @@ defmodule Lexical.Server.Provider.Handlers do
       %Requests.GoToDefinition{} ->
         {:ok, Handlers.GoToDefinition}
 
+      %Requests.Hover{} ->
+        {:ok, Handlers.Hover}
+
       %request_module{} ->
         {:error, {:unhandled, request_module}}
     end

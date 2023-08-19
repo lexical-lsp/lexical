@@ -46,13 +46,7 @@ defmodule Lexical.Ast do
   end
 
   defp parse(s) when is_binary(s) do
-    case Sourceror.string_to_quoted(s, token_metadata: true, columns: true) do
-      {:ok, code, _comments} ->
-        {:ok, code}
-
-      error ->
-        error
-    end
+    Sourceror.parse_string(s)
   end
 
   @doc """
