@@ -45,8 +45,60 @@ defmodule Lexical.Ast do
     parse(s)
   end
 
+  # This function uses the same parse options as `Sourceror.parse_string/1`
+  # with the addition of `:static_atoms_encoder` to provide extra positional
+  # information for certain atoms.
+  #
+  # For instance, consider multi-line aliases:
+  #
+  #   Foo.
+  #     Bar.
+  #     Baz
+  #
+  # Normally, this would be parsed as `{:__aliases__, [], [:Foo, :Bar, Baz]}`,
+  # but using `:static_atoms_encoder`, each atom will be of the form
+  # `{:__block__, [line: 1, column: 1], [:Foo]}`.
+  #
+  # Because the encoder applies to all static atoms in the AST and we only
+  # wish to wrap those that appear in the args of a node where we do not
+  # have positional information, we traverse the AST to unwrap certain
+  # static atoms in a second step. See `remove_unnecessary_wrapped_static_atoms/1`.
   defp parse(s) when is_binary(s) do
-    Sourceror.parse_string(s)
+    parsed =
+      s
+      |> Sourceror.string_to_quoted(
+        static_atoms_encoder: &encode_static_atoms/2,
+        literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+        token_metadata: true,
+        unescape: false,
+        columns: true,
+        warn_on_unnecessary_quotes: false,
+        emit_warnings: false
+      )
+
+    case parsed do
+      {:ok, quoted, _comments} -> {:ok, remove_unnecessary_wrapped_static_atoms(quoted)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp encode_static_atoms(atom_name, meta) do
+    meta = meta ++ [static_atom: true]
+    {:ok, {:__block__, meta, [String.to_atom(atom_name)]}}
+  end
+
+  defp remove_unnecessary_wrapped_static_atoms(ast) do
+    Sourceror.prewalk(ast, fn
+      {{:__block__, block_meta, [atom]}, meta, args} = node, state ->
+        if block_meta[:static_atom] do
+          {{atom, meta, args}, state}
+        else
+          {node, state}
+        end
+
+      node, state ->
+        {node, state}
+    end)
   end
 
   @doc """

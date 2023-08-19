@@ -39,54 +39,74 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  defp resolve({:__aliases__, _, aliases} = node, zipper, document, position) do
-    with {:ok, %{start: start}} <- fetch_range(node) do
-      {aliases_with_columns, _} =
-        Enum.map_reduce(aliases, start[:column], fn
-          {:__MODULE__, _, nil}, column ->
-            {{:__MODULE__, column}, column + 10 + 1}
+  defp resolve({:__block__, _, [atom]} = node, zipper, document, position) when is_atom(atom) do
+    parent = Zipper.up(zipper)
 
-          alias_name, column ->
-            alias_len = alias_name |> Atom.to_string() |> String.length()
-            {{alias_name, column}, column + alias_len + 1}
-        end)
+    case Zipper.node(parent) do
+      {:__aliases__, _, _} = aliases ->
+        resolve(aliases, parent, document, position)
 
-      at_or_before_position =
-        for {name, offset} <- aliases_with_columns,
-            offset <= position.character do
-          name
+      _ ->
+        unsupported_node(node)
+    end
+  end
+
+  defp resolve({:__aliases__, _, aliases}, zipper, document, position) do
+    at_or_before_position =
+      aliases
+      |> Enum.take_while(fn {_, meta, _} ->
+        meta[:line] < position.line or
+          (meta[:line] == position.line and meta[:column] <= position.character)
+      end)
+      |> Enum.map(fn
+        {:__MODULE__, _, _} -> :__MODULE__
+        {:__block__, _, [atom]} -> atom
+      end)
+
+    case at_or_before_position do
+      [:__MODULE__ | rest] ->
+        with {:ok, module_aliases} <- fetch_current_module_aliases(zipper) do
+          {:ok, {:module, Module.concat(module_aliases ++ rest)}}
         end
 
-      case at_or_before_position do
-        [:__MODULE__ | rest] ->
-          with {:ok, module_aliases} <- current_module_aliases(zipper) do
-            {:ok, {:module, Module.concat(module_aliases ++ rest)}}
-          end
-
-        aliases ->
-          {:ok, module} = Ast.expand_aliases(document, position, aliases)
-          {:ok, {:module, module}}
-      end
+      aliases ->
+        {:ok, module} = Ast.expand_aliases(document, position, aliases)
+        {:ok, {:module, module}}
     end
   end
 
   defp resolve({:__MODULE__, _, nil}, zipper, _document, _position) do
-    with {:ok, module_aliases} <- current_module_aliases(zipper) do
+    with {:ok, module_aliases} <- fetch_current_module_aliases(zipper) do
       {:ok, {:module, Module.concat(module_aliases)}}
     end
   end
 
   defp resolve(node, _zipper, _document, _position) do
+    unsupported_node(node)
+  end
+
+  defp unsupported_node(node) do
     {:error, {:unsupported, node}}
   end
 
-  defp current_module_aliases(nil), do: {:error, :missing_defmodule}
+  defp fetch_current_module_aliases(nil), do: {:error, :missing_defmodule}
 
-  defp current_module_aliases(zipper) do
+  defp fetch_current_module_aliases(zipper) do
     case Zipper.node(zipper) do
-      {:defmodule, _, [{:__aliases__, _, aliases} | _]} -> {:ok, aliases}
-      _ -> zipper |> Zipper.up() |> current_module_aliases()
+      {:defmodule, _, [{:__aliases__, _, aliases} | _]} ->
+        {:ok, Enum.map(aliases, &unwrap_atom/1)}
+
+      _ ->
+        zipper |> Zipper.up() |> fetch_current_module_aliases()
     end
+  end
+
+  defp unwrap_atom({:__block__, _, [atom]}) when is_atom(atom) do
+    atom
+  end
+
+  defp unwrap_atom(atom) when is_atom(atom) do
+    atom
   end
 
   defp innermost_zipper_at(ast, position) do
@@ -133,10 +153,19 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  # Corrects aliases issue: https://github.com/doorgan/sourceror/issues/99
-  defp fetch_range({:__aliases__, _, [{_, meta, _} | _]} = node) do
-    range = Sourceror.get_range(node)
-    {:ok, put_in(range.start[:column], meta[:column])}
+  # Handle aliases explicitly because Sourceror does not expect the atoms
+  # making up the components of the alias to be wrapped in tuples with
+  # additional metadata.
+  defp fetch_range({:__aliases__, _, [_ | _] = args}) do
+    {_, start_meta, _} = List.first(args)
+    {_, end_meta, [atom]} = List.last(args)
+
+    range = %{
+      start: [line: start_meta[:line], column: start_meta[:column]],
+      end: [line: end_meta[:line], column: end_meta[:column] + String.length(to_string(atom))]
+    }
+
+    {:ok, range}
   end
 
   # Corrects dot-call issue

@@ -407,6 +407,14 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:ok, {:module, On}} = resolve(project, code)
 
       code = ~q[
+        On.
+          Multiple.
+          Line|s
+        ]
+
+      assert {:ok, {:module, On.Multiple.Lines}} = resolve(project, code)
+
+      code = ~q[
         Enu|m.map(1..10, fn i ->
           i + 1
         end)
