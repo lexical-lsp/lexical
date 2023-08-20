@@ -4,7 +4,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   alias Lexical.Completion.Builder
   alias Lexical.Completion.Environment
   alias Lexical.Document
-  alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -97,7 +96,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
-
   def in_context?(%__MODULE__{} = env, :struct_reference) do
     case cursor_context(env) do
       {:ok, _line, {:struct, _}} ->
@@ -188,7 +186,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Env do
   end
 
   @impl Environment
-
   def in_context?(%__MODULE__{} = env, :alias) do
     # Aliases are complicated, especially if we're trying to find out if we're in
     # them from the current cursor position moving backwards.
