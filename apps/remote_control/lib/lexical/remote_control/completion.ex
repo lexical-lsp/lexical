@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.Completion do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Position
-  alias Lexical.RemoteControl.CodeIntelligence.Ast
   alias Lexical.RemoteControl.Completion.Candidate
 
   def elixir_sense_expand(doc_string, %Position{} = position) do
