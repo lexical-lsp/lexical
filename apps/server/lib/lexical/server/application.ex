@@ -6,8 +6,6 @@ defmodule Lexical.Server.Application do
   alias Lexical.Server.Provider
   alias Lexical.Server.Transport
 
-  require Logger
-
   use Application
 
   @impl true
