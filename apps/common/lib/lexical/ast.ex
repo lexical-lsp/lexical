@@ -1,4 +1,8 @@
 defmodule Lexical.Ast do
+  @moduledoc """
+  Utilities for working with syntax trees.
+  """
+
   alias Future.Code, as: Code
   alias Lexical.Ast.Aliases
   alias Lexical.Document
@@ -11,6 +15,26 @@ defmodule Lexical.Ast do
 
   @type t :: any()
 
+  @type parse_error :: any()
+
+  @type short_alias :: atom()
+  @type module_aliases :: [short_alias]
+
+  @type patch :: %{
+          optional(:preserver_indentation) => boolean(),
+          range: patch_range(),
+          change: patch_change()
+        }
+  @type patch_range :: %{start: patch_position(), end: patch_position()}
+  @type patch_position :: [patch_line | patch_column]
+  @type patch_line :: {:line, non_neg_integer()}
+  @type patch_column :: {:column, non_neg_integer()}
+  @type patch_change :: String.t() | (String.t() -> String.t())
+
+  @doc """
+  Returns an AST generated from a valid document or string.
+  """
+  @spec from(Document.t() | String.t()) :: {:ok, t} | {:error, parse_error()}
   def from(%Document{} = document) do
     document
     |> Document.to_string()
@@ -32,8 +56,11 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Returns the path to the cursor in the given document and position.
+  Returns the path to the cursor in the given document at a position.
+
+  May return a path even in the event of syntax errors.
   """
+  @spec cursor_path(Document.t(), Position.t() | {Position.line(), Position.character()}) :: [t]
   def cursor_path(%Document{} = doc, {line, character}) do
     cursor_path(doc, Position.new(line, character))
   end
@@ -52,6 +79,10 @@ defmodule Lexical.Ast do
     end
   end
 
+  @doc """
+  Returns a zipper for the document AST focused at the given position.
+  """
+  @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.zipper()} | {:error, parse_error()}
   def zipper_at(%Document{} = document, %Document.Position{} = position) do
     with {:ok, ast} <- from(document) do
       zipper =
@@ -65,16 +96,38 @@ defmodule Lexical.Ast do
     end
   end
 
+  @doc """
+  Converts the document to a zipper and traverses the nodes on the given line.
+
+  The given function must accept and return a (potentially modified) zipper.
+  To maintain an accumulator, use `traverse_line/4`.
+  """
+  @spec traverse_line(Document.t(), Position.line(), (Zipper.zipper() -> Zipper.zipper())) ::
+          {:ok, Zipper.zipper()} | {:error, parse_error()}
   def traverse_line(%Document{} = document, line_number, fun) when is_integer(line_number) do
     range = one_line_range(line_number)
     traverse_in(document, range, fun)
   end
 
+  @spec traverse_line(
+          Document.t(),
+          Position.line(),
+          acc,
+          (Zipper.zipper(), acc -> {Zipper.zipper(), acc})
+        ) ::
+          {:ok, Zipper.zipper(), acc} | {:error, parse_error()}
+        when acc: any()
   def traverse_line(%Document{} = document, line_number, acc, fun) when is_integer(line_number) do
     range = one_line_range(line_number)
     traverse_in(document, range, acc, fun)
   end
 
+  @doc """
+  Converts AST patches to document edits.
+
+  Returns `{:ok, edits}` if all patches are valid and `:error` otherwise.
+  """
+  @spec patches_to_edits([patch()]) :: {:ok, [Edit.t()]} | :error
   def patches_to_edits(patches) do
     maybe_edits =
       Enum.reduce_while(patches, [], fn patch, edits ->
@@ -90,9 +143,29 @@ defmodule Lexical.Ast do
     end
   end
 
+  @doc """
+  Converts a single AST patch to a document edit.
+
+  Returns `{:ok, edit}` if valid and `:error` otherwise.
+  """
+  @spec patch_to_edit(patch()) :: {:ok, Edit.t()} | :error
   def patch_to_edit(%{change: change, range: %{start: start_pos, end: end_pos}}) do
     with {:ok, range} <- patch_to_range(start_pos, end_pos) do
       {:ok, Edit.new(change, range)}
+    end
+  end
+
+  defp patch_to_range(start_pos, end_pos) do
+    with {:ok, start_pos} <- patch_to_position(start_pos),
+         {:ok, end_pos} <- patch_to_position(end_pos) do
+      {:ok, Document.Range.new(start_pos, end_pos)}
+    end
+  end
+
+  defp patch_to_position(patch_keyword) do
+    with {:ok, line} <- Keyword.fetch(patch_keyword, :line),
+         {:ok, column} <- Keyword.fetch(patch_keyword, :column) do
+      {:ok, Document.Position.new(line, column)}
     end
   end
 
@@ -140,9 +213,6 @@ defmodule Lexical.Ast do
   And sometimes we can't find the full name by the `Aliases.at/2` function,
   then we just return the `Module.concat(module_aliases)` as it is.
   """
-  @type short_alias :: atom()
-  @type module_aliases :: [short_alias]
-
   @spec expand_aliases(
           document :: Document.t(),
           position :: Position.t(),
@@ -164,20 +234,6 @@ defmodule Lexical.Ast do
   def expand_aliases(_, _, nil) do
     Logger.warning("Aliases are nil, can't expand them")
     :error
-  end
-
-  defp patch_to_range(start_pos, end_pos) do
-    with {:ok, start_pos} <- patch_to_position(start_pos),
-         {:ok, end_pos} <- patch_to_position(end_pos) do
-      {:ok, Document.Range.new(start_pos, end_pos)}
-    end
-  end
-
-  defp patch_to_position(patch_keyword) do
-    with {:ok, line} <- Keyword.fetch(patch_keyword, :line),
-         {:ok, column} <- Keyword.fetch(patch_keyword, :column) do
-      {:ok, Document.Position.new(line, column)}
-    end
   end
 
   # in the future, I'd like to expose functions that only traverse a section of the document,

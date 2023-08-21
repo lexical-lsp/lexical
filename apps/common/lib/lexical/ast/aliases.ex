@@ -263,10 +263,22 @@ defmodule Lexical.Ast.Aliases do
     end
   end
 
+  @moduledoc """
+  Support for resolving module aliases.
+  """
+
   alias Future.Code
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Position
 
+  @doc """
+  Returns the aliases available in the document at a given position.
+
+  May return aliases even in the event of syntax errors.
+  """
+  @spec at(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+          {:ok, %{Ast.short_alias() => module()}} | {:error, Ast.parse_error()}
   def at(%Document{} = doc, {line, character}) do
     at(doc, Position.new(line, character))
   end

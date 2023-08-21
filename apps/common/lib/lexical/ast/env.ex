@@ -1,4 +1,10 @@
 defmodule Lexical.Ast.Env do
+  @moduledoc """
+  Representation of the environment at a given position in a document.
+
+  This module implements the `Lexical.Ast.Environment` behaviour.
+  """
+
   alias Future.Code, as: Code
   alias Lexical.Ast
   alias Lexical.Ast.Environment
