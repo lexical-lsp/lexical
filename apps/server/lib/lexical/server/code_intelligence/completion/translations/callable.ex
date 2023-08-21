@@ -1,6 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
+  alias Lexical.Ast.Env
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Env
+  alias Lexical.Server.CodeIntelligence.Completion.Builder
 
   @callables [Candidate.Function, Candidate.Macro, Candidate.Callback]
 
@@ -39,7 +40,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       end
 
     env
-    |> Env.snippet(insert_text,
+    |> Builder.snippet(insert_text,
       kind: :function,
       label: label(callable, env),
       tags: tags
@@ -53,7 +54,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
     complete_capture =
       env
-      |> Env.plain_text(name_and_arity,
+      |> Builder.plain_text(name_and_arity,
         detail: "(Capture)",
         kind: :function,
         label: name_and_arity
@@ -62,7 +63,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
     call_capture =
       env
-      |> Env.snippet(callable_snippet(callable, env),
+      |> Builder.snippet(callable_snippet(callable, env),
         detail: "(Capture with arguments)",
         kind: :function,
         label: label(callable, env)
@@ -102,7 +103,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     if String.starts_with?(name, "__") or name in @default_functions do
       item
     else
-      Env.boost(item, default_boost)
+      Builder.boost(item, default_boost)
     end
   end
 

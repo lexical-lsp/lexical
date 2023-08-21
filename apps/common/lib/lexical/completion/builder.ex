@@ -1,5 +1,5 @@
 defmodule Lexical.Completion.Builder do
-  alias Lexical.Completion.Environment
+  alias Lexical.Ast.Environment
 
   @type insert_text_format :: :plain_text | :snippet
 
