@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.CodeMod.Ast.Aliases do
+defmodule Lexical.Ast.Aliases do
   defmodule Alias do
     defstruct [:from, :to]
 

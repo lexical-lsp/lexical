@@ -1,6 +1,6 @@
-defmodule Lexical.RemoteControl.CodeMod.Ast.AliasesTest do
+defmodule Lexical.Ast.AliasesTest do
+  alias Lexical.Ast.Aliases
   alias Lexical.Document
-  alias Lexical.RemoteControl.CodeMod.Ast.Aliases
   alias Lexical.Test.CodeSigil
   alias Lexical.Test.CursorSupport
 

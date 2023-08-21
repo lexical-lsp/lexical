@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Ast do
+  alias Lexical.Ast.Aliases
   alias Lexical.Document
   alias Lexical.Document.Position
-  alias Lexical.RemoteControl.CodeMod.Ast.Aliases
 
   require Logger
 
