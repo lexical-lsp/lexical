@@ -7,7 +7,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   use Translatable.Impl, for: Candidate.Macro
 
-  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test)
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
 
   def translate(%Candidate.Macro{name: name}, _builder, _env)
       when name in ["__before_compile__", "__using__", "__after_compile__"] do
@@ -242,6 +242,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     env
     |> builder.snippet(snippet,
       detail: macro.spec,
+      kind: :class,
+      label: label
+    )
+    |> builder.boost()
+  end
+
+  def translate(%Candidate.Macro{name: "use", arity: 1}, builder, env) do
+    label = "use (invoke another module's __using__ macro)"
+    snippet = "use $0"
+
+    env
+    |> builder.snippet(snippet,
       kind: :class,
       label: label
     )
