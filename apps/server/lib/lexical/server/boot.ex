@@ -7,6 +7,9 @@ defmodule Lexical.Server.Boot do
   alias Lexical.VM.Versions
   require Logger
 
+  # halt/1 will generate a "no local return" error, which is exactly right, but that's it's _job_
+  @dialyzer {:nowarn_function, halt: 1}
+
   @env Mix.env()
   @target Mix.target()
   @dep_apps Enum.map(Mix.Dep.cached(), & &1.app)
