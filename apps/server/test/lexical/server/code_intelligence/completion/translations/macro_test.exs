@@ -277,6 +277,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.insert_text == "alias $0"
     end
 
+    test "use returns a snippet", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("us|")
+               |> fetch_completion("use ")
+
+      assert completion.label == "use (invoke another module's __using__ macro)"
+      assert completion.insert_text_format == :snippet
+      assert completion.insert_text == "use $0"
+    end
+
     test "import returns a snippet", %{project: project} do
       assert {:ok, completion} =
                project

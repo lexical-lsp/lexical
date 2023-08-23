@@ -226,5 +226,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert order.kind == :struct
       assert apply_completion(order) =~ "%Order{$1}"
     end
+
+    test "completions in use directives only return modules who have a descendent that has __using__",
+         %{
+           project: project
+         } do
+      source = ~q[
+        use En|
+      ]
+
+      completions = complete(project, source)
+      assert length(completions) == 2
+      assert {:ok, _} = fetch_completion(completions, insert_text: "ExUnit")
+      assert {:ok, _} = fetch_completion(completions, insert_text: "ExUnitProperties")
+    end
   end
 end

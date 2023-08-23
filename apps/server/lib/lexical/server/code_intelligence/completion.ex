@@ -9,10 +9,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.RemoteControl.Modules.Predicate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace
 
+  use Predicate.Syntax
   require InsertTextFormat
   require Logger
 
@@ -185,6 +187,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           Candidate.Protocol,
           Candidate.Struct
         ]
+
+      Env.in_context?(env, :use) ->
+        case result do
+          %{full_name: full_name} ->
+            with_prefix =
+              RemoteControl.Api.modules_with_prefix(
+                env.project,
+                full_name,
+                predicate(&macro_exported?(&1, :__using__, 1))
+              )
+
+            not Enum.empty?(with_prefix)
+
+          _ ->
+            false
+        end
 
       true ->
         true
