@@ -19,7 +19,7 @@
   installPhase = ''
     runHook preInstall
 
-    mix release lexical --no-deps-check --path "$out"
+    mix do compile --no-deps-check, package --path "$out"
 
     runHook postInstall
   '';
@@ -29,6 +29,6 @@
       substituteInPlace "$script" --replace 'ERL_EXEC="erl"' 'ERL_EXEC="${erlang}/bin/erl"'
     done
 
-    wrapProgram $out/bin/lexical --set RELEASE_COOKIE lexical
+    makeWrapper $out/bin/start_lexical.sh $out/bin/lexical --set RELEASE_COOKIE lexical
   '';
 }
