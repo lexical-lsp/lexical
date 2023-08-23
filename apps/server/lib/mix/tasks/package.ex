@@ -66,7 +66,6 @@ defmodule Mix.Tasks.Package do
   to the code search path with the `-pa` argument.
   """
 
-  alias Lexical.VM.Versions
   alias Mix.Tasks.Namespace
 
   @options [
@@ -79,13 +78,11 @@ defmodule Mix.Tasks.Package do
   @execute_permisson 0o755
 
   def run(args) do
+    Mix.Task.run(:compile)
     {opts, _, _} = OptionParser.parse(args, @options)
     default_path = Path.join([Mix.Project.build_path(), "package", "lexical"])
     package_root = Keyword.get(opts, :path, default_path)
 
-    rebuild_on_version_change(package_root)
-
-    Mix.Task.run(:compile)
     Mix.Shell.IO.info("Assembling build in #{package_root}")
     File.mkdir_p!(package_root)
 
@@ -96,27 +93,11 @@ defmodule Mix.Tasks.Package do
     copy_launchers(package_root)
     copy_priv_files(package_root)
     copy_config(package_root)
-    write_vm_versions(package_root)
     File.rm_rf!(scratch_directory)
 
     if Keyword.get(opts, :zip, false) do
       zip(package_root)
       File.rm_rf(package_root)
-    end
-  end
-
-  defp rebuild_on_version_change(package_root) do
-    %{elixir: elixir_current, erlang: erlang_current} = Versions.current()
-
-    with {:ok, %{elixir: elixir_compiled, erlang: erlang_compiled}} <-
-           Versions.read(priv_path(package_root)) do
-      if elixir_compiled != elixir_current or erlang_compiled != erlang_current do
-        Code.put_compiler_option(:ignore_module_conflict, true)
-        Mix.Shell.IO.error("The version of elixir or erlang has changed. Forcing recompilation.")
-        File.rm_rf!(package_root)
-        Mix.Task.clear()
-        Mix.Task.run(:clean, ~w(--deps))
-      end
     end
   end
 
@@ -263,7 +244,7 @@ defmodule Mix.Tasks.Package do
   @priv_apps [:remote_control]
 
   defp copy_priv_files(package_root) do
-    priv_dest_dir = priv_path(package_root)
+    priv_dest_dir = Path.join(package_root, "priv")
 
     Enum.each(@priv_apps, fn app_name ->
       case priv_dir(app_name) do
@@ -274,12 +255,6 @@ defmodule Mix.Tasks.Package do
           :ok
       end
     end)
-  end
-
-  defp write_vm_versions(package_root) do
-    package_root
-    |> priv_path()
-    |> Versions.write()
   end
 
   defp zip(package_root) do
@@ -332,9 +307,5 @@ defmodule Mix.Tasks.Package do
       _ ->
         path
     end
-  end
-
-  defp priv_path(package_root) do
-    Path.join(package_root, "priv")
   end
 end

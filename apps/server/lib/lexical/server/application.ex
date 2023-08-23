@@ -5,7 +5,6 @@ defmodule Lexical.Server.Application do
 
   alias Lexical.Server.Provider
   alias Lexical.Server.Transport
-
   use Application
 
   @impl true

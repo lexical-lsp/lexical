@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 set_up_version_manager() {
-    if command -v asdf > /dev/null && asdf which elixir > /dev/null 2>&1 ; then
+    if [ -e $HOME/.asdf ] &&  asdf which elixir > /dev/null -eq 0; then
         VERSION_MANAGER="asdf"
-    elif command -v rtx > /dev/null &&  rtx which elixir > /dev/null 2>&1 ; then
+    elif [ -e $HOME/.rtx ] && rtx which elixir > /dev/null -eq 0; then
         VERSION_MANAGER="rtx"
     else
         VERSION_MANAGER="none"
     fi
 }
+
 
 set_up_version_manager
 
@@ -18,7 +19,7 @@ case "$VERSION_MANAGER" in
         asdf env erl exec "$@" &
         ;;
     rtx)
-        eval "$(rtx env -s bash)"
+        rtx env -s bash erl exec "$@" &
         ;;
     *)
         ;;
@@ -35,14 +36,8 @@ esac
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-PATH_APPEND_ARGS=$(for f in $(find ${SCRIPT_DIR}/../lib -name '*.ez')
-do
-    lib=$(basename $f | sed -e 's/.ez//g')
-    echo "-pa $f/$lib/ebin"
-done)
-
-"${ELIXIR_COMMAND}" $(echo $PATH_APPEND_ARGS) \
-                    -pa "${SCRIPT_DIR}/../consolidated" \
+export ERL_LIBS="${SCRIPT_DIR}/../lib"
+"${ELIXIR_COMMAND}" -pa "${SCRIPT_DIR}/../consolidated" \
                     -pa "${SCRIPT_DIR}/../config/" \
                     -pa "${SCRIPT_DIR}/../priv/" \
                     --eval "LXical.Server.Boot.start" \

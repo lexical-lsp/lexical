@@ -7,8 +7,6 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.Plugin
-  alias Lexical.VM.Versions
-
   require Logger
 
   import Messages
@@ -50,17 +48,8 @@ defmodule Lexical.RemoteControl.Build.State do
     project = state.project
     build_path = Project.build_path(project)
 
-    unless Versions.compatible?(build_path) do
-      Logger.info("Build path #{build_path} was compiled on a previous erlang version. Deleting")
-
-      if File.exists?(build_path) do
-        File.rm_rf(build_path)
-      end
-    end
-
     unless File.exists?(build_path) do
       File.mkdir_p!(build_path)
-      Versions.write(build_path)
     end
   end
 
