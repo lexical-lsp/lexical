@@ -296,7 +296,7 @@ defmodule Mix.Tasks.Package do
       glob = Path.join(package_name, "**")
 
       files =
-        for path <- Path.wildcard(glob),
+        for path <- Path.wildcard(glob, match_dot: true),
             File.regular?(path) do
           String.to_charlist(path)
         end
