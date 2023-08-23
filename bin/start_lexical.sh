@@ -18,7 +18,7 @@ case "$VERSION_MANAGER" in
         asdf env erl exec "$@" &
         ;;
     rtx)
-        eval "$(rtx env -s bash erl)"
+        eval "$(rtx env -s bash)"
         ;;
     *)
         ;;
