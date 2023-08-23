@@ -1,3 +1,6 @@
+[![Discord](https://img.shields.io/badge/Discord-5865F3?style=flat&logo=discord&logoColor=white&link=https://discord.gg/FvdkuVyted)](https://discord.gg/FvdkuVyted)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/lexical-lsp/lexical/elixir.yml)
+
 # Lexical
 
 Lexical is a next-generation language server for the Elixir programming language.
@@ -75,6 +78,15 @@ Lexical will be available in `/path/to/lexical`.
 
 ## Development
 
+Lexical is intended to run on any version of Erlang >= 24 and Elixir
+>= 1.13. Before beginning development, you should install Erlang
+`24.3.4.12` and Elixir `1.13.4` and use those versions when you're
+building code.
+
+You should also look at the [complete compatibility
+matrix](pages/installation.md#caveats) do see which versions are
+supported.
+
 You're going to need a local instance in order to develop lexical, so follow the [Detailed Installation Instructions](pages/installation.md) first.
 
 Then, install the git hooks with
@@ -87,6 +99,23 @@ These are pre-commit hooks that will check for correct formatting and run credo 
 
 After this, you're ready to put together a pull request for Lexical!
 
+### Logging
+When lexical starts up, it creates a `.lexical` directory in the root
+directory of a project. Inside that directory are two log files,
+`lexical.log` and `project.log`. The `.lexical.log` log file contains
+logging and OTP messages from the language server, while the
+`project.log` file contains logging and OTP messages from the
+project's node.  While developing lexical, it's helpful to open up a
+terminal and tail both of these log files so you can see any errors
+and messages that lexical emits. To do that, run the following in a
+terminal while in the project's root directory:
+
+```shell
+tail -f .lexical/*.log
+```
+
+Note: These log files roll over when they reach 1 megabyte, so after a
+time, it will be necessary to re-run the above command.
 
 ### Debugging
 
