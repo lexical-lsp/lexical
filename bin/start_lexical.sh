@@ -35,16 +35,7 @@ esac
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-PATH_APPEND_ARGS=$(for f in $(find ${SCRIPT_DIR}/../lib -name '*.ez')
-do
-    lib=$(basename $f | sed -e 's/.ez//g')
-    echo "-pa $f/$lib/ebin"
-done)
-
-"${ELIXIR_COMMAND}" $(echo $PATH_APPEND_ARGS) \
-                    -pa "${SCRIPT_DIR}/../consolidated" \
-                    -pa "${SCRIPT_DIR}/../config/" \
-                    -pa "${SCRIPT_DIR}/../priv/" \
-                    --eval "LXical.Server.Boot.start" \
-                    --cookie "lexical" \
-                    --no-halt
+"${ELIXIR_COMMAND}" \
+    --cookie "lexical" \
+    --no-halt \
+    "${SCRIPT_DIR}/../bin/boot.exs"
