@@ -51,3 +51,4 @@ jobs:
           artifacts: lexical*.zip
           makeLatest: true
           generateReleaseNotes: true
+          allowUpdates: true
