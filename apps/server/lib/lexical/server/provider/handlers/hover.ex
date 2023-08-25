@@ -12,8 +12,9 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   def handle(%Requests.Hover{} = request, %Env{} = env) do
     maybe_hover =
       with {:ok, {:module, module}} <- Entity.resolve(request.document, request.position),
-           {:ok, doc_content} <- module_doc_content(env.project, module) do
+           {:ok, module_docs} <- RemoteControl.Api.docs(env.project, module) do
         module_name = module |> to_string() |> String.replace_prefix("Elixir.", "")
+        doc_content = module_doc_content(module_docs.doc)
 
         content = """
         ### #{module_name}
@@ -31,32 +32,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     {:reply, Responses.Hover.new(request.id, maybe_hover)}
   end
 
-  defp module_doc_content(project, module) do
-    case fetch_docs(project, module) do
-      {:ok, %{module_doc: doc}} when is_binary(doc) ->
-        {:ok, doc}
-
-      {:ok, %{module_doc: :none}} ->
-        {:ok, "*This module is undocumented.*\n"}
-
-      {:ok, %{module_doc: :hidden}} ->
-        {:ok, "*This module is private.*\n"}
-
-      {:ok, other} ->
-        {:error, {:unexpected, other}}
-
-      error ->
-        error
-    end
-  end
-
-  defp fetch_docs(project, module) do
-    with {:docs_v1, _annotation, _lang, _format, module_doc, _meta, docs} <-
-           RemoteControl.Api.docs(project, module) do
-      {:ok, %{module_doc: parse_module_doc(module_doc), docs: docs}}
-    end
-  end
-
-  defp parse_module_doc(%{"en" => module_doc}), do: module_doc
-  defp parse_module_doc(other) when is_atom(other), do: other
+  defp module_doc_content(s) when is_binary(s), do: s
+  defp module_doc_content(:none), do: "*This module is undocumented.*\n"
+  defp module_doc_content(:hidden), do: "*This module is private.*\n"
 end

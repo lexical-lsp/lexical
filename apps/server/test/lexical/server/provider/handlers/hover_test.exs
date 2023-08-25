@@ -26,12 +26,18 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     {:ok, project: project}
   end
 
+  setup [:with_uri]
+
   defp with_uri(%{project: project, uri_for: file}) do
     path = file_path(project, Path.join("lib", file))
     %{uri: Document.Path.ensure_uri(path)}
   end
 
-  def build_request(path, line, char) do
+  defp with_uri(_) do
+    :ok
+  end
+
+  def hover_request(path, line, char) do
     uri = Document.Path.ensure_uri(path)
 
     params = [
@@ -50,13 +56,12 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   end
 
   describe "module hover" do
-    setup [:with_uri]
     @describetag uri_for: "docs.ex"
 
     test "module with docs", %{project: project, uri: uri} do
       # alias Project.Docs.PublicModule
       #                    ^
-      {:ok, request} = build_request(uri, 64, 21)
+      {:ok, request} = hover_request(uri, 64, 21)
 
       assert {:reply, %{result: %Types.Hover{contents: content}}} = handle(request, project)
 
@@ -72,7 +77,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     test "hidden module", %{project: project, uri: uri} do
       # alias Project.Docs.PrivateModule
       #                    ^
-      {:ok, request} = build_request(uri, 69, 21)
+      {:ok, request} = hover_request(uri, 69, 21)
 
       assert {:reply, %{result: %Types.Hover{contents: content}}} = handle(request, project)
 
@@ -88,7 +93,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     test "undocumented module", %{project: project, uri: uri} do
       # alias Project.Docs.UndocumentedModule
       #                    ^
-      {:ok, request} = build_request(uri, 74, 21)
+      {:ok, request} = hover_request(uri, 74, 21)
 
       assert {:reply, %{result: %Types.Hover{contents: content}}} = handle(request, project)
 
@@ -100,5 +105,13 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
              *This module is undocumented.*
              """
     end
+  end
+
+  @tag uri_for: "docs.ex"
+  test "replies with nil result when there is nothing to hover", %{project: project, uri: uri} do
+    # column well outside a reasonable range
+    {:ok, request} = hover_request(uri, 0, 1_000)
+
+    assert {:reply, %{result: nil}} = handle(request, project)
   end
 end

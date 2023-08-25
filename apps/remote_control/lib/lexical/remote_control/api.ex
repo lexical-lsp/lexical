@@ -71,9 +71,8 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl.Modules, :with_prefix, [prefix, predicate])
   end
 
+  @spec docs(Project.t(), module()) :: {:ok, CodeIntelligence.Docs.t()} | {:error, any()}
   def docs(%Project{} = project, module) when is_atom(module) do
-    with {:module, _} <- RemoteControl.call(project, Code, :ensure_compiled, [module]) do
-      RemoteControl.call(project, Code, :fetch_docs, [module])
-    end
+    RemoteControl.call(project, CodeIntelligence.Docs, :for_module, [module])
   end
 end
