@@ -8,7 +8,6 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.Text
-  alias Sourceror.Zipper
 
   require Logger
 
@@ -27,165 +26,69 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   """
   @spec resolve(Document.t(), Position.t()) :: {:ok, resolved} | {:error, term()}
   def resolve(%Document{} = document, %Position{} = position) do
-    with {:ok, ast} <- Ast.from(document),
-         {:ok, zipper} <- innermost_zipper_at(ast, position),
-         {:ok, resolved} <- resolve(Zipper.node(zipper), zipper, document, position) do
+    with {:ok, %{context: context, begin: begin_pos, end: end_pos}} <-
+           Ast.surround_context(document, position),
+         {:ok, resolved} <- resolve(context, {begin_pos, end_pos}, document, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved}
     else
-      error ->
-        Logger.info("Resolve failed: #{inspect(error)}")
-        error
+      {:error, :surround_context} -> {:error, :not_found}
+      error -> error
     end
   end
 
-  defp resolve({:__block__, _, [atom]} = node, zipper, document, position) when is_atom(atom) do
-    parent = Zipper.up(zipper)
-
-    case Zipper.node(parent) do
-      {:__aliases__, _, _} = aliases ->
-        resolve(aliases, parent, document, position)
-
-      _ ->
-        unsupported_node(node)
-    end
+  defp resolve({:alias, charlist}, node_position, document, position) do
+    {:ok, module} = resolve_module(charlist, node_position, document, position)
+    {:ok, {:module, module}}
   end
 
-  defp resolve({:__aliases__, _, aliases}, zipper, document, position) do
-    at_or_before_position =
-      aliases
-      |> Enum.take_while(fn {_, meta, _} ->
-        meta[:line] < position.line or
-          (meta[:line] == position.line and meta[:column] <= position.character)
+  defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_position, document, position) do
+    {:ok, module} = resolve_module(prefix ++ [?.] ++ charlist, node_position, document, position)
+    {:ok, {:module, module}}
+  end
+
+  defp resolve({:local_or_var, ~c"__MODULE__"}, node_position, document, position) do
+    {:ok, module} = resolve_module(~c"__MODULE__", node_position, document, position)
+    {:ok, {:module, module}}
+  end
+
+  defp resolve(context, _node_position, _document, _position) do
+    unsupported_context(context)
+  end
+
+  defp unsupported_context(context) do
+    {:error, {:unsupported, context}}
+  end
+
+  # Modules on a single line, e.g. "Foo.Bar.Baz"
+  defp resolve_module(charlist, {{line, column}, {line, _}}, document, position)
+       when is_list(charlist) do
+    # Take only the segments at and before the cursor, e.g.
+    # Foo|.Bar.Baz -> Foo
+    # Foo.|Bar.Baz -> Foo.Bar
+    module_string =
+      charlist
+      |> Enum.with_index(column)
+      |> Enum.take_while(fn {char, column} ->
+        column < position.character or char != ?.
       end)
-      |> Enum.map(fn
-        {:__MODULE__, _, _} -> :__MODULE__
-        {:__block__, _, [atom]} -> atom
-      end)
+      |> Enum.map(&elem(&1, 0))
+      |> List.to_string()
 
-    case at_or_before_position do
-      [:__MODULE__ | rest] ->
-        with {:ok, module_aliases} <- fetch_current_module_aliases(zipper) do
-          {:ok, {:module, Module.concat(module_aliases ++ rest)}}
-        end
-
-      aliases ->
-        {:ok, module} = Ast.expand_aliases(document, position, aliases)
-        {:ok, {:module, module}}
-    end
+    [module_string]
+    |> Module.concat()
+    |> Ast.expand_aliases(document, position)
   end
 
-  defp resolve({:__MODULE__, _, nil}, zipper, _document, _position) do
-    with {:ok, module_aliases} <- fetch_current_module_aliases(zipper) do
-      {:ok, {:module, Module.concat(module_aliases)}}
-    end
-  end
+  # Modules on multiple lines, e.g. "Foo.\n  Bar.\n  Baz"
+  # Since we no longer have formatting information at this point, we
+  # just return the entire module for now.
+  defp resolve_module(charlist, _node_position, document, position) do
+    module_string = List.to_string(charlist)
 
-  defp resolve(node, _zipper, _document, _position) do
-    unsupported_node(node)
-  end
-
-  defp unsupported_node(node) do
-    {:error, {:unsupported, node}}
-  end
-
-  defp fetch_current_module_aliases(nil), do: {:error, :missing_defmodule}
-
-  defp fetch_current_module_aliases(zipper) do
-    case Zipper.node(zipper) do
-      {:defmodule, _, [{:__aliases__, _, aliases} | _]} ->
-        {:ok, Enum.map(aliases, &unwrap_atom/1)}
-
-      _ ->
-        zipper |> Zipper.up() |> fetch_current_module_aliases()
-    end
-  end
-
-  defp unwrap_atom({:__block__, _, [atom]}) when is_atom(atom) do
-    atom
-  end
-
-  defp unwrap_atom(atom) when is_atom(atom) do
-    atom
-  end
-
-  defp innermost_zipper_at(ast, position) do
-    %{line: line, character: char} = position
-
-    {_, {innermost, _}} =
-      ast
-      |> Zipper.zip()
-      |> Zipper.traverse_while({nil, false}, fn
-        {{_, _, _} = node, _} = zipper, {current, found_line?} ->
-          case fetch_range(node) do
-            {:ok, range} ->
-              same_line? = line == range.start[:line] and line == range.end[:line]
-              line_in_range? = line >= range.start[:line] and line <= range.end[:line]
-              # sourceror column ranges are inclusive at the start and exclusive at the end
-              char_in_range? = char >= range.start[:column] and char < range.end[:column]
-
-              cond do
-                same_line? and char_in_range? ->
-                  {:cont, zipper, {zipper, true}}
-
-                found_line? or same_line? ->
-                  {:skip, zipper, {current, true}}
-
-                line_in_range? ->
-                  {:cont, zipper, {zipper, false}}
-
-                true ->
-                  {:skip, zipper, {current, found_line?}}
-              end
-
-            _ ->
-              {:cont, zipper, {current, found_line?}}
-          end
-
-        zipper, acc ->
-          {:cont, zipper, acc}
-      end)
-
-    if innermost do
-      {:ok, innermost}
-    else
-      {:error, :not_found}
-    end
-  end
-
-  # Handle aliases explicitly because Sourceror does not expect the atoms
-  # making up the components of the alias to be wrapped in tuples with
-  # additional metadata.
-  defp fetch_range({:__aliases__, _, [_ | _] = args}) do
-    {_, start_meta, _} = List.first(args)
-    {_, end_meta, [atom]} = List.last(args)
-
-    range = %{
-      start: [line: start_meta[:line], column: start_meta[:column]],
-      end: [line: end_meta[:line], column: end_meta[:column] + String.length(to_string(atom))]
-    }
-
-    {:ok, range}
-  end
-
-  # Corrects dot-call issue
-  defp fetch_range({:., _, [left, atom]}) when is_atom(atom) do
-    with {:ok, range} <- fetch_range(left) do
-      # Unhandled edge case: quoted atoms, e.g. Foo."bar-baz"
-      len = atom |> Atom.to_string() |> String.length()
-      {:ok, update_in(range.end[:column], &(&1 + 1 + len))}
-    end
-  end
-
-  # There are certain AST nodes that fail on Sourceror.get_range/1, like
-  # string interpolation segments, for instance. Instead of causing an
-  # error in the server, we just bail out on fetching the range.
-  defp fetch_range(node) do
-    {:ok, Sourceror.get_range(node)}
-  rescue
-    _ ->
-      Logger.warning("Couldn't get range for node: #{inspect(node)}")
-      {:error, :no_range}
+    [module_string]
+    |> Module.concat()
+    |> Ast.expand_aliases(document, position)
   end
 
   @doc """

@@ -41,7 +41,7 @@ defmodule Lexical.AstTest do
       ]
 
       path = cursor_path(text)
-      assert path == [{:__cursor__, [line: 1, column: 1], []}]
+      assert path == [{:__cursor__, [closing: [line: 1, column: 12], line: 1, column: 1], []}]
     end
 
     test "returns [] when can't parse the AST" do

@@ -1,6 +1,56 @@
 defmodule Lexical.Ast do
   @moduledoc """
   Utilities for working with syntax trees.
+
+  ## Differences from `Code`
+
+  This module includes functions for parsing documents (`t:Lexical.Document/0`)
+  and strings into AST's that can be used with the `Sourceror` API and
+  include some additional metadata.
+
+  The structure of code parsed using this module will be slightly
+  different than using `Code` directly. The most notable difference is
+  that atoms will be wrapped in a `:__block__` node that contains
+  additional metadata.
+
+  Consider these two semantically-equivalent lists, for instance:
+
+      iex> list_with_kw_syntax = "[foo: :bar]"
+      iex> list_with_tuple_syntax = "[{:foo, :bar}]"
+
+  By default, `Code.string_to_quoted/1` does not differentiate between them:
+
+      iex> list_with_kw_syntax |> Code.string_to_quoted()
+      {:ok, [foo: :bar]}
+
+      iex> list_with_tuple_syntax |> Code.string_to_quoted()
+      {:ok, [foo: :bar]}
+
+  In contrast, `Lexical.Ast.from/1` does:
+
+      iex> list_with_kw_syntax |> Lexical.Ast.from()
+      {:ok,
+       {:__block__, [closing: [line: 1, column: 11], line: 1, column: 1],
+        [
+          [
+            {{:__block__, [format: :keyword, line: 1, column: 2], [:foo]},
+             {:__block__, [line: 1, column: 7], [:bar]}}
+          ]
+        ]}}
+
+      iex> list_with_tuple_syntax |> Lexical.Ast.from()
+      {:ok,
+       {:__block__, [closing: [line: 1, column: 14], line: 1, column: 1],
+        [
+          [
+            {:__block__, [closing: [line: 1, column: 13], line: 1, column: 2],
+             [
+               {{:__block__, [line: 1, column: 3], [:foo]},
+                {:__block__, [line: 1, column: 9], [:bar]}}
+             ]}
+          ]
+        ]}}
+
   """
 
   alias Future.Code, as: Code
@@ -15,10 +65,13 @@ defmodule Lexical.Ast do
 
   @type t :: any()
 
+  @type cursor_context :: any()
+  @type surround_context :: any()
+
   @type parse_error :: any()
 
   @type short_alias :: atom()
-  @type module_aliases :: [short_alias]
+  @type alias_segments :: [short_alias]
 
   @type patch :: %{
           optional(:preserver_indentation) => boolean(),
@@ -42,63 +95,96 @@ defmodule Lexical.Ast do
   end
 
   def from(s) when is_binary(s) do
-    parse(s)
+    do_string_to_quoted(s)
   end
 
-  # This function uses the same parse options as `Sourceror.parse_string/1`
-  # with the addition of `:static_atoms_encoder` to provide extra positional
-  # information for certain atoms.
-  #
-  # For instance, consider multi-line aliases:
-  #
-  #   Foo.
-  #     Bar.
-  #     Baz
-  #
-  # Normally, this would be parsed as `{:__aliases__, [], [:Foo, :Bar, Baz]}`,
-  # but using `:static_atoms_encoder`, each atom will be of the form
-  # `{:__block__, [line: 1, column: 1], [:Foo]}`.
-  #
-  # Because the encoder applies to all static atoms in the AST and we only
-  # wish to wrap those that appear in the args of a node where we do not
-  # have positional information, we traverse the AST to unwrap certain
-  # static atoms in a second step. See `remove_unnecessary_wrapped_static_atoms/1`.
-  defp parse(s) when is_binary(s) do
-    parsed =
-      s
-      |> Sourceror.string_to_quoted(
-        static_atoms_encoder: &encode_static_atoms/2,
-        literal_encoder: &{:ok, {:__block__, &2, [&1]}},
-        token_metadata: true,
-        unescape: false,
-        columns: true,
-        warn_on_unnecessary_quotes: false,
-        emit_warnings: false
-      )
+  @doc """
+  Returns an AST fragment from the start of the document to the given position.
+  """
+  @spec fragment(Document.t(), Position.t()) :: {:ok, t} | {:error, parse_error()}
+  def fragment(%Document{} = document, %Position{} = position) do
+    # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
+    # Note: because of the above issue: Using `cursor_context` + `container_cursor_to_quoted`
+    # can't deal with some cases like: `alias Foo.Bar, as: AnotherBar`,
+    # so we need to add a new line to make sure we can get the parrent node of the cursor
+    %{line: line} = position
+    added_new_line_position = Position.new(line + 1, 1)
+    fragment = Document.fragment(document, added_new_line_position)
 
-    case parsed do
-      {:ok, quoted, _comments} -> {:ok, remove_unnecessary_wrapped_static_atoms(quoted)}
-      {:error, error} -> {:error, error}
+    case do_container_cursor_to_quoted(fragment) do
+      {:ok, quoted} ->
+        {:ok, quoted}
+
+      _error ->
+        # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1626932280
+        # NOTE: Adding new line doesn't always work,
+        # so we need to try again without adding new line
+        document_fragment = Document.fragment(document, position)
+        do_container_cursor_to_quoted(document_fragment)
     end
   end
 
-  defp encode_static_atoms(atom_name, meta) do
-    meta = meta ++ [static_atom: true]
-    {:ok, {:__block__, meta, [String.to_atom(atom_name)]}}
+  @doc """
+  Parses the given fragment into an AST.
+  """
+  @spec fragment(String.t()) :: {:ok, t} | {:error, parse_error()}
+  def fragment(s) when is_binary(s) do
+    do_container_cursor_to_quoted(s)
   end
 
-  defp remove_unnecessary_wrapped_static_atoms(ast) do
-    Sourceror.prewalk(ast, fn
-      {{:__block__, block_meta, [atom]}, meta, args} = node, state ->
-        if block_meta[:static_atom] do
-          {{atom, meta, args}, state}
-        else
-          {node, state}
-        end
+  @doc """
+  Returns the cursor context of the document at a position.
+  """
+  @spec cursor_context(Document.t(), Position.t()) ::
+          {:ok, cursor_context()} | {:error, :cursor_context}
+  def cursor_context(%Document{} = document, %Position{} = position) do
+    document
+    |> Document.fragment(position)
+    |> cursor_context()
+  end
 
-      node, state ->
-        {node, state}
-    end)
+  @doc """
+  Returns the cursor context of the fragment.
+  """
+  @spec cursor_context(String.t()) :: {:ok, cursor_context()} | {:error, :cursor_context}
+  def cursor_context(fragment) when is_binary(fragment) do
+    do_cursor_context(fragment)
+  end
+
+  @doc """
+  Returns the surround context of the document at a position.
+  """
+  @spec surround_context(
+          Document.t() | String.t(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
+          {:ok, surround_context()} | {:error, :surround_context}
+  def surround_context(%Document{} = document, %Position{} = position) do
+    %{line: line, character: column} = position
+    surround_context(document, {line, column})
+  end
+
+  def surround_context(string, %Position{} = position) do
+    %{line: line, character: column} = position
+    surround_context(string, {line, column})
+  end
+
+  def surround_context(%Document{} = document, {_line, _column} = pos) do
+    document
+    |> Document.to_string()
+    |> do_surround_context(pos)
+  end
+
+  def surround_context(string, {_line, _column} = pos) when is_binary(string) do
+    do_surround_context(string, pos)
+  end
+
+  @doc """
+  Returns the surround context of the fragment.
+  """
+  @spec surround_context(String.t()) :: surround_context()
+  def surround_context(fragment) when is_binary(fragment) do
+    %{}
   end
 
   @doc """
@@ -112,9 +198,9 @@ defmodule Lexical.Ast do
   end
 
   def cursor_path(%Document{} = document, %Position{} = position) do
-    fragment = Document.fragment(document, position)
+    document_fragment = Document.fragment(document, position)
 
-    case Code.Fragment.container_cursor_to_quoted(fragment, columns: true) do
+    case do_container_cursor_to_quoted(document_fragment) do
       {:ok, quoted} ->
         quoted
         |> Future.Macro.path(&match?({:__cursor__, _, _}, &1))
@@ -132,21 +218,6 @@ defmodule Lexical.Ast do
   def zipper_at(%Document{} = document, %Document.Position{} = position) do
     with {:ok, ast} <- from(document) do
       zipper_at_position(ast, position)
-    end
-  end
-
-  defp zipper_at_position(ast, position) do
-    zipper =
-      ast
-      |> Zipper.zip()
-      |> Zipper.find(fn node ->
-        within_range?(node, position)
-      end)
-
-    if zipper do
-      {:ok, zipper}
-    else
-      {:error, :not_found}
     end
   end
 
@@ -209,26 +280,12 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp patch_to_range(start_pos, end_pos) do
-    with {:ok, start_pos} <- patch_to_position(start_pos),
-         {:ok, end_pos} <- patch_to_position(end_pos) do
-      {:ok, Document.Range.new(start_pos, end_pos)}
-    end
-  end
-
-  defp patch_to_position(patch_keyword) do
-    with {:ok, line} <- Keyword.fetch(patch_keyword, :line),
-         {:ok, column} <- Keyword.fetch(patch_keyword, :column) do
-      {:ok, Document.Position.new(line, column)}
-    end
-  end
-
   @doc """
-  Expands the aliases in the given `document`, `postioin` and `module_aliases`.
+  Expands an alias in the context of the document at a given position.
 
-  When we refer to a module, it's usually a short name,
-  so it's probably aliased or in a nested module,
-  so we need to find the real full name of the module at the cursor position.
+  When we refer to a module, it's usually a short name, often aliased or
+  in a nested module. This function finds the full name of the module at
+  a cursor position.
 
   For example, if we have:
 
@@ -264,31 +321,91 @@ defmodule Lexical.Ast do
 
   Then the the expanded module is still `Project.Issue`.
 
-  And sometimes we can't find the full name by the `Aliases.at/2` function,
-  then we just return the `Module.concat(module_aliases)` as it is.
+  If no aliases can be found, the given alias is returned unmodified.
   """
-  @spec expand_aliases(
-          document :: Document.t(),
-          position :: Position.t(),
-          module_aliases :: module_aliases()
-        ) :: {:ok, module()} | :error
-  def expand_aliases(
-        %Document{} = document,
-        %Position{} = position,
-        [first | rest] = module_aliases
-      ) do
+  @spec expand_aliases(alias_segments() | module(), Document.t(), Position.t()) ::
+          {:ok, module()} | :error
+  def expand_aliases(module, %Document{} = document, %Position{} = position)
+      when is_atom(module) and not is_nil(module) do
+    module
+    |> Module.split()
+    |> Enum.map(&String.to_atom/1)
+    |> expand_aliases(document, position)
+  end
+
+  def expand_aliases([first | rest] = segments, %Document{} = document, %Position{} = position) do
     with {:ok, aliases_mapping} <- Aliases.at(document, position),
-         {:ok, from} <- Map.fetch(aliases_mapping, first) do
-      {:ok, Module.concat([from | rest])}
+         {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
+      {:ok, Module.concat([resolved | rest])}
     else
-      _ ->
-        {:ok, Module.concat(module_aliases)}
+      _ -> {:ok, Module.concat(segments)}
     end
   end
 
   def expand_aliases(_, _, empty) do
     Logger.warning("Aliases are #{inspect(empty)}, can't expand them")
     :error
+  end
+
+  # private
+
+  defp do_string_to_quoted(string) when is_binary(string) do
+    Code.string_to_quoted(string,
+      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+      token_metadata: true,
+      columns: true
+    )
+  end
+
+  defp do_container_cursor_to_quoted(fragment) when is_binary(fragment) do
+    Code.Fragment.container_cursor_to_quoted(fragment,
+      literal_encoder: &{:ok, {:__block__, &2, [&1]}},
+      token_metadata: true,
+      columns: true
+    )
+  end
+
+  defp do_cursor_context(fragment) when is_binary(fragment) do
+    case Code.Fragment.cursor_context(fragment) do
+      :none -> {:error, :cursor_context}
+      context -> {:ok, context}
+    end
+  end
+
+  defp do_surround_context(fragment, {line, column}) when is_binary(fragment) do
+    case Code.Fragment.surround_context(fragment, {line, column}) do
+      :none -> {:error, :surround_context}
+      context -> {:ok, context}
+    end
+  end
+
+  defp patch_to_range(start_pos, end_pos) do
+    with {:ok, start_pos} <- patch_to_position(start_pos),
+         {:ok, end_pos} <- patch_to_position(end_pos) do
+      {:ok, Document.Range.new(start_pos, end_pos)}
+    end
+  end
+
+  defp patch_to_position(patch_keyword) do
+    with {:ok, line} <- Keyword.fetch(patch_keyword, :line),
+         {:ok, column} <- Keyword.fetch(patch_keyword, :column) do
+      {:ok, Document.Position.new(line, column)}
+    end
+  end
+
+  defp zipper_at_position(ast, position) do
+    zipper =
+      ast
+      |> Zipper.zip()
+      |> Zipper.find(fn node ->
+        at_or_after?(node, position)
+      end)
+
+    if zipper do
+      {:ok, zipper}
+    else
+      {:error, :not_found}
+    end
   end
 
   # in the future, I'd like to expose functions that only traverse a section of the document,
@@ -343,7 +460,7 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp within_range?(node, %Document.Position{} = position) do
+  defp at_or_after?(node, %Document.Position{} = position) do
     line = get_line(node, 0)
     column = get_column(node, 0)
 

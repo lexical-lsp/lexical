@@ -32,13 +32,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   defp subject_module(project, content) do
     uri = subject_module_uri(project)
 
-    case Document.Store.open(uri, content, 1) do
-      :ok ->
-        Document.Store.fetch(uri)
-
-      {:error, :already_open} ->
-        :ok = Document.Store.close(uri)
-        subject_module(project, content)
+    with :ok <- Document.Store.open(uri, content, 1) do
+      Document.Store.fetch(uri)
     end
   end
 
@@ -312,151 +307,110 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     end
   end
 
-  describe "resolve/2" do
-    test "syntax error", %{project: project} do
+  describe "module resolve/2" do
+    test "succeeds with trailing period", %{project: project} do
       code = ~q[
         Some.Modul|e.
-        ]
+      ]
 
-      assert {:error, _} = resolve(project, code)
+      assert {:ok, {:module, Some.Module}} = resolve(project, code)
     end
 
-    test "returns an error if the cursor is not over an entity", %{project: project} do
+    test "succeeds immediately following the module", %{project: project} do
       code = ~q[
         Beyond.The.End|
-        ]
+      ]
 
-      assert {:error, :not_found} = resolve(project, code)
+      assert {:ok, {:module, Beyond.The.End}} = resolve(project, code)
+    end
 
+    test "fails with an extra space following the module", %{project: project} do
       code = ~q[
-        | Beyond.The.End
-        ]
+        Beyond.The.End |
+      ]
 
       assert {:error, :not_found} = resolve(project, code)
     end
 
-    test "returns module entities at and before the cursor", %{project: project} do
+    test "fails immediately preceeding the module", %{project: project} do
       code = ~q[
-        At.The.En|d
-        ]
+        | Before.The.Beginning
+      ]
 
-      assert {:ok, {:module, At.The.End}} = resolve(project, code)
-
-      code = ~q[
-        Beginning.Of.The|.End
-        ]
-
-      assert {:ok, {:module, Beginning.Of.The}} = resolve(project, code)
-
-      code = ~q[
-        En|d.Of.The.Beginning
-        ]
-
-      assert {:ok, {:module, End}} = resolve(project, code)
-
-      code = ~q[
-        |At.The.Beginning
-        ]
-
-      assert {:ok, {:module, At}} = resolve(project, code)
+      assert {:error, :not_found} = resolve(project, code)
     end
 
-    # this test was added due to an off-by-one error that wasn't taking
-    # the separator into account when calculating offsets, causing the
-    # result to become more inaccurate as the alias grew longer
-    test "excludes the module segments after the hovered separator", %{project: project} do
+    test "resolves module segments at and before the cursor", %{project: project} do
       code = ~q[
-        AAA|.BBB.CCC.DDD.EEE
-        ]
+        In.|The.Middle
+      ]
 
-      assert {:ok, {:module, AAA}} = resolve(project, code)
+      assert {:ok, {:module, In.The}} = resolve(project, code)
+    end
 
-      code = ~q[
-        AAA.BBB|.CCC.DDD.EEE
-        ]
-
-      assert {:ok, {:module, AAA.BBB}} = resolve(project, code)
-
-      code = ~q[
-        AAA.BBB.CCC|.DDD.EEE
-        ]
-
-      assert {:ok, {:module, AAA.BBB.CCC}} = resolve(project, code)
-
+    test "excludes trailing module segments with the cursor is on a period", %{project: project} do
       code = ~q[
         AAA.BBB.CCC.DDD|.EEE
-        ]
+      ]
 
       assert {:ok, {:module, AAA.BBB.CCC.DDD}} = resolve(project, code)
     end
 
-    test "returns module segments in nodes spanning multiple lines", %{project: project} do
+    test "succeeds for modules within a multi-line node", %{project: project} do
       code = ~q[
         foo =
           On.Another.Lin|e
-        ]
+      ]
 
       assert {:ok, {:module, On.Another.Line}} = resolve(project, code)
+    end
 
-      code = ~q[
-        On|.
-          Multiple.
-          Lines
-        ]
-
-      assert {:ok, {:module, On}} = resolve(project, code)
-
+    test "resolves the entire module for multi-line modules", %{project: project} do
       code = ~q[
         On.
-          Multiple.
-          Line|s
-        ]
+          |Multiple.
+          Lines
+      ]
 
       assert {:ok, {:module, On.Multiple.Lines}} = resolve(project, code)
+    end
 
+    test "succeeds in single line calls", %{project: project} do
       code = ~q[
-        Enu|m.map(1..10, fn i ->
-          i + 1
-        end)
-        ]
+        |Enum.map(1..10, & &1 + 1)
+      ]
 
       assert {:ok, {:module, Enum}} = resolve(project, code)
     end
 
-    test "resolves explicit aliases", %{project: project} do
+    test "succeeds in multi-line calls", %{project: project} do
+      code = ~q[
+        |Enum.map(1..10, fn i ->
+          i + 1
+        end)
+      ]
+
+      assert {:ok, {:module, Enum}} = resolve(project, code)
+    end
+
+    test "expands top-level aliases", %{project: project} do
       code = ~q[
         defmodule Example do
           alias Long.Aliased.Module
           Modul|e
         end
-        ]
+      ]
 
       assert {:ok, {:module, Long.Aliased.Module}} = resolve(project, code)
+    end
 
+    test "ignores top-level aliases made after the cursor", %{project: project} do
       code = ~q[
         defmodule Example do
-          alias Long.Aliased.Module
-          Module.Neste|d
-        end
-        ]
-
-      assert {:ok, {:module, Long.Aliased.Module.Nested}} = resolve(project, code)
-
-      code = ~q[
-        defmodule Example do
-          alias Long.Aliased.Module
-          Modul|e.Nested
-        end
-        ]
-
-      assert {:ok, {:module, Long.Aliased.Module}} = resolve(project, code)
-
-      code = ~q[
-        defmodule Example do
-          Modul|e.Nested
+          Modul|e
           alias Long.Aliased.Module
         end
-        ]
+      ]
 
       assert {:ok, {:module, Module}} = resolve(project, code)
     end
@@ -469,52 +423,39 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
           Inne|r
         end
-        ]
+      ]
 
       assert {:ok, {:module, Example.Inner}} = resolve(project, code)
+    end
 
-      code = ~q[
-        defmodule Example do
-          Inne|r
-
-          defmodule Inner do
-          end
-        end
-        ]
-
-      assert {:ok, {:module, Inner}} = resolve(project, code)
-
-      code = ~q[
-        defmodule Example do
-          __MODULE_|_
-        end
-        ]
-
-      assert {:ok, {:module, Example}} = resolve(project, code)
-
+    test "expands current module", %{project: project} do
       code = ~q[
         defmodule Example do
           |__MODULE__
         end
-        ]
+      ]
 
       assert {:ok, {:module, Example}} = resolve(project, code)
+    end
 
+    test "expands current module used in alias", %{project: project} do
       code = ~q[
         defmodule Example do
-          __MODULE__.Neste|d
+          |__MODULE__.Nested
         end
-        ]
+      ]
+
+      assert {:ok, {:module, Example}} = resolve(project, code)
+    end
+
+    test "expands alias following current module", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          __MODULE__.|Nested
+        end
+      ]
 
       assert {:ok, {:module, Example.Nested}} = resolve(project, code)
-
-      code = ~q[
-        defmodule Example do
-          __MODULE_|_.Nested
-        end
-        ]
-
-      assert {:ok, {:module, Example}} = resolve(project, code)
     end
   end
 
