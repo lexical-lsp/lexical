@@ -41,4 +41,4 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     -pa "${SCRIPT_DIR}/../priv/" \
     --cookie "lexical" \
     --no-halt \
-    "${SCRIPT_DIR}/../priv/boot.exs" "${SCRIPT_DIR}"
+    "${SCRIPT_DIR}/../priv/boot.exs"

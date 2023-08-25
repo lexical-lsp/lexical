@@ -1,6 +1,4 @@
-[script_dir] = System.argv()
-
-[script_dir, "..", "lib", "*.ez"]
+[__DIR__, "..", "lib", "*.ez"]
 |> Path.join()
 |> Path.wildcard()
 |> Enum.each(fn archive_path ->
