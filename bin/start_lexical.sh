@@ -36,9 +36,6 @@ esac
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 "${ELIXIR_COMMAND}" \
-    -pa "${SCRIPT_DIR}/../consolidated" \
-    -pa "${SCRIPT_DIR}/../config/" \
-    -pa "${SCRIPT_DIR}/../priv/" \
     --cookie "lexical" \
     --no-halt \
     "${SCRIPT_DIR}/../priv/boot.exs"

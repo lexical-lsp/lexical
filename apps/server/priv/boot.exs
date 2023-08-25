@@ -1,4 +1,12 @@
-[__DIR__, "..", "lib", "*.ez"]
+script_dir = __DIR__
+
+Enum.each(["consolidated", "config", "priv"], fn dir ->
+  [script_dir, "..", dir]
+  |> Path.join()
+  |> Code.append_path()
+end)
+
+[script_dir, "..", "lib", "*.ez"]
 |> Path.join()
 |> Path.wildcard()
 |> Enum.each(fn archive_path ->
