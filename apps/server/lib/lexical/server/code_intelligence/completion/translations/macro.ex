@@ -51,12 +51,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.boost(8)
   end
 
-  require Logger
-
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
     label = "defmodule (Define a module)"
     suggestion = suggest_module_name(env.document)
-    Logger.info("Suggestion is #{suggestion}")
 
     snippet = """
     defmodule ${1:#{suggestion}} do
