@@ -260,7 +260,7 @@ defmodule Mix.Tasks.Package do
     File.cp_r!(config_source, config_dest)
   end
 
-  @priv_apps [:remote_control, :server]
+  @priv_apps [:remote_control]
 
   defp copy_priv_files(package_root) do
     priv_dest_dir = priv_path(package_root)

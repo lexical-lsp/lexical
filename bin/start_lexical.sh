@@ -38,4 +38,4 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 "${ELIXIR_COMMAND}" \
     --cookie "lexical" \
     --no-halt \
-    "${SCRIPT_DIR}/../priv/boot.exs"
+    "${SCRIPT_DIR}/../bin/boot.exs"
