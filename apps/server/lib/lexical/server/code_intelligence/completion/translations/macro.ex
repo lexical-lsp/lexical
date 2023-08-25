@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
+  alias Lexical.Document
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
@@ -52,9 +53,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
     label = "defmodule (Define a module)"
+    suggestion = suggest_module_name(env.document)
 
     snippet = """
-    defmodule ${1:module name} do
+    defmodule ${1:#{suggestion}} do
       $0
     end
     """
@@ -560,5 +562,45 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   def translate(%Candidate.Macro{}, _builder, _env) do
     :skip
+  end
+
+  def suggest_module_name(%Document{} = document) do
+    result =
+      document.path
+      |> Path.split()
+      |> Enum.reduce(false, fn
+        "lib", _ ->
+          {:lib, []}
+
+        "test", _ ->
+          {:test, []}
+
+        "support", {:test, _} ->
+          {:lib, []}
+
+        _, false ->
+          false
+
+        element, {type, elements} ->
+          camelized =
+            element
+            |> Path.rootname()
+            |> Macro.camelize()
+
+          {type, [camelized | elements]}
+      end)
+
+    case result do
+      {_, parts} ->
+        parts
+        |> Enum.reverse()
+        |> Enum.join(".")
+
+      false ->
+        document.path
+        |> Path.basename()
+        |> Path.rootname()
+        |> Macro.camelize()
+    end
   end
 end

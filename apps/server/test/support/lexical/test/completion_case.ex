@@ -40,13 +40,27 @@ defmodule Lexical.Test.Server.CompletionCase do
     Document.to_string(edited_document)
   end
 
-  def complete(project, text, trigger_character \\ nil) do
+  def complete(project, text, opts \\ []) do
+    trigger_character = Keyword.get(opts, :trigger_character)
     {line, column} = cursor_position(text)
 
     text = strip_cursor(text)
 
     root_path = Project.root_path(project)
-    file_path = Path.join([root_path, "lib", "file.ex"])
+
+    file_path =
+      case Keyword.fetch(opts, :path) do
+        {:ok, path} ->
+          if Path.expand(path) == path do
+            # it's absolute
+            path
+          else
+            Path.join(root_path, path)
+          end
+
+        :error ->
+          Path.join([root_path, "lib", "file.ex"])
+      end
 
     document =
       file_path
@@ -59,7 +73,7 @@ defmodule Lexical.Test.Server.CompletionCase do
       if is_binary(trigger_character) do
         CompletionContext.new(
           trigger_kind: :trigger_character,
-          trigger_character: trigger_character
+          trigger_character: nil
         )
       else
         CompletionContext.new(trigger_kind: :trigger_character)
