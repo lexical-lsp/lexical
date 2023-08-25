@@ -1,7 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
+  alias Lexical.Ast.Env
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct

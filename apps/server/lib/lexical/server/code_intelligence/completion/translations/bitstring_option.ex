@@ -1,6 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOption do
+  alias Lexical.Ast.Env
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
   use Translatable.Impl, for: Candidate.BitstringOption

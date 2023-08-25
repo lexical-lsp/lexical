@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Changes
-  alias Lexical.RemoteControl.CodeMod.Ast
 
   @spec edits(Document.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, Changes.t()} | :error

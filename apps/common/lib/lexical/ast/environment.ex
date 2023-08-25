@@ -1,4 +1,4 @@
-defmodule Lexical.Completion.Environment do
+defmodule Lexical.Ast.Environment do
   @type t :: any
 
   @type maybe_binary :: binary | nil

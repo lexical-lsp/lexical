@@ -1,5 +1,5 @@
 defprotocol Lexical.Completion.Translatable do
-  alias Lexical.Completion.Environment
+  alias Lexical.Ast.Environment
   alias Lexical.Completion.Builder
 
   @type t :: any()

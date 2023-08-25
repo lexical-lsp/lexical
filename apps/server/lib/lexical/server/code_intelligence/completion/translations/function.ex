@@ -1,6 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Function do
+  alias Lexical.Ast.Env
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Env
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
 

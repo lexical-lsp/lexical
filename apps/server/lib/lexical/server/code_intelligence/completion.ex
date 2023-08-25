@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
+  alias Lexical.Ast.Env
   alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -10,7 +11,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.RemoteControl.Modules.Predicate
-  alias Lexical.Server.CodeIntelligence.Completion.Env
+  alias Lexical.Server.CodeIntelligence.Completion.Builder
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace
 
@@ -58,7 +59,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         do_end_snippet = "do\n$0\nend"
 
         env
-        |> Env.snippet(do_end_snippet, label: "do/end block")
+        |> Builder.snippet(do_end_snippet, label: "do/end block")
         |> List.wrap()
 
       Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
@@ -68,10 +69,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           not prefix_is_trigger?(env) ->
         project
         |> RemoteControl.Api.complete_struct_fields(env.document, env.position)
-        |> Enum.map(&Translatable.translate(&1, Env, env))
+        |> Enum.map(&Translatable.translate(&1, Builder, env))
 
       true ->
-        {document, position} = Env.strip_struct_reference(env)
+        {document, position} = Builder.strip_struct_reference(env)
 
         project
         |> RemoteControl.Api.complete(document, position)
@@ -101,7 +102,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         displayable?(project, result),
         applies_to_context?(project, result, context),
         applies_to_env?(env, result),
-        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Env, env)) do
+        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Builder, env)) do
       item
     end
   end
