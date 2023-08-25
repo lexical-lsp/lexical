@@ -34,11 +34,12 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
-      {:lexical_shared, path: "../../projects/lexical_shared"},
-      {:lexical_test, path: "../../projects/lexical_test", only: :test},
-      {:lexical_plugin, path: "../../projects/lexical_plugin"},
+      {:beam_file, "~> 0.5.3"},
       {:common, in_umbrella: true},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git"},
+      {:lexical_plugin, path: "../../projects/lexical_plugin"},
+      {:lexical_shared, path: "../../projects/lexical_shared"},
+      {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false},
       {:path_glob, "~> 0.2", optional: true},
       {:sourceror, "~> 0.12"}

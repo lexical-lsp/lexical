@@ -21,10 +21,19 @@ defmodule Lexical.VM.Versions do
   """
   @spec current() :: t
   def current do
-    %{
-      elixir: elixir_version(),
-      erlang: erlang_version()
-    }
+    case :persistent_term.get({__MODULE__, :current}, :not_present) do
+      :not_present ->
+        versions = %{
+          elixir: elixir_version(),
+          erlang: erlang_version()
+        }
+
+        :persistent_term.put({__MODULE__, :current}, versions)
+        versions
+
+      versions ->
+        versions
+    end
   end
 
   @doc """
