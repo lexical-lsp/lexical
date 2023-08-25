@@ -102,8 +102,50 @@ Restart emacs, and Lexical should start when you open a file with a
 
 ### Vanilla Emacs with eglot
 
-Eglot has a couple of utf8 related bugs that make it fail with
-Lexical, and is not supported at this time.
+Eglot in Emacs 30 already has built-in support for Lexical after
+commit 9e0524a8820fbb8fdb155b1ca58919dcfcaffd63.
+
+If you're using Emacs 30 and before that commit, it's recommended to
+update Emacs, but you can add lexical support in the following way:
+
+```emacs-lisp
+(with-eval-after-load 'eglot
+  (setf (alist-get '(elixir-mode elixir-ts-mode heex-ts-mode)
+                   eglot-server-programs
+                   nil nil #'equal)
+        (if (and (fboundp 'w32-shell-dos-semantics)
+                 (w32-shell-dos-semantics))
+            '("language_server.bat")
+          (eglot-alternatives
+           '("language_server.sh" "start_lexical.sh")))))
+```
+
+For versions before 30, you can add Eglot support for Lexical in the
+following way:
+
+```emacs-lisp
+(with-eval-after-load 'eglot
+  (setf (alist-get 'elixir-mode eglot-server-programs)
+        (if (and (fboundp 'w32-shell-dos-semantics)
+                 (w32-shell-dos-semantics))
+            '("language_server.bat")
+          (eglot-alternatives
+           '("language_server.sh" "start_lexical.sh")))))
+```
+
+If you're using `elixir-ts-mode` on Emacs 29, you can add a new entry
+for Eglot:
+
+```emacs-lisp
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               `((elixir-ts-mode heex-ts-mode) .
+                 ,(if (and (fboundp 'w32-shell-dos-semantics)
+                           (w32-shell-dos-semantics))
+                      '("language_server.bat")
+                    (eglot-alternatives
+                     '("language_server.sh" "start_lexical.sh"))))))
+```
 
 
 ### Visual Studio Code
