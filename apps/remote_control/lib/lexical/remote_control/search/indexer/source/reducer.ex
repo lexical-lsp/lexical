@@ -11,12 +11,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:entries, :document, :position, :ends_at, :blocks]
+  defstruct [:entries, :document, :quoted_document, :position, :ends_at, :blocks]
 
   @extractors [Extractors.Module]
 
-  def new(%Document{} = document) do
-    %__MODULE__{document: document, entries: [], position: {0, 0}, blocks: [Block.root()]}
+  def new(%Document{} = document, quoted_document) do
+    %__MODULE__{
+      document: document,
+      quoted_document: quoted_document,
+      entries: [],
+      position: {0, 0},
+      blocks: [Block.root()]
+    }
   end
 
   def entries(%__MODULE__{} = reducer) do
@@ -52,14 +58,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
         |> push_block(block)
         |> apply_extractors(element)
 
-      {:ok, position} ->
+      {:expression, position} ->
         reducer
         |> update_position(position)
-        |> maybe_pop_block()
         |> apply_extractors(element)
-
-      {:expression, _} ->
-        apply_extractors(reducer, element)
     end
   end
 
@@ -79,6 +81,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
           {reducer, element}
       end
     end)
+  end
+
+  defp update_position(%__MODULE__{} = reducer, nil) do
+    reducer
   end
 
   defp update_position(%__MODULE__{} = reducer, position) do

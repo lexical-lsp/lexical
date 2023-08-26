@@ -28,6 +28,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         :module,
         reducer.position,
         block.ends_at,
+        Application.get_application(aliased_module),
         &tokenize/1
       )
 
@@ -58,6 +59,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             :module,
             start,
             finish,
+            Application.get_application(module),
             &tokenize/1
           )
 
@@ -86,6 +88,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             :module,
             start,
             finish,
+            Application.get_application(module),
             &tokenize/1
           )
 
@@ -103,7 +106,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
     [first_element | rest] = unresolved_alias
 
-    with {:ok, aliases} <- Aliases.at(reducer.document, reducer.position),
+    with {:ok, aliases} <- Aliases.at_ast(reducer.quoted_document, reducer.position),
          {:ok, aliased} <- Map.fetch(aliases, first_element) do
       raw = Module.split(aliased)
       Module.concat(raw ++ rest)
@@ -154,10 +157,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   defp tokenize(module) do
     case to_string(module) do
       "Elixir." <> rest ->
-        [rest]
+        rest
 
       erlang_module ->
-        [erlang_module]
+        erlang_module
     end
   end
 end

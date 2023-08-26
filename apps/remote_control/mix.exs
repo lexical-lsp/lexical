@@ -34,7 +34,6 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
-      {:beam_file, "~> 0.5.3"},
       {:common, in_umbrella: true},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git"},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},

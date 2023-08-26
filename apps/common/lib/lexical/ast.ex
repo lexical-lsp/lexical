@@ -210,6 +210,49 @@ defmodule Lexical.Ast do
   end
 
   @doc """
+  Traverses the given ast until the given position.
+  """
+  def traverse_until(ast, acc, prewalk_fn, %Position{} = position) do
+    end_line = position.line
+    end_column = position.character
+
+    {_, acc} =
+      ast
+      |> Zipper.zip()
+      |> Zipper.traverse_while(acc, fn zipper, acc ->
+        zipper = maybe_insert_cursor(zipper, position)
+
+        case Zipper.node(zipper) do
+          {_, _, _} = element ->
+            current_line = Sourceror.get_line(element)
+            current_column = Sourceror.get_column(element)
+
+            cond do
+              match?({:__cursor__, _, _}, element) ->
+                {_element, new_acc} = prewalk_fn.(element, acc)
+                {:halt, zipper, new_acc}
+
+              current_line == end_line and current_column > end_column ->
+                {:halt, zipper, acc}
+
+              current_line > end_line ->
+                {:halt, zipper, acc}
+
+              true ->
+                {_element, new_acc} = prewalk_fn.(element, acc)
+                {:cont, zipper, new_acc}
+            end
+
+          element ->
+            {_element, new_acc} = prewalk_fn.(element, acc)
+            {:cont, zipper, new_acc}
+        end
+      end)
+
+    acc
+  end
+
+  @doc """
   Returns a zipper for the document AST focused at the given position.
   """
   @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.zipper()} | {:error, parse_error()}
@@ -505,5 +548,18 @@ defmodule Lexical.Ast do
 
   defp get_column(_, default) do
     default
+  end
+
+  defp maybe_insert_cursor(zipper, %Position{} = position) do
+    case Zipper.next(zipper) do
+      nil ->
+        Zipper.insert_right(
+          zipper,
+          {:__cursor__, [line: position.line, column: position.character], nil}
+        )
+
+      _ ->
+        zipper
+    end
   end
 end

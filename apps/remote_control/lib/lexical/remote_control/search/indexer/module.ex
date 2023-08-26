@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Module do
   end
 
   def source_file_path(module) do
-    with {:ok, %{file: file_path}} <- BeamFile.debug_info(module),
+    with {:ok, file_path} <- Keyword.fetch(module.__info__(:compile), :source),
          {:ok, contents} <- File.read(file_path) do
       {:ok, file_path, contents}
     end

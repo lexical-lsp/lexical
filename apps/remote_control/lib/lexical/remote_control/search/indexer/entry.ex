@@ -9,6 +9,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type entry_reference :: reference() | nil
 
   defstruct [
+    :application,
     :elixir_version,
     :erlang_version,
     :finish,
@@ -25,6 +26,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   ]
 
   @type t :: %__MODULE__{
+          application: module(),
           elixir_version: version(),
           erlang_version: version(),
           finish: position(),
@@ -41,7 +43,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
         }
 
   alias Lexical.VM.Versions
-
+  # credo:disable-for-next-line
   def reference(
         path,
         ref,
@@ -50,13 +52,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
         type,
         start,
         finish,
+        application,
         tokenizer \\ &Function.identity/1
       )
 
-  def reference(path, ref, parent, subject, type, start, finish, tokenizer) do
+  # credo:disable-for-next-line
+  def reference(path, ref, parent, subject, type, start, finish, application, tokenizer) do
     versions = Versions.current()
 
     %__MODULE__{
+      application: application,
       elixir_version: versions.elixir,
       erlang_version: versions.erlang,
       finish: finish,
@@ -72,6 +77,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     }
   end
 
+  # credo:disable-for-next-line
   def definition(
         path,
         ref,
@@ -80,13 +86,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
         type,
         start,
         finish,
+        application,
         tokenizer \\ &Function.identity/1
       )
 
-  def definition(path, ref, parent, subject, type, start, finish, tokenizer) do
+  # credo:disable-for-next-line
+  def definition(path, ref, parent, subject, type, start, finish, application, tokenizer) do
     versions = Versions.current()
 
     %__MODULE__{
+      application: application,
       elixir_version: versions.elixir,
       erlang_version: versions.erlang,
       finish: finish,

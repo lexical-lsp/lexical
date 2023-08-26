@@ -176,18 +176,22 @@ defmodule Lexical.Ast.Aliases do
     end
 
     defp apply_multiple_aliases(%__MODULE__{} = reducer, from_alias, destinations) do
-      Enum.reduce(destinations, reducer, fn {:__aliases__, _, to_alias}, reducer ->
-        from =
-          case from_alias do
-            [:__MODULE__ | rest] ->
-              [:__MODULE__ | rest ++ to_alias]
+      Enum.reduce(destinations, reducer, fn
+        {:__aliases__, _, to_alias}, reducer ->
+          from =
+            case from_alias do
+              [:__MODULE__ | rest] ->
+                [:__MODULE__ | rest ++ to_alias]
 
-            from ->
-              from ++ to_alias
-          end
+              from ->
+                from ++ to_alias
+            end
 
-        to = List.last(from)
-        put_alias(reducer, from, to)
+          to = List.last(from)
+          put_alias(reducer, from, to)
+
+        {:__cursor__, _, _}, reducer ->
+          reducer
       end)
     end
 
@@ -292,6 +296,25 @@ defmodule Lexical.Ast.Aliases do
       aliases = Reducer.aliases(reducer)
       {:ok, aliases}
     end
+  end
+
+  @doc """
+  Returns the aliases available in the document at the given position.
+
+  This function works like `at/2`, but takes Elixir AST as its first argument, rather than a Document.
+  This allows you to parse a document once and make repeated queries against it for vastly improved performance.
+  """
+  def at_ast(ast, {line, character}) do
+    at_ast(ast, Position.new(line, character))
+  end
+
+  def at_ast(ast, %Position{} = position) do
+    aliases =
+      ast
+      |> Ast.traverse_until(Reducer.new(), &collect/2, position)
+      |> Reducer.aliases()
+
+    {:ok, aliases}
   end
 
   defp collect(elem, %Reducer{} = reducer) do
