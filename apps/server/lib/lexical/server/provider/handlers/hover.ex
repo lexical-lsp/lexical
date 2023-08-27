@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Provider.Handlers.Hover do
+  alias Lexical.Ast
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Hover
@@ -25,11 +26,10 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp hover_content({:module, module}, env) do
     with {:ok, module_docs} <- RemoteControl.Api.docs(env.project, module) do
-      module_name = module |> to_string() |> String.replace_prefix("Elixir.", "")
       doc_content = module_doc_content(module_docs.doc)
 
       content = """
-      ### #{module_name}
+      ### #{Ast.Module.name(module)}
 
       #{doc_content}\
       """

@@ -104,8 +104,9 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   Returns the source location of the entity at the given position in the document.
   """
   def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
-    maybe_location = RemoteControl.Api.definition(project, document, position)
-    parse_location(maybe_location, document)
+    project
+    |> RemoteControl.Api.definition(document, position)
+    |> parse_location(document)
   end
 
   defp parse_location(%ElixirSense.Location{} = location, document) do

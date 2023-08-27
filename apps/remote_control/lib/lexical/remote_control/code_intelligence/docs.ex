@@ -27,7 +27,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
   end
 
   defp normalize_docs(module, module_doc, element_docs) do
-    elements_by_kind = Enum.group_by(element_docs, &(&1 |> elem(0) |> elem(0)))
+    elements_by_kind = Enum.group_by(element_docs, &doc_kind/1)
     functions = Map.get(elements_by_kind, :function, [])
     macros = Map.get(elements_by_kind, :macro, [])
     callbacks = Map.get(elements_by_kind, :callback, [])
@@ -40,6 +40,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
       callbacks: parse_doc_elements(module, callbacks),
       types: parse_doc_elements(module, types)
     }
+  end
+
+  defp doc_kind({{kind, _name, _arity}, _anno, _sig, _doc, _meta}) do
+    kind
   end
 
   defp parse_doc_elements(module, elements) do

@@ -63,8 +63,6 @@ defmodule Lexical.Ast do
   require Logger
   require Sourceror
 
-  @type t :: any()
-
   @type cursor_context :: any()
   @type surround_context :: any()
 
@@ -87,7 +85,7 @@ defmodule Lexical.Ast do
   @doc """
   Returns an AST generated from a valid document or string.
   """
-  @spec from(Document.t() | String.t()) :: {:ok, t} | {:error, parse_error()}
+  @spec from(Document.t() | String.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
   def from(%Document{} = document) do
     document
     |> Document.to_string()
@@ -101,7 +99,7 @@ defmodule Lexical.Ast do
   @doc """
   Returns an AST fragment from the start of the document to the given position.
   """
-  @spec fragment(Document.t(), Position.t()) :: {:ok, t} | {:error, parse_error()}
+  @spec fragment(Document.t(), Position.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
   def fragment(%Document{} = document, %Position{} = position) do
     # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
     # Note: because of the above issue: Using `cursor_context` + `container_cursor_to_quoted`
@@ -127,7 +125,7 @@ defmodule Lexical.Ast do
   @doc """
   Parses the given fragment into an AST.
   """
-  @spec fragment(String.t()) :: {:ok, t} | {:error, parse_error()}
+  @spec fragment(String.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
   def fragment(s) when is_binary(s) do
     do_container_cursor_to_quoted(s)
   end
@@ -140,15 +138,15 @@ defmodule Lexical.Ast do
   def cursor_context(%Document{} = document, %Position{} = position) do
     document
     |> Document.fragment(position)
-    |> cursor_context()
+    |> do_cursor_context()
   end
 
   @doc """
   Returns the cursor context of the fragment.
   """
   @spec cursor_context(String.t()) :: {:ok, cursor_context()} | {:error, :cursor_context}
-  def cursor_context(fragment) when is_binary(fragment) do
-    do_cursor_context(fragment)
+  def cursor_context(s) when is_binary(s) do
+    do_cursor_context(s)
   end
 
   @doc """
@@ -161,12 +159,15 @@ defmodule Lexical.Ast do
           {:ok, surround_context()} | {:error, :surround_context}
   def surround_context(%Document{} = document, %Position{} = position) do
     %{line: line, character: column} = position
-    surround_context(document, {line, column})
+
+    document
+    |> Document.to_string()
+    |> do_surround_context({line, column})
   end
 
   def surround_context(string, %Position{} = position) do
     %{line: line, character: column} = position
-    surround_context(string, {line, column})
+    do_surround_context(string, {line, column})
   end
 
   def surround_context(%Document{} = document, {_line, _column} = pos) do
@@ -180,19 +181,12 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Returns the surround context of the fragment.
-  """
-  @spec surround_context(String.t()) :: surround_context()
-  def surround_context(fragment) when is_binary(fragment) do
-    %{}
-  end
-
-  @doc """
   Returns the path to the cursor in the given document at a position.
 
   May return a path even in the event of syntax errors.
   """
-  @spec cursor_path(Document.t(), Position.t() | {Position.line(), Position.character()}) :: [t]
+  @spec cursor_path(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+          [Macro.t()]
   def cursor_path(%Document{} = doc, {line, character}) do
     cursor_path(doc, Position.new(line, character))
   end
