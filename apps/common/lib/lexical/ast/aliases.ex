@@ -318,6 +318,6 @@ defmodule Lexical.Ast.Aliases do
   end
 
   defp collect(elem, %Reducer{} = reducer) do
-    {elem, Reducer.update(reducer, elem)}
+    Reducer.update(reducer, elem)
   end
 end

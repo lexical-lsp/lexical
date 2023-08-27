@@ -213,13 +213,17 @@ defmodule Lexical.Ast do
   Traverses the given ast until the given position.
   """
   def traverse_until(ast, acc, prewalk_fn, %Position{} = position) do
-    end_line = position.line
-    end_column = position.character
+    range = Document.Range.new(Position.new(0, 0), position)
 
     {_, acc} =
       ast
       |> Zipper.zip()
       |> Zipper.traverse_while(acc, fn zipper, acc ->
+        # We can have a cursor at the end of the document, and due
+        # to how elixir's AST traversal handles `end` statements (it doesn't),
+        # we will never receive a callback where we match the end block. Adding
+        # a cursor node will allow us to place cursors after the document has ended
+        # and things will still work.
         zipper = maybe_insert_cursor(zipper, position)
 
         case Zipper.node(zipper) do
@@ -229,22 +233,19 @@ defmodule Lexical.Ast do
 
             cond do
               match?({:__cursor__, _, _}, element) ->
-                {_element, new_acc} = prewalk_fn.(element, acc)
+                new_acc = prewalk_fn.(element, acc)
                 {:halt, zipper, new_acc}
 
-              current_line == end_line and current_column > end_column ->
-                {:halt, zipper, acc}
-
-              current_line > end_line ->
-                {:halt, zipper, acc}
+              within_range?({current_line, current_column}, range) ->
+                new_acc = prewalk_fn.(element, acc)
+                {:cont, zipper, new_acc}
 
               true ->
-                {_element, new_acc} = prewalk_fn.(element, acc)
-                {:cont, zipper, new_acc}
+                {:halt, zipper, acc}
             end
 
           element ->
-            {_element, new_acc} = prewalk_fn.(element, acc)
+            new_acc = prewalk_fn.(element, acc)
             {:cont, zipper, new_acc}
         end
       end)
