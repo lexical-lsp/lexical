@@ -18,41 +18,40 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   ## Return values
 
-  Returns `{:ok, resolved}` if successful and `{:error, error}` otherwise.
+  Returns `{:ok, resolved, range}` if successful and `{:error, error}`
+  otherwise. The `range` includes the resolved node and the
   Resolved entities are one of:
 
     * `{:module, module}`
 
   """
-  @spec resolve(Document.t(), Position.t()) :: {:ok, resolved} | {:error, term()}
+  @spec resolve(Document.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
   def resolve(%Document{} = document, %Position{} = position) do
     with {:ok, %{context: context, begin: begin_pos, end: end_pos}} <-
            Ast.surround_context(document, position),
-         {:ok, resolved} <- resolve(context, {begin_pos, end_pos}, document, position) do
+         {:ok, resolved, {begin_pos, end_pos}} <-
+           resolve(context, {begin_pos, end_pos}, document, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
-      {:ok, resolved}
+      {:ok, resolved, to_range(begin_pos, end_pos)}
     else
       {:error, :surround_context} -> {:error, :not_found}
       error -> error
     end
   end
 
-  defp resolve({:alias, charlist}, node_position, document, position) do
-    {:ok, module} = resolve_module(charlist, node_position, document, position)
-    {:ok, {:module, module}}
+  defp resolve({:alias, charlist}, node_range, document, position) do
+    resolve_module(charlist, node_range, document, position)
   end
 
-  defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_position, document, position) do
-    {:ok, module} = resolve_module(prefix ++ [?.] ++ charlist, node_position, document, position)
-    {:ok, {:module, module}}
+  defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_range, document, position) do
+    resolve_module(prefix ++ [?.] ++ charlist, node_range, document, position)
   end
 
-  defp resolve({:local_or_var, ~c"__MODULE__"}, node_position, document, position) do
-    {:ok, module} = resolve_module(~c"__MODULE__", node_position, document, position)
-    {:ok, {:module, module}}
+  defp resolve({:local_or_var, ~c"__MODULE__"}, node_range, document, position) do
+    resolve_module(~c"__MODULE__", node_range, document, position)
   end
 
-  defp resolve(context, _node_position, _document, _position) do
+  defp resolve(context, _node_range, _document, _position) do
     unsupported_context(context)
   end
 
@@ -75,20 +74,30 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
       |> Enum.map(&elem(&1, 0))
       |> List.to_string()
 
-    [module_string]
-    |> Module.concat()
-    |> Ast.expand_aliases(document, position)
+    expanded =
+      [module_string]
+      |> Module.concat()
+      |> Ast.expand_aliases(document, position)
+
+    with {:ok, module} <- expanded do
+      {:ok, {:module, module}, {{line, column}, {line, column + String.length(module_string)}}}
+    end
   end
 
   # Modules on multiple lines, e.g. "Foo.\n  Bar.\n  Baz"
   # Since we no longer have formatting information at this point, we
   # just return the entire module for now.
-  defp resolve_module(charlist, _node_position, document, position) do
+  defp resolve_module(charlist, node_range, document, position) do
     module_string = List.to_string(charlist)
 
-    [module_string]
-    |> Module.concat()
-    |> Ast.expand_aliases(document, position)
+    expanded =
+      [module_string]
+      |> Module.concat()
+      |> Ast.expand_aliases(document, position)
+
+    with {:ok, module} <- expanded do
+      {:ok, {:module, module}, node_range}
+    end
   end
 
   @doc """

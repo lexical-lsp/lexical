@@ -11,17 +11,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   def handle(%Requests.Hover{} = request, %Env{} = env) do
     maybe_hover =
-      with {:ok, {:module, module}} <- Entity.resolve(request.document, request.position),
-           {:ok, module_docs} <- RemoteControl.Api.docs(env.project, module) do
-        module_name = module |> to_string() |> String.replace_prefix("Elixir.", "")
-        doc_content = module_doc_content(module_docs.doc)
-
-        content = """
-        ### #{module_name}
-
-        #{doc_content}\
-        """
-
+      with {:ok, entity, _elixir_range} <- Entity.resolve(request.document, request.position),
+           {:ok, content} <- hover_content(entity, env) do
         %Hover{contents: %Markup.Content{kind: :markdown, value: content}}
       else
         error ->
@@ -30,6 +21,21 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
       end
 
     {:reply, Responses.Hover.new(request.id, maybe_hover)}
+  end
+
+  defp hover_content({:module, module}, env) do
+    with {:ok, module_docs} <- RemoteControl.Api.docs(env.project, module) do
+      module_name = module |> to_string() |> String.replace_prefix("Elixir.", "")
+      doc_content = module_doc_content(module_docs.doc)
+
+      content = """
+      ### #{module_name}
+
+      #{doc_content}\
+      """
+
+      {:ok, content}
+    end
   end
 
   defp module_doc_content(s) when is_binary(s), do: s

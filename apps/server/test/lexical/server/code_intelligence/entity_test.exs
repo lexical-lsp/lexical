@@ -313,7 +313,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         Some.Modul|e.
       ]
 
-      assert {:ok, {:module, Some.Module}} = resolve(project, code)
+      assert {:ok, {:module, Some.Module}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 12
     end
 
     test "succeeds immediately following the module", %{project: project} do
@@ -321,7 +325,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         Beyond.The.End|
       ]
 
-      assert {:ok, {:module, Beyond.The.End}} = resolve(project, code)
+      assert {:ok, {:module, Beyond.The.End}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 15
     end
 
     test "fails with an extra space following the module", %{project: project} do
@@ -345,7 +353,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         In.|The.Middle
       ]
 
-      assert {:ok, {:module, In.The}} = resolve(project, code)
+      assert {:ok, {:module, In.The}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 7
     end
 
     test "excludes trailing module segments with the cursor is on a period", %{project: project} do
@@ -353,7 +365,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         AAA.BBB.CCC.DDD|.EEE
       ]
 
-      assert {:ok, {:module, AAA.BBB.CCC.DDD}} = resolve(project, code)
+      assert {:ok, {:module, AAA.BBB.CCC.DDD}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 16
     end
 
     test "succeeds for modules within a multi-line node", %{project: project} do
@@ -362,7 +378,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
           On.Another.Lin|e
       ]
 
-      assert {:ok, {:module, On.Another.Line}} = resolve(project, code)
+      assert {:ok, {:module, On.Another.Line}, range} = resolve(project, code)
+      assert range.start.line == 2
+      assert range.start.character == 3
+      assert range.end.line == 2
+      assert range.end.character == 18
     end
 
     test "resolves the entire module for multi-line modules", %{project: project} do
@@ -372,7 +392,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
           Lines
       ]
 
-      assert {:ok, {:module, On.Multiple.Lines}} = resolve(project, code)
+      assert {:ok, {:module, On.Multiple.Lines}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 3
+      assert range.end.character == 8
     end
 
     test "succeeds in single line calls", %{project: project} do
@@ -380,7 +404,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         |Enum.map(1..10, & &1 + 1)
       ]
 
-      assert {:ok, {:module, Enum}} = resolve(project, code)
+      assert {:ok, {:module, Enum}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 5
     end
 
     test "succeeds in multi-line calls", %{project: project} do
@@ -390,7 +418,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end)
       ]
 
-      assert {:ok, {:module, Enum}} = resolve(project, code)
+      assert {:ok, {:module, Enum}, range} = resolve(project, code)
+      assert range.start.line == 1
+      assert range.start.character == 1
+      assert range.end.line == 1
+      assert range.end.character == 5
     end
 
     test "expands top-level aliases", %{project: project} do
@@ -401,7 +433,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Long.Aliased.Module}} = resolve(project, code)
+      assert {:ok, {:module, Long.Aliased.Module}, range} = resolve(project, code)
+      assert range.start.line == 3
+      assert range.start.character == 3
+      assert range.end.line == 3
+      assert range.end.character == 9
     end
 
     test "ignores top-level aliases made after the cursor", %{project: project} do
@@ -412,7 +448,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Module}} = resolve(project, code)
+      assert {:ok, {:module, Module}, range} = resolve(project, code)
+      assert range.start.line == 2
+      assert range.start.character == 3
+      assert range.end.line == 2
+      assert range.end.character == 9
     end
 
     test "resolves implicit aliases", %{project: project} do
@@ -425,7 +465,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Example.Inner}} = resolve(project, code)
+      assert {:ok, {:module, Example.Inner}, range} = resolve(project, code)
+      assert range.start.line == 5
+      assert range.start.character == 3
+      assert range.end.line == 5
+      assert range.end.character == 8
     end
 
     test "expands current module", %{project: project} do
@@ -435,7 +479,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Example}} = resolve(project, code)
+      assert {:ok, {:module, Example}, range} = resolve(project, code)
+      assert range.start.line == 2
+      assert range.start.character == 3
+      assert range.end.line == 2
+      assert range.end.character == 13
     end
 
     test "expands current module used in alias", %{project: project} do
@@ -445,7 +493,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Example}} = resolve(project, code)
+      assert {:ok, {:module, Example}, range} = resolve(project, code)
+      assert range.start.line == 2
+      assert range.start.character == 3
+      assert range.end.line == 2
+      assert range.end.character == 13
     end
 
     test "expands alias following current module", %{project: project} do
@@ -455,7 +507,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         end
       ]
 
-      assert {:ok, {:module, Example.Nested}} = resolve(project, code)
+      assert {:ok, {:module, Example.Nested}, range} = resolve(project, code)
+      assert range.start.line == 2
+      assert range.start.character == 3
+      assert range.end.line == 2
+      assert range.end.character == 20
     end
   end
 
