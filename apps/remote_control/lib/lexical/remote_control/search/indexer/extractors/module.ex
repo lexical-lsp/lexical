@@ -28,8 +28,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         :module,
         reducer.position,
         block.ends_at,
-        Application.get_application(aliased_module),
-        &tokenize/1
+        Application.get_application(aliased_module)
       )
 
     module_name_meta = Reducer.skip(module_name_meta)
@@ -59,8 +58,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             :module,
             start,
             finish,
-            Application.get_application(module),
-            &tokenize/1
+            Application.get_application(module)
           )
 
         {:ok, entry}
@@ -88,8 +86,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             :module,
             start,
             finish,
-            Application.get_application(module),
-            &tokenize/1
+            Application.get_application(module)
           )
 
         {:ok, entry}
@@ -152,15 +149,5 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         List.to_atom(module_charlist)
       end)
     end)
-  end
-
-  defp tokenize(module) do
-    case to_string(module) do
-      "Elixir." <> rest ->
-        rest
-
-      erlang_module ->
-        erlang_module
-    end
   end
 end

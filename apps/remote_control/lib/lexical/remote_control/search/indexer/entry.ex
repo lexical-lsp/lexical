@@ -21,7 +21,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :ref,
     :start,
     :subtype,
-    :tokens,
     :type
   ]
 
@@ -32,7 +31,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           finish: position(),
           indexer: indexer(),
           subject: String.t(),
-          tokens: [String.t()],
           parent: entry_reference(),
           path: Path.t(),
           ref: entry_reference(),
@@ -42,22 +40,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           updated_at: pos_integer()
         }
 
+  alias Lexical.StructAccess
   alias Lexical.VM.Versions
-  # credo:disable-for-next-line
-  def reference(
-        path,
-        ref,
-        parent,
-        subject,
-        type,
-        start,
-        finish,
-        application,
-        tokenizer \\ &Function.identity/1
-      )
 
-  # credo:disable-for-next-line
-  def reference(path, ref, parent, subject, type, start, finish, application, tokenizer) do
+  use StructAccess
+
+  def reference(path, ref, parent, subject, type, start, finish, application) do
     versions = Versions.current()
 
     %__MODULE__{
@@ -71,27 +59,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
       ref: ref,
       start: start,
       subtype: :reference,
-      tokens: tokenizer.(subject),
       type: type,
       updated_at: timestamp()
     }
   end
 
-  # credo:disable-for-next-line
-  def definition(
-        path,
-        ref,
-        parent,
-        subject,
-        type,
-        start,
-        finish,
-        application,
-        tokenizer \\ &Function.identity/1
-      )
-
-  # credo:disable-for-next-line
-  def definition(path, ref, parent, subject, type, start, finish, application, tokenizer) do
+  def definition(path, ref, parent, subject, type, start, finish, application) do
     versions = Versions.current()
 
     %__MODULE__{
@@ -105,7 +78,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
       ref: ref,
       start: start,
       subtype: :definition,
-      tokens: tokenizer.(subject),
       type: type,
       updated_at: timestamp()
     }
