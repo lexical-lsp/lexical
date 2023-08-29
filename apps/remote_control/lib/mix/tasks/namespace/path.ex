@@ -17,17 +17,12 @@ defmodule Mix.Tasks.Namespace.Path do
 
   defp replace_namespaced_apps(path_component) do
     Enum.reduce(Namespace.app_names(), path_component, fn app_name, path ->
-      string_name = Atom.to_string(app_name)
-
-      namespaced_name =
+      if path == Atom.to_string(app_name) do
         app_name
         |> Namespace.Module.apply()
         |> Atom.to_string()
-
-      if String.contains?(path, namespaced_name) do
-        path
       else
-        String.replace(path, string_name, namespaced_name)
+        path
       end
     end)
   end
