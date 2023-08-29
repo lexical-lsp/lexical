@@ -10,8 +10,8 @@ defmodule Mix.Tasks.Namespace.Transform.AppDirectories do
   def apply(app_path) do
     namespaced_app_path = Namespace.Path.apply(app_path)
 
-    with {:ok, _} <- File.rm_rf(namespaced_app_path),
-         :ok <- File.rename(app_path, namespaced_app_path) do
+    with {:ok, _} <- File.rm_rf(namespaced_app_path) do
+      File.rename!(app_path, namespaced_app_path)
     end
   end
 
