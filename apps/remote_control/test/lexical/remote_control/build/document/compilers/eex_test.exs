@@ -45,7 +45,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
     end
   end
 
-  describe "compile/1" do
+  describe "eex_to_quoted/1" do
     setup [:with_capture_server]
 
     test "handles syntax errors" do
@@ -65,6 +65,14 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert result.source == "EEx"
       assert result.uri
     end
+  end
+
+  describe "compile_quoted/2" do
+    setup [:with_capture_server]
+
+    setup do
+      Code.compiler_options(parser_options: [columns: true, token_metadata: true])
+    end
 
     test "handles unused variables" do
       assert {:ok, [%Result{} = result]} =
@@ -75,8 +83,43 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
                |> compile()
 
       assert result.message =~ ~s["something" is unused]
-      assert result.position == 1
+      assert result.position in [1, {1, 5}]
       assert result.severity == :warning
+      assert result.source == "EEx"
+      assert result.uri =~ "file:///file.eex"
+    end
+  end
+
+  describe "eval_quoted/2" do
+    test "handles undefinied function" do
+      document = document_with_content(~q[
+        <%= IO.uts("thing") %>
+      ])
+
+      assert {:error, [%Result{} = result]} = compile(document)
+      assert result.message =~ "function IO.uts/1 is undefined or private"
+      assert result.position == {1, 8}
+      assert result.severity == :error
+      assert result.source == "EEx"
+      assert result.uri =~ "file:///file.eex"
+    end
+
+    @tag :with_diagnostics
+    test "handles undefinied variable" do
+      document = document_with_content(~q[
+        <%= thing %>
+      ])
+
+      assert {:error, [%Result{} = result]} = compile(document)
+
+      if Features.with_diagnostics?() do
+        assert result.message =~ "undefined variable \"thing\""
+      else
+        assert result.message =~ "undefined function thing/0"
+      end
+
+      assert result.position in [1, {1, 5}]
+      assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
     end
