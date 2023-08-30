@@ -63,13 +63,14 @@ defmodule Lexical.Ast do
   require Logger
   require Sourceror
 
+  @typedoc "Return value from `Code.Fragment.cursor_context/2`"
   @type cursor_context :: any()
+
+  @typedoc "Return value from `Code.Fragment.surround_context/3`"
   @type surround_context :: any()
 
-  @type parse_error :: any()
-
-  @type short_alias :: atom()
-  @type alias_segments :: [short_alias]
+  @type parse_error ::
+          {location :: keyword(), String.t() | {String.t(), String.t()}, String.t()}
 
   @type patch :: %{
           optional(:preserver_indentation) => boolean(),
@@ -81,6 +82,9 @@ defmodule Lexical.Ast do
   @type patch_line :: {:line, non_neg_integer()}
   @type patch_column :: {:column, non_neg_integer()}
   @type patch_change :: String.t() | (String.t() -> String.t())
+
+  @type short_alias :: atom()
+  @type alias_segments :: [short_alias]
 
   @doc """
   Returns an AST generated from a valid document or string.
