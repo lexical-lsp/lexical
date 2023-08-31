@@ -30,11 +30,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   @type subject :: term()
   @type pattern :: String.t()
   @type preprocessed ::
-          record(:subject,
-            original: term(),
-            graphemes: [String.t()],
-            normalized: String.t()
-          )
+          record(:subject, original: String.t(), graphemes: tuple(), normalized: String.t())
   @non_match_score -500
 
   @doc """

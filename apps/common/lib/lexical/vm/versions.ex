@@ -21,19 +21,10 @@ defmodule Lexical.VM.Versions do
   """
   @spec current() :: t
   def current do
-    case :persistent_term.get({__MODULE__, :current}, :not_present) do
-      :not_present ->
-        versions = %{
-          elixir: elixir_version(),
-          erlang: erlang_version()
-        }
-
-        :persistent_term.put({__MODULE__, :current}, versions)
-        versions
-
-      versions ->
-        versions
-    end
+    %{
+      elixir: elixir_version(),
+      erlang: erlang_version()
+    }
   end
 
   @doc """
@@ -151,18 +142,28 @@ defmodule Lexical.VM.Versions do
   end
 
   defp erlang_version do
-    major = :otp_release |> :erlang.system_info() |> List.to_string()
-    version_file = Path.join([:code.root_dir(), "releases", major, "OTP_VERSION"])
+    case :persistent_term.get({__MODULE__, :current_erlang}, :not_found) do
+      :not_found ->
+        major = :otp_release |> :erlang.system_info() |> List.to_string()
+        version_file = Path.join([:code.root_dir(), "releases", major, "OTP_VERSION"])
 
-    try do
-      {:ok, contents} = read_file(version_file)
-      String.split(contents, "\n", trim: true)
-    else
-      [full] -> full
-      _ -> major
-    catch
-      :error ->
-        major
+        erlang_version =
+          try do
+            {:ok, contents} = read_file(version_file)
+            String.split(contents, "\n", trim: true)
+          else
+            [full] -> full
+            _ -> major
+          catch
+            :error ->
+              major
+          end
+
+        :persistent_term.put({__MODULE__, :current_erlang}, erlang_version)
+        erlang_version()
+
+      erlang_version ->
+        erlang_version
     end
   end
 

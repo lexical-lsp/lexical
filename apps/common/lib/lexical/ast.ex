@@ -554,10 +554,13 @@ defmodule Lexical.Ast do
   defp maybe_insert_cursor(zipper, %Position{} = position) do
     case Zipper.next(zipper) do
       nil ->
-        Zipper.insert_right(
-          zipper,
-          {:__cursor__, [line: position.line, column: position.character], nil}
-        )
+        cursor = {:__cursor__, [line: position.line, column: position.character], nil}
+
+        if zipper == Zipper.top(zipper) do
+          Zipper.insert_child(zipper, cursor)
+        else
+          Zipper.insert_right(zipper, cursor)
+        end
 
       _ ->
         zipper
