@@ -313,11 +313,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         Some.Modul|e.
       ]
 
-      assert {:ok, {:module, Some.Module}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 12
+      assert {:ok, {:module, Some.Module}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«Some.Module».]
     end
 
     test "succeeds immediately following the module", %{project: project} do
@@ -325,11 +322,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
         Beyond.The.End|
       ]
 
-      assert {:ok, {:module, Beyond.The.End}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 15
+      assert {:ok, {:module, Beyond.The.End}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«Beyond.The.End»]
     end
 
     test "fails with an extra space following the module", %{project: project} do
@@ -350,175 +344,145 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves module segments at and before the cursor", %{project: project} do
       code = ~q[
-        In.|The.Middle
-      ]
+            In.|The.Middle
+          ]
 
-      assert {:ok, {:module, In.The}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 7
+      assert {:ok, {:module, In.The}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«In.The».Middle]
     end
 
     test "excludes trailing module segments with the cursor is on a period", %{project: project} do
       code = ~q[
-        AAA.BBB.CCC.DDD|.EEE
-      ]
+            AAA.BBB.CCC.DDD|.EEE
+          ]
 
-      assert {:ok, {:module, AAA.BBB.CCC.DDD}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 16
+      assert {:ok, {:module, AAA.BBB.CCC.DDD}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«AAA.BBB.CCC.DDD».EEE]
     end
 
     test "succeeds for modules within a multi-line node", %{project: project} do
       code = ~q[
-        foo =
-          On.Another.Lin|e
-      ]
+            foo =
+              On.Another.Lin|e
+          ]
 
-      assert {:ok, {:module, On.Another.Line}, range} = resolve(project, code)
-      assert range.start.line == 2
-      assert range.start.character == 3
-      assert range.end.line == 2
-      assert range.end.character == 18
+      assert {:ok, {:module, On.Another.Line}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «On.Another.Line»]
     end
 
     test "resolves the entire module for multi-line modules", %{project: project} do
       code = ~q[
-        On.
-          |Multiple.
-          Lines
-      ]
+            On.
+              |Multiple.
+              Lines
+          ]
 
-      assert {:ok, {:module, On.Multiple.Lines}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 3
-      assert range.end.character == 8
+      assert {:ok, {:module, On.Multiple.Lines}, resolved_range} = resolve(project, code)
+
+      assert resolved_range =~ """
+             «On.
+               Multiple.
+               Lines»\
+             """
     end
 
     test "succeeds in single line calls", %{project: project} do
       code = ~q[
-        |Enum.map(1..10, & &1 + 1)
-      ]
+            |Enum.map(1..10, & &1 + 1)
+          ]
 
-      assert {:ok, {:module, Enum}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 5
+      assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«Enum».map(1..10, & &1 + 1)]
     end
 
     test "succeeds in multi-line calls", %{project: project} do
       code = ~q[
-        |Enum.map(1..10, fn i ->
-          i + 1
-        end)
-      ]
+            |Enum.map(1..10, fn i ->
+              i + 1
+            end)
+          ]
 
-      assert {:ok, {:module, Enum}, range} = resolve(project, code)
-      assert range.start.line == 1
-      assert range.start.character == 1
-      assert range.end.line == 1
-      assert range.end.character == 5
+      assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«Enum».map(1..10, fn i ->]
     end
 
     test "expands top-level aliases", %{project: project} do
       code = ~q[
-        defmodule Example do
-          alias Long.Aliased.Module
-          Modul|e
-        end
-      ]
+            defmodule Example do
+              alias Long.Aliased.Module
+              Modul|e
+            end
+          ]
 
-      assert {:ok, {:module, Long.Aliased.Module}, range} = resolve(project, code)
-      assert range.start.line == 3
-      assert range.start.character == 3
-      assert range.end.line == 3
-      assert range.end.character == 9
+      assert {:ok, {:module, Long.Aliased.Module}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «Module»]
     end
 
     test "ignores top-level aliases made after the cursor", %{project: project} do
       code = ~q[
-        defmodule Example do
-          Modul|e
-          alias Long.Aliased.Module
-        end
-      ]
+            defmodule Example do
+              Modul|e
+              alias Long.Aliased.Module
+            end
+          ]
 
-      assert {:ok, {:module, Module}, range} = resolve(project, code)
-      assert range.start.line == 2
-      assert range.start.character == 3
-      assert range.end.line == 2
-      assert range.end.character == 9
+      assert {:ok, {:module, Module}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «Module»]
     end
 
     test "resolves implicit aliases", %{project: project} do
       code = ~q[
-        defmodule Example do
-          defmodule Inner do
-          end
+            defmodule Example do
+              defmodule Inner do
+              end
 
-          Inne|r
-        end
-      ]
+              Inne|r
+            end
+          ]
 
-      assert {:ok, {:module, Example.Inner}, range} = resolve(project, code)
-      assert range.start.line == 5
-      assert range.start.character == 3
-      assert range.end.line == 5
-      assert range.end.character == 8
+      assert {:ok, {:module, Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «Inner»]
     end
 
     test "expands current module", %{project: project} do
       code = ~q[
-        defmodule Example do
-          |__MODULE__
-        end
-      ]
+            defmodule Example do
+              |__MODULE__
+            end
+          ]
 
-      assert {:ok, {:module, Example}, range} = resolve(project, code)
-      assert range.start.line == 2
-      assert range.start.character == 3
-      assert range.end.line == 2
-      assert range.end.character == 13
+      assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «__MODULE__»]
     end
 
     test "expands current module used in alias", %{project: project} do
       code = ~q[
-        defmodule Example do
-          |__MODULE__.Nested
-        end
-      ]
+            defmodule Example do
+              |__MODULE__.Nested
+            end
+          ]
 
-      assert {:ok, {:module, Example}, range} = resolve(project, code)
-      assert range.start.line == 2
-      assert range.start.character == 3
-      assert range.end.line == 2
-      assert range.end.character == 13
+      assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «__MODULE__».Nested]
     end
 
     test "expands alias following current module", %{project: project} do
       code = ~q[
-        defmodule Example do
-          __MODULE__.|Nested
-        end
-      ]
+            defmodule Example do
+              __MODULE__.|Nested
+            end
+          ]
 
-      assert {:ok, {:module, Example.Nested}, range} = resolve(project, code)
-      assert range.start.line == 2
-      assert range.start.character == 3
-      assert range.end.line == 2
-      assert range.end.character == 20
+      assert {:ok, {:module, Example.Nested}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «__MODULE__.Nested»]
     end
   end
 
   defp resolve(project, code) do
     with {position, code} <- pop_position(code),
-         {:ok, code_doc} <- subject_module(project, code) do
-      Entity.resolve(code_doc, position)
+         {:ok, document} <- subject_module(project, code),
+         {:ok, resolved, range} <- Entity.resolve(document, position) do
+      {:ok, resolved, marked_range(document, range)}
     end
   end
 
@@ -526,9 +490,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     with {position, subject_module} <- pop_position(subject_module),
          {:ok, subject_module_doc} <- subject_module(project, subject_module),
          {:ok, %Location{} = location} <-
-           Entity.definition(project, subject_module_doc, position),
-         {:ok, definition_line} <- definition_line(location.document, location.range) do
-      {:ok, location.document.uri, definition_line}
+           Entity.definition(project, subject_module_doc, position) do
+      {:ok, location.document.uri, marked_range(location.document, location.range)}
     end
   end
 
@@ -542,28 +505,25 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     Position.new(line, character)
   end
 
-  defp definition_line(document, range) do
-    with {:ok, line_text} <- Document.fetch_text_at(document, range.start.line) do
-      graphemes = String.graphemes(line_text)
-      {text_before_range, range_text, text_after_range} = extract_range(graphemes, range)
-      marked_text = mark_range(range_text)
-      {:ok, IO.iodata_to_binary([text_before_range, marked_text, text_after_range])}
-    end
-  end
-
-  defp extract_range(graphemes, range) do
-    start_column = range.start.character - 1
-    end_column = range.end.character - 1
-
-    {text_before_range, remainder} = Enum.split(graphemes, start_column)
-    {range_text, text_after_range} = Enum.split(remainder, end_column - start_column)
-    {text_before_range, range_text, text_after_range}
-  end
-
   @range_start_marker "«"
   @range_end_marker "»"
 
-  defp mark_range(range_text) do
-    [@range_start_marker | range_text ++ List.wrap(@range_end_marker)]
+  defp marked_range(document, range) do
+    import Document.Line, only: [line: 1]
+
+    index_range = (range.start.line - 1)..(range.end.line - 1)
+
+    document.lines
+    |> Enum.slice(index_range)
+    |> Enum.map(fn line(text: text, ending: ending) -> text <> ending end)
+    |> update_in([Access.at(-1)], &insert_marker(&1, @range_end_marker, range.end.character))
+    |> update_in([Access.at(0)], &insert_marker(&1, @range_start_marker, range.start.character))
+    |> IO.iodata_to_binary()
+    |> String.trim_trailing()
+  end
+
+  defp insert_marker(text, marker, character) do
+    {leading, trailing} = String.split_at(text, character - 1)
+    leading <> marker <> trailing
   end
 end
