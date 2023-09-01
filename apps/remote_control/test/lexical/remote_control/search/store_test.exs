@@ -31,10 +31,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   def with_a_started_store(%{project: project}) do
-    create_index = fn _ -> {:ok, []} end
-    update_index = fn _ -> {:ok, [], []} end
-
-    start_supervised!({Store, [project, create_index, update_index]})
+    start_supervised!({Store, [project, &default_create/1, &default_update/2]})
 
     on_exit(fn ->
       project
