@@ -3,16 +3,24 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
   alias Lexical.VM.Versions
   import Record
 
+  @version 1
+
+  @doc """
+  Table metadata. This will allow us to detect when and what to redindex if
+  we add types or subtypes. It will also allow us to update the header records
+  and migrate tables if the need arises.
+  """
+  defrecord :metadata,
+    schema_version: @version,
+    types: [:module],
+    subtypes: [:definition, :reference]
+
   @doc """
   A header for the records stored in the ETS table / disk.
   The default values are initialized to :_ to allow this to be used for querying,
   as :_ means wildcard. This _does_ mean you need to
 
   """
-  @version 1
-
-  defrecord :metadata, schema_version: @version
-
   defrecord :header, :record_v1,
     reference: :_,
     path: :_,
@@ -26,13 +34,18 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
 
   def new(version \\ @version) do
     table_name = :ets.new(@table, [:named_table, :set, read_concurrency: true])
-    :ets.insert(table_name, {:schema, metadata(schema_version: version)})
+    :ets.insert(table_name, {:metadata, metadata(schema_version: version)})
     table_name
   end
 
-  def schema do
-    [[metadata(schema_version: version)]] = :ets.match(@table, {:schema, :"$1"})
-    %{schema_version: version}
+  def drop do
+    :ets.delete(@table)
+  end
+
+  def table_metadata do
+    [[result]] = :ets.match(@table, {:metadata, :"$1"})
+    metadata(schema_version: version, types: types, subtypes: subtypes) = result
+    %{schema_version: version, types: types, subtypes: subtypes}
   end
 
   def to_ets(%Entry{} = entry) do
@@ -58,6 +71,9 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     with true <- File.exists?(filename),
          {:ok, @table} <- :ets.file2tab(filename) do
       :ok
+    else
+      _ ->
+        :error
     end
   end
 
@@ -74,11 +90,15 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
   end
 
   def select_all do
-    entry_wildcard = {header(), :"$1"}
+    entry_wildcard = match_spec(:_, :_, :_)
+    :ets.select(@table, entry_wildcard)
+  end
 
+  def select_unique_fields(entry_fields) do
     @table
-    |> :ets.match(entry_wildcard)
-    |> List.flatten()
+    |> :ets.select(match_spec(:_, :_, :_))
+    |> Stream.map(&Map.take(&1, entry_fields))
+    |> Enum.uniq()
   end
 
   def replace_all([]) do
@@ -101,9 +121,10 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
 
   def find_by_ref(type, subtype, references) do
     for reference <- references,
-        match_spec = reference_match_spec(reference, type, subtype) do
-      [entry] = :ets.select(@table, match_spec)
-      entry
+        match_spec = reference_match_spec(reference, type, subtype),
+        result = select_one(match_spec),
+        result != nil do
+      result
     end
   end
 
@@ -155,5 +176,12 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
       )
 
     [{{header, :"$1"}, [], [:"$1"]}]
+  end
+
+  defp select_one(match_spec) do
+    case :ets.select(@table, match_spec) do
+      [] -> nil
+      [entry] -> entry
+    end
   end
 end

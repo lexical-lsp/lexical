@@ -1,18 +1,17 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
-  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
+  alias Lexical.Test.Entry
+  alias Lexical.Test.EventualAssertions
+  alias Lexical.Test.Fixtures
 
   use ExUnit.Case
-  use Patch
 
-  import Lexical.Test.EventualAssertions
-  import Lexical.Test.Entry.Builder
-  import Lexical.Test.Fixtures
+  import EventualAssertions
+  import Entry.Builder
+  import Fixtures
 
   setup do
-    expose(Entry, tokenize: 1)
     project = project()
-    start_supervised!({Store, [project, fn -> {:ok, []} end]})
 
     on_exit(fn ->
       project
@@ -23,29 +22,180 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     {:ok, project: project}
   end
 
-  test "it has a schema" do
-    assert %{schema_version: 1} = Store.schema()
+  def default_create(_project) do
+    {:ok, []}
   end
 
-  test "the schema survives restarts" do
-    assert %{schema_version: 1} = Store.schema()
+  def default_update(_project, _entities) do
+    {:ok, [], []}
+  end
 
-    restart_store()
+  def with_a_started_store(%{project: project}) do
+    create_index = fn _ -> {:ok, []} end
+    update_index = fn _ -> {:ok, [], []} end
 
-    assert %{schema_version: 1} = Store.schema()
+    start_supervised!({Store, [project, create_index, update_index]})
+
+    on_exit(fn ->
+      project
+      |> Store.State.index_path()
+      |> File.rm()
+    end)
+
+    :ok
   end
 
   describe "starting" do
-    test "starts empty if there are no disk files" do
+    test "the create function is called if there are no disk files", %{project: project} do
+      me = self()
+
+      create_fn = fn ^project ->
+        send(me, :create)
+        {:ok, []}
+      end
+
+      update_fn = fn _ ->
+        send(me, :update)
+        {:ok, [], []}
+      end
+
+      start_supervised!({Store, [project, create_fn, update_fn]})
+
+      assert_receive :create
+      refute_receive :update
+    end
+
+    test "the start function receives stale if there is a disk file", %{project: project} do
+      me = self()
+      create_fn = fn ^project -> {:ok, []} end
+
+      update_fn = fn _, _ ->
+        send(me, :update)
+        {:ok, [], []}
+      end
+
+      start_supervised!({Store, [project, create_fn, update_fn]})
+      restart_store()
+
+      assert_receive :update
+    end
+
+    test "starts empty if there are no disk files", %{project: project} do
+      Store.start_link([project, &default_create/1, &default_update/2])
       assert [] = Store.all()
 
       entry = definition()
       Store.replace([entry])
       assert Store.all() == [entry]
     end
+
+    test "incorporates any indexed files in an empty index", %{project: project} do
+      create = fn _ ->
+        entries = [
+          reference(path: "/foo/bar/baz.ex"),
+          reference(path: "/foo/bar/quux.ex")
+        ]
+
+        {:ok, entries}
+      end
+
+      start_supervised!({Store, [project, create, &default_update/2]})
+      restart_store()
+      paths = Enum.map(Store.all(), & &1.path)
+
+      assert "/foo/bar/baz.ex" in paths
+      assert "/foo/bar/quux.ex" in paths
+    end
+
+    test "fails if the reindex fails on an empty index", %{project: project} do
+      create = fn _ -> {:error, :broken} end
+      start_supervised!({Store, [project, create, &default_update/2]})
+      assert Store.all() == []
+    end
+
+    test "incorporates any indexed files in a stale index", %{project: project} do
+      create = fn
+        _ ->
+          {:ok,
+           [
+             reference(ref: 1, path: "/foo/bar/baz.ex"),
+             reference(ref: 2, path: "/foo/bar/quux.ex")
+           ]}
+      end
+
+      update = fn _, _ ->
+        entries = [
+          reference(ref: 3, path: "/foo/bar/baz.ex"),
+          reference(ref: 4, path: "/foo/bar/other.ex")
+        ]
+
+        {:ok, entries, []}
+      end
+
+      start_supervised!({Store, [project, create, update]})
+      restart_store()
+
+      entries = Enum.map(Store.all(), &{&1.ref, &1.path})
+      assert {2, "/foo/bar/quux.ex"} in entries
+      assert {3, "/foo/bar/baz.ex"} in entries
+      assert {4, "/foo/bar/other.ex"} in entries
+    end
+
+    test "fails if the reinder fails on an stale index", %{project: project} do
+      create = fn _ -> {:ok, []} end
+      update = fn _, _ -> {:error, :bad} end
+
+      start_supervised!({Store, [project, create, update]})
+      restart_store()
+
+      assert [] = Store.all()
+    end
+
+    test "the updater allows you to delete paths", %{project: project} do
+      create = fn _ ->
+        entries = [
+          definition(path: "/path/to/keep.ex"),
+          definition(path: "/path/to/delete.ex"),
+          definition(path: "/path/to/delete.ex"),
+          definition(path: "/another/path/to/delete.ex")
+        ]
+
+        {:ok, entries}
+      end
+
+      update = fn _, _ ->
+        {:ok, [], ["/path/to/delete.ex", "/another/path/to/delete.ex"]}
+      end
+
+      start_supervised!({Store, [project, create, update]})
+      restart_store()
+      assert [entry] = Store.all()
+      assert entry.path == "/path/to/keep.ex"
+    end
+  end
+
+  describe "metadata" do
+    setup [:with_a_started_store]
+
+    test "it has table metadata" do
+      assert metadata = Store.metadata()
+      assert metadata.schema_version == 1
+      assert metadata.types == [:module]
+      assert metadata.subtypes == [:definition, :reference]
+    end
+
+    test "the schema survives restarts" do
+      assert %{schema_version: 1} = Store.metadata()
+
+      restart_store()
+
+      assert %{schema_version: 1} = Store.metadata()
+    end
   end
 
   describe "replace/1" do
+    setup [:with_a_started_store]
+
     test "replaces the entire index" do
       entries = [definition(subject: OtherModule)]
 
@@ -65,6 +215,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   describe "querying" do
+    setup [:with_a_started_store]
+
     test "matching can exclude on type" do
       Store.replace([
         definition(ref: 1),
@@ -137,9 +289,68 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
       assert entry_1.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
       assert entry_2.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
     end
+
+    test "matching only returns entries specific to our elixir version" do
+      Store.replace([
+        definition(ref: 1, subject: Foo.Bar.Baz, elixir_version: "1.1"),
+        definition(ref: 2, subject: Foo.Bar.Baz)
+      ])
+
+      assert {:ok, [entry]} = Store.fuzzy("Foo.Bar.", type: :module, subtype: :definition)
+      assert entry.ref == 2
+    end
+
+    test "matching only returns entries specific to our erlang version" do
+      Store.replace([
+        definition(ref: 1, subject: Foo.Bar.Baz, erlang_version: "14.3.2.8"),
+        definition(ref: 2, subject: Foo.Bar.Baz)
+      ])
+
+      assert {:ok, [entry]} = Store.fuzzy("Foo.Bar.", type: :module, subtype: :definition)
+      assert entry.ref == 2
+    end
+  end
+
+  describe "unique_fields/1" do
+    setup [:with_a_started_store]
+
+    test "should return paths" do
+      Store.replace([
+        definition(ref: 1, path: "/foo/bar/baz.ex"),
+        reference(ref: 2, path: "/foo/bar/quux.ex"),
+        definition(ref: 3, path: "/foo/bar/other.ex")
+      ])
+
+      paths = Store.unique_fields([:path])
+
+      assert length(paths) == 3
+      assert %{path: "/foo/bar/baz.ex"} in paths
+      assert %{path: "/foo/bar/quux.ex"} in paths
+      assert %{path: "/foo/bar/other.ex"} in paths
+    end
+
+    test "should filter this elixir version" do
+      Store.replace([
+        definition(ref: 1, path: "/foo/bar/baz.ex"),
+        definition(ref: 1, path: "/foo/bar/baz/old.ex", elixir_version: "0.13.0")
+      ])
+
+      assert [%{path: "/foo/bar/baz.ex"}] = Store.unique_fields([:path])
+    end
+
+    test "should filter this erlang version" do
+      Store.replace([
+        definition(ref: 1, path: "/foo/bar/baz.ex"),
+        definition(ref: 1, path: "/foo/bar/baz/old.ex", erlang_version: "18.0.0")
+      ])
+
+      assert [%{path: "/foo/bar/baz.ex"}] = Store.unique_fields([:path])
+    end
   end
 
   describe "updating entries in a file" do
+    setup [:with_a_started_store]
+
     test "old entries with the same path are deleted" do
       path = "/path/to/file.ex"
 

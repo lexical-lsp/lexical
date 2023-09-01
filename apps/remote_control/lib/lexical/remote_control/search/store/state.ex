@@ -2,24 +2,36 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Fuzzy
   alias Lexical.RemoteControl.Search.Store.Ets
+  require Logger
 
   @index_path Path.join("indexes", "source.index.ets")
 
-  defstruct [:project, :index_path, :index_fn, :loaded?, :fuzzy, :ets_table]
+  defstruct [:project, :index_path, :create_index, :update_index, :loaded?, :fuzzy, :ets_table]
 
-  def new(%Project{} = project, index_fn) do
+  def new(%Project{} = project, create_index, update_index) do
     %__MODULE__{
+      create_index: create_index,
       project: project,
       index_path: index_path(project),
-      index_fn: index_fn,
-      loaded?: false
+      loaded?: false,
+      update_index: update_index
     }
     |> ensure_index_directory_exists()
   end
 
-  def schema(%__MODULE__{} = state) do
+  def drop(%__MODULE__{}) do
+    Ets.drop()
+  end
+
+  def metadata(%__MODULE__{} = state) do
     with {:ok, state} <- load(state) do
-      {:ok, Ets.schema(), state}
+      {:ok, Ets.table_metadata(), state}
+    end
+  end
+
+  def unique_fields(%__MODULE__{} = state, fields) do
+    with {:ok, state} <- load(state) do
+      {:ok, Ets.select_unique_fields(fields), state}
     end
   end
 
@@ -28,12 +40,10 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def load(%__MODULE__{} = state) do
-    case load_from_file(state) do
-      {:ok, _} = success ->
-        success
-
-      :error ->
-        reindex_and_load(state)
+    with :error <- load_from_file(state),
+         {:error, _} = error <- reindex_and_load(state) do
+      Logger.error("Could not initialize index due to #{inspect(error)}")
+      {:ok, state}
     end
   end
 
@@ -97,20 +107,34 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp load_from_file(%__MODULE__{} = state) do
-    case Ets.load_from(state.index_path) do
-      :ok ->
-        entries = all(state)
-        {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.new(entries)}}
+    with :ok <- Ets.load_from(state.index_path),
+         entries = all(state),
+         {:ok, updated_entries, deleted_paths} <- state.update_index.(state.project, entries) do
+      fuzzy = Fuzzy.new(entries)
+      starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
 
-      _ ->
-        :error
+      new_state =
+        updated_entries
+        |> Enum.group_by(& &1.path)
+        |> Enum.reduce(starting_state, fn {path, entry_list}, state ->
+          {:ok, new_state} = update(state, path, entry_list)
+          new_state
+        end)
+
+      new_state =
+        Enum.reduce(deleted_paths, new_state, fn path, state ->
+          {:ok, new_state} = update(state, path, [])
+          new_state
+        end)
+
+      {:ok, %__MODULE__{new_state | loaded?: true}}
     end
   end
 
   defp reindex_and_load(%__MODULE__{} = state) do
     table_name = Ets.new()
 
-    with {:ok, entries} <- state.index_fn.(),
+    with {:ok, entries} <- state.create_index.(state.project),
          {:ok, state} <- replace(state, entries) do
       {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.new(entries), ets_table: table_name}}
     end
