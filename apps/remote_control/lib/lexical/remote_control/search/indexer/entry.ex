@@ -1,7 +1,8 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type entry_type :: :module | :function | :macro | :field
+  @type subject :: String.t()
+  @type entry_subtype :: :reference | :definition
   @type indexer :: :beam | :source
-  @type subtype :: :reference | :definition
   @type line :: non_neg_integer()
   @type column :: non_neg_integer
   @type position :: {line, column}
@@ -30,12 +31,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           erlang_version: version(),
           finish: position(),
           indexer: indexer(),
-          subject: String.t(),
+          subject: subject(),
           parent: entry_reference(),
           path: Path.t(),
           ref: entry_reference(),
           start: position(),
-          subtype: subtype(),
+          subtype: entry_subtype(),
           type: entry_type(),
           updated_at: pos_integer()
         }

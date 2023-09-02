@@ -25,7 +25,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   def metadata(%__MODULE__{} = state) do
     with {:ok, state} <- load(state) do
-      {:ok, Ets.table_metadata(), state}
+      {:ok, Ets.find_metadata(), state}
     end
   end
 
@@ -40,10 +40,18 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def load(%__MODULE__{} = state) do
-    with :error <- load_from_file(state),
-         {:error, _} = error <- reindex_and_load(state) do
-      Logger.error("Could not initialize index due to #{inspect(error)}")
-      {:ok, state}
+    case Ets.new(state.index_path) do
+      {:ok, :empty, table_name} ->
+        new_state = %__MODULE__{state | ets_table: table_name}
+        reindex_and_load(new_state)
+
+      {:ok, :stale, table_name} ->
+        new_state = %__MODULE__{state | ets_table: table_name}
+        refresh_entries_and_load(new_state)
+
+      error ->
+        Logger.error("Could not initialize index due to #{inspect(error)}")
+        error
     end
   end
 
@@ -52,7 +60,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def replace(%__MODULE__{} = state, entries) do
-    with true <- Ets.replace_all(entries),
+    with :ok <- Ets.replace_all(entries),
          :ok <- Ets.sync_to(state.index_path) do
       {:ok, %__MODULE__{state | fuzzy: Fuzzy.new(entries)}}
     else
@@ -64,7 +72,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def exact(%__MODULE__{}, subject, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    results = Ets.find_exact(subject, type, subtype)
+    results = Ets.find_by_subject(subject, type, subtype)
     {:ok, results}
   end
 
@@ -76,7 +84,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       refs ->
         type = Keyword.get(constraints, :type, :_)
         subtype = Keyword.get(constraints, :subtype, :_)
-        {:ok, Ets.find_by_ref(type, subtype, refs)}
+        {:ok, Ets.find_by_references(refs, type, subtype)}
     end
   end
 
@@ -85,9 +93,15 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def update(%__MODULE__{} = state, path, entries) do
-    with {:ok, deleted_entries} <- Ets.delete_by_path(path),
-         true <- Ets.insert(entries),
+    with {:ok, state} <- update_nosync(state, path, entries),
          :ok <- Ets.sync_to(state.index_path) do
+      {:ok, state}
+    end
+  end
+
+  def update_nosync(%__MODULE__{} = state, path, entries) do
+    with {:ok, deleted_entries} <- Ets.delete_by_path(path),
+         :ok <- Ets.insert(entries) do
       refs_to_drop = Enum.map(deleted_entries, & &1.ref)
       fuzzy = state.fuzzy
 
@@ -106,10 +120,10 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp load_from_file(%__MODULE__{} = state) do
-    with :ok <- Ets.load_from(state.index_path),
-         entries = all(state),
-         {:ok, updated_entries, deleted_paths} <- state.update_index.(state.project, entries) do
+  defp refresh_entries_and_load(%__MODULE__{} = state) do
+    entries = all(state)
+
+    with {:ok, updated_entries, deleted_paths} <- state.update_index.(state.project, entries) do
       fuzzy = Fuzzy.new(entries)
       starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
 
@@ -117,13 +131,13 @@ defmodule Lexical.RemoteControl.Search.Store.State do
         updated_entries
         |> Enum.group_by(& &1.path)
         |> Enum.reduce(starting_state, fn {path, entry_list}, state ->
-          {:ok, new_state} = update(state, path, entry_list)
+          {:ok, new_state} = update_nosync(state, path, entry_list)
           new_state
         end)
 
       new_state =
         Enum.reduce(deleted_paths, new_state, fn path, state ->
-          {:ok, new_state} = update(state, path, [])
+          {:ok, new_state} = update_nosync(state, path, [])
           new_state
         end)
 
@@ -132,11 +146,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp reindex_and_load(%__MODULE__{} = state) do
-    table_name = Ets.new()
-
     with {:ok, entries} <- state.create_index.(state.project),
          {:ok, state} <- replace(state, entries) do
-      {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.new(entries), ets_table: table_name}}
+      {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.new(entries)}}
     end
   end
 end
