@@ -480,6 +480,56 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     end
   end
 
+  describe "struct resolve/2" do
+    test "succeeds when the cursor is on the %", %{project: project} do
+      code = ~q[
+        |%MyStruct{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the cursor is in an alias", %{project: project} do
+      code = ~q[
+        %My|Struct{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the cursor is on the opening bracket", %{project: project} do
+      code = ~q[
+        %MyStruct|{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the struct spans multiple lines", %{project: project} do
+      code = ~q[
+        %MyStruct.|Nested{
+          foo: 1,
+          bar: 2
+        }
+      ]
+
+      assert {:ok, {:struct, MyStruct.Nested}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct.Nested»{]
+    end
+
+    test "excludes trailing module segments", %{project: project} do
+      code = ~q[
+        %My|Struct.Nested{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct».Nested{}]
+    end
+  end
+
   defp resolve(project, code) do
     with {position, code} <- pop_position(code),
          {:ok, document} <- subject_module(project, code),

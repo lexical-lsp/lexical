@@ -10,7 +10,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
     :arity,
     :signature,
     :doc,
-    :metadata
+    :metadata,
+    defs: []
     # :spec
   ]
 
@@ -21,7 +22,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
           arity: arity(),
           signature: [String.t()],
           doc: content(),
-          metadata: metadata()
+          metadata: metadata(),
+          defs: [String.t()]
           # spec: String.t() | nil
         }
 

@@ -81,68 +81,191 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   end
 
   describe "module hover" do
-    test "replies with public module doc", %{project: project} do
-      code = ~q[
-        defmodule HoverWithDoc do
-          @moduledoc """
-          This module has a moduledoc.
-          """
-        end
-      ]
+    test "with @moduledoc", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule HoverWithDoc do
+            @moduledoc """
+            This module has a moduledoc.
+            """
+          end
+        ],
+        hovered: "|HoverWithDoc",
+        expected: """
+        ```elixir
+        HoverWithDoc
+        ```
 
-      with_compiled_in(project, code, fn ->
-        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, "|HoverWithDoc")
-        assert result.contents.kind == :markdown
+        ---
 
-        assert result.contents.value == """
-               ### HoverWithDoc
-
-               This module has a moduledoc.
-               """
-      end)
+        This module has a moduledoc.
+        """
+      )
     end
 
-    test "notes private modules", %{project: project} do
-      code = ~q[
-        defmodule HoverPrivate do
-          @moduledoc false
-        end
-      ]
+    test "with @moduledoc false", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule HoverPrivate do
+            @moduledoc false
+          end
+        ],
+        hovered: "|HoverPrivate",
+        expected: """
+        ```elixir
+        HoverPrivate
+        ```
 
-      with_compiled_in(project, code, fn ->
-        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, "|HoverPrivate")
-        assert result.contents.kind == :markdown
+        ---
 
-        assert result.contents.value == """
-               ### HoverPrivate
-
-               *This module is private.*
-               """
-      end)
+        *This module is private.*
+        """
+      )
     end
 
-    test "notes modules without docs", %{project: project} do
-      code = ~q[
-        defmodule HoverNoDocs do
-        end
-      ]
+    test "without @moduledoc", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule HoverNoDocs do
+          end
+        ],
+        hovered: "|HoverNoDocs",
+        expected: """
+        ```elixir
+        HoverNoDocs
+        ```
 
-      with_compiled_in(project, code, fn ->
-        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, "|HoverNoDocs")
-        assert result.contents.kind == :markdown
+        ---
 
-        assert result.contents.value == """
-               ### HoverNoDocs
+        *This module is undocumented.*
+        """
+      )
+    end
 
-               *This module is undocumented.*
-               """
-      end)
+    test "struct with @moduledoc includes t/0 type", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule StructWithDoc do
+            @moduledoc """
+            This module has a moduledoc.
+            """
+
+            defstruct foo: nil, bar: nil, baz: nil
+            @type t :: %__MODULE__{
+                    foo: String.t(),
+                    bar: integer(),
+                    baz: {boolean(), reference()}
+                  }
+          end
+        ],
+        hovered: "%|StructWithDoc{}",
+        expected: """
+        ```elixir
+        %StructWithDoc{}
+        ```
+
+        ---
+
+        #### Struct
+
+        ```elixir
+        @type t() :: %StructWithDoc{
+                bar: integer(),
+                baz: {boolean(), reference()},
+                foo: String.t()
+              }
+        ```
+
+        ---
+
+        This module has a moduledoc.
+        """
+      )
+    end
+
+    test "struct with @moduledoc includes all t types", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule StructWithDoc do
+            @moduledoc """
+            This module has a moduledoc.
+            """
+
+            defstruct foo: nil
+            @type t :: %__MODULE__{foo: String.t()}
+            @type t(kind) :: %__MODULE__{foo: kind}
+            @type t(kind1, kind2) :: %__MODULE__{foo: {kind1, kind2}}
+          end
+        ],
+        hovered: "%|StructWithDoc{}",
+        expected: """
+        ```elixir
+        %StructWithDoc{}
+        ```
+
+        ---
+
+        #### Struct
+
+        ```elixir
+        @type t() :: %StructWithDoc{foo: String.t()}
+        @type t(kind) :: %StructWithDoc{foo: kind}
+        @type t(kind1, kind2) :: %StructWithDoc{foo: {kind1, kind2}}
+        ```
+
+        ---
+
+        This module has a moduledoc.
+        """
+      )
+    end
+
+    test "struct with @moduledoc without type", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule StructWithDoc do
+            @moduledoc """
+            This module has a moduledoc.
+            """
+
+            defstruct foo: nil
+          end
+        ],
+        hovered: "%|StructWithDoc{}",
+        expected: """
+        ```elixir
+        %StructWithDoc{}
+        ```
+
+        ---
+
+        This module has a moduledoc.
+        """
+      )
     end
   end
 
-  defp hover(project, code) do
-    with {position, code} <- pop_position(code),
-         {:ok, document} <- document_with_content(project, code),
+  defp assert_hover(project, opts) do
+    code = Keyword.fetch!(opts, :code)
+    hovered = Keyword.fetch!(opts, :hovered)
+    expected_markdown = Keyword.fetch!(opts, :expected)
+
+    with_compiled_in(project, code, fn ->
+      assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+      assert result.contents.kind == :markdown
+      assert result.contents.value == expected_markdown
+    end)
+  end
+
+  defp hover(project, hovered) do
+    with {position, hovered} <- pop_position(hovered),
+         {:ok, document} <- document_with_content(project, hovered),
          {:ok, request} <- hover_request(document.uri, position) do
       Handlers.Hover.handle(request, %Env{project: project})
     end

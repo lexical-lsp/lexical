@@ -22,23 +22,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
   def for_module(module) when is_atom(module) do
     with :ok <- ensure_ready(module),
          {:docs_v1, _anno, _lang, _fmt, module_doc, _meta, docs} <- Code.fetch_docs(module) do
-      {:ok, normalize_docs(module, module_doc, docs)}
+      {:ok, parse_docs(module, module_doc, docs)}
     end
   end
 
-  defp normalize_docs(module, module_doc, element_docs) do
-    elements_by_kind = Enum.group_by(element_docs, &doc_kind/1)
-    functions = Map.get(elements_by_kind, :function, [])
-    macros = Map.get(elements_by_kind, :macro, [])
-    callbacks = Map.get(elements_by_kind, :callback, [])
-    types = Map.get(elements_by_kind, :type, [])
+  defp parse_docs(module, module_doc, entries) do
+    entries_by_kind = Enum.group_by(entries, &doc_kind/1)
+    function_entries = Map.get(entries_by_kind, :function, [])
+    macro_entries = Map.get(entries_by_kind, :macro, [])
+    callback_entries = Map.get(entries_by_kind, :callback, [])
+    type_entries = Map.get(entries_by_kind, :type, [])
+
+    spec_defs = get_spec_defs(module)
+    callback_defs = get_callback_defs(module)
+    type_defs = get_type_defs(module)
 
     %__MODULE__{
       module: module,
       doc: Entry.parse_doc(module_doc),
-      functions_and_macros: parse_doc_elements(module, functions ++ macros),
-      callbacks: parse_doc_elements(module, callbacks),
-      types: parse_doc_elements(module, types)
+      functions_and_macros: parse_entries(module, function_entries ++ macro_entries, spec_defs),
+      callbacks: parse_entries(module, callback_entries, callback_defs),
+      types: parse_entries(module, type_entries, type_defs)
     }
   end
 
@@ -46,9 +50,20 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
     kind
   end
 
-  defp parse_doc_elements(module, elements) do
-    elements
-    |> Enum.map(&Entry.from_docs_v1(module, &1))
+  defp parse_entries(module, raw_entries, defs) do
+    defs_by_name_arity =
+      Enum.group_by(
+        defs,
+        fn {name, arity, _formatted} -> {name, arity} end,
+        fn {_name, _arity, formatted} -> formatted end
+      )
+
+    raw_entries
+    |> Enum.map(fn raw_entry ->
+      entry = Entry.from_docs_v1(module, raw_entry)
+      defs = Map.get(defs_by_name_arity, {entry.name, entry.arity}, [])
+      Map.replace!(entry, :defs, defs)
+    end)
     |> Enum.group_by(& &1.name)
   end
 
@@ -75,5 +90,55 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
       Process.sleep(@timeout)
       ensure_file_exists(path, attempts - 1)
     end
+  end
+
+  defp get_spec_defs(module) do
+    case Code.Typespec.fetch_specs(module) do
+      {:ok, specs} ->
+        for {{name, arity}, defs} <- specs,
+            def <- defs do
+          formatted = name |> Code.Typespec.spec_to_quoted(def) |> format_def()
+          {name, arity, formatted}
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp get_callback_defs(module) do
+    case Code.Typespec.fetch_callbacks(module) do
+      {:ok, callbacks} ->
+        for {{name, arity}, defs} <- callbacks,
+            def <- defs do
+          formatted = name |> Code.Typespec.spec_to_quoted(def) |> format_def()
+          {name, arity, formatted}
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp get_type_defs(module) do
+    case Code.Typespec.fetch_types(module) do
+      {:ok, types} ->
+        for {kind, {name, _body, args} = type} <- types do
+          arity = length(args)
+          quoted_type = Code.Typespec.type_to_quoted(type)
+          quoted = {:@, [], [{kind, [], [quoted_type]}]}
+
+          {name, arity, format_def(quoted)}
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp format_def(quoted) do
+    quoted
+    |> Future.Code.quoted_to_algebra()
+    |> Inspect.Algebra.format(60)
   end
 end

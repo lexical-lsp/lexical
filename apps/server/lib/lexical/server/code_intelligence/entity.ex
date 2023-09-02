@@ -11,19 +11,12 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   require Logger
 
-  @type resolved :: {:module, module()}
+  @type resolved :: {:module, module()} | {:struct, module()}
 
   @doc """
   Attempts to resolve the entity at the given position in the document.
 
-  ## Return values
-
-  Returns `{:ok, resolved, range}` if successful and `{:error, error}`
-  otherwise. The `range` includes the resolved node and the
-  Resolved entities are one of:
-
-    * `{:module, module}`
-
+  Returns `{:ok, resolved, range}` if successful, `{:error, error}` otherwise.
   """
   @spec resolve(Document.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
   def resolve(%Document{} = document, %Position{} = position) do
@@ -50,6 +43,17 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     resolve_module(~c"__MODULE__", node_range, document, position)
   end
 
+  defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, document, position) do
+    # exclude the leading % from the node range so that it can be
+    # resolved like a normal module alias
+    node_range = {{start_line, start_col + 1}, end_pos}
+
+    case resolve_module(charlist, node_range, document, position) do
+      {:ok, {:module, module}, range} -> {:ok, {:struct, module}, range}
+      error -> error
+    end
+  end
+
   defp resolve(context, _node_range, _document, _position) do
     unsupported_context(context)
   end
@@ -59,27 +63,12 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   end
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
-  defp resolve_module(charlist, {{line, column}, {line, _}}, document, position)
-       when is_list(charlist) do
-    # Take only the segments at and before the cursor, e.g.
-    # Foo|.Bar.Baz -> Foo
-    # Foo.|Bar.Baz -> Foo.Bar
-    module_string =
-      charlist
-      |> Enum.with_index(column)
-      |> Enum.take_while(fn {char, column} ->
-        column < position.character or char != ?.
-      end)
-      |> Enum.map(&elem(&1, 0))
-      |> List.to_string()
+  defp resolve_module(charlist, {{line, column}, {line, _}}, document, position) do
+    module_string = module_before_position(charlist, column, position)
 
-    expanded =
-      [module_string]
-      |> Module.concat()
-      |> Ast.expand_aliases(document, position)
-
-    with {:ok, module} <- expanded do
-      {:ok, {:module, module}, {{line, column}, {line, column + String.length(module_string)}}}
+    with {:ok, module} <- expand_aliases(module_string, document, position) do
+      end_column = column + String.length(module_string)
+      {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
   end
 
@@ -89,14 +78,33 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   defp resolve_module(charlist, node_range, document, position) do
     module_string = List.to_string(charlist)
 
-    expanded =
-      [module_string]
-      |> Module.concat()
-      |> Ast.expand_aliases(document, position)
-
-    with {:ok, module} <- expanded do
+    with {:ok, module} <- expand_aliases(module_string, document, position) do
       {:ok, {:module, module}, node_range}
     end
+  end
+
+  # Take only the segments at and before the cursor, e.g.
+  # Foo|.Bar.Baz -> Foo
+  # Foo.|Bar.Baz -> Foo.Bar
+  defp module_before_position(charlist, start_column, position) when is_list(charlist) do
+    charlist
+    |> List.to_string()
+    |> module_before_position(position.character - start_column)
+  end
+
+  defp module_before_position(string, index) when is_binary(string) do
+    {prefix, suffix} = String.split_at(string, index)
+
+    case String.split(suffix, ".", parts: 2) do
+      [before_dot, _after_dot] -> prefix <> before_dot
+      [before_dot] -> prefix <> before_dot
+    end
+  end
+
+  defp expand_aliases(module, document, position) when is_binary(module) do
+    [module]
+    |> Module.concat()
+    |> Ast.expand_aliases(document, position)
   end
 
   @doc """
