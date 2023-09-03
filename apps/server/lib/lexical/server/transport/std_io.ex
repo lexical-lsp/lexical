@@ -86,7 +86,7 @@ defmodule Lexical.Server.Transport.StdIO do
 
         with {:ok, content_length} <-
                header_value(headers, "content-length", &String.to_integer/1),
-             {:ok, data} <- read(device, content_length),
+             {:ok, data} <- read_body(device, content_length),
              {:ok, message} <- JsonRpc.decode(data) do
           callback.(message)
         end
@@ -112,10 +112,16 @@ defmodule Lexical.Server.Transport.StdIO do
     end
   end
 
-  defp read(device, amount) do
+  defp read_body(device, amount) do
     case IO.read(device, amount) do
-      data when is_binary(data) or is_list(data) -> {:ok, data}
-      other -> other
+      data when is_binary(data) or is_list(data) ->
+        # Ensure that incoming data is latin1 to prevent double-encoding to utf8 later
+        # See https://github.com/lexical-lsp/lexical/issues/287 for context.
+        data = :unicode.characters_to_binary(data, :utf8, :latin1)
+        {:ok, data}
+
+      other ->
+        other
     end
   end
 
