@@ -115,7 +115,7 @@ defmodule Lexical.Server.Transport.StdIO do
   defp read_body(device, amount) do
     case IO.read(device, amount) do
       data when is_binary(data) or is_list(data) ->
-        # This is a bit "magical" and is likely a symptom of a bug elsewhere.
+        # Ensure that incoming data is latin1 to prevent double-encoding to utf8 later
         # See https://github.com/lexical-lsp/lexical/issues/287 for context.
         data = :unicode.characters_to_binary(data, :utf8, :latin1)
         {:ok, data}
