@@ -62,7 +62,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def replace(%__MODULE__{} = state, entries) do
     with :ok <- Ets.replace_all(entries),
          :ok <- Ets.sync_to(state.index_path) do
-      {:ok, %__MODULE__{state | fuzzy: Fuzzy.new(entries)}}
+      {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
     else
       _ ->
         {:error, state}
@@ -107,7 +107,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
       fuzzy =
         fuzzy
-        |> Fuzzy.drop_refs(refs_to_drop)
+        |> Fuzzy.drop_values(refs_to_drop)
         |> Fuzzy.update(entries)
 
       {:ok, %__MODULE__{state | fuzzy: fuzzy}}
@@ -124,7 +124,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     entries = all(state)
 
     with {:ok, updated_entries, deleted_paths} <- state.update_index.(state.project, entries) do
-      fuzzy = Fuzzy.new(entries)
+      fuzzy = Fuzzy.from_entries(entries)
       starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
 
       new_state =
@@ -148,7 +148,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   defp reindex_and_load(%__MODULE__{} = state) do
     with {:ok, entries} <- state.create_index.(state.project),
          {:ok, state} <- replace(state, entries) do
-      {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.new(entries)}}
+      {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.from_entries(entries)}}
     end
   end
 end

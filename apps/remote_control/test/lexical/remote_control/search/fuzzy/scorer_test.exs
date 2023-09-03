@@ -29,10 +29,10 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
     end
   end
 
-  defp score_and_sort(subject, patterns) do
+  defp score_and_sort(subjects, pattern) do
     Enum.sort_by(
-      patterns,
-      fn pattern ->
+      subjects,
+      fn subject ->
         {_, score} = Scorer.score(subject, pattern)
         score
       end,
@@ -40,23 +40,36 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
     )
   end
 
-  describe "scoring heuristics" do
-    test "longer patterns win" do
-      assert ~w(Enumerab Enumera Enum E) =
-               score_and_sort("Enumerable", ~w(E Enum Enumerab Enumera))
+  describe "matching heuristics" do
+    test "more complete matches are boosted" do
+      results =
+        score_and_sort(
+          ~w(Lexical.Document.Range Something.Else.Lexical.Other.Type.Document.Thing Lexical.Document),
+          "Lexical.Document"
+        )
+
+      assert results ==
+               ~w(Lexical.Document Lexical.Document.Range Something.Else.Lexical.Other.Type.Document.Thing)
     end
 
-    test "patterns that match the start of a string win" do
-      assert ~w(Enum nume era ble) = score_and_sort("Enumerable", ~w(ble era nume Enum))
+    test "matches at the beginning of the string are boosted" do
+      results =
+        score_and_sort(
+          ~w(Something.Else.Document Something.Document Document),
+          "Document"
+        )
+
+      assert results == ~w(Document Something.Document Something.Else.Document)
     end
 
-    test "patterns that match consecutive characters win" do
-      assert ~w(Enum erb nml) = score_and_sort("Enumerable", ~w(Enum erb nml))
+    test "patterns that match consecutive characters are boosted" do
+      results = score_and_sort(~w(axxxbxxxcxxxdxxx axxbxxcxxdxx axbxcxdx abcd), "abcd")
+      assert results == ~w(abcd axbxcxdx axxbxxcxxdxx axxxbxxxcxxxdxxx)
     end
 
-    test "patterns that match the case of the subject" do
-      assert ~w(Enumera enumera eNUmera) =
-               score_and_sort("Enumerable", ~w(eNUmera enumera Enumera))
+    test "patterns that match the case are boosted" do
+      results = score_and_sort(~w(stinky stinkY StiNkY STINKY), "STINKY")
+      assert results == ~w(STINKY StiNkY stinkY stinky)
     end
   end
 end

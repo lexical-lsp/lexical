@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
       reference(subject: Bar.Baz)
     ]
 
-    fuzzy = Fuzzy.new(entries)
+    fuzzy = Fuzzy.from_entries(entries)
     {:ok, fuzzy: fuzzy, entries: entries}
   end
 
@@ -27,11 +27,19 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
       assert Fuzzy.has_subject?(fuzzy, Other)
     end
 
-    test "a refernce can be removed", %{fuzzy: fuzzy, entries: [to_remove | _]} do
+    test "a value can be removed", %{fuzzy: fuzzy, entries: [to_remove | _]} do
       assert Fuzzy.has_subject?(fuzzy, to_remove.subject)
-      fuzzy = Fuzzy.drop_refs(fuzzy, [to_remove.ref])
+      fuzzy = Fuzzy.drop_values(fuzzy, [to_remove.ref])
 
       refute Fuzzy.has_subject?(fuzzy, to_remove.subject)
+    end
+
+    test "removing a non-existent value is a no-op", %{fuzzy: fuzzy} do
+      assert fuzzy == Fuzzy.drop_values(fuzzy, [:does, :not, :exist])
+    end
+
+    test "deleting a non-existent key is a no-op", %{fuzzy: fuzzy} do
+      assert fuzzy == Fuzzy.delete_key(fuzzy, "does not exist")
     end
 
     test "all references belonging to a path can be removed", %{fuzzy: fuzzy, entries: entries} do
@@ -39,9 +47,9 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
       path_to_remove = entry.path
       assert Enum.all?(entries, &Fuzzy.has_subject?(fuzzy, &1.subject))
 
-      fuzzy = Fuzzy.delete_path(fuzzy, path_to_remove)
+      fuzzy = Fuzzy.delete_key(fuzzy, path_to_remove)
 
-      refute Fuzzy.has_path?(fuzzy, path_to_remove)
+      refute Fuzzy.has_key?(fuzzy, path_to_remove)
       refute Enum.any?(entries, &Fuzzy.has_subject?(fuzzy, &1.subject))
     end
   end
@@ -55,6 +63,20 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
     test "fuzzy matching is applied", %{fuzzy: fuzzy} do
       assert [_, _] = Fuzzy.match(fuzzy, "br")
+    end
+
+    test "ordering" do
+      entries = [
+        reference(ref: 1, subject: ZZZZZZZZZZZZZZZZZZZZZZZZ.ABCD),
+        reference(ref: 2, subject: ZZZZA.ZZZZZb.ZZZZc.ZZZZd),
+        reference(ref: 3, subject: A.B.C.D),
+        reference(ref: 4, subject: Abcd)
+      ]
+
+      fuzzy = Fuzzy.from_entries(entries)
+      results = Fuzzy.match(fuzzy, "abcd")
+
+      assert results == [4, 3, 2, 1]
     end
   end
 end

@@ -121,6 +121,9 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   defp calculate_score(%__MODULE__{} = score, subject() = subject, pattern) do
+    subject(graphemes: graphemes) = subject
+    match_amount_boost = 0 - (tuple_size(graphemes) - length(score.matched_character_positions))
+
     [first_match_position | _] = score.matched_character_positions
 
     pattern_length_boost = String.length(pattern)
@@ -132,7 +135,8 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
     case_match_boost = case_match_boost(score.matched_character_positions, pattern, subject)
 
-    pattern_length_boost + consecutive_bonus + first_match_bonus + case_match_boost
+    pattern_length_boost + consecutive_bonus + first_match_bonus + case_match_boost +
+      match_amount_boost
   end
 
   defp normalize(string) do
