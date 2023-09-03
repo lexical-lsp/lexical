@@ -33,6 +33,7 @@ defmodule Lexical.LanguageServer.MixProject do
         README.md
         pages/installation.md
         pages/architecture.md
+        pages/glossary.md
       ),
       filter_modules: fn mod_name, _ ->
         case Module.split(mod_name) do

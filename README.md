@@ -66,11 +66,11 @@ faster.
 
 Follow the [Detailed Installation Instructions](pages/installation.md)
 
- ```
- mix package
- ```
+```
+mix package
+```
 
- Lexical will now be available in `_build/dev/package/lexical`
+Lexical will now be available in `_build/dev/package/lexical`
 
 If you would like to change the output directory, you can do so with the `--path` option
 
@@ -112,6 +112,7 @@ mix benchmark /benchmarks/<benchmark_file>.exs
 ```
 
 ### Logging
+
 When lexical starts up, it creates a `.lexical` directory in the root
 directory of a project. Inside that directory are two log files,
 `lexical.log` and `project.log`. The `.lexical.log` log file contains
@@ -202,3 +203,8 @@ iex(2)> complete :other, "defmo|"
 The same kind of support is available when you run `iex -S mix` in the
 lexical directory, and is helpful for narrowing down issues without
 disturbing your editor flow.
+
+### Other resources
+
+* [Architecture](pages/architecture.md)
+* [Glossary](pages/glossary.md)
