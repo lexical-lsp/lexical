@@ -1,18 +1,26 @@
 defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
-  alias Lexical.Document.Position
+  alias Lexical.Document
   alias Lexical.RemoteControl.Search.Indexer
+  alias Lexical.Test.RangeSupport
 
   import Lexical.Test.CodeSigil
+  import RangeSupport
 
   use ExUnit.Case
 
   def index(source) do
-    Indexer.Source.index("/foo/bar/baz.ex", source)
+    path = "/foo/bar/baz.ex"
+    doc = Document.new("file:///#{path}", source, 1)
+
+    case Indexer.Source.index("/foo/bar/baz.ex", source) do
+      {:ok, indexed_items} -> {:ok, indexed_items, doc}
+      error -> error
+    end
   end
 
   describe "indexing modules" do
     test "it doesn't confuse a list of atoms for a module" do
-      {:ok, [module]} =
+      {:ok, [module], _} =
         ~q(
           defmodule Root do
             @attr [:Some, :Other, :Module]
@@ -25,7 +33,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     end
 
     test "indexes a flat module with no aliases" do
-      {:ok, [entry]} =
+      {:ok, [entry], doc} =
         ~q[
         defmodule Simple do
         end
@@ -34,13 +42,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert entry.type == :module
       assert entry.parent == :root
-      assert position(entry, :start) == {1, 1}
-      assert position(entry, :end) == {2, 1}
       assert entry.subject == Simple
+      assert decorate(doc, entry.range) =~ "defmodule «Simple» do"
     end
 
     test "indexes a flat module with a dotted name" do
-      {:ok, [entry]} =
+      {:ok, [entry], doc} =
         ~q[
         defmodule Simple.Module.Path do
         end
@@ -50,12 +57,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert entry.subject == Simple.Module.Path
       assert entry.type == :module
       assert entry.parent == :root
-      assert position(entry, :start) == {1, 1}
-      assert position(entry, :end) == {2, 1}
+      assert decorate(doc, entry.range) =~ "defmodule «Simple.Module.Path» do"
     end
 
     test "indexes a flat module with an aliased name" do
-      {:ok, [_alias, entry]} =
+      {:ok, [_alias, entry], doc} =
         ~q[
         alias Something.Else
         defmodule Else.Other do
@@ -64,10 +70,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         |> index()
 
       assert entry.subject == Something.Else.Other
+      assert decorate(doc, entry.range) == "defmodule «Else.Other» do"
     end
 
     test "can detect an erlang module" do
-      {:ok, [module_def, erlang_module]} =
+      {:ok, [module_def, erlang_module], doc} =
         ~q[
         defmodule Root do
           @something :timer
@@ -78,10 +85,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert erlang_module.type == :module
       assert erlang_module.parent == module_def.ref
       assert erlang_module.subject == :timer
+      assert decorate(doc, erlang_module.range) =~ "  @something «:timer»"
     end
 
     test "can detect a module reference in a module attribute" do
-      {:ok, [module_def, attribute]} =
+      {:ok, [module_def, attribute], doc} =
         ~q[
         defmodule Root do
           @attr Some.Other.Module
@@ -92,12 +100,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert attribute.type == :module
       assert attribute.parent == module_def.ref
       assert attribute.subject == Some.Other.Module
-      assert position(attribute, :start) == {2, 9}
-      assert position(attribute, :end) == {2, 20}
+      assert decorate(doc, attribute.range) =~ "  @attr «Some.Other.Module»"
     end
 
     test "can detect a module reference on the left side of a pattern match" do
-      {:ok, [_module_def, module_ref]} =
+      {:ok, [_module_def, module_ref], doc} =
         ~q[
         defmodule Root do
           def my_fn(arg) do
@@ -109,12 +116,28 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 5}
-      assert position(module_ref, :end) == {3, 10}
+      assert decorate(doc, module_ref.range) =~ "«Some.Module» = arg"
+    end
+
+    test "can detect an aliased module reference on the left side of a pattern match" do
+      {:ok, [_module_def, _alias, module_ref], doc} =
+        ~q[
+        defmodule Root do
+          alias Some.Other.Thing
+          def my_fn(arg) do
+            Thing.Util = arg
+          end
+        end
+      ]t
+        |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == Some.Other.Thing.Util
+      assert decorate(doc, module_ref.range) =~ "    «Thing.Util» = arg"
     end
 
     test "can detect a module reference on the right side of a pattern match" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
         defmodule Root do
           def my_fn(arg) do
@@ -126,12 +149,28 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 11}
-      assert position(module_ref, :end) == {3, 16}
+      assert decorate(doc, module_ref.range) =~ "arg = «Some.Module»"
+    end
+
+    test "can detect an aliased module reference on the right side of a pattern match" do
+      {:ok, [_module_def, _alias, module_ref], doc} =
+        ~q[
+        defmodule Root do
+          alias Some.Other.Thing
+          def my_fn(arg) do
+            arg = Thing.Util
+          end
+        end
+      ]t
+        |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == Some.Other.Thing.Util
+      assert decorate(doc, module_ref.range) =~ "    arg = «Thing.Util»"
     end
 
     test "can detect a module reference in a remote call" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule RemoteCall do
           def my_fn do
@@ -143,12 +182,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 3}
-      assert position(module_ref, :end) == {3, 8}
+      assert decorate(doc, module_ref.range) =~ "  «Some.Module».function()"
     end
 
     test "can detect a module reference in a function call's arguments" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule FunCallArgs do
           def my_fn do
@@ -163,12 +201,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 12}
-      assert position(module_ref, :end) == {3, 17}
+      assert decorate(doc, module_ref.range) =~ "  function(«Some.Module»)"
     end
 
     test "can detect a module reference in a function's pattern match arguments" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule FunCallArgs do
           def my_fn(arg = Some.Module) do
@@ -180,12 +217,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {2, 17}
-      assert position(module_ref, :end) == {2, 22}
+      assert decorate(doc, module_ref.range) =~ "def my_fn(arg = «Some.Module»)"
     end
 
     test "can detect a module reference in default parameters" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule FunCallArgs do
           def my_fn(module \\ Some.Module) do
@@ -197,12 +233,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {2, 21}
-      assert position(module_ref, :end) == {2, 26}
+      assert decorate(doc, module_ref.range) =~ ~S[def my_fn(module \\ «Some.Module»)]
     end
 
     test "can detect a module reference in map keys" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule FunCallArgs do
           def my_fn do
@@ -214,12 +249,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 5}
-      assert position(module_ref, :end) == {3, 10}
+      assert decorate(doc, module_ref.range) =~ "%{«Some.Module» => 1}"
     end
 
     test "can detect a module reference in map values" do
-      {:ok, [_module, module_ref]} =
+      {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule FunCallArgs do
           def my_fn do
@@ -231,12 +265,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert position(module_ref, :start) == {3, 14}
-      assert position(module_ref, :end) == {3, 19}
+      assert decorate(doc, module_ref.range) =~ "%{invalid: «Some.Module»}"
     end
 
     test "can detect a module reference in an anonymous function call" do
-      {:ok, [parent, ref]} =
+      {:ok, [parent, ref], doc} =
         ~q[
         defmodule Parent do
           def outer_fn do
@@ -251,12 +284,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert ref.type == :module
       assert ref.subject == Ref.To.Something
       refute ref.parent == parent.ref
+      assert decorate(doc, ref.range) =~ "      «Ref.To.Something»"
     end
   end
 
   describe "multiple modules in one document" do
     test "have different refs" do
-      {:ok, [first, second]} =
+      {:ok, [first, second], _} =
         ~q[
           defmodule First do
           end
@@ -282,7 +316,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
   describe "nested modules" do
     test "have a parent/child relationship" do
-      {:ok, [parent, child]} =
+      {:ok, [parent, child], _} =
         ~q[
         defmodule Parent do
           defmodule Child do
@@ -301,7 +335,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     end
 
     test "Have aliases resolved correctly" do
-      {:ok, [_parent, _parent_alias, child, child_alias]} =
+      {:ok, [_parent, _parent_alias, child, child_alias], _} =
         ~q[
         defmodule Parent do
           alias Something.Else
@@ -317,13 +351,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert child_alias.type == :module
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other
-    end
-  end
-
-  defp position(entry, field_name) do
-    case get_in(entry, [:range, field_name]) do
-      %Position{} = pos -> {pos.line, pos.character}
-      _ -> nil
     end
   end
 end

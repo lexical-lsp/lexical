@@ -20,7 +20,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       ) do
     %Block{} = block = Reducer.current_block(reducer)
     aliased_module = resolve_alias(reducer, module_name)
-    range = to_range(module_name, reducer.position, block.ends_at)
+    module_position = Metadata.position(module_name_meta)
+    range = to_range(module_name, module_position)
 
     entry =
       Entry.definition(
@@ -47,8 +48,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     case module(reducer, maybe_module) do
       {:ok, module} ->
         start = Metadata.position(metadata)
-        finish = Metadata.position(metadata, :last)
-        range = to_range(module, start, finish)
+        range = to_range(maybe_module, start)
         %Block{} = current_block = Reducer.current_block(reducer)
 
         entry =
@@ -74,10 +74,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     case module(reducer, atom_literal) do
       {:ok, module} ->
         %Block{} = current_block = Reducer.current_block(reducer)
-        {start_line, start_column} = reducer.position
-        atom_length = module |> Atom.to_string() |> String.length()
-        finish = {start_line, start_column + atom_length}
-        range = to_range(module, reducer.position, finish)
+        range = to_range(module, reducer.position)
 
         entry =
           Entry.reference(
@@ -148,19 +145,31 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     end)
   end
 
-  defp to_range(module_name, {same_line, same_column}, {same_line, same_column}) do
-    module_length = module_name |> inspect() |> String.length()
+  defp to_range(module_name, {line, column}) do
+    module_length =
+      module_name
+      |> module_name()
+      |> String.length()
 
     Range.new(
-      Position.new(same_line, same_column),
-      Position.new(same_line, same_column + module_length)
+      Position.new(line, column),
+      Position.new(line, column + module_length)
     )
   end
 
-  defp to_range(_, {start_line, start_column}, {end_line, end_column}) do
-    Range.new(
-      Position.new(start_line, start_column),
-      Position.new(end_line, end_column)
-    )
+  defp module_name(module_name) when is_list(module_name) do
+    module_name
+    |> Module.concat()
+    |> module_name()
+  end
+
+  defp module_name(module_name) when is_binary(module_name) do
+    module_name
+  end
+
+  defp module_name(module_name) when is_atom(module_name) do
+    module_name
+    |> inspect()
+    |> module_name()
   end
 end
