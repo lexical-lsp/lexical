@@ -375,13 +375,23 @@ defmodule Lexical.Ast do
     |> expand_aliases(document, position)
   end
 
-  def expand_aliases([first | rest] = segments, %Document{} = document, %Position{} = position) do
-    with {:ok, aliases_mapping} <- Aliases.at(document, position),
+  def expand_aliases([_first | _rest] = segments, %Document{} = document, %Position{} = position) do
+    with {:ok, quoted} <- fragment(document, position) do
+      expand_aliases(segments, quoted, position)
+    end
+  end
+
+  def expand_aliases([first | rest] = segments, quoted_document, %Position{} = position) do
+    with {:ok, aliases_mapping} <- Aliases.at(quoted_document, position),
          {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, Module.concat([resolved | rest])}
     else
       _ -> {:ok, Module.concat(segments)}
     end
+  end
+
+  def expand_aliases(_, _, {line, column}) do
+    Position.new(line, column)
   end
 
   def expand_aliases(_, _, empty) do

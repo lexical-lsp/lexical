@@ -289,28 +289,13 @@ defmodule Lexical.Ast.Aliases do
 
   def at(%Document{} = document, %Position{} = position) do
     with {:ok, quoted} <- Ast.fragment(document, position) do
-      reducer = Reducer.new()
-
-      {_ast, reducer} = Macro.prewalk(quoted, reducer, &collect/2)
-
-      aliases = Reducer.aliases(reducer)
-      {:ok, aliases}
+      at(quoted, position)
     end
   end
 
-  @doc """
-  Returns the aliases available in the document at the given position.
-
-  This function works like `at/2`, but takes Elixir AST as its first argument, rather than a Document.
-  This allows you to parse a document once and make repeated queries against it for vastly improved performance.
-  """
-  def at_ast(ast, {line, character}) do
-    at_ast(ast, Position.new(line, character))
-  end
-
-  def at_ast(ast, %Position{} = position) do
+  def at(quoted_document, %Position{} = position) do
     aliases =
-      ast
+      quoted_document
       |> Ast.prewalk_until(Reducer.new(), &collect/2, position)
       |> Reducer.aliases()
 

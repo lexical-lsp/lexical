@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   Extracts module references and definitions from AST
   """
 
-  alias Lexical.Ast.Aliases
+  alias Lexical.Ast
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.ProcessCache
@@ -102,16 +102,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   end
 
   defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
-    [first_element | rest] = unresolved_alias
+    {line, column} = reducer.position
+    position = Position.new(line, column)
 
-    with {:ok, aliases} <- Aliases.at_ast(reducer.quoted_document, reducer.position),
-         {:ok, aliased} <- Map.fetch(aliases, first_element) do
-      raw = Module.split(aliased)
-      Module.concat(raw ++ rest)
-    else
-      _ ->
-        Module.concat(unresolved_alias)
-    end
+    {:ok, expanded} = Ast.expand_aliases(unresolved_alias, reducer.quoted_document, position)
+
+    expanded
   end
 
   defp module(%Reducer{} = reducer, maybe_module) when is_list(maybe_module) do
