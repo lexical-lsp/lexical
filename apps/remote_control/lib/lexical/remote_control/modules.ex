@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Modules do
   @moduledoc """
   Utilities for dealing with modules on the remote control node
   """
+
   defmodule Predicate.Syntax do
     @moduledoc """
     Syntax helpers for the predicate syntax
@@ -47,7 +48,128 @@ defmodule Lexical.RemoteControl.Modules do
     end
   end
 
+  @typedoc "Module documentation record as defined by EEP-48"
+  @type docs_v1 :: tuple()
+
+  @typedoc "A type, spec, or callback definition"
+  @type definition ::
+          {name :: atom(), arity :: arity(), formatted :: String.t(), quoted :: Macro.t()}
+
   @cache_timeout Application.compile_env(:remote_control, :modules_cache_expiry, {10, :second})
+
+  @doc """
+  Ensure the given module is compiled, returning the BEAM object code if successful.
+  """
+  @spec ensure_beam(module()) ::
+          {:ok, beam :: binary()} | {:error, reason}
+        when reason:
+               :embedded
+               | :badfile
+               | :nofile
+               | :on_load_failure
+               | :unavailable
+               | :get_object_code_failed
+  def ensure_beam(module) when is_atom(module) do
+    with {:module, _} <- Code.ensure_compiled(module),
+         {_module, beam, _filename} <- :code.get_object_code(module) do
+      {:ok, beam}
+    else
+      :error -> {:error, :get_object_code_failed}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Fetch the docs chunk from BEAM object code.
+  """
+  @spec fetch_docs(beam :: binary()) :: {:ok, docs_v1()} | :error
+  @docs_chunk ~c"Docs"
+  def fetch_docs(beam) when is_binary(beam) do
+    case :beam_lib.chunks(beam, [@docs_chunk]) do
+      {:ok, {_module, [{@docs_chunk, bin}]}} ->
+        {:ok, :erlang.binary_to_term(bin)}
+
+      _ ->
+        :error
+    end
+  end
+
+  @doc """
+  Fetch the specs from BEAM object code.
+  """
+  @spec fetch_specs(beam :: binary()) :: {:ok, [definition()]} | :error
+  def fetch_specs(beam) when is_binary(beam) do
+    case Code.Typespec.fetch_specs(beam) do
+      {:ok, specs} ->
+        defs =
+          for {{name, arity}, defs} <- specs,
+              def <- defs do
+            quoted = Code.Typespec.spec_to_quoted(name, def)
+            formatted = format_definition(quoted)
+
+            {name, arity, formatted, quoted}
+          end
+
+        {:ok, defs}
+
+      _ ->
+        :error
+    end
+  end
+
+  @doc """
+  Fetch the types from BEAM object code.
+  """
+  @spec fetch_types(beam :: binary()) :: {:ok, [definition()]} | :error
+  def fetch_types(beam) when is_binary(beam) do
+    case Code.Typespec.fetch_types(beam) do
+      {:ok, types} ->
+        defs =
+          for {kind, {name, _body, args} = type} <- types do
+            arity = length(args)
+            quoted_type = Code.Typespec.type_to_quoted(type)
+            quoted = {:@, [], [{kind, [], [quoted_type]}]}
+            formatted = format_definition(quoted)
+
+            {name, arity, formatted, quoted}
+          end
+
+        {:ok, defs}
+
+      _ ->
+        :error
+    end
+  end
+
+  @doc """
+  Fetch the specs from BEAM object code.
+  """
+  @spec fetch_callbacks(beam :: binary()) :: {:ok, [definition()]} | :error
+  def fetch_callbacks(beam) when is_binary(beam) do
+    case Code.Typespec.fetch_callbacks(beam) do
+      {:ok, callbacks} ->
+        defs =
+          for {{name, arity}, defs} <- callbacks,
+              def <- defs do
+            quoted = Code.Typespec.type_to_quoted(def)
+            formatted = format_definition(quoted)
+
+            {name, arity, formatted, quoted}
+          end
+
+        {:ok, defs}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp format_definition(quoted) do
+    quoted
+    |> Future.Code.quoted_to_algebra()
+    |> Inspect.Algebra.format(60)
+    |> IO.iodata_to_binary()
+  end
 
   @doc """
   Returns all modules matching a prefix
