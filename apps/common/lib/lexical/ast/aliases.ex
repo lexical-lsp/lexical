@@ -281,7 +281,11 @@ defmodule Lexical.Ast.Aliases do
 
   May return aliases even in the event of syntax errors.
   """
-  @spec at(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+
+  @spec at(
+          Document.t() | Ast.quoted_elixir(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
           {:ok, %{Ast.short_alias() => module()}} | {:error, Ast.parse_error()}
   def at(%Document{} = doc, {line, character}) do
     at(doc, Position.new(line, character))

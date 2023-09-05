@@ -69,6 +69,14 @@ defmodule Lexical.Ast do
   @typedoc "Return value from `Code.Fragment.surround_context/3`"
   @type surround_context :: any()
 
+  @type quoted_elixir ::
+          atom()
+          | binary()
+          | [any()]
+          | number()
+          | {any(), any()}
+          | {atom() | {any(), [any()], atom() | [any()]}, Keyword.t(), atom() | [any()]}
+
   @type parse_error ::
           {location :: keyword(), String.t() | {String.t(), String.t()}, String.t()}
 
@@ -77,6 +85,7 @@ defmodule Lexical.Ast do
           range: patch_range(),
           change: patch_change()
         }
+
   @type patch_range :: %{start: patch_position(), end: patch_position()}
   @type patch_position :: [patch_line | patch_column]
   @type patch_line :: {:line, non_neg_integer()}
@@ -189,7 +198,10 @@ defmodule Lexical.Ast do
 
   May return a path even in the event of syntax errors.
   """
-  @spec cursor_path(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+  @spec cursor_path(
+          Document.t() | quoted_elixir(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
           [Macro.t()]
   def cursor_path(%Document{} = doc, {line, character}) do
     cursor_path(doc, Position.new(line, character))
@@ -365,7 +377,7 @@ defmodule Lexical.Ast do
 
   If no aliases can be found, the given alias is returned unmodified.
   """
-  @spec expand_aliases(alias_segments() | module(), Document.t(), Position.t()) ::
+  @spec expand_aliases(alias_segments() | module(), Document.t() | quoted_elixir(), Position.t()) ::
           {:ok, module()} | :error
   def expand_aliases(module, %Document{} = document, %Position{} = position)
       when is_atom(module) and not is_nil(module) do
