@@ -1,5 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Entry do
-  @type entry_type :: :module | :function | :macro | :field
+  @type entry_type :: :module
   @type subject :: String.t()
   @type entry_subtype :: :reference | :definition
   @type indexer :: :beam | :source
@@ -13,8 +13,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :application,
     :elixir_version,
     :erlang_version,
-    :finish,
     :indexer,
+    :range,
     :updated_at,
     :subject,
     :parent,
@@ -29,13 +29,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           application: module(),
           elixir_version: version(),
           erlang_version: version(),
-          finish: position(),
           indexer: indexer(),
           subject: subject(),
           parent: entry_reference(),
           path: Path.t(),
+          range: Lexical.Document.Range.t(),
           ref: entry_reference(),
-          start: position(),
           subtype: entry_subtype(),
           type: entry_type(),
           updated_at: pos_integer()
@@ -46,38 +45,36 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
 
   use StructAccess
 
-  def reference(path, ref, parent, subject, type, start, finish, application) do
+  def reference(path, ref, parent, subject, type, range, application) do
     versions = Versions.current()
 
     %__MODULE__{
       application: application,
       elixir_version: versions.elixir,
       erlang_version: versions.erlang,
-      finish: finish,
       subject: subject,
       parent: parent,
       path: path,
+      range: range,
       ref: ref,
-      start: start,
       subtype: :reference,
       type: type,
       updated_at: timestamp()
     }
   end
 
-  def definition(path, ref, parent, subject, type, start, finish, application) do
+  def definition(path, ref, parent, subject, type, range, application) do
     versions = Versions.current()
 
     %__MODULE__{
       application: application,
       elixir_version: versions.elixir,
       erlang_version: versions.erlang,
-      finish: finish,
       subject: subject,
       parent: parent,
       path: path,
+      range: range,
       ref: ref,
-      start: start,
       subtype: :definition,
       type: type,
       updated_at: timestamp()

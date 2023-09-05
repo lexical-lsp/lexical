@@ -1,4 +1,6 @@
 defmodule Lexical.Test.Entry.Builder do
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.VM.Versions
 
@@ -8,8 +10,7 @@ defmodule Lexical.Test.Entry.Builder do
     defaults = [
       ref: make_ref(),
       path: "/foo/bar/baz.ex",
-      start: {1, 1},
-      finish: {1, 5},
+      range: range(1, 1, 1, 5),
       elixir_version: versions.elixir,
       erlang_version: versions.erlang,
       type: :module
@@ -29,5 +30,9 @@ defmodule Lexical.Test.Entry.Builder do
     fields
     |> Keyword.put(:subtype, :reference)
     |> entry()
+  end
+
+  defp range(start_line, start_column, end_line, end_column) do
+    Range.new(Position.new(start_line, start_column), Position.new(end_line, end_column))
   end
 end

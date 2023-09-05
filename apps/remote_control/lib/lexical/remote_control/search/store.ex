@@ -83,7 +83,7 @@ defmodule Lexical.RemoteControl.Search.Store do
         {:noreply, state}
 
       {:error, _} ->
-        Logger.warn("Could not load nor build search state")
+        Logger.warning("Could not load nor build search state")
         {:noreply, state}
     end
   end

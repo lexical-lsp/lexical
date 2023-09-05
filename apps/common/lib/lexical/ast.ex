@@ -212,7 +212,7 @@ defmodule Lexical.Ast do
   @doc """
   Traverses the given ast until the given position.
   """
-  def traverse_until(ast, acc, prewalk_fn, %Position{} = position) do
+  def prewalk_until(ast, acc, prewalk_fn, %Position{} = position) do
     range = Document.Range.new(Position.new(0, 0), position)
 
     {_, acc} =

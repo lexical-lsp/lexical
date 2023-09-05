@@ -108,7 +108,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       fuzzy =
         fuzzy
         |> Fuzzy.drop_values(refs_to_drop)
-        |> Fuzzy.update(entries)
+        |> Fuzzy.add(entries)
 
       {:ok, %__MODULE__{state | fuzzy: fuzzy}}
     end

@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Search.Indexer
 
   import Lexical.Test.CodeSigil
@@ -33,8 +34,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert entry.type == :module
       assert entry.parent == :root
-      assert entry.start == {1, 1}
-      assert entry.finish == {2, 1}
+      assert position(entry, :start) == {1, 1}
+      assert position(entry, :end) == {2, 1}
       assert entry.subject == Simple
     end
 
@@ -49,8 +50,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert entry.subject == Simple.Module.Path
       assert entry.type == :module
       assert entry.parent == :root
-      assert entry.start == {1, 1}
-      assert entry.finish == {2, 1}
+      assert position(entry, :start) == {1, 1}
+      assert position(entry, :end) == {2, 1}
     end
 
     test "indexes a flat module with an aliased name" do
@@ -91,8 +92,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert attribute.type == :module
       assert attribute.parent == module_def.ref
       assert attribute.subject == Some.Other.Module
-      assert attribute.start == {2, 9}
-      assert attribute.finish == {2, 20}
+      assert position(attribute, :start) == {2, 9}
+      assert position(attribute, :end) == {2, 20}
     end
 
     test "can detect a module reference on the left side of a pattern match" do
@@ -108,8 +109,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 5}
-      assert module_ref.finish == {3, 10}
+      assert position(module_ref, :start) == {3, 5}
+      assert position(module_ref, :end) == {3, 10}
     end
 
     test "can detect a module reference on the right side of a pattern match" do
@@ -125,8 +126,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 11}
-      assert module_ref.finish == {3, 16}
+      assert position(module_ref, :start) == {3, 11}
+      assert position(module_ref, :end) == {3, 16}
     end
 
     test "can detect a module reference in a remote call" do
@@ -142,8 +143,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 3}
-      assert module_ref.finish == {3, 8}
+      assert position(module_ref, :start) == {3, 3}
+      assert position(module_ref, :end) == {3, 8}
     end
 
     test "can detect a module reference in a function call's arguments" do
@@ -162,8 +163,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 12}
-      assert module_ref.finish == {3, 17}
+      assert position(module_ref, :start) == {3, 12}
+      assert position(module_ref, :end) == {3, 17}
     end
 
     test "can detect a module reference in a function's pattern match arguments" do
@@ -179,8 +180,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {2, 17}
-      assert module_ref.finish == {2, 22}
+      assert position(module_ref, :start) == {2, 17}
+      assert position(module_ref, :end) == {2, 22}
     end
 
     test "can detect a module reference in default parameters" do
@@ -196,8 +197,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {2, 21}
-      assert module_ref.finish == {2, 26}
+      assert position(module_ref, :start) == {2, 21}
+      assert position(module_ref, :end) == {2, 26}
     end
 
     test "can detect a module reference in map keys" do
@@ -213,8 +214,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 5}
-      assert module_ref.finish == {3, 10}
+      assert position(module_ref, :start) == {3, 5}
+      assert position(module_ref, :end) == {3, 10}
     end
 
     test "can detect a module reference in map values" do
@@ -230,8 +231,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
-      assert module_ref.start == {3, 14}
-      assert module_ref.finish == {3, 19}
+      assert position(module_ref, :start) == {3, 14}
+      assert position(module_ref, :end) == {3, 19}
     end
 
     test "can detect a module reference in an anonymous function call" do
@@ -316,6 +317,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert child_alias.type == :module
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other
+    end
+  end
+
+  defp position(entry, field_name) do
+    case get_in(entry, [:range, field_name]) do
+      %Position{} = pos -> {pos.line, pos.character}
+      _ -> nil
     end
   end
 end

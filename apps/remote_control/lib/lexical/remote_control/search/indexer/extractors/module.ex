@@ -4,6 +4,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   """
 
   alias Lexical.Ast.Aliases
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
@@ -18,6 +20,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       ) do
     %Block{} = block = Reducer.current_block(reducer)
     aliased_module = resolve_alias(reducer, module_name)
+    range = to_range(module_name, reducer.position, block.ends_at)
 
     entry =
       Entry.definition(
@@ -26,8 +29,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         block.parent_ref,
         aliased_module,
         :module,
-        reducer.position,
-        block.ends_at,
+        range,
         Application.get_application(aliased_module)
       )
 
@@ -46,7 +48,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       {:ok, module} ->
         start = Metadata.position(metadata)
         finish = Metadata.position(metadata, :last)
-
+        range = to_range(module, start, finish)
         %Block{} = current_block = Reducer.current_block(reducer)
 
         entry =
@@ -56,8 +58,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             current_block.ref,
             module,
             :module,
-            start,
-            finish,
+            range,
             Application.get_application(module)
           )
 
@@ -73,9 +74,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     case module(reducer, atom_literal) do
       {:ok, module} ->
         %Block{} = current_block = Reducer.current_block(reducer)
-        {start_line, start_column} = start = reducer.position
+        {start_line, start_column} = reducer.position
         atom_length = module |> Atom.to_string() |> String.length()
         finish = {start_line, start_column + atom_length}
+        range = to_range(module, reducer.position, finish)
 
         entry =
           Entry.reference(
@@ -84,8 +86,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             current_block.ref,
             module,
             :module,
-            start,
-            finish,
+            range,
             Application.get_application(module)
           )
 
@@ -149,5 +150,21 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         List.to_atom(module_charlist)
       end)
     end)
+  end
+
+  defp to_range(module_name, {same_line, same_column}, {same_line, same_column}) do
+    module_length = module_name |> inspect() |> String.length()
+
+    Range.new(
+      Position.new(same_line, same_column),
+      Position.new(same_line, same_column + module_length)
+    )
+  end
+
+  defp to_range(_, {start_line, start_column}, {end_line, end_column}) do
+    Range.new(
+      Position.new(start_line, start_column),
+      Position.new(end_line, end_column)
+    )
   end
 end

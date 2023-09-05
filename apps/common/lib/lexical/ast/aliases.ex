@@ -311,7 +311,7 @@ defmodule Lexical.Ast.Aliases do
   def at_ast(ast, %Position{} = position) do
     aliases =
       ast
-      |> Ast.traverse_until(Reducer.new(), &collect/2, position)
+      |> Ast.prewalk_until(Reducer.new(), &collect/2, position)
       |> Reducer.aliases()
 
     {:ok, aliases}

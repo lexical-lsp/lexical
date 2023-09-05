@@ -27,6 +27,21 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
       assert Fuzzy.has_subject?(fuzzy, Other)
     end
 
+    test "it can add multiple entries at once", %{fuzzy: fuzzy} do
+      refute Fuzzy.has_subject?(fuzzy, Stinky)
+      refute Fuzzy.has_subject?(fuzzy, Pants)
+
+      entries = [
+        reference(subject: Stinky),
+        reference(subject: Pants)
+      ]
+
+      fuzzy = Fuzzy.add(fuzzy, entries)
+
+      assert Fuzzy.has_subject?(fuzzy, Stinky)
+      assert Fuzzy.has_subject?(fuzzy, Pants)
+    end
+
     test "a value can be removed", %{fuzzy: fuzzy, entries: [to_remove | _]} do
       assert Fuzzy.has_subject?(fuzzy, to_remove.subject)
       fuzzy = Fuzzy.drop_values(fuzzy, [to_remove.ref])
@@ -39,17 +54,20 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
     end
 
     test "deleting a non-existent key is a no-op", %{fuzzy: fuzzy} do
-      assert fuzzy == Fuzzy.delete_key(fuzzy, "does not exist")
+      assert fuzzy == Fuzzy.delete_grouping_key(fuzzy, "does not exist")
     end
 
-    test "all references belonging to a path can be removed", %{fuzzy: fuzzy, entries: entries} do
+    test "all values belonging to a grouping key can be removed", %{
+      fuzzy: fuzzy,
+      entries: entries
+    } do
       entry = List.first(entries)
       path_to_remove = entry.path
       assert Enum.all?(entries, &Fuzzy.has_subject?(fuzzy, &1.subject))
 
-      fuzzy = Fuzzy.delete_key(fuzzy, path_to_remove)
+      fuzzy = Fuzzy.delete_grouping_key(fuzzy, path_to_remove)
 
-      refute Fuzzy.has_key?(fuzzy, path_to_remove)
+      refute Fuzzy.has_grouping_key?(fuzzy, path_to_remove)
       refute Enum.any?(entries, &Fuzzy.has_subject?(fuzzy, &1.subject))
     end
   end
