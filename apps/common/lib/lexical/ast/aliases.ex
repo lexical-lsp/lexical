@@ -129,7 +129,8 @@ defmodule Lexical.Ast.Aliases do
     # An alias with a specified name: alias Foo.Bar, as: FooBar
     defp apply_ast(
            %__MODULE__{} = reducer,
-           {:alias, _metadata, [{:__aliases__, _, from}, [as: {:__aliases__, _, [to]}]]}
+           {:alias, _metadata,
+            [{:__aliases__, _, from}, [{{:__block__, _, [:as]}, {:__aliases__, _, [to]}}]]}
          ) do
       put_alias(reducer, normalize_from(from), to)
     end
@@ -267,7 +268,6 @@ defmodule Lexical.Ast.Aliases do
   Support for resolving module aliases.
   """
 
-  alias Future.Code
   alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -283,50 +283,18 @@ defmodule Lexical.Ast.Aliases do
     at(doc, Position.new(line, character))
   end
 
-  def at(%Document{} = doc, %Position{} = position) do
-    case safe_container_cursor_to_quoted(doc, position) do
-      {:ok, quoted} ->
-        reducer = Reducer.new()
+  def at(%Document{} = document, %Position{} = position) do
+    with {:ok, quoted} <- Ast.fragment(document, position) do
+      reducer = Reducer.new()
 
-        {_ast, reducer} = Macro.prewalk(quoted, reducer, &collect/2)
+      {_ast, reducer} = Macro.prewalk(quoted, reducer, &collect/2)
 
-        aliases = Reducer.aliases(reducer)
-        {:ok, aliases}
-
-      error ->
-        error
+      aliases = Reducer.aliases(reducer)
+      {:ok, aliases}
     end
   end
 
   defp collect(elem, %Reducer{} = reducer) do
     {elem, Reducer.update(reducer, elem)}
-  end
-
-  defp safe_container_cursor_to_quoted(doc, position) do
-    # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
-    # Note: because of the above issue: Using `cursor_context` + `container_cursor_to_quoted`
-    # can't deal with some cases like: `alias Foo.Bar, as: AnotherBar`,
-    # so we need to add a new line to make sure we can get the parrent node of the cursor
-    %{line: line} = position
-    added_new_line_position = Position.new(line + 1, 1)
-    document_fragment = Document.fragment(doc, added_new_line_position)
-
-    case container_cursor_to_quoted(document_fragment) do
-      {:ok, quoted} ->
-        {:ok, quoted}
-
-      _error ->
-        # NOTE: Adding new line doesn't always work,
-        # so we need to try again without adding new line
-        document_fragment = Document.fragment(doc, position)
-        container_cursor_to_quoted(document_fragment)
-    end
-  end
-
-  defp container_cursor_to_quoted(document_fragment) do
-    Code.Fragment.container_cursor_to_quoted(document_fragment,
-      columns: true,
-      token_metadata: true
-    )
   end
 end

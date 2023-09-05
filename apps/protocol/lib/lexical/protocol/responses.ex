@@ -45,5 +45,11 @@ defmodule Lexical.Protocol.Responses do
     defresponse []
   end
 
+  defmodule Hover do
+    use Proto
+
+    defresponse optional(Types.Hover)
+  end
+
   use Typespecs, for: :responses
 end

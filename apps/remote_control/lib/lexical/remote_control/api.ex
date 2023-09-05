@@ -70,4 +70,9 @@ defmodule Lexical.RemoteControl.Api do
       when is_binary(prefix) or is_atom(prefix) do
     RemoteControl.call(project, RemoteControl.Modules, :with_prefix, [prefix, predicate])
   end
+
+  @spec docs(Project.t(), module()) :: {:ok, CodeIntelligence.Docs.t()} | {:error, any()}
+  def docs(%Project{} = project, module) when is_atom(module) do
+    RemoteControl.call(project, CodeIntelligence.Docs, :for_module, [module])
+  end
 end

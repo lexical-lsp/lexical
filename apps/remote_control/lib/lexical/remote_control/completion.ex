@@ -26,7 +26,7 @@ defmodule Lexical.RemoteControl.Completion do
       |> Lexical.Ast.cursor_path(position)
       |> container_struct_module()
 
-    with {:ok, struct_module} <- Ast.expand_aliases(document, position, container_struct_module),
+    with {:ok, struct_module} <- Ast.expand_aliases(container_struct_module, document, position),
          true <- function_exported?(struct_module, :__struct__, 0) do
       struct_module
       |> struct()
