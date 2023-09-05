@@ -1,7 +1,7 @@
 defmodule Lexical.Test.RangeSupport do
   alias Lexical.Document
   alias Lexical.Document.Range
-  import Document.Line, only: [line: 1]
+  import Lexical.Document.Line, only: [line: 1]
 
   @range_start_marker "«"
   @range_end_marker "»"
