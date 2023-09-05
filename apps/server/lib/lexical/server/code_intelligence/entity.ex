@@ -9,6 +9,8 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   alias Lexical.RemoteControl
   alias Lexical.Text
 
+  import Ast, only: [is_call: 2]
+
   require Logger
 
   @type resolved ::
@@ -162,7 +164,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   # Local calls:
   # fun(1, 2, 3)
-  defp arity_at_position({atom, _, args}, _position) when is_atom(atom) and is_list(args) do
+  defp arity_at_position({call, _, args}, _position) when is_call(call, args) do
     length(args)
   end
 

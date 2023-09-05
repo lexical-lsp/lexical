@@ -89,6 +89,18 @@ defmodule Lexical.Ast do
   @type alias_segments :: [short_alias]
 
   @doc """
+  Guard used to determined whether an AST node is a call.
+
+  ## Example
+
+      def my_fun({call, _meta, args}) when is_call(call, args), do: ...
+
+  """
+  @non_call_nodes [:., :__aliases__, :__block__, :"::", :{}, :|>, :%, :%{}]
+  defguard is_call(call, args)
+           when is_atom(call) and is_list(args) and call not in @non_call_nodes
+
+  @doc """
   Returns an AST generated from a valid document or string.
   """
   @spec from(Document.t() | String.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
