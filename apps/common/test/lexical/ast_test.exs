@@ -7,6 +7,7 @@ defmodule Lexical.AstTest do
 
   import CursorSupport
   import CodeSigil
+  import Lexical.Test.PositionSupport
 
   use ExUnit.Case, async: true
 
@@ -111,6 +112,100 @@ defmodule Lexical.AstTest do
       assert converted =~ "_line = 2"
       refute converted =~ "_line = 1"
       refute converted =~ "_line = 3"
+    end
+  end
+
+  describe "contains_position?/2 single line node" do
+    setup do
+      [single_line_ast] = ast(~q|
+        [
+          single_line_call(1, 2, 3),
+        ]
+      |)
+
+      range = {{2, 3}, {2, 27}}
+
+      {:ok, [ast: single_line_ast, range: range]}
+    end
+
+    test "at the bounds", %{ast: ast, range: range} do
+      {{start_line, start_col}, {end_line, end_col}} = range
+
+      assert Ast.contains_position?(ast, position(start_line, start_col))
+      assert Ast.contains_position?(ast, position(end_line, end_col))
+    end
+
+    test "within the node", %{ast: ast, range: range} do
+      {{start_line, start_col}, _} = range
+
+      assert Ast.contains_position?(ast, position(start_line, start_col + 1))
+    end
+
+    test "outside the bounds", %{ast: ast, range: range} do
+      {{start_line, start_col}, {end_line, end_col}} = range
+
+      refute Ast.contains_position?(ast, position(start_line, start_col - 1))
+      refute Ast.contains_position?(ast, position(start_line - 1, start_col))
+      refute Ast.contains_position?(ast, position(end_line, end_col + 1))
+      refute Ast.contains_position?(ast, position(end_line + 1, end_col))
+    end
+  end
+
+  describe "contains_position?/2 multi line node" do
+    setup do
+      [three_line_ast] = ast(~q|
+        [
+          multi_line_call(
+            1, 2, 3
+          )
+        ]
+      |)
+
+      range = {{2, 3}, {4, 3}}
+
+      {:ok, [ast: three_line_ast, range: range]}
+    end
+
+    test "at the bounds", %{ast: ast, range: range} do
+      {{start_line, start_col}, {end_line, end_col}} = range
+
+      assert Ast.contains_position?(ast, position(start_line, start_col))
+      assert Ast.contains_position?(ast, position(end_line, end_col))
+    end
+
+    test "on the first line", %{ast: ast, range: range} do
+      {{start_line, start_col}, _} = range
+
+      assert Ast.contains_position?(ast, position(start_line, start_col + 1))
+      refute Ast.contains_position?(ast, position(start_line, start_col - 1))
+    end
+
+    test "on the last line", %{ast: ast, range: range} do
+      {_, {end_line, end_col}} = range
+
+      assert Ast.contains_position?(ast, position(end_line, end_col - 1))
+      refute Ast.contains_position?(ast, position(end_line, end_col + 1))
+    end
+
+    test "within the lines", %{ast: ast, range: range} do
+      {{start_line, _}, _} = range
+
+      assert Ast.contains_position?(ast, position(start_line + 1, 1))
+      assert Ast.contains_position?(ast, position(start_line + 1, 1_000))
+    end
+
+    test "outside the lines", %{ast: ast, range: range} do
+      {{start_line, start_col}, {end_line, end_col}} = range
+
+      refute Ast.contains_position?(ast, position(start_line - 1, start_col))
+      refute Ast.contains_position?(ast, position(end_line + 1, end_col))
+    end
+  end
+
+  defp ast(s) do
+    case Ast.from(s) do
+      {:ok, {:__block__, _, [node]}} -> node
+      {:ok, node} -> node
     end
   end
 end

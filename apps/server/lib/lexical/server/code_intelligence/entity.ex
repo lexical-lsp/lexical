@@ -11,7 +11,10 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   require Logger
 
-  @type resolved :: {:module, module()} | {:struct, module()}
+  @type resolved ::
+          {:module, module()}
+          | {:struct, module()}
+          | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
 
   @doc """
   Attempts to resolve the entity at the given position in the document.
@@ -20,15 +23,18 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   """
   @spec resolve(Document.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
   def resolve(%Document{} = document, %Position{} = position) do
-    with {:ok, %{context: context, begin: begin_pos, end: end_pos}} <-
-           Ast.surround_context(document, position),
-         {:ok, resolved, {begin_pos, end_pos}} <-
-           resolve(context, {begin_pos, end_pos}, document, position) do
+    with {:ok, surround_context} <- Ast.surround_context(document, position),
+         {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, document, position) do
+      Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved, to_range(document, begin_pos, end_pos)}
     else
       {:error, :surround_context} -> {:error, :not_found}
       error -> error
     end
+  end
+
+  defp resolve(%{context: context, begin: begin_pos, end: end_pos}, document, position) do
+    resolve(context, {begin_pos, end_pos}, document, position)
   end
 
   defp resolve({:alias, charlist}, node_range, document, position) do
@@ -54,11 +60,22 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  defp resolve(context, _node_range, _document, _position) do
-    unsupported_context(context)
+  defp resolve({:dot, alias_node, fun_chars}, node_range, document, position) do
+    fun = List.to_atom(fun_chars)
+
+    with {:ok, module} <- expand_alias(alias_node, document, position) do
+      case Ast.path_at(document, position) do
+        {:ok, [parent | _]} ->
+          arity = arity_at_position(parent, position)
+          {:ok, {:call, module, fun, arity}, node_range}
+
+        _ ->
+          {:ok, {:call, module, fun, 0}, node_range}
+      end
+    end
   end
 
-  defp unsupported_context(context) do
+  defp resolve(context, _node_range, _document, _position) do
     {:error, {:unsupported, context}}
   end
 
@@ -66,7 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   defp resolve_module(charlist, {{line, column}, {line, _}}, document, position) do
     module_string = module_before_position(charlist, column, position)
 
-    with {:ok, module} <- expand_aliases(module_string, document, position) do
+    with {:ok, module} <- expand_alias(module_string, document, position) do
       end_column = column + String.length(module_string)
       {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
@@ -76,9 +93,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   # Since we no longer have formatting information at this point, we
   # just return the entire module for now.
   defp resolve_module(charlist, node_range, document, position) do
-    module_string = List.to_string(charlist)
-
-    with {:ok, module} <- expand_aliases(module_string, document, position) do
+    with {:ok, module} <- expand_alias(charlist, document, position) do
       {:ok, {:module, module}, node_range}
     end
   end
@@ -101,10 +116,58 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  defp expand_aliases(module, document, position) when is_binary(module) do
+  defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, document, position) do
+    expand_alias(prefix ++ [?.] ++ charlist, document, position)
+  end
+
+  defp expand_alias({:alias, charlist}, document, position) do
+    expand_alias(charlist, document, position)
+  end
+
+  defp expand_alias(charlist, document, position) when is_list(charlist) do
+    charlist
+    |> List.to_string()
+    |> expand_alias(document, position)
+  end
+
+  defp expand_alias(module, document, position) when is_binary(module) do
     [module]
     |> Module.concat()
     |> Ast.expand_aliases(document, position)
+  end
+
+  defp expand_alias(_, _document, _position), do: :error
+
+  # Pipes:
+  # ...
+  # |> Mod.fun(1, 2, 3)
+  # |> ...
+  defp arity_at_position({:|>, _, _} = pipe, position) do
+    arity_minus_one =
+      pipe
+      |> Macro.unpipe()
+      |> Enum.map(fn {ast, _arg_position} -> ast end)
+      |> Enum.find(&Ast.contains_position?(&1, position))
+      |> arity_at_position(position)
+
+    arity_minus_one + 1
+  end
+
+  # Dot calls:
+  # Mod.fun(1, 2, 3)
+  # fun.()
+  defp arity_at_position({{:., _, _}, _, args}, _position) when is_list(args) do
+    length(args)
+  end
+
+  # Local calls:
+  # fun(1, 2, 3)
+  defp arity_at_position({atom, _, args}, _position) when is_atom(atom) and is_list(args) do
+    length(args)
+  end
+
+  defp arity_at_position(_node, _position) do
+    0
   end
 
   @doc """

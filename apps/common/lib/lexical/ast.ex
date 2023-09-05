@@ -268,9 +268,51 @@ defmodule Lexical.Ast do
   Returns a zipper for the document AST focused at the given position.
   """
   @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.zipper()} | {:error, parse_error()}
-  def zipper_at(%Document{} = document, %Document.Position{} = position) do
+  def zipper_at(%Document{} = document, %Position{} = position) do
     with {:ok, ast} <- from(document) do
       zipper_at_position(ast, position)
+    end
+  end
+
+  @doc """
+  Returns the path to the node in the document AST at the given position.
+  """
+  @spec path_at(Document.t(), Position.t()) ::
+          {:ok, [Macro.t(), ...]} | {:error, :not_found | parse_error()}
+  def path_at(%Document{} = document, %Position{} = position) do
+    with {:ok, ast} <- from(document) do
+      path_at(ast, position)
+    end
+  end
+
+  @spec path_at(Macro.t(), Position.t()) :: {:ok, [Macro.t(), ...]} | {:error, :not_found}
+  def path_at(ast, %Position{} = position) do
+    case Future.Macro.path(ast, &at_or_after?(&1, position)) do
+      nil -> {:error, :not_found}
+      path -> {:ok, path}
+    end
+  end
+
+  @doc """
+  Returns whether the given AST contains a position.
+  """
+  @spec contains_position?(Macro.t(), Position.t()) :: boolean()
+  def contains_position?({_, _, _} = ast, %Position{} = position) do
+    range = Sourceror.get_range(ast)
+    on_same_line? = range.start[:line] == range.end[:line] and position.line == range.start[:line]
+
+    cond do
+      on_same_line? ->
+        position.character >= range.start[:column] and position.character < range.end[:column]
+
+      position.line == range.start[:line] ->
+        position.character >= range.start[:column]
+
+      position.line == range.end[:line] ->
+        position.character < range.end[:column]
+
+      true ->
+        position.line > range.start[:line] and position.line < range.end[:line]
     end
   end
 
@@ -540,7 +582,7 @@ defmodule Lexical.Ast do
     line = get_line(node, 0)
     column = get_column(node, 0)
 
-    line >= position.line and column >= position.character
+    line >= position.line or (line == position.line and column >= position.character)
   end
 
   defp one_line_range(%Document{} = document, line_number) do

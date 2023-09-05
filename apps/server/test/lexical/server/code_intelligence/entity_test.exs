@@ -530,6 +530,74 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     end
   end
 
+  describe "call resolve/2" do
+    test "qualified call", %{project: project} do
+      code = ~q[
+        def example do
+          MyModule.|some_function(1, 2, 3)
+        end
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function»(1, 2, 3)]
+    end
+
+    test "qualified call without parens", %{project: project} do
+      code = ~q[
+        MyModule.|some_function 1, 2, 3
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function» 1, 2, 3]
+    end
+
+    test "qualified call with nested alias", %{project: project} do
+      code = ~q[
+        MyModule.Nested.|some_function(1, 2, 3)
+      ]
+
+      assert {:ok, {:call, MyModule.Nested, :some_function, 3}, resolved_range} =
+               resolve(project, code)
+
+      assert resolved_range =~ ~S[«MyModule.Nested.some_function»(1, 2, 3)]
+    end
+
+    test "multi-line qualified call", %{project: project} do
+      code = ~q[
+        MyModule.|some_function(
+          1, 2, 3
+        )
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function»(]
+    end
+
+    test "qualified call at start of pipe", %{project: project} do
+      code = ~q[
+        1
+        |> MyModule.|some_function(2, 3)
+        |> other()
+        |> other()
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+
+    test "qualified call at end of pipe", %{project: project} do
+      code = ~q[
+        1
+        |> other()
+        |> other()
+        |> MyModule.|some_function(2, 3)
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+  end
+
   defp resolve(project, code) do
     with {position, code} <- pop_position(code),
          {:ok, document} <- subject_module(project, code),

@@ -140,5 +140,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
     quoted
     |> Future.Code.quoted_to_algebra()
     |> Inspect.Algebra.format(60)
+    |> IO.iodata_to_binary()
   end
 end

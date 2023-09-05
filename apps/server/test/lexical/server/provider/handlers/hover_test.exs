@@ -251,6 +251,115 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     end
   end
 
+  describe "call hover" do
+    test "public fun with @doc and @spec", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule CallHover do
+            @doc """
+            This function has docs.
+            """
+            @spec my_fun(integer(), integer()) :: integer()
+            def my_fun(x, y), do: x + y
+          end
+        ],
+        hovered: "CallHover.|my_fun(1, 2)",
+        expected: """
+        ```elixir
+        CallHover.my_fun(x, y)
+        ```
+
+        ---
+
+        #### Specs
+
+        ```elixir
+        @spec my_fun(integer(), integer()) :: integer()
+        ```
+
+        ---
+
+        This function has docs.
+        """
+      )
+    end
+
+    test "public fun with multiple @spec", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule CallHover do
+            @spec my_fun(integer(), integer()) :: integer()
+            @spec my_fun(float(), float()) :: float()
+            def my_fun(x, y), do: x + y
+          end
+        ],
+        hovered: "CallHover.|my_fun(1, 2)",
+        expected: """
+        ```elixir
+        CallHover.my_fun(x, y)
+        ```
+
+        ---
+
+        #### Specs
+
+        ```elixir
+        @spec my_fun(integer(), integer()) :: integer()
+        @spec my_fun(float(), float()) :: float()
+        ```
+        """
+      )
+    end
+
+    test "public fun with multiple arities", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule CallHover do
+            @spec my_fun(integer()) :: integer()
+            def my_fun(x), do: x + 1
+
+            @spec my_fun(integer(), integer()) :: integer()
+            def my_fun(x, y), do: x + y
+
+            @spec my_fun(integer(), integer(), integer()) :: integer()
+            def my_fun(x, y, z), do: x + y + z
+          end
+        ],
+        hovered: "CallHover.|my_fun(1, 2)",
+        expected: """
+        ```elixir
+        CallHover.my_fun(x, y)
+        ```
+
+        ---
+
+        #### Specs
+
+        ```elixir
+        @spec my_fun(integer(), integer()) :: integer()
+        ```
+
+        ---
+
+        ```elixir
+        CallHover.my_fun(x, y, z)
+        ```
+
+        ---
+
+        #### Specs
+
+        ```elixir
+        @spec my_fun(integer(), integer(), integer()) :: integer()
+        ```
+        """
+      )
+    end
+  end
+
   defp assert_hover(project, opts) do
     code = Keyword.fetch!(opts, :code)
     hovered = Keyword.fetch!(opts, :hovered)
@@ -302,9 +411,10 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   defp hover_request(path, line, char) do
     uri = Document.Path.ensure_uri(path)
 
+    # convert line and char to zero-based
     params = [
-      text_document: [uri: uri],
-      position: [line: line, character: char]
+      position: [line: line - 1, character: char - 1],
+      text_document: [uri: uri]
     ]
 
     with {:ok, _} <- Document.Store.open_temporary(uri),
