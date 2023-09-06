@@ -17,20 +17,18 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     types: [:module],
     subtypes: [:definition, :reference]
 
+  @field_names [:reference, :path, :type, :subtype, :subject, :elixir_version, :erlang_version]
+
   @doc """
   A header for the records stored in the ETS table / disk.
-  The default values are initialized to :_ to allow this to be used for querying,
-  as :_ means wildcard. This _does_ mean you need to
-
+  The default values are initialized to nil, which represents an unset field.
   """
-  defrecord :header, :record_v1,
-    reference: :_,
-    path: :_,
-    type: :_,
-    subtype: :_,
-    subject: :_,
-    elixir_version: :_,
-    erlang_version: :_
+  defrecord :header, :record_v1, Keyword.new(@field_names, &{&1, nil})
+
+  # A header for the records stored in the ETS table / disk.
+  # The default values are initialized to :_ to allow this to be used for querying,
+  # as :_ means wildcard to ETS.
+  defrecordp :query, :record_v1, Keyword.new(@field_names, &{&1, :_})
 
   @table __MODULE__
 
@@ -88,12 +86,12 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
   end
 
   def replace_all([]) do
-    true = :ets.match_delete(@table, {header(), :_})
+    true = :ets.match_delete(@table, {query(), :_})
     :ok
   end
 
   def replace_all(entries) do
-    entry_wildcard = {header(), :_}
+    entry_wildcard = {query(), :_}
     rows = Enum.map(entries, &to_ets/1)
 
     with true <- :ets.match_delete(@table, entry_wildcard),
@@ -126,7 +124,7 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     versions = Versions.current()
 
     by_path =
-      header(
+      query(
         elixir_version: versions.elixir,
         erlang_version: versions.erlang,
         path: path
@@ -146,7 +144,7 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     versions = Versions.current()
 
     header =
-      header(
+      query(
         elixir_version: versions.elixir,
         erlang_version: versions.erlang,
         subject: subject,
@@ -161,7 +159,7 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     versions = Versions.current()
 
     header =
-      header(
+      query(
         elixir_version: versions.elixir,
         erlang_version: versions.erlang,
         reference: reference,

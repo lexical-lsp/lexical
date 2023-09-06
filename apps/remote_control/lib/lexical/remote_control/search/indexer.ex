@@ -5,15 +5,18 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   @indexable_extensions "*.{ex,exs}"
 
   def create_index(%Project{} = project) do
-    project
-    |> indexable_files()
-    |> async_chunks(&index_path/1)
-    |> List.flatten()
+    entries =
+      project
+      |> indexable_files()
+      |> async_chunks(&index_path/1)
+      |> List.flatten()
+
+    {:ok, entries}
   end
 
-  def update_index(%Project{} = project, existing_entities) do
+  def update_index(%Project{} = project, existing_entries) do
     path_to_last_index_at =
-      existing_entities
+      existing_entries
       |> Enum.group_by(& &1.path, & &1.updated_at)
       |> Map.new(fn {k, v} -> {k, Enum.max(v)} end)
 
