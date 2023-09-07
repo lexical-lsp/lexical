@@ -77,7 +77,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   end
 
   defp newer_than?(path, timestamp) do
-    case File.stat(path) do
+    case stat(path) do
       {:ok, %File.Stat{} = stat} ->
         erlang_datetime_to_unix(stat.mtime) > timestamp
 
@@ -99,5 +99,10 @@ defmodule Lexical.RemoteControl.Search.Indexer do
     [root_dir, "**", @indexable_extensions]
     |> Path.join()
     |> Path.wildcard()
+  end
+
+  # stat(path) is here for testing so it can be mocked
+  defp stat(path) do
+    File.stat(path)
   end
 end

@@ -101,8 +101,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
         end
       ]
 
-      patch(File, :stat, fn path ->
-        {ymd, {hour, minute, second}} = Map.get(path_to_mtime, file_path)
+      patch(Indexer, :stat, fn path ->
+        {ymd, {hour, minute, second}} = Map.get(path_to_mtime, file_path, &:calendar.local_time/0)
 
         hms =
           if path == file_path do
@@ -112,6 +112,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
           end
 
         mtime = {ymd, hms}
+
         {:ok, %File.Stat{mtime: mtime}}
       end)
 
