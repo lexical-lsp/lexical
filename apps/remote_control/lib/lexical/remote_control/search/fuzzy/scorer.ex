@@ -69,7 +69,8 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   def score(subject(normalized: normalized) = subject, pattern) do
-    %__MODULE__{} = score =
+    %__MODULE__{} =
+      score =
       normalized
       |> do_score(normalize(pattern), %__MODULE__{})
       |> Map.update!(:matched_character_positions, &Enum.reverse/1)
@@ -177,10 +178,6 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
       end
 
     do_case_match_boost(pattern_rest, rest, graphemes, boost)
-  end
-
-  defp do_case_match_boost(<<_::utf8, rest::binary>>, matched_positions, graphemes, boost) do
-    do_case_match_boost(rest, matched_positions, graphemes, boost)
   end
 
   defp grapheme_to_utf8(graphemes, position) do
