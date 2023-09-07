@@ -109,7 +109,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   defp increment(%__MODULE__{} = score, field_name) do
-    Map.update(score, field_name, 1, &(&1 + 1))
+    Map.update!(score, field_name, &(&1 + 1))
   end
 
   defp add_to_list(%__MODULE__{} = score, field_name, value) do
@@ -133,7 +133,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     # penalize first matches further in the string by making them negative.
     first_match_bonus = 0 - first_match_position
 
-    case_match_boost = case_match_boost(score.matched_character_positions, pattern, subject)
+    case_match_boost = case_match_boost(pattern, score.matched_character_positions, subject)
 
     pattern_length_boost + consecutive_bonus + first_match_bonus + case_match_boost +
       match_amount_boost
@@ -151,8 +151,8 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     # This means if I type En, it will match Enum more than it will match
     # Something
 
-    [-50 | matched_positions]
-    |> Enum.chunk_every(2, 1, [-1])
+    matched_positions
+    |> Enum.chunk_every(2, 1)
     |> Enum.reduce(0, fn
       [last, current], acc when current == last + 1 ->
         acc + @consecutive_character_bonus
@@ -162,15 +162,15 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     end)
   end
 
-  defp case_match_boost(matched_positions, pattern, subject(graphemes: graphemes)) do
-    do_case_match_boost(matched_positions, pattern, graphemes, 0)
+  defp case_match_boost(pattern, matched_positions, subject(graphemes: graphemes)) do
+    do_case_match_boost(pattern, matched_positions, graphemes, 0)
   end
 
   # iterate over the matches, find the character in the subject with that index, and compare it
   # to the one in the pattern, boost if they're the same.
-  defp do_case_match_boost([], _, _, boost), do: boost
+  defp do_case_match_boost(_, [], _, boost), do: boost
 
-  defp do_case_match_boost([index | rest], <<char::utf8, pattern_rest::binary>>, graphemes, boost) do
+  defp do_case_match_boost(<<char::utf8, pattern_rest::binary>>, [index | rest], graphemes, boost) do
     boost =
       if grapheme_to_utf8(graphemes, index) == char do
         boost + 1
@@ -178,11 +178,11 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
         boost
       end
 
-    do_case_match_boost(rest, pattern_rest, graphemes, boost)
+    do_case_match_boost(pattern_rest, rest, graphemes, boost)
   end
 
-  defp do_case_match_boost(matched_positions, <<_::utf8, rest::binary>>, graphemes, boost) do
-    do_case_match_boost(matched_positions, rest, graphemes, boost)
+  defp do_case_match_boost(<<_::utf8, rest::binary>>, matched_positions, graphemes, boost) do
+    do_case_match_boost(rest, matched_positions, graphemes, boost)
   end
 
   defp grapheme_to_utf8(graphemes, position) do

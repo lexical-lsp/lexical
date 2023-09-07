@@ -52,7 +52,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   For each tuple returned, the first element will then have the subject converter applied.
   This will produce a subject, which is what the `match/2` function uses for fuzzy matching.
   """
-  @spec new([term()], mapper(), subject_converter()) :: t
+  @spec new(Enumerable.t(), mapper(), subject_converter()) :: t
   def new(items, mapper, subject_converter) do
     subject_grouping_key_values = Enum.map(items, mapper)
 

@@ -69,14 +69,6 @@ defmodule Lexical.Ast do
   @typedoc "Return value from `Code.Fragment.surround_context/3`"
   @type surround_context :: any()
 
-  @type quoted_elixir ::
-          atom()
-          | binary()
-          | [any()]
-          | number()
-          | {any(), any()}
-          | {atom() | {any(), [any()], atom() | [any()]}, Keyword.t(), atom() | [any()]}
-
   @type parse_error ::
           {location :: keyword(), String.t() | {String.t(), String.t()}, String.t()}
 
@@ -199,7 +191,7 @@ defmodule Lexical.Ast do
   May return a path even in the event of syntax errors.
   """
   @spec cursor_path(
-          Document.t() | quoted_elixir(),
+          Document.t() | Macro.t(),
           Position.t() | {Position.line(), Position.character()}
         ) ::
           [Macro.t()]
@@ -377,7 +369,7 @@ defmodule Lexical.Ast do
 
   If no aliases can be found, the given alias is returned unmodified.
   """
-  @spec expand_aliases(alias_segments() | module(), Document.t() | quoted_elixir(), Position.t()) ::
+  @spec expand_aliases(alias_segments() | module(), Document.t() | Macro.t(), Position.t()) ::
           {:ok, module()} | :error
   def expand_aliases(module, %Document{} = document, %Position{} = position)
       when is_atom(module) and not is_nil(module) do

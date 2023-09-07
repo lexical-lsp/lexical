@@ -42,24 +42,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   use StructAccess
 
   def reference(path, ref, parent, subject, type, range, application) do
-    versions = Versions.current()
-
-    %__MODULE__{
-      application: application,
-      elixir_version: versions.elixir,
-      erlang_version: versions.erlang,
-      subject: subject,
-      parent: parent,
-      path: path,
-      range: range,
-      ref: ref,
-      subtype: :reference,
-      type: type,
-      updated_at: timestamp()
-    }
+    new(path, ref, parent, subject, type, :reference, range, application)
   end
 
   def definition(path, ref, parent, subject, type, range, application) do
+    new(path, ref, parent, subject, type, :definition, range, application)
+  end
+
+  defp new(path, ref, parent, subject, type, subtype, range, application) do
     versions = Versions.current()
 
     %__MODULE__{
@@ -71,7 +61,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
       path: path,
       range: range,
       ref: ref,
-      subtype: :definition,
+      subtype: subtype,
       type: type,
       updated_at: timestamp()
     }

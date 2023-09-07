@@ -283,7 +283,7 @@ defmodule Lexical.Ast.Aliases do
   """
 
   @spec at(
-          Document.t() | Ast.quoted_elixir(),
+          Document.t() | Macro.t(),
           Position.t() | {Position.line(), Position.character()}
         ) ::
           {:ok, %{Ast.short_alias() => module()}} | {:error, Ast.parse_error()}

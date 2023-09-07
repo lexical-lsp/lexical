@@ -69,10 +69,9 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   defp async_chunks(data, processor, timeout \\ 20_000) do
     data
     |> Stream.chunk_every(System.schedulers_online())
-    |> Stream.map(fn chunk ->
+    |> Enum.map(fn chunk ->
       Task.async(fn -> Enum.map(chunk, processor) end)
     end)
-    |> Enum.to_list()
     |> Task.await_many(timeout)
   end
 
