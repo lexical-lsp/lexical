@@ -18,6 +18,6 @@ defmodule Lexical.Test.MixProject do
   end
 
   defp deps do
-    []
+    [{:lexical_shared, path: "../lexical_shared"}]
   end
 end

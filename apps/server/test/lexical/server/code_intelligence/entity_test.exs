@@ -10,6 +10,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
   import Lexical.Test.Fixtures
+  import Lexical.Test.RangeSupport
   import Messages
 
   use ExUnit.Case, async: false
@@ -482,7 +483,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     with {position, code} <- pop_position(code),
          {:ok, document} <- subject_module(project, code),
          {:ok, resolved, range} <- Entity.resolve(document, position) do
-      {:ok, resolved, marked_range(document, range)}
+      {:ok, resolved, decorate(document, range)}
     end
   end
 
@@ -491,7 +492,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
          {:ok, subject_module_doc} <- subject_module(project, subject_module),
          {:ok, %Location{} = location} <-
            Entity.definition(project, subject_module_doc, position) do
-      {:ok, location.document.uri, marked_range(location.document, location.range)}
+      {:ok, location.document.uri, decorate(location.document, location.range)}
     end
   end
 
@@ -503,27 +504,5 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   defp caller_position(subject_module) do
     {line, character} = cursor_position(subject_module)
     Position.new(line, character)
-  end
-
-  @range_start_marker "«"
-  @range_end_marker "»"
-
-  defp marked_range(document, range) do
-    import Document.Line, only: [line: 1]
-
-    index_range = (range.start.line - 1)..(range.end.line - 1)
-
-    document.lines
-    |> Enum.slice(index_range)
-    |> Enum.map(fn line(text: text, ending: ending) -> text <> ending end)
-    |> update_in([Access.at(-1)], &insert_marker(&1, @range_end_marker, range.end.character))
-    |> update_in([Access.at(0)], &insert_marker(&1, @range_start_marker, range.start.character))
-    |> IO.iodata_to_binary()
-    |> String.trim_trailing()
-  end
-
-  defp insert_marker(text, marker, character) do
-    {leading, trailing} = String.split_at(text, character - 1)
-    leading <> marker <> trailing
   end
 end

@@ -77,6 +77,7 @@ defmodule Lexical.Ast do
           range: patch_range(),
           change: patch_change()
         }
+
   @type patch_range :: %{start: patch_position(), end: patch_position()}
   @type patch_position :: [patch_line | patch_column]
   @type patch_line :: {:line, non_neg_integer()}
@@ -189,7 +190,10 @@ defmodule Lexical.Ast do
 
   May return a path even in the event of syntax errors.
   """
-  @spec cursor_path(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+  @spec cursor_path(
+          Document.t() | Macro.t(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
           [Macro.t()]
   def cursor_path(%Document{} = doc, {line, character}) do
     cursor_path(doc, Position.new(line, character))
@@ -207,6 +211,50 @@ defmodule Lexical.Ast do
       _ ->
         []
     end
+  end
+
+  @doc """
+  Traverses the given ast until the given position.
+  """
+  def prewalk_until(ast, acc, prewalk_fn, %Position{} = position) do
+    range = Document.Range.new(Position.new(0, 0), position)
+
+    {_, acc} =
+      ast
+      |> Zipper.zip()
+      |> Zipper.traverse_while(acc, fn zipper, acc ->
+        # We can have a cursor at the end of the document, and due
+        # to how elixir's AST traversal handles `end` statements (it doesn't),
+        # we will never receive a callback where we match the end block. Adding
+        # a cursor node will allow us to place cursors after the document has ended
+        # and things will still work.
+        zipper = maybe_insert_cursor(zipper, position)
+
+        case Zipper.node(zipper) do
+          {_, _, _} = element ->
+            current_line = Sourceror.get_line(element)
+            current_column = Sourceror.get_column(element)
+
+            cond do
+              match?({:__cursor__, _, _}, element) ->
+                new_acc = prewalk_fn.(element, acc)
+                {:halt, zipper, new_acc}
+
+              within_range?({current_line, current_column}, range) ->
+                new_acc = prewalk_fn.(element, acc)
+                {:cont, zipper, new_acc}
+
+              true ->
+                {:halt, zipper, acc}
+            end
+
+          element ->
+            new_acc = prewalk_fn.(element, acc)
+            {:cont, zipper, new_acc}
+        end
+      end)
+
+    acc
   end
 
   @doc """
@@ -321,7 +369,7 @@ defmodule Lexical.Ast do
 
   If no aliases can be found, the given alias is returned unmodified.
   """
-  @spec expand_aliases(alias_segments() | module(), Document.t(), Position.t()) ::
+  @spec expand_aliases(alias_segments() | module(), Document.t() | Macro.t(), Position.t()) ::
           {:ok, module()} | :error
   def expand_aliases(module, %Document{} = document, %Position{} = position)
       when is_atom(module) and not is_nil(module) do
@@ -331,13 +379,23 @@ defmodule Lexical.Ast do
     |> expand_aliases(document, position)
   end
 
-  def expand_aliases([first | rest] = segments, %Document{} = document, %Position{} = position) do
-    with {:ok, aliases_mapping} <- Aliases.at(document, position),
+  def expand_aliases([_first | _rest] = segments, %Document{} = document, %Position{} = position) do
+    with {:ok, quoted} <- fragment(document, position) do
+      expand_aliases(segments, quoted, position)
+    end
+  end
+
+  def expand_aliases([first | rest] = segments, quoted_document, %Position{} = position) do
+    with {:ok, aliases_mapping} <- Aliases.at(quoted_document, position),
          {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, Module.concat([resolved | rest])}
     else
       _ -> {:ok, Module.concat(segments)}
     end
+  end
+
+  def expand_aliases(_, _, {line, column}) do
+    Position.new(line, column)
   end
 
   def expand_aliases(_, _, empty) do
@@ -505,5 +563,21 @@ defmodule Lexical.Ast do
 
   defp get_column(_, default) do
     default
+  end
+
+  defp maybe_insert_cursor(zipper, %Position{} = position) do
+    case Zipper.next(zipper) do
+      nil ->
+        cursor = {:__cursor__, [line: position.line, column: position.character], nil}
+
+        if zipper == Zipper.top(zipper) do
+          Zipper.insert_child(zipper, cursor)
+        else
+          Zipper.insert_right(zipper, cursor)
+        end
+
+      _ ->
+        zipper
+    end
   end
 end

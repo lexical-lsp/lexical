@@ -176,18 +176,22 @@ defmodule Lexical.Ast.Aliases do
     end
 
     defp apply_multiple_aliases(%__MODULE__{} = reducer, from_alias, destinations) do
-      Enum.reduce(destinations, reducer, fn {:__aliases__, _, to_alias}, reducer ->
-        from =
-          case from_alias do
-            [:__MODULE__ | rest] ->
-              [:__MODULE__ | rest ++ to_alias]
+      Enum.reduce(destinations, reducer, fn
+        {:__aliases__, _, to_alias}, reducer ->
+          from =
+            case from_alias do
+              [:__MODULE__ | rest] ->
+                [:__MODULE__ | rest ++ to_alias]
 
-            from ->
-              from ++ to_alias
-          end
+              from ->
+                from ++ to_alias
+            end
 
-        to = List.last(from)
-        put_alias(reducer, from, to)
+          to = List.last(from)
+          put_alias(reducer, from, to)
+
+        {:__cursor__, _, _}, reducer ->
+          reducer
       end)
     end
 
@@ -277,7 +281,11 @@ defmodule Lexical.Ast.Aliases do
 
   May return aliases even in the event of syntax errors.
   """
-  @spec at(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
+
+  @spec at(
+          Document.t() | Macro.t(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
           {:ok, %{Ast.short_alias() => module()}} | {:error, Ast.parse_error()}
   def at(%Document{} = doc, {line, character}) do
     at(doc, Position.new(line, character))
@@ -285,16 +293,20 @@ defmodule Lexical.Ast.Aliases do
 
   def at(%Document{} = document, %Position{} = position) do
     with {:ok, quoted} <- Ast.fragment(document, position) do
-      reducer = Reducer.new()
-
-      {_ast, reducer} = Macro.prewalk(quoted, reducer, &collect/2)
-
-      aliases = Reducer.aliases(reducer)
-      {:ok, aliases}
+      at(quoted, position)
     end
   end
 
+  def at(quoted_document, %Position{} = position) do
+    aliases =
+      quoted_document
+      |> Ast.prewalk_until(Reducer.new(), &collect/2, position)
+      |> Reducer.aliases()
+
+    {:ok, aliases}
+  end
+
   defp collect(elem, %Reducer{} = reducer) do
-    {elem, Reducer.update(reducer, elem)}
+    Reducer.update(reducer, elem)
   end
 end
