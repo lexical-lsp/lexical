@@ -69,12 +69,10 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   def score(subject(normalized: normalized) = subject, pattern) do
-    %__MODULE__{} = score = do_score(normalized, normalize(pattern), %__MODULE__{})
-
-    score = %__MODULE__{
-      score
-      | matched_character_positions: Enum.reverse(score.matched_character_positions)
-    }
+    %__MODULE__{} = score =
+      normalized
+      |> do_score(normalize(pattern), %__MODULE__{})
+      |> Map.update!(:matched_character_positions, &Enum.reverse/1)
 
     {score.match?, calculate_score(score, subject, pattern)}
   end
