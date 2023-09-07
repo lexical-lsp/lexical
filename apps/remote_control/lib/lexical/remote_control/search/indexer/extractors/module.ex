@@ -70,11 +70,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   end
 
   # This matches an erlang module, which is just an atom
-  def extract(atom_literal, %Reducer{} = reducer) when is_atom(atom_literal) do
+  def extract({:__block__, metadata, [atom_literal]}, %Reducer{} = reducer)
+      when is_atom(atom_literal) do
     case module(reducer, atom_literal) do
       {:ok, module} ->
+        start = Metadata.position(metadata)
         %Block{} = current_block = Reducer.current_block(reducer)
-        range = to_range(module, reducer.position)
+        range = to_range(module, start)
 
         entry =
           Entry.reference(
