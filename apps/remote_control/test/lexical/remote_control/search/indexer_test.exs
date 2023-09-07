@@ -86,23 +86,11 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
       entries: entries,
       file_path: file_path
     } do
-      path_to_mtime =
-        Map.new(entries, fn entry ->
-          {:ok, updated_at} = DateTime.from_unix(entry.updated_at, :millisecond)
-
-          ymd = {updated_at.year, updated_at.month, updated_at.day}
-          hms = {updated_at.hour, updated_at.minute, updated_at.second}
-
-          {entry.path, {ymd, hms}}
-        end)
-
-      new_contents = ~s[
-        defmodule Brand.Spanking.New do
-        end
-      ]
+      path_to_mtime = Map.new(entries, & &1.updated_at)
 
       patch(Indexer, :stat, fn path ->
-        {ymd, {hour, minute, second}} = Map.get(path_to_mtime, file_path, &:calendar.local_time/0)
+        {ymd, {hour, minute, second}} =
+          Map.get_lazy(path_to_mtime, file_path, &:calendar.local_time/0)
 
         hms =
           if path == file_path do
@@ -115,6 +103,11 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
         {:ok, %File.Stat{mtime: mtime}}
       end)
+
+      new_contents = ~s[
+        defmodule Brand.Spanking.New do
+        end
+      ]
 
       File.write!(file_path, new_contents)
 

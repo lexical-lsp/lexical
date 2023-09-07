@@ -33,7 +33,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           ref: entry_reference(),
           subtype: entry_subtype(),
           type: entry_type(),
-          updated_at: pos_integer()
+          updated_at: :calendar.datetime()
         }
 
   alias Lexical.StructAccess
@@ -68,6 +68,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   end
 
   defp timestamp do
-    System.system_time(:millisecond)
+    :calendar.local_time()
   end
 end

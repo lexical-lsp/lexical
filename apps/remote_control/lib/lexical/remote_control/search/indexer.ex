@@ -78,18 +78,11 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   defp newer_than?(path, timestamp) do
     case stat(path) do
       {:ok, %File.Stat{} = stat} ->
-        erlang_datetime_to_unix(stat.mtime) > timestamp
+        stat.mtime > timestamp
 
       _ ->
         false
     end
-  end
-
-  defp erlang_datetime_to_unix(erlang_datetime) do
-    erlang_datetime
-    |> :calendar.datetime_to_gregorian_seconds()
-    |> DateTime.from_gregorian_seconds()
-    |> DateTime.to_unix(:millisecond)
   end
 
   def indexable_files(%Project{} = project) do
