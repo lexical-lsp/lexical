@@ -39,7 +39,12 @@ defmodule Lexical.RemoteControl.ModuleMappings do
     end
   end
 
+  alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Dispatch
+
   use GenServer
+
+  import Messages
 
   # Public
   def start_link(_) do
@@ -62,6 +67,7 @@ defmodule Lexical.RemoteControl.ModuleMappings do
 
   @impl GenServer
   def init(_) do
+    Dispatch.register_listener(self(), [module_updated()])
     {:ok, State.new()}
   end
 
@@ -78,6 +84,12 @@ defmodule Lexical.RemoteControl.ModuleMappings do
   @impl GenServer
   def handle_cast({:update, module, file_path}, %State{} = state) do
     new_state = State.update(state, module, file_path)
+    {:noreply, new_state}
+  end
+
+  @impl GenServer
+  def handle_info(module_updated(name: module_name, file: file_path), %State{} = state) do
+    new_state = State.update(state, module_name, file_path)
     {:noreply, new_state}
   end
 end

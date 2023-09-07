@@ -1,11 +1,11 @@
-defmodule Lexical.Server.Project.Dispatch do
+defmodule Lexical.RemoteControl.Dispatch do
   defmodule State do
     alias Lexical.Project
 
-    defstruct [:project, :registrations]
+    defstruct [:registrations]
 
-    def new(%Project{} = project) do
-      %__MODULE__{project: project, registrations: %{}}
+    def new do
+      %__MODULE__{registrations: %{}}
     end
 
     def add(%__MODULE__{} = state, message_type, pid) do
@@ -57,55 +57,47 @@ defmodule Lexical.Server.Project.Dispatch do
 
   # public API
 
-  def register(%Project{} = project, message_types) when is_list(message_types) do
-    project
-    |> name()
-    |> GenServer.call({:register, message_types})
+  def register_listener(listener_pid, message_types) when is_list(message_types) do
+    GenServer.call(__MODULE__, {:register, listener_pid, message_types})
   end
 
-  def registered?(%Project{} = project) do
-    registered?(project, self())
+  def registered?(pid) when is_pid(pid) do
+    GenServer.call(__MODULE__, {:registered?, pid})
   end
 
-  def registered?(%Project{} = project, pid) when is_pid(pid) do
-    project
-    |> name()
-    |> GenServer.call({:registered?, pid})
-  end
-
-  def broadcast(%Project{} = project, message) do
-    project
-    |> name()
+  def broadcast(message) do
+    __MODULE__
+    |> Process.whereis()
     |> send(message)
   end
 
   # GenServer callbacks
 
-  def start_link(%Project{} = project) do
-    GenServer.start_link(__MODULE__, [project], name: name(project))
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def child_spec(%Project{} = project) do
+  def child_spec do
     %{
-      id: {__MODULE__, Project.name(project)},
-      start: {__MODULE__, :start_link, [project]}
+      id: {__MODULE__, :dispatch},
+      start: {__MODULE__, :start_link, []}
     }
   end
 
   @impl GenServer
-  def init([%Project{} = project]) do
-    {:ok, State.new(project)}
+  def init([]) do
+    {:ok, State.new()}
   end
 
   @impl GenServer
-  def handle_call({:register, message_types}, {caller_pid, _ref}, %State{} = state) do
-    Process.monitor(caller_pid)
+  def handle_call({:register, listener_pid, message_types}, _from, %State{} = state) do
+    Process.monitor(listener_pid)
 
     new_state =
       Enum.reduce(message_types, state, fn
         message_type_or_message, %State{} = state ->
           message_type = extract_message_type(message_type_or_message)
-          State.add(state, message_type, caller_pid)
+          State.add(state, message_type, listener_pid)
       end)
 
     {:reply, :ok, new_state}

@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
   end
 
   test "it should be able to stop a project node and won't restart", %{project: project} do
-    {:ok, _node_name, _} = RemoteControl.start_link(project, self())
+    {:ok, _node_name, _} = RemoteControl.start_link(project)
 
     project_alive? = project |> ProjectNode.name() |> Process.whereis() |> Process.alive?()
 
@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
 
     linked_node_process =
       spawn(fn ->
-        {:ok, _node_name, _} = RemoteControl.start_link(project, test_pid)
+        {:ok, _node_name, _} = RemoteControl.start_link(project)
         send(test_pid, :started)
       end)
 

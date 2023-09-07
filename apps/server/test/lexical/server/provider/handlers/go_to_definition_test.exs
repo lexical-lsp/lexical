@@ -5,7 +5,6 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   alias Lexical.Protocol.Requests.GoToDefinition
   alias Lexical.RemoteControl
   alias Lexical.Server
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
@@ -23,7 +22,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
 
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 
-    Dispatch.register(project, [project_compiled()])
+    RemoteControl.Api.register_listener(project, self(), [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
 
     assert_receive project_compiled(), 5000

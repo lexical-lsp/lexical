@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   use GenServer
 
-  def start(project, project_listener, paths) do
+  def start(project, paths) do
     node_name = Project.node_name(project)
     remote_control_config = Application.get_all_env(:remote_control)
 
@@ -127,7 +127,6 @@ defmodule Lexical.RemoteControl.ProjectNode do
          :ok <-
            :rpc.call(node_name, RemoteControl.Bootstrap, :init, [
              project,
-             project_listener,
              remote_control_config
            ]) do
       {:ok, node_pid}

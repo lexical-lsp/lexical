@@ -37,7 +37,8 @@ defmodule Lexical.BuildTest do
     project = Project.new("file://#{fixture_dir}")
 
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
-    {:ok, _, _} = RemoteControl.start_link(project, self())
+    {:ok, _, _} = RemoteControl.start_link(project)
+    RemoteControl.Api.register_listener(project, self(), [:all])
 
     {:ok, project}
   end

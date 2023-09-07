@@ -1,23 +1,25 @@
 defmodule Lexical.Server.Project.DiagnosticsTest do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic
-  alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
-  alias Lexical.Server.Project
+  alias Lexical.RemoteControl
+  alias Lexical.Server
   alias Lexical.Server.Transport
+  alias Lexical.Test.DispatchFake
 
   use ExUnit.Case
   use Patch
+  use DispatchFake
 
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.Fixtures
 
   setup do
     project = project()
+    DispatchFake.start()
 
-    {:ok, _} = start_supervised(Lexical.Document.Store)
-    {:ok, _} = start_supervised({Project.Dispatch, project})
-    {:ok, _} = start_supervised({Project.Diagnostics, project})
+    start_supervised!(Lexical.Document.Store)
+    start_supervised!({Server.Project.Diagnostics, project})
 
     {:ok, project: project}
   end
@@ -63,12 +65,12 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       file_diagnostics_message =
         file_diagnostics(diagnostics: [diagnostic(document.uri)], uri: document.uri)
 
-      Project.Dispatch.broadcast(project, file_diagnostics_message)
+      RemoteControl.Api.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}
 
       Document.Store.get_and_update(document.uri, &Document.mark_clean/1)
 
-      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
+      RemoteControl.Api.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
@@ -81,11 +83,11 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
       file_diagnostics_message =
         file_diagnostics(diagnostics: [diagnostic(document.uri)], uri: document.uri)
 
-      Project.Dispatch.broadcast(project, file_diagnostics_message)
+      RemoteControl.Api.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{}}, 500
 
       Document.Store.close(document.uri)
-      Project.Dispatch.broadcast(project, project_diagnostics(diagnostics: []))
+      RemoteControl.Api.broadcast(project, project_diagnostics(diagnostics: []))
 
       assert_receive {:transport, %PublishDiagnostics{diagnostics: nil}}
     end
@@ -101,7 +103,7 @@ defmodule Lexical.Server.Project.DiagnosticsTest do
 
       file_diagnostics_message = file_diagnostics(diagnostics: [diagnostic], uri: document.uri)
 
-      Project.Dispatch.broadcast(project, file_diagnostics_message)
+      RemoteControl.Api.broadcast(project, file_diagnostics_message)
       assert_receive {:transport, %PublishDiagnostics{lsp: %{diagnostics: [diagnostic]}}}, 500
 
       assert %Diagnostic.Result{} = diagnostic

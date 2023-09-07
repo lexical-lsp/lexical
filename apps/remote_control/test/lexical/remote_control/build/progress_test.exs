@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Build.ProgressTest do
 
   setup do
     test_pid = self()
-    patch(RemoteControl, :notify_listener, fn msg -> send(test_pid, msg) end)
+    patch(RemoteControl.Dispatch, :broadcast, &send(test_pid, &1))
     :ok
   end
 

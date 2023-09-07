@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeIntelligence
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Plugin
   alias Lexical.VM.Versions
 
@@ -72,7 +73,7 @@ defmodule Lexical.RemoteControl.Build.State do
       compile_requested_message =
         project_compile_requested(project: project, build_number: state.build_number)
 
-      RemoteControl.notify_listener(compile_requested_message)
+      Dispatch.broadcast(compile_requested_message)
       {elapsed_us, result} = :timer.tc(fn -> Build.Project.compile(project, force?) end)
       elapsed_ms = to_ms(elapsed_us)
 
@@ -101,8 +102,8 @@ defmodule Lexical.RemoteControl.Build.State do
           diagnostics: diagnostics
         )
 
-      RemoteControl.notify_listener(compile_message)
-      RemoteControl.notify_listener(diagnostics_message)
+      Dispatch.broadcast(compile_message)
+      Dispatch.broadcast(diagnostics_message)
       CodeIntelligence.Structs.discover_deps_structs()
       Plugin.diagnose(project, state.build_number)
     end)
@@ -120,7 +121,7 @@ defmodule Lexical.RemoteControl.Build.State do
     project = state.project
 
     Build.with_lock(fn ->
-      RemoteControl.notify_listener(file_compile_requested(uri: document.uri))
+      Dispatch.broadcast(file_compile_requested(uri: document.uri))
 
       safe_compile_func = fn ->
         RemoteControl.Mix.in_project(fn _ -> Build.Document.compile(document) end)
@@ -165,8 +166,8 @@ defmodule Lexical.RemoteControl.Build.State do
           diagnostics: List.wrap(diagnostics)
         )
 
-      RemoteControl.notify_listener(compile_message)
-      RemoteControl.notify_listener(diagnostics)
+      Dispatch.broadcast(compile_message)
+      Dispatch.broadcast(diagnostics)
       Plugin.diagnose(project, state.build_number, document)
     end)
   end

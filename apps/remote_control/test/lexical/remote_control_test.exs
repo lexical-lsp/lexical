@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControlTest do
 
   def start_project(%Project{} = project) do
     start_supervised!({Lexical.RemoteControl.ProjectNodeSupervisor, project})
-    assert {:ok, _, _} = RemoteControl.start_link(project, self())
+    assert {:ok, _, _} = RemoteControl.start_link(project)
     :ok
   end
 

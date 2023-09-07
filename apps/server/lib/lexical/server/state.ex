@@ -111,7 +111,7 @@ defmodule Lexical.Server.State do
             to_version: updated_source.version
           )
 
-        Project.Dispatch.broadcast(project, updated_message)
+        Api.broadcast(project, updated_message)
         Api.compile_document(state.configuration.project, updated_source)
         {:ok, state}
 

@@ -13,7 +13,6 @@ defmodule Lexical.Server.Project.Node do
 
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Project.Progress
 
   require Logger
@@ -50,7 +49,7 @@ defmodule Lexical.Server.Project.Node do
 
   @impl GenServer
   def init(%Project{} = project) do
-    case with_progress(project, "Project Node", fn -> start_node(project) end) do
+    case start_node(project) do
       {:ok, state} ->
         {:ok, state, {:continue, :trigger_build}}
 
@@ -92,8 +91,7 @@ defmodule Lexical.Server.Project.Node do
   # private api
 
   def start_node(%Project{} = project) do
-    with dispatch_pid when is_pid(dispatch_pid) <- Process.whereis(Dispatch.name(project)),
-         {:ok, node, node_pid} <- RemoteControl.start_link(project, dispatch_pid) do
+    with {:ok, node, node_pid} <- RemoteControl.start_link(project) do
       Node.monitor(node, true)
       {:ok, State.new(project, node, node_pid)}
     end

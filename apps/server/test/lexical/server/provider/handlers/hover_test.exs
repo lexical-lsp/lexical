@@ -26,7 +26,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 
-    :ok = Server.Project.Dispatch.register(project, [Messages.project_compiled()])
+    :ok = RemoteControl.Api.register_listener(project, self(), [Messages.project_compiled()])
     assert_receive Messages.project_compiled(), 5000
 
     {:ok, project: project}

@@ -12,10 +12,10 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
+          RemoteControl.Dispatch,
           RemoteControl.ModuleMappings,
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer,
-          RemoteControl.Compilation.Dispatch,
           RemoteControl.Plugin.Runner.Supervisor,
           RemoteControl.Plugin.Runner.Coordinator
         ]

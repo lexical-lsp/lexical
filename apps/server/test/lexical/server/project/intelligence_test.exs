@@ -1,16 +1,20 @@
 defmodule Lexical.Server.Project.IntelligenceTest do
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Project.Intelligence
+  alias Lexical.Test.DispatchFake
   alias Lexical.Test.Fixtures
 
   use ExUnit.Case
+  use Patch
+  use DispatchFake
   import Messages
 
   setup do
     project = Fixtures.project()
-    {:ok, _dispatch} = start_supervised({Dispatch, project})
-    {:ok, _intelligence} = start_supervised({Intelligence, project})
+    DispatchFake.start()
+
+    start_supervised!({Intelligence, project})
 
     {:ok, project: project}
   end
@@ -35,7 +39,7 @@ defmodule Lexical.Server.Project.IntelligenceTest do
         struct: [name: nil]
       )
     ]
-    |> Enum.each(&Dispatch.broadcast(project, &1))
+    |> Enum.each(&RemoteControl.Api.broadcast(project, &1))
 
     Process.sleep(50)
     :ok

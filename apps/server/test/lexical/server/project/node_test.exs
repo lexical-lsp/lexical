@@ -15,7 +15,7 @@ defmodule Lexical.Server.Project.NodeTest do
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 
-    :ok = Server.Project.Dispatch.register(project, [project_compiled()])
+    :ok = RemoteControl.Api.register_listener(project, self(), [project_compiled()])
 
     {:ok, project: project}
   end

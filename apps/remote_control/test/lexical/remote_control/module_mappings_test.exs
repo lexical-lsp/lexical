@@ -1,9 +1,11 @@
 defmodule Lexical.RemoteControl.ModuleMappingsTest do
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
   use ExUnit.Case
 
   setup do
-    {:ok, _cache} = start_supervised(ModuleMappings)
+    start_supervised!(Dispatch)
+    start_supervised!(ModuleMappings)
     :ok
   end
 

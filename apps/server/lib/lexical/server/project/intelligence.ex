@@ -60,7 +60,6 @@ defmodule Lexical.Server.Project.Intelligence do
 
   alias Lexical.Project
   alias Lexical.RemoteControl.Api
-  alias Lexical.Server.Project.Dispatch
 
   use GenServer
   import Api.Messages
@@ -168,7 +167,7 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [module_updated(), struct_discovered()])
+    Api.register_listener(project, self(), [module_updated(), struct_discovered()])
     state = State.new(project)
     {:ok, state}
   end

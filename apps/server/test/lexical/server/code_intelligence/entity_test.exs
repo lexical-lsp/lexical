@@ -43,8 +43,9 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     project = project(:navigations)
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
-    {:ok, _, _} = RemoteControl.start_link(project, self())
+    {:ok, _, _} = RemoteControl.start_link(project)
 
+    RemoteControl.Api.register_listener(project, self(), [:all])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
 
