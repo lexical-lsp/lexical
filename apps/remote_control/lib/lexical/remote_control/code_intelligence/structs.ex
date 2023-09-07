@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Dispatch
 
   import Messages
 
@@ -35,7 +36,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
       case module_name.__info__(:struct) do
         struct_fields when is_list(struct_fields) ->
           message = struct_discovered(module: module_name, fields: struct_fields)
-          RemoteControl.notify_listener(message)
+          Dispatch.broadcast(message)
 
         _ ->
           :ok

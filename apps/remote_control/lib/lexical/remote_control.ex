@@ -12,14 +12,14 @@ defmodule Lexical.RemoteControl do
   @excluded_apps [:patch, :nimble_parsec]
   @allowed_apps [:remote_control | Mix.Project.deps_apps()] -- @excluded_apps
 
-  def start_link(%Project{} = project, project_listener) do
+  def start_link(%Project{} = project) do
     :ok = ensure_epmd_started()
     start_net_kernel(project)
 
     apps_to_start = [:elixir | @allowed_apps] ++ [:runtime_tools]
     node = Project.node_name(project)
 
-    with {:ok, node_pid} <- ProjectNode.start(project, project_listener, glob_paths()),
+    with {:ok, node_pid} <- ProjectNode.start(project, glob_paths()),
          :ok <- ensure_apps_started(node, apps_to_start) do
       {:ok, node, node_pid}
     end
@@ -29,24 +29,12 @@ defmodule Lexical.RemoteControl do
     :global.trans({lock_type, self()}, func, [Node.self()])
   end
 
-  def notify_listener(message) do
-    send(project_listener_pid(), message)
-  end
-
   def project_node? do
     !!:persistent_term.get({__MODULE__, :project}, false)
   end
 
   def get_project do
     :persistent_term.get({__MODULE__, :project})
-  end
-
-  def project_listener_pid do
-    :persistent_term.get({__MODULE__, :project_listener_pid})
-  end
-
-  def set_project_listener_pid(listener_pid) do
-    :persistent_term.put({__MODULE__, :project_listener_pid}, listener_pid)
   end
 
   def set_project(%Project{} = project) do

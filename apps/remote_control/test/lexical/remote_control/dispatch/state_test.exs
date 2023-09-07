@@ -1,12 +1,10 @@
-defmodule Lexical.Server.Project.Dispatch.StateTest do
+defmodule Lexical.RemoteControl.Dispatch.StateTest do
   use ExUnit.Case
 
-  alias Lexical.Project
-  alias Lexical.Server.Project.Dispatch.State
+  alias Lexical.RemoteControl.Dispatch.State
 
   setup do
-    project = %Project{}
-    state = State.new(project)
+    state = State.new()
     {:ok, state: state}
   end
 

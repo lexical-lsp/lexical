@@ -13,10 +13,11 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   use Patch
 
   setup do
-    {:ok, _} = start_supervised(Build.CaptureServer)
-    {:ok, _} = start_supervised(RemoteControl.ModuleMappings)
-    {:ok, _} = start_supervised(Plugin.Runner.Coordinator)
-    {:ok, _} = start_supervised(Plugin.Runner.Supervisor)
+    start_supervised!(RemoteControl.Dispatch)
+    start_supervised!(Build.CaptureServer)
+    start_supervised!(RemoteControl.ModuleMappings)
+    start_supervised!(Plugin.Runner.Coordinator)
+    start_supervised!(Plugin.Runner.Supervisor)
     :ok
   end
 
@@ -36,9 +37,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   def with_project_state(project_name) do
     test = self()
 
-    patch(RemoteControl, :notify_listener, fn msg ->
-      send(test, msg)
-    end)
+    patch(RemoteControl.Dispatch, :broadcast, &send(test, &1))
 
     project_name = to_string(project_name)
     fixture_dir = Path.join(fixtures_path(), project_name)

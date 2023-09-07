@@ -2,9 +2,9 @@ defmodule Lexical.Server.Project.Diagnostics do
   alias Lexical.Formats
   alias Lexical.Project
   alias Lexical.Protocol.Notifications.PublishDiagnostics
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server.Project.Diagnostics.State
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.Server.Transport
 
   import Messages
@@ -26,7 +26,7 @@ defmodule Lexical.Server.Project.Diagnostics do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Dispatch.register(project, [
+    RemoteControl.Api.register_listener(project, self(), [
       file_diagnostics(),
       project_compile_requested(),
       project_compiled(),

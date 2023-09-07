@@ -75,4 +75,16 @@ defmodule Lexical.RemoteControl.Api do
   def docs(%Project{} = project, module) when is_atom(module) do
     RemoteControl.call(project, CodeIntelligence.Docs, :for_module, [module])
   end
+
+  def register_listener(%Project{} = project, listener_pid, message_types)
+      when is_pid(listener_pid) and is_list(message_types) do
+    RemoteControl.call(project, RemoteControl.Dispatch, :register_listener, [
+      listener_pid,
+      message_types
+    ])
+  end
+
+  def broadcast(%Project{} = project, message) do
+    RemoteControl.call(project, RemoteControl.Dispatch, :broadcast, [message])
+  end
 end

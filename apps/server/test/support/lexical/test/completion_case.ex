@@ -7,7 +7,6 @@ defmodule Lexical.Test.Server.CompletionCase do
   alias Lexical.RemoteControl
   alias Lexical.Server
   alias Lexical.Server.CodeIntelligence.Completion
-  alias Lexical.Server.Project.Dispatch
   alias Lexical.Test.CodeSigil
 
   use ExUnit.CaseTemplate
@@ -21,7 +20,7 @@ defmodule Lexical.Test.Server.CompletionCase do
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 
-    Dispatch.register(project, [project_compiled()])
+    RemoteControl.Api.register_listener(project, self(), [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
     {:ok, project: project}

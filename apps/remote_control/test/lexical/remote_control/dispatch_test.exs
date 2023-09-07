@@ -1,36 +1,25 @@
-defmodule Lexical.Server.Project.DispatchTest do
-  alias Lexical.Project
-  alias Lexical.RemoteControl
+defmodule Lexical.RemoteControl.DispatchTest do
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.Server.Project.Dispatch
+  alias Lexical.RemoteControl.Dispatch
 
   import Messages
-  import Lexical.Test.Fixtures
   use ExUnit.Case
   use Patch
 
-  setup do
-    {:ok, project: project()}
-  end
-
-  def with_dispatch_started(%{project: project}) do
-    patch(RemoteControl, :start_link, {:ok, :node})
-    patch(RemoteControl.Api, :schedule_compile, :ok)
-    patch(RemoteControl.Api, :list_modules, [])
-    {:ok, dispatch} = start_supervised({Dispatch, project})
-
+  def with_dispatch_started(_) do
+    {:ok, dispatch} = start_supervised(Dispatch)
     {:ok, dispatch: dispatch}
   end
 
   defmodule Forwarder do
-    alias Lexical.Server.Project.Dispatch
+    alias Lexical.RemoteControl.Dispatch
 
-    def start(%Project{} = project, message_types) do
+    def start(message_types) do
       test = self()
 
       pid =
         spawn_link(fn ->
-          Dispatch.register(project, message_types)
+          Dispatch.register_listener(self(), message_types)
           send(test, :ready)
 
           loop(test)
@@ -64,16 +53,16 @@ defmodule Lexical.Server.Project.DispatchTest do
   describe "a running project" do
     setup [:with_dispatch_started]
 
-    test "allows processes to register for a message", %{project: project, dispatch: dispatch} do
-      assert :ok = Dispatch.register(project, [project_compiled()])
+    test "allows processes to register for a message", %{dispatch: dispatch} do
+      assert :ok = Dispatch.register_listener(self(), [project_compiled()])
 
       project_compiled = project_compiled(status: :successful)
       send(dispatch, project_compiled)
       assert_receive ^project_compiled
     end
 
-    test "allows processes to register for any message", %{project: project, dispatch: dispatch} do
-      assert :ok = Dispatch.register(project, [:all])
+    test "allows processes to register for any message", %{dispatch: dispatch} do
+      assert :ok = Dispatch.register_listener(self(), [:all])
       send(dispatch, project_compiled(status: :successful))
       send(dispatch, module_updated())
 
@@ -81,19 +70,19 @@ defmodule Lexical.Server.Project.DispatchTest do
       assert_receive module_updated()
     end
 
-    test "cleans up if a process dies", %{project: project} do
-      Dispatch.register(project, [:all])
-      {:ok, forwarder_pid} = Forwarder.start(project, [:all])
+    test "cleans up if a process dies" do
+      Dispatch.register_listener(self(), [:all])
+      {:ok, forwarder_pid} = Forwarder.start([:all])
 
-      assert Dispatch.registered?(project, forwarder_pid)
+      assert Dispatch.registered?(forwarder_pid)
       :ok = Forwarder.stop(forwarder_pid)
-      refute Dispatch.registered?(project, forwarder_pid)
+      refute Dispatch.registered?(forwarder_pid)
     end
 
-    test "handles multiple registrations", %{project: project, dispatch: dispatch} do
-      {:ok, forwarder_1} = Forwarder.start(project, [project_compiled()])
-      {:ok, forwarder_2} = Forwarder.start(project, [module_updated()])
-      {:ok, forwarder_3} = Forwarder.start(project, [:all])
+    test "handles multiple registrations", %{dispatch: dispatch} do
+      {:ok, forwarder_1} = Forwarder.start([project_compiled()])
+      {:ok, forwarder_2} = Forwarder.start([module_updated()])
+      {:ok, forwarder_3} = Forwarder.start([:all])
 
       send(dispatch, module_updated())
       send(dispatch, project_compiled())

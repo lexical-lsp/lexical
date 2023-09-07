@@ -10,10 +10,8 @@ defmodule Lexical.RemoteControl.Bootstrap do
   alias Lexical.RemoteControl
   require Logger
 
-  def init(%Project{} = project, listener_pid, remote_control_config) do
+  def init(%Project{} = project, remote_control_config) do
     maybe_append_hex_path()
-
-    RemoteControl.set_project_listener_pid(listener_pid)
     Application.put_all_env(remote_control: remote_control_config)
 
     project_root = Project.root_path(project)
