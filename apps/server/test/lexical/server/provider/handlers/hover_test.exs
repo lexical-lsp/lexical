@@ -113,15 +113,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
           end
         ],
         hovered: "|HoverPrivate",
-        expected: """
-        ```elixir
-        HoverPrivate
-        ```
-
-        ---
-
-        *This module is private.*
-        """
+        expected: nil
       )
     end
 
@@ -133,15 +125,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
           end
         ],
         hovered: "|HoverNoDocs",
-        expected: """
-        ```elixir
-        HoverNoDocs
-        ```
-
-        ---
-
-        *This module is undocumented.*
-        """
+        expected: nil
       )
     end
 
@@ -313,7 +297,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       )
     end
 
-    test "public fun with multiple arities", %{project: project} do
+    test "public fun with multiple arities and @spec", %{project: project} do
       assert_hover(
         project,
         code: ~q[
@@ -363,12 +347,16 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   defp assert_hover(project, opts) do
     code = Keyword.fetch!(opts, :code)
     hovered = Keyword.fetch!(opts, :hovered)
-    expected_markdown = Keyword.fetch!(opts, :expected)
+    expected = Keyword.fetch!(opts, :expected)
 
     with_compiled_in(project, code, fn ->
-      assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
-      assert result.contents.kind == :markdown
-      assert result.contents.value == expected_markdown
+      if expected do
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      else
+        assert {:reply, %{result: nil}} = hover(project, hovered)
+      end
     end)
   end
 

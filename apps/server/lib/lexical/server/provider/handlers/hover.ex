@@ -31,18 +31,21 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   end
 
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
-    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(env.project, module) do
-      doc_content = module_doc_content(module_docs.doc)
-      defs_content = module_defs_content(kind, module_docs)
-      header_content = module_header(kind, module_docs)
+    case RemoteControl.Api.docs(env.project, module) do
+      {:ok, %Docs{doc: doc} = module_docs} when is_binary(doc) ->
+        defs_content = module_defs_content(kind, module_docs)
+        header_content = module_header(kind, module_docs)
 
-      sections = [
-        header_content,
-        defs_content,
-        doc_content
-      ]
+        sections = [
+          header_content,
+          defs_content,
+          doc
+        ]
 
-      {:ok, sections}
+        {:ok, sections}
+
+      _ ->
+        {:error, :no_doc}
     end
   end
 
@@ -69,10 +72,6 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     "%#{Ast.Module.name(module)}{}"
     |> md_elixir_block()
   end
-
-  defp module_doc_content(s) when is_binary(s), do: s
-  defp module_doc_content(:none), do: "*This module is undocumented.*\n"
-  defp module_doc_content(:hidden), do: "*This module is private.*\n"
 
   defp module_defs_content(:module, _), do: nil
 
@@ -115,8 +114,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   end
 
   defp entry_doc_content(s) when is_binary(s), do: s
-  defp entry_doc_content(:none), do: nil
-  defp entry_doc_content(:hidden), do: "*This function is private.*\n"
+  defp entry_doc_content(_), do: nil
 
   defp md_elixir_block(inner) do
     """
