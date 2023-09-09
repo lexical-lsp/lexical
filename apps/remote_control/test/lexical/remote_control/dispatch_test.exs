@@ -7,8 +7,8 @@ defmodule Lexical.RemoteControl.DispatchTest do
   use Patch
 
   def with_dispatch_started(_) do
-    {:ok, dispatch} = start_supervised(Dispatch)
-    {:ok, dispatch: dispatch}
+    start_supervised!(Dispatch)
+    :ok
   end
 
   defmodule Forwarder do
@@ -53,40 +53,40 @@ defmodule Lexical.RemoteControl.DispatchTest do
   describe "a running project" do
     setup [:with_dispatch_started]
 
-    test "allows processes to register for a message", %{dispatch: dispatch} do
+    test "allows processes to register for a message" do
       assert :ok = Dispatch.register_listener(self(), [project_compiled()])
 
       project_compiled = project_compiled(status: :successful)
-      send(dispatch, project_compiled)
+      Dispatch.broadcast(project_compiled)
       assert_receive ^project_compiled
     end
 
-    test "allows processes to register for any message", %{dispatch: dispatch} do
-      assert :ok = Dispatch.register_listener(self(), [:all])
-      send(dispatch, project_compiled(status: :successful))
-      send(dispatch, module_updated())
+    test "allows processes to register for any message" do
+      assert :ok = Dispatch.register_listener(self(), :all)
+      Dispatch.broadcast(project_compiled(status: :successful))
+      Dispatch.broadcast(module_updated())
 
       assert_receive project_compiled()
       assert_receive module_updated()
     end
 
     test "cleans up if a process dies" do
-      Dispatch.register_listener(self(), [:all])
-      {:ok, forwarder_pid} = Forwarder.start([:all])
+      Dispatch.register_listener(self(), :all)
+      {:ok, forwarder_pid} = Forwarder.start(:all)
 
       assert Dispatch.registered?(forwarder_pid)
       :ok = Forwarder.stop(forwarder_pid)
       refute Dispatch.registered?(forwarder_pid)
     end
 
-    test "handles multiple registrations", %{dispatch: dispatch} do
+    test "handles multiple registrations" do
       {:ok, forwarder_1} = Forwarder.start([project_compiled()])
       {:ok, forwarder_2} = Forwarder.start([module_updated()])
-      {:ok, forwarder_3} = Forwarder.start([:all])
+      {:ok, forwarder_3} = Forwarder.start(:all)
 
-      send(dispatch, module_updated())
-      send(dispatch, project_compiled())
-      send(dispatch, {:other, :message})
+      Dispatch.broadcast(module_updated())
+      Dispatch.broadcast(project_compiled())
+      Dispatch.broadcast({:other, :message})
 
       assert_receive {:forwarded, ^forwarder_1, project_compiled()}
       assert_receive {:forwarded, ^forwarder_2, module_updated()}

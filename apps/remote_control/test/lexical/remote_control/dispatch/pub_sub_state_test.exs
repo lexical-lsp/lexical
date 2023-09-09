@@ -1,7 +1,7 @@
-defmodule Lexical.RemoteControl.Dispatch.StateTest do
+defmodule Lexical.RemoteControl.Dispatch.PubSubStateTest do
   use ExUnit.Case
 
-  alias Lexical.RemoteControl.Dispatch.State
+  alias Lexical.RemoteControl.Dispatch.PubSub.State
 
   setup do
     state = State.new()
