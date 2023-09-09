@@ -1,8 +1,6 @@
 defmodule Lexical.RemoteControl.Dispatch.PubSub do
   @moduledoc """
   A pubsub event handler for a gen_event controller.
-
-
   """
   defmodule State do
     alias Lexical.Project

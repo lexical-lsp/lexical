@@ -15,12 +15,13 @@ defmodule Lexical.RemoteControl.Dispatch do
   @doc """
   Registers a process that will receive messages sent directly to its pid.
   """
-  def register_listener(listener_pid, :all) do
-    register_listener(listener_pid, [:all])
-  end
 
   def register_listener(listener_pid, message_types) when is_list(message_types) do
     :gen_event.call(__MODULE__, PubSub, PubSub.register_message(listener_pid, message_types))
+  end
+
+  def register_listener(listener_pid, event_or_all) do
+    register_listener(listener_pid, List.wrap(event_or_all))
   end
 
   def add_handler(handler_module, init_args \\ []) do

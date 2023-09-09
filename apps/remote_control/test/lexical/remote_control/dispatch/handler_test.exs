@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.Dispatch.HandlerTest do
   defmodule AllForwarder do
     use Dispatch.Handler, :all
 
-    def on(event, caller_pid) do
+    def on_event(event, caller_pid) do
       send(caller_pid, {__MODULE__, event})
       {:ok, caller_pid}
     end
@@ -43,7 +43,7 @@ defmodule Lexical.RemoteControl.Dispatch.HandlerTest do
         file_compiled()
       ]
 
-      def on(event, test_pid) do
+      def on_event(event, test_pid) do
         send(test_pid, {__MODULE__, event})
         {:ok, test_pid}
       end
@@ -81,12 +81,12 @@ defmodule Lexical.RemoteControl.Dispatch.HandlerTest do
         project_compiled()
       ]
 
-      def on(project_compiled(status: :failure) = project_compiled, caller_pid) do
+      def on_event(project_compiled(status: :failure) = project_compiled, caller_pid) do
         send(caller_pid, {__MODULE__, project_compiled})
         {:error, :died}
       end
 
-      def on(event, caller_pid) do
+      def on_event(event, caller_pid) do
         send(caller_pid, {__MODULE__, event})
       end
     end
