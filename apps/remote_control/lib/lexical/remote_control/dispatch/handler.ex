@@ -97,13 +97,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handler do
 
   defp ignore_handler do
     quote do
-      require Logger
-
       def handle_event(event, state) do
-        Logger.error(
-          "Handler in #{inspect(__MODULE__)} got an unexpected event #{inspect(event)}"
-        )
-
         {:ok, state}
       end
     end

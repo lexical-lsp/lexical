@@ -6,9 +6,10 @@ defmodule Lexical.RemoteControl.Dispatch do
   itself via a call to `register_listener`, while a process must implement the
   `Lexical.RemoteControl.Dispatch.Handler` behaviour and add the module to the @handlers module attribute.
   """
+  alias Lexical.RemoteControl.Dispatch.Handlers
   alias Lexical.RemoteControl.Dispatch.PubSub
 
-  @handlers [PubSub]
+  @handlers [PubSub, Handlers.Indexing]
 
   # public API
 
@@ -30,6 +31,10 @@ defmodule Lexical.RemoteControl.Dispatch do
 
   def registered?(pid) when is_pid(pid) do
     :gen_event.call(__MODULE__, PubSub, PubSub.registered_message(pid))
+  end
+
+  def registered?(name) when is_atom(name) do
+    name in :gen_event.which_handlers(__MODULE__)
   end
 
   def broadcast(message) do

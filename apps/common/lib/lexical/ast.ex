@@ -394,8 +394,8 @@ defmodule Lexical.Ast do
     end
   end
 
-  def expand_aliases(_, _, {line, column}) do
-    Position.new(line, column)
+  def expand_aliases(segments, doc, {line, column}) do
+    expand_aliases(segments, doc, Position.new(line, column))
   end
 
   def expand_aliases(_, _, empty) do

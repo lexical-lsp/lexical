@@ -54,6 +54,10 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, {:fuzzy, subject, constraints})
   end
 
+  def clear(path) do
+    GenServer.call(__MODULE__, {:update, path, []})
+  end
+
   def update(path, entries) do
     GenServer.call(__MODULE__, {:update, path, entries})
   end
@@ -69,6 +73,10 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   def start_link([%Project{} = project, create_index, refresh_index]) do
     GenServer.start_link(__MODULE__, [project, create_index, refresh_index], name: __MODULE__)
+  end
+
+  def start_link([create_index, refresh_index]) do
+    start_link(Lexical.RemoteControl.get_project(), create_index, refresh_index)
   end
 
   def init([%Project{} = project, create_index, update_index]) do

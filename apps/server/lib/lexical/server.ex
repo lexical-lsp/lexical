@@ -12,6 +12,7 @@ defmodule Lexical.Server do
   @server_specific_messages [
     Notifications.DidChange,
     Notifications.DidChangeConfiguration,
+    Notifications.DidChangeWatchedFiles,
     Notifications.DidClose,
     Notifications.DidOpen,
     Notifications.DidSave,

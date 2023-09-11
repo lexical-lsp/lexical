@@ -5,6 +5,7 @@ defmodule Lexical.Document.Store do
   This implementation stores documents in ETS, and partitions read and write operations. Read operations are served
   immediately by querying the ETS table, while writes go through a GenServer process (which is the owner of the ETS table).
   """
+
   defmodule State do
     @moduledoc false
     alias Lexical.Document
@@ -205,12 +206,12 @@ defmodule Lexical.Document.Store do
 
   @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
   def fetch(uri) do
-    State.fetch(uri)
+    GenServer.call(name(), {:fetch, uri})
   end
 
   @spec save(Lexical.uri()) :: :ok | {:error, :not_open}
   def save(uri) do
-    GenServer.call(__MODULE__, {:save, uri})
+    GenServer.call(name(), {:save, uri})
   end
 
   @spec open?(Lexical.uri()) :: boolean()
@@ -220,7 +221,7 @@ defmodule Lexical.Document.Store do
 
   @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
   def open(uri, text, version) do
-    GenServer.call(__MODULE__, {:open, uri, text, version})
+    GenServer.call(name(), {:open, uri, text, version})
   end
 
   @spec open_temporary(Lexical.uri() | Path.t()) ::
@@ -230,27 +231,27 @@ defmodule Lexical.Document.Store do
           {:ok, Document.t()} | {:error, term()}
   def open_temporary(uri, timeout \\ 5000) do
     ProcessCache.trans(uri, 50, fn ->
-      GenServer.call(__MODULE__, {:open_temporarily, uri, timeout})
+      GenServer.call(name(), {:open_temporarily, uri, timeout})
     end)
   end
 
   @spec close(Lexical.uri()) :: :ok | {:error, :not_open}
   def close(uri) do
-    GenServer.call(__MODULE__, {:close, uri})
+    GenServer.call(name(), {:close, uri})
   end
 
   @spec get_and_update(Lexical.uri(), updater()) :: {:ok, Document.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
-    GenServer.call(__MODULE__, {:get_and_update, uri, update_fn})
+    GenServer.call(name(), {:get_and_update, uri, update_fn})
   end
 
   @spec update(Lexical.uri(), updater()) :: :ok | {:error, any()}
   def update(uri, update_fn) do
-    GenServer.call(__MODULE__, {:update, uri, update_fn})
+    GenServer.call(name(), {:update, uri, update_fn})
   end
 
   def start_link(_) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+    GenServer.start_link(__MODULE__, [], name: name())
   end
 
   def init(_) do
@@ -294,6 +295,11 @@ defmodule Lexical.Document.Store do
     {:reply, reply, new_state}
   end
 
+  def handle_call({:fetch, uri}, _from, %State{} = state) do
+    reply = State.fetch(uri)
+    {:reply, reply, state}
+  end
+
   def handle_call({:close, uri}, _from, %State{} = state) do
     {reply, new_state} =
       case State.close(state, uri) do
@@ -326,5 +332,9 @@ defmodule Lexical.Document.Store do
 
   def handle_info({:unload, uri}, %State{} = state) do
     {:noreply, State.unload(state, uri)}
+  end
+
+  def name do
+    {:via, :global, __MODULE__}
   end
 end
