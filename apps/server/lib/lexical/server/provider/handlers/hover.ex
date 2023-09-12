@@ -3,11 +3,11 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Hover
-  alias Lexical.Protocol.Types.Markup
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Docs
   alias Lexical.Server.CodeIntelligence.Entity
   alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Provider.Markdown
 
   require Logger
 
@@ -17,10 +17,10 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
            {:ok, sections} <- hover_content(entity, env) do
         content =
           sections
-          |> Enum.filter(&(is_binary(&1) and &1 != ""))
-          |> md_join_sections()
+          |> Markdown.join_sections()
+          |> Markdown.to_content()
 
-        %Hover{contents: %Markup.Content{kind: :markdown, value: content}}
+        %Hover{contents: content}
       else
         error ->
           Logger.warning("Could not resolve hover request, got: #{inspect(error)}")
@@ -67,12 +67,12 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp module_header(:module, %Docs{module: module}) do
     module
     |> Ast.Module.name()
-    |> md_elixir_block()
+    |> Markdown.code_block()
   end
 
   defp module_header(:struct, %Docs{module: module}) do
     "%#{Ast.Module.name(module)}{}"
-    |> md_elixir_block()
+    |> Markdown.code_block()
   end
 
   defp module_defs_content(:module, _), do: nil
@@ -87,8 +87,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     if struct_type_defs != [] do
       struct_type_defs
       |> Enum.join("\n")
-      |> md_elixir_block()
-      |> md_section(title: "Struct")
+      |> Markdown.code_block()
+      |> Markdown.section(header: "Struct")
     end
   end
 
@@ -103,8 +103,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     if callback_defs != [] do
       callback_defs
       |> Enum.map_join("\n", &("@callback " <> &1))
-      |> md_elixir_block()
-      |> md_section(title: "Callbacks")
+      |> Markdown.code_block()
+      |> Markdown.section(header: "Callbacks")
     end
   end
 
@@ -116,11 +116,11 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
 
     [
-      md_elixir_block(module_name <> "." <> signature),
+      Markdown.code_block(module_name <> "." <> signature),
       if specs != "" do
         specs
-        |> md_elixir_block()
-        |> md_section(title: "Specs")
+        |> Markdown.code_block()
+        |> Markdown.section(header: "Specs")
       end,
       entry_doc_content(entry.doc)
     ]
@@ -131,25 +131,5 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp sort_entries(entries) do
     Enum.sort_by(entries, &{&1.name, &1.arity})
-  end
-
-  defp md_elixir_block(content) do
-    """
-    ```elixir
-    #{content}
-    ```
-    """
-  end
-
-  defp md_section(content, title: title) do
-    """
-    #### #{title}
-
-    #{content}
-    """
-  end
-
-  defp md_join_sections(list) when is_list(list) do
-    Enum.map_join(list, "\n\n---\n\n", &String.trim(&1)) <> "\n"
   end
 end
