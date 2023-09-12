@@ -67,8 +67,8 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
     with {:ok, module} <- expand_alias(alias_node, document, position) do
       case Ast.path_at(document, position) do
-        {:ok, [parent | _]} ->
-          arity = arity_at_position(parent, position)
+        {:ok, path} ->
+          arity = arity_at_position(path, position)
           {:ok, {:call, module, fun, arity}, node_range}
 
         _ ->
@@ -141,36 +141,35 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   defp expand_alias(_, _document, _position), do: :error
 
   # Pipes:
-  # ...
-  # |> Mod.fun(1, 2, 3)
-  # |> ...
-  defp arity_at_position({:|>, _, _} = pipe, position) do
-    arity_minus_one =
+  defp arity_at_position([{:|>, _, _} = pipe | _], position) do
+    {_call, _, args} =
       pipe
       |> Macro.unpipe()
-      |> Enum.map(fn {ast, _arg_position} -> ast end)
+      |> Stream.map(fn {ast, _arg_position} -> ast end)
       |> Enum.find(&Ast.contains_position?(&1, position))
-      |> arity_at_position(position)
 
-    arity_minus_one + 1
+    length(args) + 1
   end
 
-  # Dot calls:
-  # Mod.fun(1, 2, 3)
-  # fun.()
-  defp arity_at_position({{:., _, _}, _, args}, _position) when is_list(args) do
+  # Calls inside of a pipe:
+  # |> MyModule.some_function(1, 2)
+  defp arity_at_position([{call, _, args}, {:|>, _, _} | _], _position)
+       when is_call(call, args) do
+    length(args) + 1
+  end
+
+  # Calls not inside of a pipe:
+  # MyModule.some_function(1, 2)
+  # some_function.(1, 2)
+  defp arity_at_position([{call, _, args} | _], _position) when is_call(call, args) do
     length(args)
   end
 
-  # Local calls:
-  # fun(1, 2, 3)
-  defp arity_at_position({call, _, args}, _position) when is_call(call, args) do
-    length(args)
+  defp arity_at_position([_non_call | rest], position) do
+    arity_at_position(rest, position)
   end
 
-  defp arity_at_position(_node, _position) do
-    0
-  end
+  defp arity_at_position([], _position), do: 0
 
   @doc """
   Returns the source location of the entity at the given position in the document.

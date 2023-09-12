@@ -69,20 +69,21 @@ defmodule Lexical.AstTest do
       {:ok, document: document}
     end
 
-    defp underscore_variable({{var_name, meta, nil}, zipper_meta}) do
-      {{:"_#{var_name}", meta, nil}, zipper_meta}
+    defp underscore_variable(%Zipper{node: {var_name, meta, nil}} = zipper) do
+      Zipper.replace(zipper, {:"_#{var_name}", meta, nil})
     end
 
     defp underscore_variable(zipper), do: zipper
 
-    defp underscore_variable({{var_name, meta, nil}, zipper_meta}, acc) do
-      {{{:"_#{var_name}", meta, nil}, zipper_meta}, acc + 1}
+    defp underscore_variable(%Zipper{node: {_var_name, _meta, nil}} = zipper, acc) do
+      zipper = underscore_variable(zipper)
+      {zipper, acc + 1}
     end
 
     defp underscore_variable(zipper, acc), do: {zipper, acc}
 
     defp modify({:ok, zipper}) do
-      {ast, _} = Zipper.top(zipper)
+      %Zipper{node: ast} = Zipper.top(zipper)
       Sourceror.to_string(ast)
     end
 

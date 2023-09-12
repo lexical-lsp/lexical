@@ -596,6 +596,46 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
     end
+
+    test "qualified call nested in a pipe", %{project: project} do
+      code = ~q[
+        1
+        |> other()
+        |> MyModule.|some_function(2, 3)
+        |> other()
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+
+    test "qualified call inside another call", %{project: project} do
+      code = ~q[
+        foo(1, 2, MyModule.|some_function(3))
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 1}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[foo(1, 2, «MyModule.some_function»(3))]
+    end
+
+    test "qualified call on same line as a string with newlines", %{project: project} do
+      code = ~q[
+        Enum.map_join(list, "\n\n---\n\n", &String.tri|m(&1)) <> "\n"
+      ]
+
+      assert {:ok, {:call, String, :trim, 1}, _} = resolve(project, code)
+    end
+
+    test "qualified call within a block", %{project: project} do
+      code = ~q/
+        if true do
+          MyModule.some_|function(bar)
+          :ok
+        end
+      /
+
+      assert {:ok, {:call, MyModule, :some_function, 1}, _} = resolve(project, code)
+    end
   end
 
   defp resolve(project, code) do

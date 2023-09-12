@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
   alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Changes
+  alias Sourceror.Zipper
 
   @spec edits(Document.t(), non_neg_integer(), String.t() | atom) ::
           {:ok, Changes.t()} | :error
@@ -30,7 +31,7 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
 
     result =
       Ast.traverse_line(document, line_number, [], fn
-        {{^unused_variable_name, _meta, nil} = node, _} = zipper, patches ->
+        %Zipper{node: {^unused_variable_name, _meta, nil} = node} = zipper, patches ->
           [patch] = Sourceror.Patch.rename_identifier(node, underscored_variable_name)
           {zipper, [patch | patches]}
 

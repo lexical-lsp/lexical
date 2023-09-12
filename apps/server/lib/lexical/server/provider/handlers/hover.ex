@@ -18,7 +18,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
         content =
           sections
           |> Enum.filter(&(is_binary(&1) and &1 != ""))
-          |> Enum.join("\n---\n\n")
+          |> md_join_sections()
 
         %Hover{contents: %Markup.Content{kind: :markdown, value: content}}
       else
@@ -33,13 +33,15 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
     case RemoteControl.Api.docs(env.project, module) do
       {:ok, %Docs{doc: doc} = module_docs} when is_binary(doc) ->
-        defs_content = module_defs_content(kind, module_docs)
         header_content = module_header(kind, module_docs)
+        defs_content = module_defs_content(kind, module_docs)
+        footer_content = module_footer_content(kind, module_docs)
 
         sections = [
           header_content,
           defs_content,
-          doc
+          doc,
+          footer_content
         ]
 
         {:ok, sections}
@@ -76,24 +78,37 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp module_defs_content(:module, _), do: nil
 
   defp module_defs_content(:struct, docs) do
-    defs =
-      for entry <- Map.get(docs.types, :t, []),
-          def <- entry.defs do
-        {entry.arity, def}
-      end
-      |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.map(&elem(&1, 1))
+    struct_type_defs =
+      docs.types
+      |> Map.get(:t, [])
+      |> sort_entries()
+      |> Enum.flat_map(& &1.defs)
 
-    if defs != [] do
-      formatted_defs = defs |> Enum.join("\n") |> md_elixir_block()
-
-      """
-      #### Struct
-
-      #{formatted_defs}\
-      """
+    if struct_type_defs != [] do
+      struct_type_defs
+      |> Enum.join("\n")
+      |> md_elixir_block()
+      |> md_section(title: "Struct")
     end
   end
+
+  defp module_footer_content(:module, docs) do
+    callback_defs =
+      docs.callbacks
+      |> Map.values()
+      |> List.flatten()
+      |> sort_entries()
+      |> Enum.flat_map(& &1.defs)
+
+    if callback_defs != [] do
+      callback_defs
+      |> Enum.map_join("\n", &("@callback " <> &1))
+      |> md_elixir_block()
+      |> md_section(title: "Callbacks")
+    end
+  end
+
+  defp module_footer_content(:struct, _docs), do: nil
 
   defp entry_sections(%Docs.Entry{} = entry) do
     [signature | _] = entry.signature
@@ -103,11 +118,9 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     [
       md_elixir_block(module_name <> "." <> signature),
       if specs != "" do
-        """
-        #### Specs
-
-        #{md_elixir_block(specs)}\
-        """
+        specs
+        |> md_elixir_block()
+        |> md_section(title: "Specs")
       end,
       entry_doc_content(entry.doc)
     ]
@@ -116,11 +129,27 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp entry_doc_content(s) when is_binary(s), do: s
   defp entry_doc_content(_), do: nil
 
-  defp md_elixir_block(inner) do
+  defp sort_entries(entries) do
+    Enum.sort_by(entries, &{&1.name, &1.arity})
+  end
+
+  defp md_elixir_block(content) do
     """
     ```elixir
-    #{inner}
+    #{content}
     ```
     """
+  end
+
+  defp md_section(content, title: title) do
+    """
+    #### #{title}
+
+    #{content}
+    """
+  end
+
+  defp md_join_sections(list) when is_list(list) do
+    Enum.map_join(list, "\n\n---\n\n", &String.trim(&1)) <> "\n"
   end
 end

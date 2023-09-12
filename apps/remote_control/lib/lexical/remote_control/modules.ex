@@ -151,7 +151,7 @@ defmodule Lexical.RemoteControl.Modules do
         defs =
           for {{name, arity}, defs} <- callbacks,
               def <- defs do
-            quoted = Code.Typespec.type_to_quoted(def)
+            quoted = Code.Typespec.spec_to_quoted(name, def)
             formatted = format_definition(quoted)
 
             {name, arity, formatted, quoted}

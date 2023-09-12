@@ -89,16 +89,32 @@ defmodule Lexical.Ast do
   @type alias_segments :: [short_alias]
 
   @doc """
-  Guard used to determined whether an AST node is a call.
+  Guard used to determined whether an AST node is an unqualified call.
 
   ## Example
 
-      def my_fun({call, _meta, args}) when is_call(call, args), do: ...
+      def my_fun({form, _meta, args}) when is_unqualified_call(form, args), do: ...
 
   """
-  @non_call_nodes [:., :__aliases__, :__block__, :"::", :{}, :|>, :%, :%{}]
-  defguard is_call(call, args)
-           when is_atom(call) and is_list(args) and call not in @non_call_nodes
+  @non_local_calls [:., :__aliases__, :__block__, :"::", :{}, :|>, :%, :%{}]
+  defguard is_unqualified_call(form, args)
+           when is_atom(form) and is_list(args) and form not in @non_local_calls
+
+  @doc """
+  Guard used to determine whether an AST node is a dot call.
+
+  ## Example
+
+      def my_fun({form, _meta, args}) when is_dot_call(form, args), do: ...
+
+  """
+  defguard is_dot_call(form, args)
+           when is_tuple(form) and tuple_size(form) == 3 and elem(form, 0) == :. and is_list(args)
+
+  @doc """
+  Guard used to determine whether an AST node is a call, either local or qualified.
+  """
+  defguard is_call(form, args) when is_unqualified_call(form, args) or is_dot_call(form, args)
 
   @doc """
   Returns an AST generated from a valid document or string.
@@ -279,7 +295,7 @@ defmodule Lexical.Ast do
   @doc """
   Returns a zipper for the document AST focused at the given position.
   """
-  @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.zipper()} | {:error, parse_error()}
+  @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.t()} | {:error, parse_error()}
   def zipper_at(%Document{} = document, %Position{} = position) do
     with {:ok, ast} <- from(document) do
       zipper_at_position(ast, position)
@@ -297,9 +313,19 @@ defmodule Lexical.Ast do
     end
   end
 
+  def path_at(s, pos) when is_binary(s) do
+    {:ok, ast} = from(s)
+    path_at(ast, pos)
+  end
+
   @spec path_at(Macro.t(), Position.t()) :: {:ok, [Macro.t(), ...]} | {:error, :not_found}
   def path_at(ast, %Position{} = position) do
-    case Future.Macro.path(ast, &at_or_after?(&1, position)) do
+    path =
+      Future.Macro.path(ast, fn node ->
+        terminal_node?(node) and contains_position?(node, position)
+      end)
+
+    case path do
       nil -> {:error, :not_found}
       path -> {:ok, path}
     end
@@ -309,22 +335,27 @@ defmodule Lexical.Ast do
   Returns whether the given AST contains a position.
   """
   @spec contains_position?(Macro.t(), Position.t()) :: boolean()
-  def contains_position?({_, _, _} = ast, %Position{} = position) do
-    range = Sourceror.get_range(ast)
-    on_same_line? = range.start[:line] == range.end[:line] and position.line == range.start[:line]
+  def contains_position?(ast, %Position{} = position) do
+    case Sourceror.get_range(ast) do
+      %{start: start_pos, end: end_pos} ->
+        on_same_line? = start_pos[:line] == end_pos[:line] and position.line == start_pos[:line]
 
-    cond do
-      on_same_line? ->
-        position.character >= range.start[:column] and position.character < range.end[:column]
+        cond do
+          on_same_line? ->
+            position.character >= start_pos[:column] and position.character < end_pos[:column]
 
-      position.line == range.start[:line] ->
-        position.character >= range.start[:column]
+          position.line == start_pos[:line] ->
+            position.character >= start_pos[:column]
 
-      position.line == range.end[:line] ->
-        position.character < range.end[:column]
+          position.line == end_pos[:line] ->
+            position.character < end_pos[:column]
 
-      true ->
-        position.line > range.start[:line] and position.line < range.end[:line]
+          true ->
+            position.line > start_pos[:line] and position.line < end_pos[:line]
+        end
+
+      nil ->
+        false
     end
   end
 
@@ -334,8 +365,8 @@ defmodule Lexical.Ast do
   The given function must accept and return a (potentially modified) zipper.
   To maintain an accumulator, use `traverse_line/4`.
   """
-  @spec traverse_line(Document.t(), Position.line(), (Zipper.zipper() -> Zipper.zipper())) ::
-          {:ok, Zipper.zipper()} | {:error, parse_error()}
+  @spec traverse_line(Document.t(), Position.line(), (Zipper.t() -> Zipper.t())) ::
+          {:ok, Zipper.t()} | {:error, parse_error()}
   def traverse_line(%Document{} = document, line_number, fun) when is_integer(line_number) do
     range = one_line_range(document, line_number)
     traverse_in(document, range, fun)
@@ -345,9 +376,9 @@ defmodule Lexical.Ast do
           Document.t(),
           Position.line(),
           acc,
-          (Zipper.zipper(), acc -> {Zipper.zipper(), acc})
+          (Zipper.t(), acc -> {Zipper.t(), acc})
         ) ::
-          {:ok, Zipper.zipper(), acc} | {:error, parse_error()}
+          {:ok, Zipper.t(), acc} | {:error, parse_error()}
         when acc: any()
   def traverse_line(%Document{} = document, line_number, acc, fun) when is_integer(line_number) do
     range = one_line_range(document, line_number)
@@ -483,7 +514,8 @@ defmodule Lexical.Ast do
     Code.string_to_quoted(string,
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
-      columns: true
+      columns: true,
+      unescape: false
     )
   end
 
@@ -491,7 +523,8 @@ defmodule Lexical.Ast do
     Code.Fragment.container_cursor_to_quoted(fragment,
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
-      columns: true
+      columns: true,
+      unescape: false
     )
   end
 
@@ -540,7 +573,7 @@ defmodule Lexical.Ast do
 
   # in the future, I'd like to expose functions that only traverse a section of the document,
   # but presently, traverse only follows a subtree, so it won't work for our purposes
-  defp traverse_in(%Document{} = document, %Document.Range{} = range, fun) do
+  defp traverse_in(%Document{} = document, %Range{} = range, fun) do
     ignore_acc = fn node, acc ->
       {fun.(node), acc}
     end
@@ -554,11 +587,13 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp traverse_in(%Document{} = document, %Document.Range{} = range, acc, fun) do
+  defp traverse_in(%Document{} = document, %Range{} = range, acc, fun) do
     with {:ok, zipper} <- zipper_at(document, range.start) do
       {zipper, {_position, acc}} =
-        Zipper.traverse_while(zipper, {{0, 0}, acc}, fn
-          {node, _} = zipper, {last_position, acc} ->
+        Zipper.traverse_while(
+          zipper,
+          {{0, 0}, acc},
+          fn %Zipper{node: node} = zipper, {last_position, acc} ->
             current_position = node_position(node, last_position)
 
             if within_range?(current_position, range) do
@@ -568,15 +603,16 @@ defmodule Lexical.Ast do
             else
               {:skip, zipper, {current_position, acc}}
             end
-        end)
+          end
+        )
 
       {:ok, zipper, acc}
     end
   end
 
-  defp within_range?({current_line, current_column}, %Document.Range{} = range) do
-    start_pos = %Document.Position{} = range.start
-    end_pos = %Document.Position{} = range.end
+  defp within_range?({current_line, current_column}, %Range{} = range) do
+    start_pos = %Position{} = range.start
+    end_pos = %Position{} = range.end
 
     cond do
       current_line == start_pos.line ->
@@ -590,11 +626,11 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp at_or_after?(node, %Document.Position{} = position) do
+  defp at_or_after?(node, %Position{} = position) do
     line = get_line(node, 0)
     column = get_column(node, 0)
 
-    line >= position.line or (line == position.line and column >= position.character)
+    line > position.line or (line == position.line and column >= position.character)
   end
 
   defp one_line_range(%Document{} = document, line_number) do
@@ -654,4 +690,35 @@ defmodule Lexical.Ast do
         zipper
     end
   end
+
+  # Terminal nodes are nodes in the AST that do not have any children
+  # that a cursor could be meaningfully positioned on.
+
+  # data literals:
+  # 1, :foo, "foo"
+  defp terminal_node?(literal) when is_number(literal) or is_binary(literal) or is_atom(literal),
+    do: true
+
+  # wrapped data literals:
+  # as above, but may contain additional token metadata, so consider the block terminal
+  defp terminal_node?({:__block__, _, [literal]}), do: terminal_node?(literal)
+
+  # unqualified calls or forms without any arguments:
+  # foo(), %{}
+  defp terminal_node?({form, _, []}) when is_atom(form), do: true
+
+  # dot-calls:
+  # Foo.bar, baz.buzz
+  defp terminal_node?({:., _, _}), do: true
+
+  # module aliases:
+  # Foo.Bar.Baz, __MODULE__.Inner
+  defp terminal_node?({:__aliases__, _, _}), do: true
+
+  # variables:
+  # foo
+  defp terminal_node?({var, _, namespace}) when is_atom(var) and is_atom(namespace), do: true
+
+  # consider all other forms non-terminal
+  defp terminal_node?(_), do: false
 end

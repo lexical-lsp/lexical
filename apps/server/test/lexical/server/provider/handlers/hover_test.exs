@@ -129,6 +129,41 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       )
     end
 
+    test "with behaviour callbacks", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule HoverBehaviour do
+            @moduledoc "This is a custom behaviour."
+
+            @type custom_type :: term()
+
+            @callback foo(integer(), float()) :: custom_type
+            @callback bar(term()) :: {:ok, custom_type}
+          end
+        ],
+        hovered: "|HoverBehaviour",
+        expected: """
+        ```elixir
+        HoverBehaviour
+        ```
+
+        ---
+
+        This is a custom behaviour.
+
+        ---
+
+        #### Callbacks
+
+        ```elixir
+        @callback bar(term()) :: {:ok, custom_type()}
+        @callback foo(integer(), float()) :: custom_type()
+        ```
+        """
+      )
+    end
+
     test "struct with @moduledoc includes t/0 type", %{project: project} do
       assert_hover(
         project,
@@ -236,7 +271,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   end
 
   describe "call hover" do
-    test "public fun with @doc and @spec", %{project: project} do
+    test "public function with @doc and @spec", %{project: project} do
       assert_hover(
         project,
         code: ~q[
@@ -269,7 +304,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       )
     end
 
-    test "public fun with multiple @spec", %{project: project} do
+    test "public function with multiple @spec", %{project: project} do
       assert_hover(
         project,
         code: ~q[
@@ -297,7 +332,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       )
     end
 
-    test "public fun with multiple arities and @spec", %{project: project} do
+    test "public function with multiple arities and @spec", %{project: project} do
       assert_hover(
         project,
         code: ~q[
@@ -338,6 +373,42 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
         ```elixir
         @spec my_fun(integer(), integer(), integer()) :: integer()
+        ```
+        """
+      )
+    end
+
+    test "private function", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule CallHover do
+            @spec my_fun(integer()) :: integer()
+            defp my_fun(x), do: x + 1
+
+            def my_other_fun(x, y), do: my_fun(x) + my_fun(y)
+          end
+        ],
+        hovered: "CallHover.|my_fun(1)",
+        expected: nil
+      )
+    end
+
+    test "private function with public function of same name", %{project: project} do
+      assert_hover(
+        project,
+        code: ~q[
+          defmodule CallHover do
+            @spec my_fun(integer()) :: integer()
+            defp my_fun(x), do: x + 1
+
+            def my_fun(x, y), do: my_fun(x) + my_fun(y)
+          end
+        ],
+        hovered: "CallHover.|my_fun(1)",
+        expected: """
+        ```elixir
+        CallHover.my_fun(x, y)
         ```
         """
       )
