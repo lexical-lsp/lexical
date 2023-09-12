@@ -82,353 +82,385 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
   describe "module hover" do
     test "with @moduledoc", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule HoverWithDoc do
-            @moduledoc """
-            This module has a moduledoc.
-            """
-          end
-        ],
-        hovered: "|HoverWithDoc",
-        expected: """
-        ```elixir
-        HoverWithDoc
-        ```
+      code = ~q[
+        defmodule HoverWithDoc do
+          @moduledoc """
+          This module has a moduledoc.
+          """
+        end
+      ]
 
-        ---
+      hovered = "|HoverWithDoc"
 
-        This module has a moduledoc.
-        """
-      )
+      expected = """
+      ```elixir
+      HoverWithDoc
+      ```
+
+      ---
+
+      This module has a moduledoc.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
     end
 
     test "with @moduledoc false", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule HoverPrivate do
-            @moduledoc false
-          end
-        ],
-        hovered: "|HoverPrivate",
-        expected: nil
-      )
+      code = ~q[
+        defmodule HoverPrivate do
+          @moduledoc false
+        end
+      ]
+
+      hovered = "|HoverPrivate"
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: nil}} = hover(project, hovered)
+      end)
     end
 
     test "without @moduledoc", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule HoverNoDocs do
-          end
-        ],
-        hovered: "|HoverNoDocs",
-        expected: nil
-      )
+      code = ~q[
+        defmodule HoverNoDocs do
+        end
+      ]
+
+      hovered = "|HoverNoDocs"
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: nil}} = hover(project, hovered)
+      end)
     end
 
     test "with behaviour callbacks", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule HoverBehaviour do
-            @moduledoc "This is a custom behaviour."
+      code = ~q[
+        defmodule HoverBehaviour do
+          @moduledoc "This is a custom behaviour."
 
-            @type custom_type :: term()
+          @type custom_type :: term()
 
-            @callback foo(integer(), float()) :: custom_type
-            @callback bar(term()) :: {:ok, custom_type}
-          end
-        ],
-        hovered: "|HoverBehaviour",
-        expected: """
-        ```elixir
-        HoverBehaviour
-        ```
+          @callback foo(integer(), float()) :: custom_type
+          @callback bar(term()) :: {:ok, custom_type}
+        end
+      ]
 
-        ---
+      hovered = "|HoverBehaviour"
 
-        This is a custom behaviour.
+      expected = """
+      ```elixir
+      HoverBehaviour
+      ```
 
-        ---
+      ---
 
-        #### Callbacks
+      This is a custom behaviour.
 
-        ```elixir
-        @callback bar(term()) :: {:ok, custom_type()}
-        @callback foo(integer(), float()) :: custom_type()
-        ```
-        """
-      )
+      ---
+
+      #### Callbacks
+
+      ```elixir
+      @callback bar(term()) :: {:ok, custom_type()}
+      @callback foo(integer(), float()) :: custom_type()
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
     end
 
     test "struct with @moduledoc includes t/0 type", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule StructWithDoc do
-            @moduledoc """
-            This module has a moduledoc.
-            """
+      code = ~q[
+        defmodule StructWithDoc do
+          @moduledoc """
+          This module has a moduledoc.
+          """
 
-            defstruct foo: nil, bar: nil, baz: nil
-            @type t :: %__MODULE__{
-                    foo: String.t(),
-                    bar: integer(),
-                    baz: {boolean(), reference()}
-                  }
-          end
-        ],
-        hovered: "%|StructWithDoc{}",
-        expected: """
-        ```elixir
-        %StructWithDoc{}
-        ```
+          defstruct foo: nil, bar: nil, baz: nil
+          @type t :: %__MODULE__{
+                  foo: String.t(),
+                  bar: integer(),
+                  baz: {boolean(), reference()}
+                }
+        end
+      ]
 
-        ---
+      hovered = "%|StructWithDoc{}"
 
-        #### Struct
+      expected = """
+      ```elixir
+      %StructWithDoc{}
+      ```
 
-        ```elixir
-        @type t() :: %StructWithDoc{
-                bar: integer(),
-                baz: {boolean(), reference()},
-                foo: String.t()
-              }
-        ```
+      ---
 
-        ---
+      #### Struct
 
-        This module has a moduledoc.
-        """
-      )
+      ```elixir
+      @type t() :: %StructWithDoc{
+              bar: integer(),
+              baz: {boolean(), reference()},
+              foo: String.t()
+            }
+      ```
+
+      ---
+
+      This module has a moduledoc.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
     end
 
     test "struct with @moduledoc includes all t types", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule StructWithDoc do
-            @moduledoc """
-            This module has a moduledoc.
-            """
+      code = ~q[
+        defmodule StructWithDoc do
+          @moduledoc """
+          This module has a moduledoc.
+          """
 
-            defstruct foo: nil
-            @type t :: %__MODULE__{foo: String.t()}
-            @type t(kind) :: %__MODULE__{foo: kind}
-            @type t(kind1, kind2) :: %__MODULE__{foo: {kind1, kind2}}
-          end
-        ],
-        hovered: "%|StructWithDoc{}",
-        expected: """
-        ```elixir
-        %StructWithDoc{}
-        ```
+          defstruct foo: nil
+          @type t :: %__MODULE__{foo: String.t()}
+          @type t(kind) :: %__MODULE__{foo: kind}
+          @type t(kind1, kind2) :: %__MODULE__{foo: {kind1, kind2}}
+        end
+      ]
 
-        ---
+      hovered = "%|StructWithDoc{}"
 
-        #### Struct
+      expected = """
+      ```elixir
+      %StructWithDoc{}
+      ```
 
-        ```elixir
-        @type t() :: %StructWithDoc{foo: String.t()}
-        @type t(kind) :: %StructWithDoc{foo: kind}
-        @type t(kind1, kind2) :: %StructWithDoc{foo: {kind1, kind2}}
-        ```
+      ---
 
-        ---
+      #### Struct
 
-        This module has a moduledoc.
-        """
-      )
+      ```elixir
+      @type t() :: %StructWithDoc{foo: String.t()}
+      @type t(kind) :: %StructWithDoc{foo: kind}
+      @type t(kind1, kind2) :: %StructWithDoc{foo: {kind1, kind2}}
+      ```
+
+      ---
+
+      This module has a moduledoc.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
     end
 
     test "struct with @moduledoc without type", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule StructWithDoc do
-            @moduledoc """
-            This module has a moduledoc.
-            """
+      code = ~q[
+        defmodule StructWithDoc do
+          @moduledoc """
+          This module has a moduledoc.
+          """
 
-            defstruct foo: nil
-          end
-        ],
-        hovered: "%|StructWithDoc{}",
-        expected: """
-        ```elixir
-        %StructWithDoc{}
-        ```
+          defstruct foo: nil
+        end
+      ]
 
-        ---
+      hovered = "%|StructWithDoc{}"
 
-        This module has a moduledoc.
-        """
-      )
+      expected = """
+      ```elixir
+      %StructWithDoc{}
+      ```
+
+      ---
+
+      This module has a moduledoc.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
     end
   end
 
   describe "call hover" do
     test "public function with @doc and @spec", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule CallHover do
-            @doc """
-            This function has docs.
-            """
-            @spec my_fun(integer(), integer()) :: integer()
-            def my_fun(x, y), do: x + y
-          end
-        ],
-        hovered: "CallHover.|my_fun(1, 2)",
-        expected: """
-        ```elixir
-        CallHover.my_fun(x, y)
-        ```
+      code = ~q[
+        defmodule CallHover do
+          @doc """
+          This function has docs.
+          """
+          @spec my_fun(integer(), integer()) :: integer()
+          def my_fun(x, y), do: x + y
+        end
+      ]
 
-        ---
+      hovered = "CallHover.|my_fun(1, 2)"
 
-        #### Specs
+      expected = """
+      ```elixir
+      CallHover.my_fun(x, y)
+      ```
 
-        ```elixir
-        @spec my_fun(integer(), integer()) :: integer()
-        ```
+      ---
 
-        ---
+      #### Specs
 
-        This function has docs.
-        """
-      )
-    end
+      ```elixir
+      @spec my_fun(integer(), integer()) :: integer()
+      ```
 
-    test "public function with multiple @spec", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule CallHover do
-            @spec my_fun(integer(), integer()) :: integer()
-            @spec my_fun(float(), float()) :: float()
-            def my_fun(x, y), do: x + y
-          end
-        ],
-        hovered: "CallHover.|my_fun(1, 2)",
-        expected: """
-        ```elixir
-        CallHover.my_fun(x, y)
-        ```
+      ---
 
-        ---
+      This function has docs.
+      """
 
-        #### Specs
-
-        ```elixir
-        @spec my_fun(integer(), integer()) :: integer()
-        @spec my_fun(float(), float()) :: float()
-        ```
-        """
-      )
-    end
-
-    test "public function with multiple arities and @spec", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule CallHover do
-            @spec my_fun(integer()) :: integer()
-            def my_fun(x), do: x + 1
-
-            @spec my_fun(integer(), integer()) :: integer()
-            def my_fun(x, y), do: x + y
-
-            @spec my_fun(integer(), integer(), integer()) :: integer()
-            def my_fun(x, y, z), do: x + y + z
-          end
-        ],
-        hovered: "CallHover.|my_fun(1, 2)",
-        expected: """
-        ```elixir
-        CallHover.my_fun(x, y)
-        ```
-
-        ---
-
-        #### Specs
-
-        ```elixir
-        @spec my_fun(integer(), integer()) :: integer()
-        ```
-
-        ---
-
-        ```elixir
-        CallHover.my_fun(x, y, z)
-        ```
-
-        ---
-
-        #### Specs
-
-        ```elixir
-        @spec my_fun(integer(), integer(), integer()) :: integer()
-        ```
-        """
-      )
-    end
-
-    test "private function", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule CallHover do
-            @spec my_fun(integer()) :: integer()
-            defp my_fun(x), do: x + 1
-
-            def my_other_fun(x, y), do: my_fun(x) + my_fun(y)
-          end
-        ],
-        hovered: "CallHover.|my_fun(1)",
-        expected: nil
-      )
-    end
-
-    test "private function with public function of same name", %{project: project} do
-      assert_hover(
-        project,
-        code: ~q[
-          defmodule CallHover do
-            @spec my_fun(integer()) :: integer()
-            defp my_fun(x), do: x + 1
-
-            def my_fun(x, y), do: my_fun(x) + my_fun(y)
-          end
-        ],
-        hovered: "CallHover.|my_fun(1)",
-        expected: """
-        ```elixir
-        CallHover.my_fun(x, y)
-        ```
-        """
-      )
-    end
-  end
-
-  defp assert_hover(project, opts) do
-    code = Keyword.fetch!(opts, :code)
-    hovered = Keyword.fetch!(opts, :hovered)
-    expected = Keyword.fetch!(opts, :expected)
-
-    with_compiled_in(project, code, fn ->
-      if expected do
+      with_compiled_in(project, code, fn ->
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
-      else
+      end)
+    end
+
+    test "public function with multiple @spec", %{project: project} do
+      code = ~q[
+        defmodule CallHover do
+          @spec my_fun(integer(), integer()) :: integer()
+          @spec my_fun(float(), float()) :: float()
+          def my_fun(x, y), do: x + y
+        end
+      ]
+
+      hovered = "CallHover.|my_fun(1, 2)"
+
+      expected = """
+      ```elixir
+      CallHover.my_fun(x, y)
+      ```
+
+      ---
+
+      #### Specs
+
+      ```elixir
+      @spec my_fun(integer(), integer()) :: integer()
+      @spec my_fun(float(), float()) :: float()
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
+    end
+
+    test "public function with multiple arities and @spec", %{project: project} do
+      code = ~q[
+        defmodule CallHover do
+          @spec my_fun(integer()) :: integer()
+          def my_fun(x), do: x + 1
+
+          @spec my_fun(integer(), integer()) :: integer()
+          def my_fun(x, y), do: x + y
+
+          @spec my_fun(integer(), integer(), integer()) :: integer()
+          def my_fun(x, y, z), do: x + y + z
+        end
+      ]
+
+      hovered = "CallHover.|my_fun(1, 2)"
+
+      expected = """
+      ```elixir
+      CallHover.my_fun(x, y)
+      ```
+
+      ---
+
+      #### Specs
+
+      ```elixir
+      @spec my_fun(integer(), integer()) :: integer()
+      ```
+
+      ---
+
+      ```elixir
+      CallHover.my_fun(x, y, z)
+      ```
+
+      ---
+
+      #### Specs
+
+      ```elixir
+      @spec my_fun(integer(), integer(), integer()) :: integer()
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
+    end
+
+    test "private function", %{project: project} do
+      code = ~q[
+        defmodule CallHover do
+          @spec my_fun(integer()) :: integer()
+          defp my_fun(x), do: x + 1
+
+          def my_other_fun(x, y), do: my_fun(x) + my_fun(y)
+        end
+      ]
+
+      hovered = "CallHover.|my_fun(1)"
+
+      with_compiled_in(project, code, fn ->
         assert {:reply, %{result: nil}} = hover(project, hovered)
-      end
-    end)
+      end)
+    end
+
+    test "private function with public function of same name", %{project: project} do
+      code = ~q[
+        defmodule CallHover do
+          @spec my_fun(integer()) :: integer()
+          defp my_fun(x), do: x + 1
+
+          def my_fun(x, y), do: my_fun(x) + my_fun(y)
+        end
+      ]
+
+      hovered = "CallHover.|my_fun(1)"
+
+      expected = """
+      ```elixir
+      CallHover.my_fun(x, y)
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
+    end
   end
 
   defp hover(project, hovered) do
