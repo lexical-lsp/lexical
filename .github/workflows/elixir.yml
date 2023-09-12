@@ -127,7 +127,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: "priv/plts"
-          key: lexical-plts-1-${{ env.DEFAULT_OTP }}-${{ env.DEFAULT_ELIXIR }}-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
+          key: lexical-plts-2-${{ env.DEFAULT_OTP }}-${{ env.DEFAULT_ELIXIR }}-${{ steps.set_mix_lock_hash.outputs.mix_lock_hash }}
 
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
