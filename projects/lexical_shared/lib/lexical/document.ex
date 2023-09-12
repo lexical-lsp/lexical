@@ -356,8 +356,8 @@ defmodule Lexical.Document do
     pos
   end
 
-  defp convert_fragment_position(%__MODULE__{}, :beginning) do
-    Position.new(1, 1)
+  defp convert_fragment_position(%__MODULE__{} = document, :beginning) do
+    Position.new(document, 1, 1)
   end
 
   defp convert_fragment_position(%__MODULE__{} = document, convertible) do
