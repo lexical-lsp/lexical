@@ -15,6 +15,35 @@ defmodule Lexical.Document.Lines do
   @type t :: %__MODULE__{}
 
   @doc """
+  Creates a sparse set of lines
+  Use this function if you only have a couple line records and want to access them inside this
+  data structure. The lines data structure returned will behave like a normal document's lines,
+  except it will treat all the lines that weren't passed in as empty.
+
+  This is useful if you want to convert something in a document, but only have the lines where
+  the conversions will take place.
+  """
+  @spec sparse(Enumerable.t(Line.t()), non_neg_integer) :: t
+  def sparse(lines, starting_index \\ @default_starting_index) do
+    lines_by_line_number =
+      Map.new(lines, fn line(line_number: line_number) = line -> {line_number, line} end)
+
+    line_count =
+      lines_by_line_number
+      |> Map.keys()
+      |> Enum.max()
+
+    range = (0 + starting_index)..line_count
+
+    backing_store =
+      range
+      |> Enum.map(&Map.get(lines_by_line_number, &1, :sparse))
+      |> List.to_tuple()
+
+    %__MODULE__{lines: backing_store, starting_index: starting_index}
+  end
+
+  @doc """
   Create a new line store with the given text at the given starting index
   """
   @spec new(String.t(), non_neg_integer) :: t
@@ -32,8 +61,12 @@ defmodule Lexical.Document.Lines do
   """
   @spec to_iodata(t) :: iodata()
   def to_iodata(%__MODULE__{} = document) do
-    reduce(document, [], fn line(text: text, ending: ending), acc ->
-      [acc | [text | ending]]
+    reduce(document, [], fn
+      :sparse, acc ->
+        [acc, "\n"]
+
+      line(text: text, ending: ending), acc ->
+        [acc | [text | ending]]
     end)
   end
 
@@ -67,8 +100,15 @@ defmodule Lexical.Document.Lines do
 
   def fetch_line(%__MODULE__{} = document, index) when is_integer(index) do
     case elem(document.lines, index - document.starting_index) do
-      line() = line -> {:ok, line}
-      _ -> :error
+      line() = line ->
+        {:ok, line}
+
+      :sparse ->
+        sparse_line = line(text: "", ending: "\n", line_number: index)
+        {:ok, sparse_line}
+
+      _ ->
+        :error
     end
   end
 

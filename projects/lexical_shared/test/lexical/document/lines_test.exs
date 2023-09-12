@@ -64,4 +64,42 @@ defmodule Lexical.Document.LinesTest do
       assert Lines.size(document) == line_count
     end
   end
+
+  def make_line(text, line_number, ending \\ "\n") do
+    line(text: text, line_number: line_number, ending: ending)
+  end
+
+  describe "sparse" do
+    test "works with size/1" do
+      lines = Lines.sparse([make_line("hello", 20)])
+      assert Lines.size(lines) == 20
+    end
+
+    test "works with to_string/1" do
+      lines =
+        Lines.sparse([
+          line(line_number: 2, text: "hello", ending: "\n"),
+          line(line_number: 5, text: "goodbye", ending: "\n")
+        ])
+
+      expected = """
+
+      hello
+
+
+      goodbye
+      """
+
+      assert Lines.to_string(lines) == expected
+    end
+
+    test "works with fetch_line" do
+      lines = Lines.sparse([make_line("first", 2), make_line("second", 4)])
+      assert {:ok, line(text: "", line_number: 1)} = Lines.fetch_line(lines, 1)
+      assert {:ok, line(text: "first", line_number: 2)} = Lines.fetch_line(lines, 2)
+      assert {:ok, line(text: "", line_number: 3)} = Lines.fetch_line(lines, 3)
+      assert {:ok, line(text: "second", line_number: 4)} = Lines.fetch_line(lines, 4)
+      assert :error = Lines.fetch_line(lines, 5)
+    end
+  end
 end

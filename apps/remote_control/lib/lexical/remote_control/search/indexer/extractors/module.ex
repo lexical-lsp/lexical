@@ -25,7 +25,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
     entry =
       Entry.definition(
-        reducer.document.path,
+        reducer.document,
         block.ref,
         block.parent_ref,
         aliased_module,
@@ -53,7 +53,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
         entry =
           Entry.reference(
-            reducer.document.path,
+            reducer.document,
             make_ref(),
             current_block.ref,
             module,
@@ -80,7 +80,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
         entry =
           Entry.reference(
-            reducer.document.path,
+            reducer.document,
             make_ref(),
             current_block.ref,
             module,
