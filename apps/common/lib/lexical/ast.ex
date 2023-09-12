@@ -58,6 +58,7 @@ defmodule Lexical.Ast do
   alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Sourceror.Zipper
 
   require Logger
@@ -111,7 +112,7 @@ defmodule Lexical.Ast do
     # can't deal with some cases like: `alias Foo.Bar, as: AnotherBar`,
     # so we need to add a new line to make sure we can get the parrent node of the cursor
     %{line: line} = position
-    added_new_line_position = Position.new(line + 1, 1)
+    added_new_line_position = Position.new(document, line + 1, 1)
     fragment = Document.fragment(document, added_new_line_position)
 
     case do_container_cursor_to_quoted(fragment) do
@@ -196,7 +197,7 @@ defmodule Lexical.Ast do
         ) ::
           [Macro.t()]
   def cursor_path(%Document{} = doc, {line, character}) do
-    cursor_path(doc, Position.new(line, character))
+    cursor_path(doc, Position.new(doc, line, character))
   end
 
   def cursor_path(%Document{} = document, %Position{} = position) do
@@ -214,10 +215,16 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Traverses the given ast until the given position.
+  Traverses the given ast until the given end position.
   """
-  def prewalk_until(ast, acc, prewalk_fn, %Position{} = position) do
-    range = Document.Range.new(Position.new(0, 0), position)
+  def prewalk_until(
+        ast,
+        acc,
+        prewalk_fn,
+        %Position{} = start_position,
+        %Position{} = end_position
+      ) do
+    range = Range.new(start_position, end_position)
 
     {_, acc} =
       ast
@@ -228,7 +235,7 @@ defmodule Lexical.Ast do
         # we will never receive a callback where we match the end block. Adding
         # a cursor node will allow us to place cursors after the document has ended
         # and things will still work.
-        zipper = maybe_insert_cursor(zipper, position)
+        zipper = maybe_insert_cursor(zipper, end_position)
 
         case Zipper.node(zipper) do
           {_, _, _} = element ->
@@ -276,7 +283,7 @@ defmodule Lexical.Ast do
   @spec traverse_line(Document.t(), Position.line(), (Zipper.zipper() -> Zipper.zipper())) ::
           {:ok, Zipper.zipper()} | {:error, parse_error()}
   def traverse_line(%Document{} = document, line_number, fun) when is_integer(line_number) do
-    range = one_line_range(line_number)
+    range = one_line_range(document, line_number)
     traverse_in(document, range, fun)
   end
 
@@ -289,7 +296,7 @@ defmodule Lexical.Ast do
           {:ok, Zipper.zipper(), acc} | {:error, parse_error()}
         when acc: any()
   def traverse_line(%Document{} = document, line_number, acc, fun) when is_integer(line_number) do
-    range = one_line_range(line_number)
+    range = one_line_range(document, line_number)
     traverse_in(document, range, acc, fun)
   end
 
@@ -298,11 +305,11 @@ defmodule Lexical.Ast do
 
   Returns `{:ok, edits}` if all patches are valid and `:error` otherwise.
   """
-  @spec patches_to_edits([patch()]) :: {:ok, [Edit.t()]} | :error
-  def patches_to_edits(patches) do
+  @spec patches_to_edits(Document.t(), [patch()]) :: {:ok, [Edit.t()]} | :error
+  def patches_to_edits(%Document{} = document, patches) do
     maybe_edits =
       Enum.reduce_while(patches, [], fn patch, edits ->
-        case patch_to_edit(patch) do
+        case patch_to_edit(document, patch) do
           {:ok, edit} -> {:cont, [edit | edits]}
           error -> {:halt, error}
         end
@@ -319,9 +326,11 @@ defmodule Lexical.Ast do
 
   Returns `{:ok, edit}` if valid and `:error` otherwise.
   """
-  @spec patch_to_edit(patch()) :: {:ok, Edit.t()} | :error
-  def patch_to_edit(%{change: change, range: %{start: start_pos, end: end_pos}}) do
-    with {:ok, range} <- patch_to_range(start_pos, end_pos) do
+  @spec patch_to_edit(Document.t(), patch()) :: {:ok, Edit.t()} | :error
+  def patch_to_edit(%Document{} = document, %{} = patch) do
+    %{change: change, range: %{start: start_pos, end: end_pos}} = patch
+
+    with {:ok, range} <- patch_to_range(document, start_pos, end_pos) do
       {:ok, Edit.new(change, range)}
     end
   end
@@ -369,24 +378,38 @@ defmodule Lexical.Ast do
 
   If no aliases can be found, the given alias is returned unmodified.
   """
-  @spec expand_aliases(alias_segments() | module(), Document.t() | Macro.t(), Position.t()) ::
+  @spec expand_aliases(
+          alias_segments() | module(),
+          Document.t(),
+          Position.t() | {Position.line(), Position.character()}
+        ) ::
           {:ok, module()} | :error
-  def expand_aliases(module, %Document{} = document, %Position{} = position)
-      when is_atom(module) and not is_nil(module) do
-    module
-    |> Module.split()
-    |> Enum.map(&String.to_atom/1)
-    |> expand_aliases(document, position)
-  end
-
-  def expand_aliases([_first | _rest] = segments, %Document{} = document, %Position{} = position) do
+  def expand_aliases(module_or_segments, %Document{} = document, %Position{} = position) do
     with {:ok, quoted} <- fragment(document, position) do
-      expand_aliases(segments, quoted, position)
+      expand_aliases(module_or_segments, document, quoted, position)
     end
   end
 
-  def expand_aliases([first | rest] = segments, quoted_document, %Position{} = position) do
-    with {:ok, aliases_mapping} <- Aliases.at(quoted_document, position),
+  def expand_aliases(module_or_segments, %Document{} = document, {line, column}) do
+    expand_aliases(module_or_segments, document, Position.new(document, line, column))
+  end
+
+  @spec expand_aliases(alias_segments() | module(), Document.t(), Macro.t(), Position.t()) ::
+          {:ok, module()} | :error
+  def expand_aliases(module, %Document{} = document, quoted_document, %Position{} = position) do
+    module
+    |> Module.split()
+    |> Enum.map(&String.to_atom/1)
+    |> expand_aliases(document, quoted_document, position)
+  end
+
+  def expand_aliases(
+        [first | rest] = segments,
+        %Document{} = document,
+        quoted_document,
+        %Position{} = position
+      ) do
+    with {:ok, aliases_mapping} <- Aliases.at(document, quoted_document, position),
          {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, Module.concat([resolved | rest])}
     else
@@ -394,11 +417,7 @@ defmodule Lexical.Ast do
     end
   end
 
-  def expand_aliases(segments, doc, {line, column}) do
-    expand_aliases(segments, doc, Position.new(line, column))
-  end
-
-  def expand_aliases(_, _, empty) do
+  def expand_aliases(empty, _, _, _) when empty in [nil, []] do
     Logger.warning("Aliases are #{inspect(empty)}, can't expand them")
     :error
   end
@@ -435,17 +454,17 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp patch_to_range(start_pos, end_pos) do
-    with {:ok, start_pos} <- patch_to_position(start_pos),
-         {:ok, end_pos} <- patch_to_position(end_pos) do
-      {:ok, Document.Range.new(start_pos, end_pos)}
+  defp patch_to_range(document, start_pos, end_pos) do
+    with {:ok, start_pos} <- patch_to_position(document, start_pos),
+         {:ok, end_pos} <- patch_to_position(document, end_pos) do
+      {:ok, Range.new(start_pos, end_pos)}
     end
   end
 
-  defp patch_to_position(patch_keyword) do
+  defp patch_to_position(document, patch_keyword) do
     with {:ok, line} <- Keyword.fetch(patch_keyword, :line),
          {:ok, column} <- Keyword.fetch(patch_keyword, :column) do
-      {:ok, Document.Position.new(line, column)}
+      {:ok, Position.new(document, line, column)}
     end
   end
 
@@ -523,10 +542,10 @@ defmodule Lexical.Ast do
     line >= position.line and column >= position.character
   end
 
-  defp one_line_range(line_number) do
-    start_pos = Document.Position.new(line_number, 1)
-    end_pos = Document.Position.new(line_number + 1, 0)
-    Document.Range.new(start_pos, end_pos)
+  defp one_line_range(%Document{} = document, line_number) do
+    start_pos = Position.new(document, line_number, 1)
+    end_pos = Position.new(document, line_number + 1, 0)
+    Range.new(start_pos, end_pos)
   end
 
   defp node_position(node, {line, column}) do

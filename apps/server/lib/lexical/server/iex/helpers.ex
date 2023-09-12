@@ -43,8 +43,8 @@ defmodule Lexical.Server.IEx.Helpers do
     |> Document.new(text, 0)
   end
 
-  def pos(line, character) do
-    Position.new(line, character)
+  def pos(doc, line, character) do
+    Position.new(doc, line, character)
   end
 
   def compile_project(project) do
@@ -85,7 +85,7 @@ defmodule Lexical.Server.IEx.Helpers do
         context
       end
 
-    position = pos(line, character)
+    position = pos(source, line, character)
 
     project
     |> ensure_project()

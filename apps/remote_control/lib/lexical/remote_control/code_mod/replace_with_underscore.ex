@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore do
       end)
 
     with {:ok, _, patches} <- result do
-      Ast.patches_to_edits(patches)
+      Ast.patches_to_edits(document, patches)
     end
   end
 end
