@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   use Patch
 
   setup do
+    start_supervised!(Lexical.RemoteControl.Dispatch)
     start_supervised!(CaptureServer)
     :ok
   end

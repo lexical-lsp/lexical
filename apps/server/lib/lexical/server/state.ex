@@ -1,6 +1,7 @@
 defmodule Lexical.Server.State do
   alias Lexical.Document
   alias Lexical.Protocol.Id
+  alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Notifications.DidChange
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
   alias Lexical.Protocol.Notifications.DidClose
@@ -16,9 +17,11 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Types.CodeAction
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.DidChangeWatchedFiles
+  alias Lexical.Protocol.Types.FileEvent
   alias Lexical.Protocol.Types.FileSystemWatcher
   alias Lexical.Protocol.Types.Registration
   alias Lexical.Protocol.Types.TextDocument
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
@@ -175,6 +178,17 @@ defmodule Lexical.Server.State do
     Logger.error("Shutting down")
 
     {:ok, %__MODULE__{state | shutdown_received?: true}}
+  end
+
+  def apply(%__MODULE__{} = state, %Notifications.DidChangeWatchedFiles{lsp: event}) do
+    project = state.configuration.project
+
+    Enum.each(event.changes, fn %FileEvent{} = change ->
+      event = filesystem_event(project: Project, uri: change.uri, event_type: change.type)
+      RemoteControl.Api.broadcast(project, event)
+    end)
+
+    {:ok, state}
   end
 
   def apply(%__MODULE__{} = state, msg) do

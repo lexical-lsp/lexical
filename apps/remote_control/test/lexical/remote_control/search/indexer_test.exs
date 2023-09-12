@@ -87,19 +87,20 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
       file_path: file_path
     } do
       path_to_mtime = Map.new(entries, & &1.updated_at)
+      [entry | _] = entries
+      {{year, month, day}, hms} = entry.updated_at
+      old_mtime = {{year - 1, month, day}, hms}
 
       patch(Indexer, :stat, fn path ->
         {ymd, {hour, minute, second}} =
-          Map.get_lazy(path_to_mtime, file_path, &:calendar.local_time/0)
+          Map.get_lazy(path_to_mtime, file_path, &:calendar.universal_time/0)
 
-        hms =
+        mtime =
           if path == file_path do
-            {hour, minute, second + 1}
+            {ymd, {hour, minute, second + 1}}
           else
-            {hour, minute, second}
+            old_mtime
           end
-
-        mtime = {ymd, hms}
 
         {:ok, %File.Stat{mtime: mtime}}
       end)

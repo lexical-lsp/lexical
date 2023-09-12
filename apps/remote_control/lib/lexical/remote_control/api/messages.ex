@@ -1,4 +1,6 @@
 defmodule Lexical.RemoteControl.Api.Messages do
+  alias Lexical.Project
+
   import Record
   defrecord :project_compile_requested, project: nil, build_number: 0
 
@@ -9,9 +11,13 @@ defmodule Lexical.RemoteControl.Api.Messages do
     diagnostics: [],
     elapsed_ms: 0
 
+  defrecord :filesystem_event, project: nil, uri: nil, event_type: nil
+
   defrecord :file_changed, uri: nil, from_version: nil, to_version: nil, open?: false
 
   defrecord :file_compile_requested, project: nil, build_number: 0, uri: nil
+
+  defrecord :file_quoted, project: nil, document: nil, quoted_ast: nil
 
   defrecord :file_compiled,
     project: nil,
@@ -20,6 +26,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
     status: :successful,
     diagnostics: [],
     elapsed_ms: 0
+
+  defrecord :file_deleted, project: nil, uri: nil
 
   defrecord :module_updated, file: nil, name: nil, functions: [], macros: [], struct: nil
 
@@ -49,7 +57,14 @@ defmodule Lexical.RemoteControl.Api.Messages do
             elapsed_ms: non_neg_integer
           )
 
-  @type file_updated ::
+  @type filesystem_event ::
+          record(:filesystem_event,
+            project: Project.t(),
+            uri: Lexical.uri(),
+            event_type: :created | :updated | :deleted
+          )
+
+  @type file_changed ::
           record(:file_changed,
             uri: Lexical.uri(),
             from_version: maybe_version,
@@ -61,6 +76,13 @@ defmodule Lexical.RemoteControl.Api.Messages do
             project: Lexical.Project.t(),
             build_number: non_neg_integer(),
             uri: Lexical.uri()
+          )
+
+  @type file_quoted ::
+          record(:file_quoted,
+            project: Lexical.Project.t(),
+            document: Lexical.Document.t(),
+            quoted_ast: Macro.t()
           )
 
   @type file_compiled ::
