@@ -31,8 +31,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
            Ast.surround_context(document, position),
          {:ok, resolved, {begin_pos, end_pos}} <-
            resolve(context, {begin_pos, end_pos}, document, position) do
-      Logger.info("Resolved entity: #{inspect(resolved)}")
-      {:ok, resolved, to_range(begin_pos, end_pos)}
+      {:ok, resolved, to_range(document, begin_pos, end_pos)}
     else
       {:error, :surround_context} -> {:error, :not_found}
       error -> error
@@ -116,7 +115,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
     with {:ok, document} <- Document.Store.open_temporary(uri),
          {:ok, text} <- Document.fetch_text_at(document, line) do
-      range = to_precise_range(text, line, column)
+      range = to_precise_range(document, text, line, column)
 
       {:ok, Location.new(range, document)}
     else
@@ -129,24 +128,24 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     {:ok, nil}
   end
 
-  defp to_precise_range(text, line, column) do
+  defp to_precise_range(%Document{} = document, text, line, column) do
     case Code.Fragment.surround_context(text, {line, column}) do
       %{begin: start_pos, end: end_pos} ->
-        to_range(start_pos, end_pos)
+        to_range(document, start_pos, end_pos)
 
       _ ->
         # If the column is 1, but the code doesn't start on the first column, which isn't what we want.
         # The cursor will be placed to the left of the actual definition.
         column = if column == 1, do: Text.count_leading_spaces(text) + 1, else: column
         pos = {line, column}
-        to_range(pos, pos)
+        to_range(document, pos, pos)
     end
   end
 
-  defp to_range({begin_line, begin_column}, {end_line, end_column}) do
+  defp to_range(%Document{} = document, {begin_line, begin_column}, {end_line, end_column}) do
     Range.new(
-      Position.new(begin_line, begin_column),
-      Position.new(end_line, end_column)
+      Position.new(document, begin_line, begin_column),
+      Position.new(document, end_line, end_column)
     )
   end
 end

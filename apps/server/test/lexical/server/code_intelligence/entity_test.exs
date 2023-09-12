@@ -1,7 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.EntityTest do
   alias Lexical.Document
   alias Lexical.Document.Location
-  alias Lexical.Document.Position
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.ProjectNodeSupervisor
@@ -14,6 +13,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   import Messages
 
   use ExUnit.Case, async: false
+  use Lexical.Test.PositionSupport
 
   defp with_referenced_file(%{project: project}) do
     uri =
@@ -504,6 +504,6 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
   defp caller_position(subject_module) do
     {line, character} = cursor_position(subject_module)
-    Position.new(line, character)
+    position(line, character)
   end
 end

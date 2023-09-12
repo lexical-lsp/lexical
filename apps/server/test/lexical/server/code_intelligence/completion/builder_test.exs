@@ -20,7 +20,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
     stripped_text = strip_cursor(text)
     document = Document.new("file://foo.ex", stripped_text, 0)
 
-    position = Document.Position.new(line, column)
+    position = Document.Position.new(document, line, column)
 
     {:ok, env} = Env.new(project, document, position)
     env

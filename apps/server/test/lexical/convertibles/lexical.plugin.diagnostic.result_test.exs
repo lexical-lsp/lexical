@@ -62,9 +62,9 @@ defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
       assert converted.range == range(:lsp, position(:lsp, 5, 7), position(:lsp, 6, 0))
     end
 
-    test "it converts lexical positions", %{uri: uri} do
+    test "it converts lexical positions", %{uri: uri, document: document} do
       assert {:ok, %Types.Diagnostic{} = converted} =
-               to_lsp(plugin_diagnostic(uri, Document.Position.new(1, 1)), uri)
+               to_lsp(plugin_diagnostic(uri, Document.Position.new(document, 1, 1)), uri)
 
       assert converted.range == %Types.Range{
                start: %Types.Position{line: 0, character: 0},
@@ -72,11 +72,11 @@ defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
              }
     end
 
-    test "it converts lexical ranges", %{uri: uri} do
+    test "it converts lexical ranges", %{uri: uri, document: document} do
       lexical_range =
         Document.Range.new(
-          Document.Position.new(2, 5),
-          Document.Position.new(2, 8)
+          Document.Position.new(document, 2, 5),
+          Document.Position.new(document, 2, 8)
         )
 
       assert {:ok, %Types.Diagnostic{} = converted} =

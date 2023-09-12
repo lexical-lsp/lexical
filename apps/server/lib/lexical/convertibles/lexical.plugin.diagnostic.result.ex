@@ -72,6 +72,10 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
 
   defp to_lexical_range(%Document{} = document, line_number, column) do
     line_number = Math.clamp(line_number, 1, Document.size(document) + 1)
-    Range.new(Position.new(line_number, column), Position.new(line_number + 1, 1))
+
+    Range.new(
+      Position.new(document, line_number, column),
+      Position.new(document, line_number + 1, 1)
+    )
   end
 end
