@@ -13,11 +13,13 @@ defmodule Lexical.Document.Position do
   """
 
   alias Lexical.Document
+  alias Lexical.Document.Lines
 
   defstruct [:line, :character, valid?: false, context_line: nil]
 
   @type line :: non_neg_integer()
   @type character :: non_neg_integer()
+  @type line_container :: Document.t() | Lines.t()
 
   @type t :: %__MODULE__{
           line: line(),
@@ -28,10 +30,15 @@ defmodule Lexical.Document.Position do
 
   use Lexical.StructAccess
 
-  @spec new(Document.t(), line(), character()) :: t
+  @spec new(line_container(), line(), character()) :: t
   def new(%Document{} = document, line, character)
       when is_number(line) and is_number(character) do
-    case Document.fetch_line_at(document, line) do
+    new(document.lines, line, character)
+  end
+
+  def new(%Document.Lines{} = lines, line, character)
+      when is_number(line) and is_number(character) do
+    case Lines.fetch_line(lines, line) do
       {:ok, context_line} ->
         %__MODULE__{line: line, character: character, context_line: context_line, valid?: true}
 
