@@ -25,7 +25,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   end
 
   def reindex(%Document{} = document, quoted_ast) do
-    with :ok <- up_to_date?(document),
+    with :ok <- ensure_latest_version(document),
          {:ok, entries} <- Indexer.Quoted.index(document, quoted_ast) do
       Search.Store.update(document.path, entries)
     end
@@ -36,7 +36,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
     Search.Store.clear(path)
   end
 
-  defp up_to_date?(%Document{version: version, uri: uri}) do
+  defp ensure_latest_version(%Document{version: version, uri: uri}) do
     case Document.Store.fetch(uri) do
       {:ok, %Document{version: ^version}} ->
         :ok

@@ -68,6 +68,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   end
 
   defp timestamp do
-    :calendar.local_time()
+    :calendar.universal_time()
   end
 end

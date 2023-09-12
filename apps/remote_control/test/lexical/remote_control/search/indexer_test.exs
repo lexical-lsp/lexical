@@ -90,7 +90,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
       patch(Indexer, :stat, fn path ->
         {ymd, {hour, minute, second}} =
-          Map.get_lazy(path_to_mtime, file_path, &:calendar.local_time/0)
+          Map.get_lazy(path_to_mtime, file_path, &:calendar.universal_time/0)
 
         hms =
           if path == file_path do
