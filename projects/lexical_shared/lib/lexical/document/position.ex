@@ -12,20 +12,31 @@ defmodule Lexical.Document.Position do
   the position: `%Lexical.Document.Position{line: 1, character: 1}` starts before the "H" in "Hello"
   """
 
-  defstruct [:line, :character]
+  alias Lexical.Document
+
+  defstruct [:line, :character, valid?: false, context_line: nil]
 
   @type line :: non_neg_integer()
   @type character :: non_neg_integer()
 
   @type t :: %__MODULE__{
           line: line(),
-          character: character()
+          character: character(),
+          context_line: Document.Line.t(),
+          valid?: boolean()
         }
 
   use Lexical.StructAccess
 
-  @spec new(line(), character()) :: t
-  def new(line, character) when is_number(line) and is_number(character) do
-    %__MODULE__{line: line, character: character}
+  @spec new(Document.t(), line(), character()) :: t
+  def new(%Document{} = document, line, character)
+      when is_number(line) and is_number(character) do
+    case Document.fetch_line_at(document, line) do
+      {:ok, context_line} ->
+        %__MODULE__{line: line, character: character, context_line: context_line, valid?: true}
+
+      :error ->
+        %__MODULE__{line: line, character: character}
+    end
   end
 end
