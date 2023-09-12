@@ -1,6 +1,13 @@
 # Used by "mix format"
 current_directory = Path.dirname(__ENV__.file)
 
+import_deps =
+  if Mix.env() == :test do
+    [:lexical_test, :common]
+  else
+    [:common]
+  end
+
 impossible_to_format = [
   Path.join([
     current_directory,
@@ -18,7 +25,7 @@ locals_without_parens = [with_progress: 2, with_progress: 3]
 [
   locals_without_parens: locals_without_parens,
   export: [locals_without_parens: locals_without_parens],
-  import_deps: [:common],
+  import_deps: import_deps,
   inputs:
     Enum.flat_map(
       [
