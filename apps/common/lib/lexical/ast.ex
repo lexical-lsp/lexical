@@ -396,7 +396,8 @@ defmodule Lexical.Ast do
 
   @spec expand_aliases(alias_segments() | module(), Document.t(), Macro.t(), Position.t()) ::
           {:ok, module()} | :error
-  def expand_aliases(module, %Document{} = document, quoted_document, %Position{} = position) do
+  def expand_aliases(module, %Document{} = document, quoted_document, %Position{} = position)
+      when is_atom(module) and not is_nil(module) do
     module
     |> Module.split()
     |> Enum.map(&String.to_atom/1)

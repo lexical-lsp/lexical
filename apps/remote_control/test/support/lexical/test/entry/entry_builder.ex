@@ -1,8 +1,9 @@
 defmodule Lexical.Test.Entry.Builder do
-  alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.VM.Versions
+
+  import Lexical.Test.PositionSupport
 
   def entry(fields \\ []) do
     versions = Versions.current()
@@ -33,6 +34,6 @@ defmodule Lexical.Test.Entry.Builder do
   end
 
   defp range(start_line, start_column, end_line, end_column) do
-    Range.new(Position.new(start_line, start_column), Position.new(end_line, end_column))
+    Range.new(position(start_line, start_column), position(end_line, end_column))
   end
 end

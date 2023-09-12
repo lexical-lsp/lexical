@@ -1,10 +1,10 @@
 defmodule Lexical.RemoteControl.CodeMod.DiffTest do
+  alias Lexical.Document
   alias Lexical.Document.Edit
-  alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeMod.Diff
 
-  import Diff
+  import Lexical.Test.PositionSupport
 
   use Lexical.Test.CodeMod.Case
 
@@ -12,8 +12,8 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
     Edit.new(
       replacement,
       Range.new(
-        Position.new(start_line, start_code_unit),
-        Position.new(end_line, end_code_unit)
+        position(start_line, start_code_unit),
+        position(end_line, end_code_unit)
       )
     )
   end
@@ -26,6 +26,11 @@ defmodule Lexical.RemoteControl.CodeMod.DiffTest do
   def assert_edited(initial, final) do
     assert {:ok, edited} = modify(initial, result: final, convert_to_ast: false)
     assert edited == final
+  end
+
+  defp diff(original, modified) do
+    document = Document.new("file://file.ex", original, 0)
+    Diff.diff(document, modified)
   end
 
   describe "single line ascii diffs" do
