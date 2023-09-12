@@ -88,7 +88,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
     } do
       path_to_mtime = Map.new(entries, & &1.updated_at)
       [entry | _] = entries
-      old_mtime = entry.updated_at
+      {{year, month, day}, hms} = entry.updated_at
+      old_mtime = {{year - 1, month, day}, hms}
 
       patch(Indexer, :stat, fn path ->
         {ymd, {hour, minute, second}} =
