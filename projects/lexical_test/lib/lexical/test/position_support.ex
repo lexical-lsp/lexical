@@ -36,7 +36,13 @@ defmodule Lexical.Test.PositionSupport do
   end
 
   def normalize(%Position{} = position) do
-    %Position{position | context_line: nil, valid?: nil}
+    %Position{
+      position
+      | context_line: nil,
+        valid?: nil,
+        document_line_count: nil,
+        starting_index: nil
+    }
   end
 
   def do_normalize(thing) do

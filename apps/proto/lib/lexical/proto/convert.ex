@@ -3,9 +3,7 @@ defmodule Lexical.Proto.Convert do
   alias Lexical.Document
 
   def to_lsp(%_{result: result} = response) do
-    context_document = Document.Container.context_document(result, nil)
-
-    case Convertible.to_lsp(result, context_document) do
+    case Convertible.to_lsp(result) do
       {:ok, converted} ->
         {:ok, Map.put(response, :result, converted)}
 
@@ -15,8 +13,7 @@ defmodule Lexical.Proto.Convert do
   end
 
   def to_lsp(other) do
-    context_document = Document.Container.context_document(other, nil)
-    Convertible.to_lsp(other, context_document)
+    Convertible.to_lsp(other)
   end
 
   def to_native(%{lsp: request_or_notification} = original_request) do

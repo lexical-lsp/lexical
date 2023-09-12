@@ -83,31 +83,27 @@ defmodule Lexical.Protocol.Conversions do
     {:ok, range}
   end
 
-  def to_lsp(%ElixirRange{} = ex_range, %Document{} = doc) do
-    with {:ok, start_pos} <- to_lsp(ex_range.start, doc.lines),
-         {:ok, end_pos} <- to_lsp(ex_range.end, doc.lines) do
-      {:ok, %LSRange{start: start_pos, end: end_pos}}
-    end
-  end
-
-  def to_lsp(%LSRange{start: %LSPosition{}, end: %LSPosition{}} = ls_range, _) do
+  def to_lsp(%LSRange{start: %LSPosition{}, end: %LSPosition{}} = ls_range) do
     {:ok, ls_range}
   end
 
-  def to_lsp(%LSRange{} = ls_range, %Document{} = document) do
-    with {:ok, start_pos} <- to_lsp(ls_range.start, document),
-         {:ok, end_pos} <- to_lsp(ls_range.end, document) do
+  def to_lsp(%LSRange{} = ls_range) do
+    with {:ok, start_pos} <- to_lsp(ls_range.start),
+         {:ok, end_pos} <- to_lsp(ls_range.end) do
       {:ok, LSRange.new(start: start_pos, end: end_pos)}
     end
   end
 
-  def to_lsp(%ElixirPosition{} = position, %Document{} = document) do
-    to_lsp(position, document.lines)
+  def to_lsp(%ElixirRange{} = ex_range) do
+    with {:ok, start_pos} <- to_lsp(ex_range.start),
+         {:ok, end_pos} <- to_lsp(ex_range.end) do
+      {:ok, %LSRange{start: start_pos, end: end_pos}}
+    end
   end
 
-  def to_lsp(%ElixirPosition{} = position, %Lines{} = lines) do
+  def to_lsp(%ElixirPosition{} = position) do
     elixir_character = position.character
-    line_count = Lines.size(lines)
+    line_count = position.document_line_count
     document_line_number = Math.clamp(position.line, 1, line_count)
 
     cond do
@@ -121,12 +117,11 @@ defmodule Lexical.Protocol.Conversions do
         {:ok, LSPosition.new(line: line_count, character: 0)}
 
       true ->
-        with {:ok, line} <- Lines.fetch_line(lines, position.line),
-             {:ok, lsp_character} <- extract_lsp_character(position, line) do
+        with {:ok, lsp_character} <- extract_lsp_character(position) do
           ls_pos =
             LSPosition.new(
               character: lsp_character,
-              line: position.line - lines.starting_index
+              line: position.line - position.starting_index
             )
 
           {:ok, ls_pos}
@@ -134,18 +129,20 @@ defmodule Lexical.Protocol.Conversions do
     end
   end
 
-  def to_lsp(%LSPosition{} = position, _) do
+  def to_lsp(%LSPosition{} = position) do
     {:ok, position}
   end
 
   # Private
 
-  defp extract_lsp_character(%ElixirPosition{} = position, line(ascii?: true, text: text)) do
+  defp extract_lsp_character(
+         %ElixirPosition{context_line: line(ascii?: true, text: text)} = position
+       ) do
     character = min(position.character - 1, byte_size(text))
     {:ok, character}
   end
 
-  defp extract_lsp_character(%ElixirPosition{} = position, line(text: utf8_text)) do
+  defp extract_lsp_character(%ElixirPosition{context_line: line(text: utf8_text)} = position) do
     with {:ok, code_unit} <- CodeUnit.to_utf16(utf8_text, position.character - 1) do
       character = min(code_unit, CodeUnit.count(:utf16, utf8_text))
       {:ok, character}

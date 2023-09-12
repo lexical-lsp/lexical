@@ -4,8 +4,8 @@ defimpl Lexical.Convertible, for: Lexical.Protocol.Types.Location do
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types
 
-  def to_lsp(%Types.Location{} = location, context_document) do
-    with {:ok, range} <- Conversions.to_lsp(location.range, context_document) do
+  def to_lsp(%Types.Location{} = location) do
+    with {:ok, range} <- Conversions.to_lsp(location.range) do
       {:ok, %Types.Location{location | range: range}}
     end
   end

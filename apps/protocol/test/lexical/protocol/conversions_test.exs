@@ -69,31 +69,31 @@ defmodule Lexical.Protocol.ConversionsTest do
   describe "to_lsp/2 for positions" do
     test "empty" do
       doc = doc("")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 1), doc)
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 1))
       assert %LSPosition{line: 0, character: 0} == pos
     end
 
     test "single line first char" do
       doc = doc("abcde")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 1), doc)
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 1))
       assert %LSPosition{line: 0, character: 0} == pos
     end
 
     test "single line" do
       doc = doc("abcde")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 2), doc)
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 2))
       assert %LSPosition{line: 0, character: 1} == pos
     end
 
     test "single line utf8" do
       doc = doc("🏳️‍🌈abcde")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 15), doc)
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 15))
       assert %LSPosition{character: 6, line: 0} == pos
     end
 
     test "multi line" do
       doc = doc("abcde\n1234")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 2, 2), doc)
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 2, 2))
       assert %LSPosition{character: 1, line: 1} == pos
     end
   end

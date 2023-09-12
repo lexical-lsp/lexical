@@ -8,9 +8,8 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
   alias Lexical.Protocol.Types
   alias Lexical.Text
 
-  def to_lsp(%Diagnostic.Result{} = diagnostic, _context_document) do
-    with {:ok, document} <- Document.Store.open_temporary(diagnostic.uri),
-         {:ok, lsp_range} <- position_to_range(document, diagnostic.position) do
+  def to_lsp(%Diagnostic.Result{} = diagnostic) do
+    with {:ok, lsp_range} <- lsp_range(diagnostic) do
       proto_diagnostic = %Types.Diagnostic{
         message: diagnostic.message,
         range: lsp_range,
@@ -26,6 +25,28 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
     {:ok, diagnostic}
   end
 
+  defp lsp_range(%Diagnostic.Result{position: %Position{} = position}) do
+    with {:ok, lsp_start_pos} <- Conversions.to_lsp(position) do
+      range =
+        Types.Range.new(
+          start: lsp_start_pos,
+          end: Types.Position.new(line: lsp_start_pos.line + 1, character: 0)
+        )
+
+      {:ok, range}
+    end
+  end
+
+  defp lsp_range(%Diagnostic.Result{position: %Range{} = range}) do
+    Conversions.to_lsp(range)
+  end
+
+  defp lsp_range(%Diagnostic.Result{} = diagnostic) do
+    with {:ok, document} <- Document.Store.open_temporary(diagnostic.uri) do
+      position_to_range(document, diagnostic.position)
+    end
+  end
+
   defp position_to_range(%Document{} = document, {start_line, start_column, end_line, end_column}) do
     with {:ok, start_pos} <- position_to_range(document, {start_line, start_column}),
          {:ok, end_pos} <- position_to_range(document, {end_line, end_column}) do
@@ -39,7 +60,7 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
 
     document
     |> to_lexical_range(line_number, column)
-    |> Conversions.to_lsp(document)
+    |> Conversions.to_lsp()
   end
 
   defp position_to_range(document, line_number) when is_integer(line_number) do
@@ -50,23 +71,7 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
 
       document
       |> to_lexical_range(line_number, column)
-      |> Conversions.to_lsp(document)
-    end
-  end
-
-  defp position_to_range(document, %Document.Range{} = range) do
-    Conversions.to_lsp(range, document)
-  end
-
-  defp position_to_range(document, %Document.Position{} = position) do
-    with {:ok, lsp_start_pos} <- Conversions.to_lsp(position, document) do
-      range =
-        Types.Range.new(
-          start: lsp_start_pos,
-          end: Types.Position.new(line: lsp_start_pos.line + 1, character: 0)
-        )
-
-      {:ok, range}
+      |> Conversions.to_lsp()
     end
   end
 

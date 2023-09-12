@@ -16,8 +16,7 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
       defoverridable open_file_contents: 0
 
       def to_lsp(convertible, uri) do
-        {:ok, doc} = Document.Store.fetch(uri)
-        Convertible.to_lsp(convertible, doc)
+        Convertible.to_lsp(convertible)
       end
 
       def to_native(converible, uri) do

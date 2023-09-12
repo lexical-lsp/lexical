@@ -15,7 +15,14 @@ defmodule Lexical.Document.Position do
   alias Lexical.Document
   alias Lexical.Document.Lines
 
-  defstruct [:line, :character, valid?: false, context_line: nil]
+  defstruct [
+    :line,
+    :character,
+    valid?: false,
+    context_line: nil,
+    document_line_count: 0,
+    starting_index: 1
+  ]
 
   @type line :: non_neg_integer()
   @type character :: non_neg_integer()
@@ -25,7 +32,9 @@ defmodule Lexical.Document.Position do
           line: line(),
           character: character(),
           context_line: Document.Line.t(),
-          valid?: boolean()
+          valid?: boolean(),
+          document_line_count: non_neg_integer(),
+          starting_index: non_neg_integer()
         }
 
   use Lexical.StructAccess
@@ -38,12 +47,27 @@ defmodule Lexical.Document.Position do
 
   def new(%Document.Lines{} = lines, line, character)
       when is_number(line) and is_number(character) do
+    line_count = Document.Lines.size(lines)
+    starting_index = lines.starting_index
+
     case Lines.fetch_line(lines, line) do
       {:ok, context_line} ->
-        %__MODULE__{line: line, character: character, context_line: context_line, valid?: true}
+        %__MODULE__{
+          character: character,
+          context_line: context_line,
+          document_line_count: line_count,
+          line: line,
+          starting_index: starting_index,
+          valid?: true
+        }
 
       :error ->
-        %__MODULE__{line: line, character: character}
+        %__MODULE__{
+          line: line,
+          character: character,
+          document_line_count: line_count,
+          starting_index: starting_index
+        }
     end
   end
 end
