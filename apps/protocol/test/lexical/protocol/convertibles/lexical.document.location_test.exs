@@ -4,8 +4,8 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
-    test "converts a location with a native range", %{uri: uri} do
-      location = Document.Location.new(valid_range(:native), uri)
+    test "converts a location with a native range", %{uri: uri, document: document} do
+      location = Document.Location.new(valid_range(:native, document), uri)
 
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == uri
@@ -15,7 +15,7 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
     end
 
     test "converts a location with a source file", %{uri: uri, document: document} do
-      location = Document.Location.new(valid_range(:native), document)
+      location = Document.Location.new(valid_range(:native, document), document)
 
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == document.uri
@@ -24,11 +24,11 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
       assert %Types.Position{} = converted.range.end
     end
 
-    test "uses the location's uri", %{uri: uri} do
+    test "uses the location's uri", %{uri: uri, document: document} do
       other_uri = "file:///other.ex"
       {:ok, _, _doc} = open_file(other_uri, "goodbye")
 
-      location = Document.Location.new(valid_range(:native), other_uri)
+      location = Document.Location.new(valid_range(:native, document), other_uri)
       assert {:ok, converted} = to_lsp(location, uri)
       assert converted.uri == other_uri
     end
@@ -37,8 +37,8 @@ defmodule Lexical.Protocol.Convertibles.LocationTest do
   describe "to_native/2" do
     setup [:with_an_open_file]
 
-    test "leaves the location alone", %{uri: uri} do
-      location = Document.Location.new(valid_range(:native), uri)
+    test "leaves the location alone", %{uri: uri, document: document} do
+      location = Document.Location.new(valid_range(:native, document), uri)
 
       assert {:ok, converted} = to_native(location, uri)
       assert location == converted

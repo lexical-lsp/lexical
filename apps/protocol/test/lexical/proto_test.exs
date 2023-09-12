@@ -335,8 +335,8 @@ defmodule Lexical.ProtoTest do
     file_uri = "file:///file.ex"
     {:ok, _} = start_supervised(Document.Store)
     Document.Store.open(file_uri, document, 1)
-
-    {:ok, uri: file_uri}
+    {:ok, document} = Document.Store.fetch(file_uri)
+    {:ok, uri: file_uri, document: document}
   end
 
   describe "notifications" do
@@ -601,8 +601,8 @@ defmodule Lexical.ProtoTest do
 
       assert req.range ==
                Document.Range.new(
-                 Document.Position.new(1, 1),
-                 Document.Position.new(1, 6)
+                 Document.Position.new(ctx.document, 1, 1),
+                 Document.Position.new(ctx.document, 1, 6)
                )
     end
   end

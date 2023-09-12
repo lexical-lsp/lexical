@@ -4,8 +4,8 @@ defmodule Lexical.Protocol.Types.Convertibles.PositionTest do
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
-    test "converts native position", %{uri: uri} do
-      native_pos = valid_position(:native)
+    test "converts native position", %{uri: uri, document: document} do
+      native_pos = valid_position(:native, document)
       assert {:ok, %Types.Position{}} = to_lsp(native_pos, uri)
     end
 
@@ -25,8 +25,8 @@ defmodule Lexical.Protocol.Types.Convertibles.PositionTest do
       assert {:ok, %Document.Position{}} = to_native(proto_range, uri)
     end
 
-    test "leaves native ranges alone", %{uri: uri} do
-      native_range = valid_range(:native)
+    test "leaves native ranges alone", %{uri: uri, document: document} do
+      native_range = valid_range(:native, document)
       assert {:ok, ^native_range} = to_native(native_range, uri)
     end
   end

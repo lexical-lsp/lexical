@@ -53,22 +53,22 @@ defmodule Lexical.Protocol.Conversions do
       document_line_number == line_count and ls_character == 0 ->
         # allow a line one more than the document size, as long as the character is 0.
         # that means we're operating on the last line of the document
-        {:ok, ElixirPosition.new(document_line_number, 1)}
+        {:ok, ElixirPosition.new(lines, document_line_number, 1)}
 
       position.line >= line_count ->
         # they've specified something outside of the document clamp it down so they can append at the
         # end
-        {:ok, ElixirPosition.new(document_line_number, 1)}
+        {:ok, ElixirPosition.new(lines, document_line_number, 1)}
 
       true ->
         with {:ok, line} <- Lines.fetch_line(lines, document_line_number),
              {:ok, elixir_character} <- extract_elixir_character(position, line) do
-          {:ok, ElixirPosition.new(document_line_number, elixir_character)}
+          {:ok, ElixirPosition.new(lines, document_line_number, elixir_character)}
         end
     end
   end
 
-  def to_elixir(%{range: %{start: start_pos, end: end_pos}}, _document) do
+  def to_elixir(%{range: %{start: start_pos, end: end_pos}}, document) do
     # this is actually an elixir sense range... note that it's a bare map with
     # column keys rather than character keys.
     %{line: start_line, column: start_col} = start_pos
@@ -76,8 +76,8 @@ defmodule Lexical.Protocol.Conversions do
 
     range =
       ElixirRange.new(
-        ElixirPosition.new(start_line, start_col),
-        ElixirPosition.new(end_line, end_col)
+        ElixirPosition.new(document, start_line, start_col),
+        ElixirPosition.new(document, end_line, end_col)
       )
 
     {:ok, range}

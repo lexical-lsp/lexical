@@ -15,9 +15,9 @@ defmodule Lexical.Protocol.ResponseTest do
 
     file_uri = "file:///file.ex"
     {:ok, _} = start_supervised(Document.Store)
-    Document.Store.open(file_uri, document, 1)
-
-    {:ok, uri: file_uri}
+    :ok = Document.Store.open(file_uri, document, 1)
+    {:ok, document} = Document.Store.fetch(file_uri)
+    {:ok, uri: file_uri, document: document}
   end
 
   describe "converting responses" do
@@ -37,10 +37,10 @@ defmodule Lexical.Protocol.ResponseTest do
       defresponse optional(TextDocumentAndPosition)
     end
 
-    test "positions are converted", %{uri: file_uri} do
+    test "positions are converted", %{uri: file_uri, document: document} do
       identifier = Types.TextDocument.Identifier.new(uri: file_uri)
 
-      elixir_position = Document.Position.new(2, 2)
+      elixir_position = Document.Position.new(document, 2, 2)
       body = TextDocumentAndPosition.new(text_document: identifier, placement: elixir_position)
       response = PositionContainer.new(15, body)
 
@@ -57,14 +57,14 @@ defmodule Lexical.Protocol.ResponseTest do
       defresponse list_of(Types.Location)
     end
 
-    test "locations are converted", %{uri: file_uri} do
+    test "locations are converted", %{uri: file_uri, document: document} do
       location =
         Types.Location.new(
           uri: file_uri,
           range:
             Document.Range.new(
-              Document.Position.new(2, 3),
-              Document.Position.new(2, 5)
+              Document.Position.new(document, 2, 3),
+              Document.Position.new(document, 2, 5)
             )
         )
 

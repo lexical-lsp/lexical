@@ -5,7 +5,7 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
   use ExUnit.CaseTemplate
 
   using do
-    quote do
+    quote location: :keep do
       alias Lexical.Protocol.Types
       use Lexical.Test.DocumentSupport
 
@@ -30,8 +30,8 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
         {:ok, document: document, uri: uri}
       end
 
-      def valid_range(:native) do
-        start_pos = end_pos = valid_position(:native)
+      def valid_range(:native, document) do
+        start_pos = end_pos = valid_position(:native, document)
         range(:native, start_pos, end_pos)
       end
 
@@ -48,16 +48,16 @@ defmodule Lexical.Test.Protocol.ConvertibleSupport do
         Types.Range.new(start: start_pos, end: end_pos)
       end
 
-      def valid_position(:native) do
-        position(:native, 1, 1)
+      def valid_position(:native, document) do
+        position(:native, document, 1, 1)
       end
 
       def valid_position(:lsp) do
         position(:lsp, 0, 0)
       end
 
-      def position(:native, line, column) do
-        Document.Position.new(line, column)
+      def position(:native, document, line, column) do
+        Document.Position.new(document, line, column)
       end
 
       def position(:lsp, line, character) do

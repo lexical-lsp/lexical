@@ -4,8 +4,9 @@ defmodule Lexical.Protocol.Convertibles.RangeTest do
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
-    test "converts ranges", %{uri: uri} do
-      native_range = range(:native, position(:native, 1, 1), position(:native, 1, 3))
+    test "converts ranges", %{uri: uri, document: document} do
+      native_range =
+        range(:native, position(:native, document, 1, 1), position(:native, document, 1, 3))
 
       assert {:ok, %Types.Range{} = range} = to_lsp(native_range, uri)
       assert %Types.Position{} = range.start
@@ -18,8 +19,8 @@ defmodule Lexical.Protocol.Convertibles.RangeTest do
       assert {:ok, ^lsp_range} = to_lsp(lsp_range, uri)
     end
 
-    test "converts native positions inside lsp ranges", %{uri: uri} do
-      lsp_range = range(:lsp, valid_position(:native), valid_position(:lsp))
+    test "converts native positions inside lsp ranges", %{uri: uri, document: document} do
+      lsp_range = range(:lsp, valid_position(:native, document), valid_position(:lsp))
 
       assert %Document.Position{} = lsp_range.start
 
@@ -41,8 +42,8 @@ defmodule Lexical.Protocol.Convertibles.RangeTest do
       assert %Document.Position{} = range.end
     end
 
-    test "leaves native ranges alone", %{uri: uri} do
-      native_range = valid_range(:native)
+    test "leaves native ranges alone", %{uri: uri, document: document} do
+      native_range = valid_range(:native, document)
       assert {:ok, ^native_range} = to_native(native_range, uri)
     end
   end
