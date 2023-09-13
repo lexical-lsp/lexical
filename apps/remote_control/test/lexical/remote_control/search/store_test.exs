@@ -12,14 +12,25 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
   setup do
     project = project()
+    # These test cases require an clean slate going into them
+    # so we should remove the indexes once when the tests start,
+    # and again when tests end, so the next test has a clean slate.
+    # Removing the index at the end will also let other test cases
+    # start with a clean slate.
+    delete_indexes(project)
 
     on_exit(fn ->
-      project
-      |> Store.State.index_path()
-      |> File.rm()
+      delete_indexes(project)
     end)
 
     {:ok, project: project}
+  end
+
+  def delete_indexes(project) do
+    project
+    |> Store.State.index_path()
+    |> Path.dirname()
+    |> File.rm_rf()
   end
 
   def default_create(_project) do
