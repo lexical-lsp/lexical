@@ -113,6 +113,12 @@ defmodule Lexical.Server.IEx.Helpers do
     end)
   end
 
+  def current_project do
+    [prefix, _] = Node.self() |> to_string() |> String.split("@")
+    [_, project_name, entropy] = String.split(prefix, "-")
+    %{ensure_project(project_name) | entropy: entropy}
+  end
+
   def stop_project(project) do
     project
     |> ensure_project()
