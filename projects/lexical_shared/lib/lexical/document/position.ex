@@ -29,12 +29,12 @@ defmodule Lexical.Document.Position do
   @type line_container :: Document.t() | Lines.t()
 
   @type t :: %__MODULE__{
-          line: line(),
           character: character(),
-          context_line: Document.Line.t(),
-          valid?: boolean(),
+          context_line: Document.Line.t() | nil,
           document_line_count: non_neg_integer(),
-          starting_index: non_neg_integer()
+          line: line(),
+          starting_index: non_neg_integer(),
+          valid?: boolean()
         }
 
   use Lexical.StructAccess
