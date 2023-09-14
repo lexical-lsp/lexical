@@ -28,8 +28,19 @@ defmodule Mix.Tasks.Lsp.DataModel.TypeAlias do
     :skip
   end
 
-  def build_definition(%__MODULE__{type: %Base{}}, _, _, _) do
-    :skip
+  def build_definition(%__MODULE__{type: %Base{}} = type_alias, %Mappings{} = mappings, _, _) do
+    with {:ok, destination_module} <- Mappings.fetch_destination_module(mappings, type_alias.name) do
+      type = Base.to_typespec(type_alias.type)
+
+      ast =
+        quote do
+          defmodule unquote(destination_module) do
+            @type t :: unquote(type)
+          end
+        end
+
+      {:ok, ast}
+    end
   end
 
   def build_definition(

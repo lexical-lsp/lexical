@@ -1,6 +1,26 @@
 defmodule Lexical.Proto.Enum do
+  alias Lexical.Proto.Macros.Typespec
+
   defmacro defenum(opts) do
+    names =
+      opts
+      |> Keyword.keys()
+      |> Enum.map(&{:literal, [], &1})
+
+    value_type =
+      opts
+      |> Keyword.values()
+      |> List.first()
+      |> Macro.expand(__CALLER__)
+      |> determine_type()
+
+    name_type = Typespec.choice(names, __CALLER__)
+
     quote location: :keep do
+      @type name :: unquote(name_type)
+      @type value :: unquote(value_type)
+      @type t :: name() | value()
+
       unquote(parse_functions(opts))
 
       def parse(unknown) do
@@ -22,6 +42,18 @@ defmodule Lexical.Proto.Enum do
       def __meta__(:type) do
         :enum
       end
+    end
+  end
+
+  defp determine_type(i) when is_integer(i) do
+    quote do
+      integer()
+    end
+  end
+
+  defp determine_type(s) when is_binary(s) do
+    quote do
+      String.t()
     end
   end
 

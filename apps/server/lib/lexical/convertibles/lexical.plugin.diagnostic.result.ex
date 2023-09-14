@@ -50,7 +50,7 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
   defp position_to_range(%Document{} = document, {start_line, start_column, end_line, end_column}) do
     with {:ok, start_pos} <- position_to_range(document, {start_line, start_column}),
          {:ok, end_pos} <- position_to_range(document, {end_line, end_column}) do
-      {:ok, Document.Range.new(start_pos, end_pos)}
+      {:ok, Types.Range.new(start: start_pos, end: end_pos)}
     end
   end
 

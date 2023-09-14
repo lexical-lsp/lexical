@@ -1,12 +1,15 @@
 defmodule Lexical.Proto.Alias do
   alias Lexical.Proto.CompileMetadata
   alias Lexical.Proto.Field
+  alias Lexical.Proto.Macros.Typespec
 
   defmacro defalias(alias_definition) do
     caller_module = __CALLER__.module
     CompileMetadata.add_type_alias_module(caller_module)
 
     quote location: :keep do
+      @type t :: unquote(Typespec.typespec(alias_definition, __CALLER__))
+
       def parse(lsp_map) do
         Field.extract(unquote(alias_definition), :alias, lsp_map)
       end

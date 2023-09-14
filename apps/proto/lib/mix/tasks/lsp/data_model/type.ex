@@ -29,6 +29,19 @@ defmodule Mix.Tasks.Lsp.DataModel.Type do
       end
     end
 
+    def to_typespec(%__MODULE__{} = type) do
+      case type.type_name do
+        "string" -> quote(do: String.t())
+        "integer" -> quote(do: integer())
+        "uinteger" -> quote(do: integer())
+        "boolean" -> quote(do: boolean())
+        "null" -> quote(do: nil)
+        "DocumentUri" -> quote(do: String.t())
+        "decimal" -> quote(do: float())
+        "URI" -> quote(do: Lexical.uri())
+      end
+    end
+
     def references(%__MODULE__{}) do
       []
     end
