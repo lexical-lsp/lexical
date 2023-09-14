@@ -356,6 +356,28 @@ defmodule Lexical.Ast.AliasesTest do
       refute aliases[InDsl]
     end
 
+    test "sibling modules with nested blocks" do
+      {:ok, aliases} =
+        ~q[
+      defmodule First do
+        defstuff do
+          field :x
+        end
+      end
+
+      defmodule Second do
+        defstuff do
+          field :y
+        end
+      end
+      |
+      ]
+        |> aliases_at_cursor()
+
+      assert aliases[:First] == First
+      assert aliases[:Second] == Second
+    end
+
     # Note: it looks like Code.container_cursor_to_quoted doesn't work with
     # anonymous functions
     @tag :skip
