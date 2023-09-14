@@ -62,7 +62,7 @@ defmodule Lexical.Proto.Macros.Typespec do
     quote(do: float())
   end
 
-  defp do_typespec({:__MODULE__, [line: 740], nil}, env) do
+  defp do_typespec({:__MODULE__, _, nil}, env) do
     env.module
   end
 
