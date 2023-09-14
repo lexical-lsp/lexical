@@ -20,9 +20,7 @@ defmodule Lexical.Proto.Macros.Typespec do
   end
 
   def typespec(typespec, env) do
-    quote do
-      unquote(do_typespec(typespec, env))
-    end
+    do_typespec(typespec, env)
   end
 
   def choice(options, env) do
@@ -112,9 +110,7 @@ defmodule Lexical.Proto.Macros.Typespec do
   end
 
   defp do_typespec({:literal, _, value}, _env) when is_atom(value) do
-    quote do
-      unquote(value)
-    end
+    value
   end
 
   defp do_typespec({:literal, _, [value]}, _env) do
@@ -126,14 +122,9 @@ defmodule Lexical.Proto.Macros.Typespec do
   end
 
   defp do_typespec({:one_of, _, [type_list]}, env) do
-    refined =
-      type_list
-      |> Enum.map(&do_typespec(&1, env))
-      |> or_types()
-
-    quote do
-      unquote(refined)
-    end
+    type_list
+    |> Enum.map(&do_typespec(&1, env))
+    |> or_types()
   end
 
   defp do_typespec({:list_of, _, items}, env) do
@@ -175,9 +166,7 @@ defmodule Lexical.Proto.Macros.Typespec do
   defp or_types(list_of_types) do
     Enum.reduce(list_of_types, nil, fn
       type, nil ->
-        quote do
-          unquote(type)
-        end
+        type
 
       type, acc ->
         quote do
