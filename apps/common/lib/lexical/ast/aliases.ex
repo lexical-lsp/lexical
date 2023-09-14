@@ -243,12 +243,13 @@ defmodule Lexical.Ast.Aliases do
       %__MODULE__{reducer | scopes: new_scopes}
     end
 
-    defp maybe_pop_scope(%__MODULE__{} = reducer, {_, metadata, _}) do
+    defp maybe_pop_scope(%__MODULE__{} = reducer, {_, metadata, _} = elem) do
       with {:ok, current_line} <- Keyword.fetch(metadata, :line),
            {:ok, current_column} <- Keyword.fetch(metadata, :column),
            [current_scope | scopes] <- reducer.scopes,
            true <- Scope.ended?(current_scope, {current_line, current_column}) do
-        current_scope.on_exit.(%__MODULE__{reducer | scopes: scopes})
+        popped_reducer = current_scope.on_exit.(%__MODULE__{reducer | scopes: scopes})
+        maybe_pop_scope(popped_reducer, elem)
       else
         _ ->
           reducer

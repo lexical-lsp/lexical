@@ -312,6 +312,41 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
       assert second.ref != first.ref
     end
+
+    test "aren't nested" do
+      {:ok, [first, second, third, fourth], _} =
+        ~q[
+          defmodule A.B.C do
+            defstruct do
+              field(:ok, :boolean)
+            end
+          end
+
+          defmodule D.E.F do
+            defstruct do
+              field(:ok, :boolean)
+            end
+          end
+
+          defmodule G.H.I do
+            defstruct do
+              field(:ok, :boolean)
+            end
+          end
+
+          defmodule J.K.L do
+            defstruct do
+              field(:ok, :boolean)
+            end
+          end
+        ]
+        |> index()
+
+      assert first.subject == A.B.C
+      assert second.subject == D.E.F
+      assert third.subject == G.H.I
+      assert fourth.subject == J.K.L
+    end
   end
 
   describe "nested modules" do
