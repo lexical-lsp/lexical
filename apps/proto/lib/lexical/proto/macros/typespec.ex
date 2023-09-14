@@ -62,6 +62,10 @@ defmodule Lexical.Proto.Macros.Typespec do
     quote(do: float())
   end
 
+  defp do_typespec({:__MODULE__, [line: 740], nil}, env) do
+    env.module
+  end
+
   defp do_typespec({:optional, _, [optional_type]}, env) do
     quote do
       unquote(do_typespec(optional_type, env)) | nil
@@ -107,14 +111,18 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  defp do_typespec({:literal, _, [value]}, _env) when is_binary(value) do
-    quote(do: String.t())
-  end
-
   defp do_typespec({:literal, _, value}, _env) when is_atom(value) do
     quote do
       unquote(value)
     end
+  end
+
+  defp do_typespec({:literal, _, [value]}, _env) do
+    literal_type(value)
+  end
+
+  defp do_typespec({:type_alias, _, [alias_dest]}, env) do
+    do_typespec(alias_dest, env)
   end
 
   defp do_typespec({:one_of, _, [type_list]}, env) do
@@ -136,6 +144,14 @@ defmodule Lexical.Proto.Macros.Typespec do
 
     quote do
       [unquote(refined)]
+    end
+  end
+
+  defp do_typespec({:tuple_of, _, [items]}, env) do
+    refined = Enum.map(items, &do_typespec(&1, env))
+
+    quote do
+      {unquote_splicing(refined)}
     end
   end
 
@@ -168,5 +184,30 @@ defmodule Lexical.Proto.Macros.Typespec do
           unquote(type) | unquote(acc)
         end
     end)
+  end
+
+  defp literal_type(thing) do
+    case thing do
+      string when is_binary(string) ->
+        quote(do: String.t())
+
+      integer when is_integer(integer) ->
+        quote(do: integer())
+
+      float when is_binary(float) ->
+        quote(do: float())
+
+      boolean when is_boolean(boolean) ->
+        quote(do: boolean())
+
+      atom when is_atom(atom) ->
+        atom
+
+      [] ->
+        quote(do: [])
+
+      [elem | _] ->
+        quote(do: [unquote(literal_type(elem))])
+    end
   end
 end

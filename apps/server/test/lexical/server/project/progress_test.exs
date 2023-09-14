@@ -55,7 +55,7 @@ defmodule Lexical.Server.Project.ProgressTest do
       RemoteControl.Api.broadcast(project, report_message)
       assert_receive {:transport, %Notifications.Progress{lsp: %{token: ^token, value: value}}}
 
-      assert value.kind == :report
+      assert value.kind == "report"
       assert value.message == "lib/file.ex"
       assert value.percentage == nil
       assert value.cancellable == nil
