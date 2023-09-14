@@ -3,7 +3,7 @@ defmodule Lexical.Proto.Macros.Typespec do
 
   def t([], _) do
     quote do
-      @type t :: %__MODULE__{}
+      %__MODULE__{}
     end
   end
 
@@ -15,13 +15,13 @@ defmodule Lexical.Proto.Macros.Typespec do
       end
 
     quote do
-      @type t :: %__MODULE__{unquote_splicing(typespecs)}
+      %__MODULE__{unquote_splicing(typespecs)}
     end
   end
 
   def t(typespec, env) do
     quote do
-      @type t :: unquote(typespec(typespec, env))
+      unquote(typespec(typespec, env))
     end
   end
 
@@ -29,20 +29,12 @@ defmodule Lexical.Proto.Macros.Typespec do
     typespec({:one_of, [], [options]}, env)
   end
 
-  def keyword_constructor_options(params, env, name \\ :option, name_plural \\ :options)
-
-  def keyword_constructor_options(opts, env, name, name_plural) do
-    option =
-      for {name, type} <- opts,
-          name != :.. do
-        {name, typespec(type, env)}
-      end
-      |> or_types()
-
-    quote do
-      @type unquote({name, [], Elixir}) :: unquote(option)
-      @type unquote({name_plural, [], Elixir}) :: [option]
+  def keyword_constructor_options(opts, env) do
+    for {name, type} <- opts,
+        name != :.. do
+      {name, typespec(type, env)}
     end
+    |> or_types()
   end
 
   defp typespec([], _env) do

@@ -25,7 +25,8 @@ defmodule Lexical.Proto.Macros.Struct do
     quote location: :keep do
       @enforce_keys unquote(required_keys)
       defstruct unquote(keys)
-      unquote(Typespec.keyword_constructor_options(opts, env, :option, :options))
+      @type option :: unquote(Typespec.keyword_constructor_options(opts, env))
+      @type options :: [option]
 
       @spec new() :: t()
       @spec new(options()) :: t()

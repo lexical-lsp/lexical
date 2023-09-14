@@ -8,7 +8,7 @@ defmodule Lexical.Proto.Alias do
     CompileMetadata.add_type_alias_module(caller_module)
 
     quote location: :keep do
-      unquote(Typespec.t(alias_definition, __CALLER__))
+      @type t :: unquote(Typespec.t(alias_definition, __CALLER__))
 
       def parse(lsp_map) do
         Field.extract(unquote(alias_definition), :alias, lsp_map)

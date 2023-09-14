@@ -17,10 +17,11 @@ defmodule Lexical.Proto.Macros.Message do
 
     quote do
       unquote(Struct.build(types, env))
-      unquote(Typespec.t())
       unquote(Access.build())
       unquote(parse_fn)
       unquote(Meta.build(types))
+
+      @type t :: unquote(Typespec.t())
 
       def method do
         unquote(method)

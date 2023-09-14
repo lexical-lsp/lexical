@@ -21,7 +21,9 @@ defmodule Lexical.Proto.Type do
       unquote(Inspect.build(caller_module))
       unquote(Access.build())
       unquote(Struct.build(types, __CALLER__))
-      unquote(Typespec.t(types, __CALLER__))
+
+      @type t :: unquote(Typespec.t(types, __CALLER__))
+
       unquote(Parse.build(types))
       unquote(Match.build(types, caller_module))
       unquote(Meta.build(types))
