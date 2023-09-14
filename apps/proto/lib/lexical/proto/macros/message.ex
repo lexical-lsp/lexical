@@ -9,15 +9,15 @@ defmodule Lexical.Proto.Macros.Message do
     Typespec
   }
 
-  def build(meta_type, method, types, param_names, opts \\ []) do
+  def build(meta_type, method, types, param_names, env, opts \\ []) do
     parse_fn =
       if Keyword.get(opts, :include_parse?, true) do
         Parse.build(types)
       end
 
     quote do
-      unquote(Struct.build(types))
-      unquote(Typespec.build())
+      unquote(Struct.build(types, env))
+      unquote(Typespec.t())
       unquote(Access.build())
       unquote(parse_fn)
       unquote(Meta.build(types))

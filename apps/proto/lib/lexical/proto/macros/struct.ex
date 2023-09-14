@@ -1,5 +1,7 @@
 defmodule Lexical.Proto.Macros.Struct do
-  def build(opts) do
+  alias Lexical.Proto.Macros.Typespec
+
+  def build(opts, env) do
     keys = Keyword.keys(opts)
     required_keys = required_keys(opts)
 
@@ -23,7 +25,10 @@ defmodule Lexical.Proto.Macros.Struct do
     quote location: :keep do
       @enforce_keys unquote(required_keys)
       defstruct unquote(keys)
+      unquote(Typespec.keyword_constructor_options(opts, env, :option, :options))
 
+      @spec new() :: t()
+      @spec new(options()) :: t()
       def new(opts \\ []) do
         struct!(__MODULE__, opts)
       end

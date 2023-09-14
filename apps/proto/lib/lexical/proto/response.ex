@@ -13,15 +13,15 @@ defmodule Lexical.Proto.Response do
 
     jsonrpc_types = [
       id: quote(do: optional(one_of([integer(), string()]))),
-      error: quote(do: optional(LspTypes.ResponseError)),
+      error: quote(do: optional(Lexical.Proto.LspTypes.ResponseError)),
       result: quote(do: optional(unquote(response_type)))
     ]
 
     quote location: :keep do
       alias Lexical.Proto.LspTypes
       unquote(Access.build())
-      unquote(Struct.build(jsonrpc_types))
-      unquote(Typespec.build())
+      unquote(Struct.build(jsonrpc_types, __CALLER__))
+      unquote(Typespec.t())
       unquote(Meta.build(jsonrpc_types))
 
       unquote(constructors())

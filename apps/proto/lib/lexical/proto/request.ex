@@ -35,9 +35,13 @@ defmodule Lexical.Proto.Request do
     param_names = Keyword.keys(types)
     lsp_module_name = Module.concat(caller.module, LSP)
 
+    Message.build({:request, :elixir}, method, elixir_types, param_names, caller,
+      include_parse?: false
+    )
+
     quote location: :keep do
       defmodule LSP do
-        unquote(Message.build({:request, :lsp}, method, lsp_types, param_names))
+        unquote(Message.build({:request, :lsp}, method, lsp_types, param_names, caller))
 
         def new(opts \\ []) do
           opts
@@ -50,7 +54,7 @@ defmodule Lexical.Proto.Request do
       alias Lexical.Protocol.Types
 
       unquote(
-        Message.build({:request, :elixir}, method, elixir_types, param_names,
+        Message.build({:request, :elixir}, method, elixir_types, param_names, caller,
           include_parse?: false
         )
       )

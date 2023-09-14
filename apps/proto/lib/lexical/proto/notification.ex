@@ -31,7 +31,7 @@ defmodule Lexical.Proto.Notification do
 
     quote location: :keep do
       defmodule LSP do
-        unquote(Message.build({:notification, :lsp}, method, lsp_types, param_names))
+        unquote(Message.build({:notification, :lsp}, method, lsp_types, param_names, caller))
 
         def new(opts \\ []) do
           opts
@@ -41,7 +41,7 @@ defmodule Lexical.Proto.Notification do
       end
 
       unquote(
-        Message.build({:notification, :elixir}, method, elixir_types, param_names,
+        Message.build({:notification, :elixir}, method, elixir_types, param_names, caller,
           include_parse?: false
         )
       )
