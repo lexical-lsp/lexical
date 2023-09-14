@@ -80,7 +80,7 @@ defmodule Lexical.Server.IEx.Helpers do
   def complete(project, %Document{} = source, line, character, context) do
     context =
       if is_nil(context) do
-        Completion.Context.new(trigger_kind: nil)
+        Completion.Context.new(trigger_kind: :trigger_character)
       else
         context
       end

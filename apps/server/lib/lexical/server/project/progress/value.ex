@@ -25,21 +25,21 @@ defmodule Lexical.Server.Project.Progress.Value do
   def to_protocol(%__MODULE__{kind: :begin} = value) do
     Notifications.Progress.new(
       token: value.token,
-      value: WorkDone.Progress.Begin.new(kind: value.kind, title: value.title)
+      value: WorkDone.Progress.Begin.new(kind: "begin", title: value.title)
     )
   end
 
   def to_protocol(%__MODULE__{kind: :report} = value) do
     Notifications.Progress.new(
       token: value.token,
-      value: WorkDone.Progress.Report.new(kind: value.kind, message: value.message)
+      value: WorkDone.Progress.Report.new(kind: "report", message: value.message)
     )
   end
 
   def to_protocol(%__MODULE__{kind: :end} = value) do
     Notifications.Progress.new(
       token: value.token,
-      value: WorkDone.Progress.End.new(kind: value.kind, message: value.message)
+      value: WorkDone.Progress.End.new(kind: "end", message: value.message)
     )
   end
 end

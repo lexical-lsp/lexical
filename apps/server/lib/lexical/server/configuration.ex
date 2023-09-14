@@ -1,11 +1,11 @@
 defmodule Lexical.Server.Configuration do
   alias Lexical.Project
-  alias Lexical.Proto.LspTypes.Registration
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Requests.RegisterCapability
   alias Lexical.Protocol.Types.ClientCapabilities
+  alias Lexical.Protocol.Types.Registration
   alias Lexical.Server.Configuration.Support
   alias Lexical.Server.Dialyzer
 
@@ -14,8 +14,13 @@ defmodule Lexical.Server.Configuration do
             additional_watched_extensions: nil,
             dialyzer_enabled?: false
 
-  @type t :: %__MODULE__{}
-  @dialyzer {:nowarn_function, maybe_enable_dialyzer: 2}
+  @type t :: %__MODULE__{
+          project: Project.t() | nil,
+          additional_watched_extensions: [String.t()] | nil,
+          dialyzer_enabled?: boolean()
+        }
+
+  @dialyzer {:nowarn_function, set_dialyzer_enabled: 2}
 
   @spec new(Lexical.uri(), map()) :: t
   def new(root_uri, %ClientCapabilities{} = client_capabilities) do
@@ -27,7 +32,6 @@ defmodule Lexical.Server.Configuration do
   @spec default(t | nil) ::
           {:ok, t}
           | {:ok, t, Requests.RegisterCapability.t()}
-          | {:restart, Logger.level(), String.t()}
   def default(nil) do
     {:ok, default_config()}
   end
@@ -39,7 +43,6 @@ defmodule Lexical.Server.Configuration do
   @spec on_change(t, DidChangeConfiguration.t()) ::
           {:ok, t}
           | {:ok, t, Requests.RegisterCapability.t()}
-          | {:restart, Logger.level(), String.t()}
   def on_change(%__MODULE__{} = old_config, :defaults) do
     apply_config_change(old_config, default_config())
   end
@@ -53,22 +56,20 @@ defmodule Lexical.Server.Configuration do
   end
 
   defp apply_config_change(%__MODULE__{} = old_config, %{} = settings) do
-    with {:ok, new_config} <- maybe_enable_dialyzer(old_config, settings) do
-      maybe_add_watched_extensions(new_config, settings)
-    end
+    old_config
+    |> set_dialyzer_enabled(settings)
+    |> maybe_add_watched_extensions(settings)
   end
 
-  defp maybe_enable_dialyzer(%__MODULE__{} = old_config, settings) do
+  defp set_dialyzer_enabled(%__MODULE__{} = old_config, settings) do
     enabled? =
-      case Dialyzer.check_support() do
-        :ok ->
-          Map.get(settings, "dialyzerEnabled", true)
-
-        _ ->
-          false
+      if Dialyzer.check_support() == :ok do
+        Map.get(settings, "dialyzerEnabled", true)
+      else
+        false
       end
 
-    {:ok, %__MODULE__{old_config | dialyzer_enabled?: enabled?}}
+    %__MODULE__{old_config | dialyzer_enabled?: enabled?}
   end
 
   defp maybe_add_watched_extensions(%__MODULE__{} = old_config, %{
