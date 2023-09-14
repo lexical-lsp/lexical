@@ -1,17 +1,17 @@
 defmodule Lexical.Proto.Macros.Typespec do
-  def t(opts \\ [], env \\ nil)
+  def typespec(opts \\ [], env \\ nil)
 
-  def t([], _) do
+  def typespec([], _) do
     quote do
       %__MODULE__{}
     end
   end
 
-  def t(opts, env) when is_list(opts) do
+  def typespec(opts, env) when is_list(opts) do
     typespecs =
       for {name, type} <- opts,
           name != :.. do
-        {name, typespec(type, env)}
+        {name, do_typespec(type, env)}
       end
 
     quote do
@@ -19,56 +19,56 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  def t(typespec, env) do
+  def typespec(typespec, env) do
     quote do
-      unquote(typespec(typespec, env))
+      unquote(do_typespec(typespec, env))
     end
   end
 
   def choice(options, env) do
-    typespec({:one_of, [], [options]}, env)
+    do_typespec({:one_of, [], [options]}, env)
   end
 
   def keyword_constructor_options(opts, env) do
     for {name, type} <- opts,
         name != :.. do
-      {name, typespec(type, env)}
+      {name, do_typespec(type, env)}
     end
     |> or_types()
   end
 
-  defp typespec([], _env) do
+  defp do_typespec([], _env) do
     # This is what's presented to typespec when a response has no results, as in the Shutdown response
     nil
   end
 
-  defp typespec(nil, _env) do
+  defp do_typespec(nil, _env) do
     quote(do: nil)
   end
 
-  defp typespec({:boolean, _, _}, _env) do
+  defp do_typespec({:boolean, _, _}, _env) do
     quote(do: boolean())
   end
 
-  defp typespec({:string, _, _}, _env) do
+  defp do_typespec({:string, _, _}, _env) do
     quote(do: String.t())
   end
 
-  defp typespec({:integer, _, _}, _env) do
+  defp do_typespec({:integer, _, _}, _env) do
     quote(do: integer())
   end
 
-  defp typespec({:float, _, _}, _env) do
+  defp do_typespec({:float, _, _}, _env) do
     quote(do: float())
   end
 
-  defp typespec({:optional, _, [optional_type]}, env) do
+  defp do_typespec({:optional, _, [optional_type]}, env) do
     quote do
-      unquote(typespec(optional_type, env)) | nil
+      unquote(do_typespec(optional_type, env)) | nil
     end
   end
 
-  defp typespec({:__aliases__, _, raw_alias} = aliased_module, env) do
+  defp do_typespec({:__aliases__, _, raw_alias} = aliased_module, env) do
     expanded_alias = Macro.expand(aliased_module, env)
 
     case List.last(raw_alias) do
@@ -107,20 +107,20 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  defp typespec({:literal, _, [value]}, _env) when is_binary(value) do
+  defp do_typespec({:literal, _, [value]}, _env) when is_binary(value) do
     quote(do: String.t())
   end
 
-  defp typespec({:literal, _, value}, _env) when is_atom(value) do
+  defp do_typespec({:literal, _, value}, _env) when is_atom(value) do
     quote do
       unquote(value)
     end
   end
 
-  defp typespec({:one_of, _, [type_list]}, env) do
+  defp do_typespec({:one_of, _, [type_list]}, env) do
     refined =
       type_list
-      |> Enum.map(&typespec(&1, env))
+      |> Enum.map(&do_typespec(&1, env))
       |> or_types()
 
     quote do
@@ -128,10 +128,10 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  defp typespec({:list_of, _, items}, env) do
+  defp do_typespec({:list_of, _, items}, env) do
     refined =
       items
-      |> Enum.map(&typespec(&1, env))
+      |> Enum.map(&do_typespec(&1, env))
       |> or_types()
 
     quote do
@@ -139,10 +139,10 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  defp typespec({:map_of, _, items}, env) do
+  defp do_typespec({:map_of, _, items}, env) do
     value_types =
       items
-      |> Enum.map(&typespec(&1, env))
+      |> Enum.map(&do_typespec(&1, env))
       |> or_types()
 
     quote do
@@ -150,7 +150,7 @@ defmodule Lexical.Proto.Macros.Typespec do
     end
   end
 
-  defp typespec({:any, _, _}, _env) do
+  defp do_typespec({:any, _, _}, _env) do
     quote do
       any()
     end

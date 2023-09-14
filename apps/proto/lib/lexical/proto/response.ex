@@ -21,7 +21,7 @@ defmodule Lexical.Proto.Response do
       alias Lexical.Proto.LspTypes
       unquote(Access.build())
       unquote(Struct.build(jsonrpc_types, __CALLER__))
-      @type t :: unquote(Typespec.t())
+      @type t :: unquote(Typespec.typespec())
       unquote(Meta.build(jsonrpc_types))
 
       unquote(constructors())

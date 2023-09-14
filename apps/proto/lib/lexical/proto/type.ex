@@ -22,7 +22,7 @@ defmodule Lexical.Proto.Type do
       unquote(Access.build())
       unquote(Struct.build(types, __CALLER__))
 
-      @type t :: unquote(Typespec.t(types, __CALLER__))
+      @type t :: unquote(Typespec.typespec(types, __CALLER__))
 
       unquote(Parse.build(types))
       unquote(Match.build(types, caller_module))
