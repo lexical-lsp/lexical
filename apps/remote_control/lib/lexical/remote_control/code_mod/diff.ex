@@ -1,21 +1,23 @@
 defmodule Lexical.RemoteControl.CodeMod.Diff do
   alias Lexical.CodeUnit
+  alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 
-  @spec diff(String.t(), String.t()) :: [Edit.t()]
-  def diff(source, dest) when is_binary(source) and is_binary(dest) do
-    source
+  @spec diff(Document.t(), String.t()) :: [Edit.t()]
+  def diff(%Document{} = document, dest) when is_binary(dest) do
+    document
+    |> Document.to_string()
     |> String.myers_difference(dest)
-    |> to_edits()
+    |> to_edits(document)
   end
 
-  defp to_edits(difference) do
+  defp to_edits(difference, %Document{} = document) do
     {_, {current_line, prev_lines}} =
       Enum.reduce(difference, {{starting_line(), starting_character()}, {[], []}}, fn
         {diff_type, diff_string}, {position, edits} ->
-          apply_diff(diff_type, position, diff_string, edits)
+          apply_diff(diff_type, position, diff_string, edits, document)
       end)
 
     [current_line | prev_lines]
@@ -57,19 +59,29 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
     [edit | edits]
   end
 
-  defp apply_diff(:eq, position, doc_string, edits) do
+  defp apply_diff(:eq, position, doc_string, edits, _document) do
     advance(doc_string, position, edits)
   end
 
-  defp apply_diff(:del, {line, code_unit} = position, change, edits) do
+  defp apply_diff(:del, {line, code_unit} = position, change, edits, document) do
     {after_pos, {current_line, prev_lines}} = advance(change, position, edits)
     {edit_end_line, edit_end_unit} = after_pos
-    current_line = [edit("", line, code_unit, edit_end_line, edit_end_unit) | current_line]
+
+    current_line = [
+      edit(document, "", line, code_unit, edit_end_line, edit_end_unit) | current_line
+    ]
+
     {after_pos, {current_line, prev_lines}}
   end
 
-  defp apply_diff(:ins, {line, code_unit} = position, change, {current_line, prev_lines}) do
-    current_line = [edit(change, line, code_unit, line, code_unit) | current_line]
+  defp apply_diff(
+         :ins,
+         {line, code_unit} = position,
+         change,
+         {current_line, prev_lines},
+         document
+       ) do
+    current_line = [edit(document, change, line, code_unit, line, code_unit) | current_line]
     {position, {current_line, prev_lines}}
   end
 
@@ -93,12 +105,13 @@ defmodule Lexical.RemoteControl.CodeMod.Diff do
     advance(rest, {line, unit + increment}, edits)
   end
 
-  defp edit(text, start_line, start_unit, end_line, end_unit) when is_binary(text) do
+  defp edit(document, text, start_line, start_unit, end_line, end_unit)
+       when is_binary(text) do
     Edit.new(
       text,
       Range.new(
-        Position.new(start_line, start_unit),
-        Position.new(end_line, end_unit)
+        Position.new(document, start_line, start_unit),
+        Position.new(document, end_line, end_unit)
       )
     )
   end

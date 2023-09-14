@@ -11,7 +11,6 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Quoted do
   import Lexical.RemoteControl.Build.CaptureIO, only: [capture_io: 2]
 
   def compile(%Document{} = document, quoted_ast, compiler_name) do
-
     Dispatch.broadcast(
       file_quoted(
         project: RemoteControl.get_project(),

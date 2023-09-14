@@ -12,15 +12,15 @@ defmodule Lexical.Protocol.Convertibles.PositionTest do
   describe "to_lsp/2" do
     setup [:with_an_open_file]
 
-    test "converts valid positions", %{uri: uri} do
-      assert {:ok, %Types.Position{} = pos} = to_lsp(valid_position(:native), uri)
+    test "converts valid positions", %{uri: uri, document: document} do
+      assert {:ok, %Types.Position{} = pos} = to_lsp(valid_position(:native, document), uri)
       assert pos.line == 0
       assert pos.character == 0
     end
 
-    test "converts positions in other structs", %{uri: uri} do
+    test "converts positions in other structs", %{uri: uri, document: document} do
       nested = %Outer{
-        inner: %Inner{position: valid_position(:native)}
+        inner: %Inner{position: valid_position(:native, document)}
       }
 
       assert {:ok, converted} = to_lsp(nested, uri)
@@ -56,12 +56,12 @@ defmodule Lexical.Protocol.Convertibles.PositionTest do
       assert %Document.Position{} = converted.inner.position
     end
 
-    test "leaves native positions alone", %{uri: uri} do
-      native_pos = valid_position(:native)
+    test "leaves native positions alone", %{uri: uri, document: document} do
+      native_pos = valid_position(:native, document)
 
       assert {:ok, ^native_pos} =
                :native
-               |> valid_position()
+               |> valid_position(document)
                |> to_native(uri)
     end
   end

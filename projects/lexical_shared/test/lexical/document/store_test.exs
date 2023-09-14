@@ -20,42 +20,33 @@ defmodule Lexical.Document.StoreTest do
     :ok
   end
 
-  defp build_position(nil) do
+  defp build_position(_, nil) do
     nil
   end
 
-  defp build_position(opts) do
+  defp build_position(%Document{} = document, opts) do
     line = Keyword.get(opts, :line)
     character = Keyword.get(opts, :character)
-    Position.new(line, character)
+    Position.new(document, line, character)
   end
 
-  defp build_range(nil) do
+  defp build_range(_, nil) do
     nil
   end
 
-  defp build_range(opts) do
-    start_pos =
-      opts
-      |> Keyword.get(:start)
-      |> build_position()
+  defp build_range(%Document{} = document, opts) do
+    start_pos = build_position(document, Keyword.get(opts, :start))
 
-    end_pos =
-      opts
-      |> Keyword.get(:end)
-      |> build_position()
+    end_pos = build_position(document, Keyword.get(opts, :end))
 
     Range.new(start_pos, end_pos)
   end
 
   defp build_change(opts) do
     text = Keyword.get(opts, :text, "")
+    document = Document.new("file:///file.ex", text, 1)
 
-    range =
-      opts
-      |> Keyword.get(:range)
-      |> build_range()
-
+    range = build_range(document, Keyword.get(opts, :range))
     Edit.new(text, range)
   end
 

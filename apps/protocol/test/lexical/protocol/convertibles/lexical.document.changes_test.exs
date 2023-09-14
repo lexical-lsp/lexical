@@ -5,7 +5,7 @@ defmodule Lexical.Convertible.Document.ChangesTest do
     setup [:with_an_open_file]
 
     test "converts to a list of text edits", %{uri: uri, document: document} do
-      edit = Document.Edit.new("hi", valid_range(:native))
+      edit = Document.Edit.new("hi", valid_range(:native, document))
       document_edits = Document.Changes.new(document, [edit])
 
       assert {:ok, [%Types.TextEdit{}]} = to_lsp(document_edits, uri)
@@ -20,7 +20,7 @@ defmodule Lexical.Convertible.Document.ChangesTest do
       edit =
         Document.Edit.new(
           "hi",
-          range(:native, position(:native, 2, 1), position(:native, 2, 3))
+          range(:native, position(:native, document, 2, 1), position(:native, document, 2, 3))
         )
 
       document_edits = Document.Changes.new(document, [edit])

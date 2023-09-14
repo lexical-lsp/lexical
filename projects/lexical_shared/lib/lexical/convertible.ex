@@ -3,6 +3,48 @@ defmodule Lexical.Convertible.Helpers do
 
   alias Lexical.Document
 
+  def apply(%{} = map, func) do
+    result =
+      Enum.reduce_while(map, [], fn {key, value}, acc ->
+        case func.(value) do
+          {:ok, native} ->
+            {:cont, [{key, native} | acc]}
+
+          error ->
+            {:halt, error}
+        end
+      end)
+
+    case result do
+      l when is_list(l) ->
+        {:ok, Map.new(l)}
+
+      other ->
+        other
+    end
+  end
+
+  def apply(enumerable, func) do
+    result =
+      Enum.reduce_while(enumerable, [], fn elem, acc ->
+        case func.(elem) do
+          {:ok, native} ->
+            {:cont, [native | acc]}
+
+          error ->
+            {:halt, error}
+        end
+      end)
+
+    case result do
+      l when is_list(l) ->
+        {:ok, Enum.reverse(l)}
+
+      error ->
+        error
+    end
+  end
+
   def apply(%{} = map, func, context_document) do
     Enum.reduce_while(map, [], fn {key, value}, acc ->
       context_document = Document.Container.context_document(value, context_document)
@@ -87,8 +129,8 @@ defprotocol Lexical.Convertible do
   @doc """
   Converts the native representation to a LSP compatible struct
   """
-  @spec to_lsp(t, Document.Container.maybe_context_document()) :: lsp_response()
-  def to_lsp(t, context_document)
+  @spec to_lsp(t) :: lsp_response()
+  def to_lsp(t)
 end
 
 defimpl Lexical.Convertible, for: List do
@@ -105,14 +147,8 @@ defimpl Lexical.Convertible, for: List do
     end
   end
 
-  def to_lsp(l, context_document) do
-    case Helpers.apply(l, &Convertible.to_lsp/2, context_document) do
-      l when is_list(l) ->
-        {:ok, l}
-
-      error ->
-        error
-    end
+  def to_lsp(l) do
+    Helpers.apply(l, &Convertible.to_lsp/1)
   end
 end
 
@@ -127,11 +163,8 @@ defimpl Lexical.Convertible, for: Map do
     end
   end
 
-  def to_lsp(map, context_document) do
-    case Helpers.apply(map, &Convertible.to_lsp/2, context_document) do
-      l when is_list(l) -> {:ok, Map.new(l)}
-      error -> error
-    end
+  def to_lsp(map) do
+    Helpers.apply(map, &Convertible.to_lsp/1)
   end
 end
 
@@ -161,24 +194,22 @@ defimpl Lexical.Convertible, for: Any do
     {:ok, any}
   end
 
-  def to_lsp(%_struct_module{} = struct, context_document) do
-    context_document = Document.Container.context_document(struct, context_document)
-
+  def to_lsp(%_struct_module{} = struct) do
     result =
       struct
       |> Map.from_struct()
-      |> Helpers.apply(&Convertible.to_lsp/2, context_document)
+      |> Helpers.apply(&Convertible.to_lsp/1)
 
     case result do
-      l when is_list(l) ->
-        {:ok, Map.merge(struct, Map.new(result))}
+      {:ok, map} ->
+        {:ok, Map.merge(struct, map)}
 
       error ->
         error
     end
   end
 
-  def to_lsp(any, _context_document) do
+  def to_lsp(any) do
     {:ok, any}
   end
 end

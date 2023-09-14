@@ -2,8 +2,8 @@ defimpl Lexical.Convertible, for: Lexical.Protocol.Types.Range do
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types
 
-  def to_lsp(%Types.Range{} = range, context_document) do
-    Conversions.to_lsp(range, context_document)
+  def to_lsp(%Types.Range{} = range) do
+    Conversions.to_lsp(range)
   end
 
   def to_native(

@@ -3,7 +3,7 @@ alias Lexical.Document.Edit
 alias Lexical.Protocol.Types.TextDocument.ContentChangeEvent
 
 defimpl Convertible, for: ContentChangeEvent.TextDocumentContentChangeEvent1 do
-  def to_lsp(event, _context_document) do
+  def to_lsp(event) do
     {:ok, event}
   end
 

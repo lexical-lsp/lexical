@@ -32,7 +32,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @impl Builder
   def text_edit(%Env{} = env, text, {start_char, end_char}, options \\ []) do
     line_number = env.position.line
-    range = Range.new(Position.new(line_number, start_char), Position.new(line_number, end_char))
+
+    range =
+      Range.new(
+        Position.new(env.document, line_number, start_char),
+        Position.new(env.document, line_number, end_char)
+      )
+
     edits = Document.Changes.new(env.document, Edit.new(text, range))
 
     options
@@ -44,7 +50,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @impl Builder
   def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options \\ []) do
     line_number = env.position.line
-    range = Range.new(Position.new(line_number, start_char), Position.new(line_number, end_char))
+
+    range =
+      Range.new(
+        Position.new(env.document, line_number, start_char),
+        Position.new(env.document, line_number, end_char)
+      )
+
     edits = Document.Changes.new(env.document, Edit.new(text, range))
 
     options
@@ -107,7 +119,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     new_line_start = String.slice(env.line, 0, percent_position - 1)
     new_line_end = String.slice(env.line, percent_position..-1)
     new_line = [new_line_start, new_line_end]
-    new_position = Position.new(env.position.line, env.position.character - 1)
+    new_position = Position.new(env.document, env.position.line, env.position.character - 1)
     line_to_replace = env.position.line
 
     new_document =

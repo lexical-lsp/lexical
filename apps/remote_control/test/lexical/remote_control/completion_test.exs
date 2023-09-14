@@ -1,10 +1,10 @@
 defmodule Lexical.RemoteControl.CompletionTest do
   alias Lexical.Document
-  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Completion
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
+  import Lexical.Test.PositionSupport
 
   use ExUnit.Case, async: true
 
@@ -97,7 +97,7 @@ defmodule Lexical.RemoteControl.CompletionTest do
 
   defp position(source) do
     {line, column} = cursor_position(source)
-    Position.new(line, column)
+    position(line, column)
   end
 
   defp struct_fields(source) do

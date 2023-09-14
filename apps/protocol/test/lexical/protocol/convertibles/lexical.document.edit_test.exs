@@ -21,8 +21,9 @@ defmodule Lexical.Protocol.Convertibles.EditTest do
       assert {:ok, %Types.TextEdit{new_text: "hi"}} = to_lsp(Document.Edit.new("hi"), uri)
     end
 
-    test "converts with a filled in range", %{uri: uri} do
-      ex_range = range(:native, valid_position(:native), position(:native, 1, 3))
+    test "converts with a filled in range", %{uri: uri, document: document} do
+      ex_range =
+        range(:native, valid_position(:native, document), position(:native, document, 1, 3))
 
       assert {:ok, %Types.TextEdit{} = text_edit} = to_lsp(Document.Edit.new("hi", ex_range), uri)
 
@@ -47,8 +48,8 @@ defmodule Lexical.Protocol.Convertibles.EditTest do
       assert edit.range == nil
     end
 
-    test "leaves native text edits alone", %{uri: uri} do
-      native_text_edit = Document.Edit.new("hi", valid_range(:native))
+    test "leaves native text edits alone", %{uri: uri, document: document} do
+      native_text_edit = Document.Edit.new("hi", valid_range(:native, document))
 
       assert {:ok, ^native_text_edit} = to_native(native_text_edit, uri)
     end

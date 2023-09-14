@@ -13,8 +13,8 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
   def edits(%Project{} = project, %Document{} = document) do
     with :ok <- Build.compile_document(project, document),
-         {:ok, unformatted, formatted} <- do_format(project, document) do
-      edits = Diff.diff(unformatted, formatted)
+         {:ok, formatted} <- do_format(project, document) do
+      edits = Diff.diff(document, formatted)
       {:ok, Changes.new(document, edits)}
     end
   end
@@ -41,7 +41,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   defp wrap_with_try_catch(formatter_fn) do
     fn code ->
       try do
-        {:ok, code, formatter_fn.(code)}
+        {:ok, formatter_fn.(code)}
       rescue
         e ->
           {:error, e}

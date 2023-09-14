@@ -281,26 +281,30 @@ defmodule Lexical.Ast.Aliases do
 
   May return aliases even in the event of syntax errors.
   """
-
-  @spec at(
-          Document.t() | Macro.t(),
-          Position.t() | {Position.line(), Position.character()}
-        ) ::
+  @spec at(Document.t(), Position.t() | {Position.line(), Position.character()}) ::
           {:ok, %{Ast.short_alias() => module()}} | {:error, Ast.parse_error()}
   def at(%Document{} = doc, {line, character}) do
-    at(doc, Position.new(line, character))
+    at(doc, Position.new(doc, line, character))
   end
 
   def at(%Document{} = document, %Position{} = position) do
     with {:ok, quoted} <- Ast.fragment(document, position) do
-      at(quoted, position)
+      at(document, quoted, position)
     end
   end
 
-  def at(quoted_document, %Position{} = position) do
+  @spec at(Document.t(), Macro.t(), Position.t() | {Position.line(), Position.character()}) ::
+          {:ok, %{Ast.short_alias() => module()}}
+  def at(%Document{} = document, quoted_document, {line, character}) do
+    at(document, quoted_document, Position.new(document, line, character))
+  end
+
+  def at(%Document{} = document, quoted_document, %Position{} = position) do
+    start_position = Position.new(document, 0, 0)
+
     aliases =
       quoted_document
-      |> Ast.prewalk_until(Reducer.new(), &collect/2, position)
+      |> Ast.prewalk_until(Reducer.new(), &collect/2, start_position, position)
       |> Reducer.aliases()
 
     {:ok, aliases}

@@ -3,8 +3,8 @@ defimpl Lexical.Convertible, for: Lexical.Protocol.Types.TextEdit do
   alias Lexical.Protocol.Conversions
   alias Lexical.Protocol.Types
 
-  def to_lsp(%Types.TextEdit{} = text_edit, context_document) do
-    with {:ok, range} <- Conversions.to_lsp(text_edit.range, context_document) do
+  def to_lsp(%Types.TextEdit{} = text_edit) do
+    with {:ok, range} <- Conversions.to_lsp(text_edit.range) do
       {:ok, %Types.TextEdit{text_edit | range: range}}
     end
   end

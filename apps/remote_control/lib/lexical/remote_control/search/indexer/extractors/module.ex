@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   """
 
   alias Lexical.Ast
+  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.ProcessCache
@@ -21,7 +22,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     %Block{} = block = Reducer.current_block(reducer)
     aliased_module = resolve_alias(reducer, module_name)
     module_position = Metadata.position(module_name_meta)
-    range = to_range(module_name, module_position)
+    range = to_range(reducer.document, module_name, module_position)
 
     entry =
       Entry.definition(
@@ -48,7 +49,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     case module(reducer, maybe_module) do
       {:ok, module} ->
         start = Metadata.position(metadata)
-        range = to_range(maybe_module, start)
+        range = to_range(reducer.document, maybe_module, start)
         %Block{} = current_block = Reducer.current_block(reducer)
 
         entry =
@@ -76,7 +77,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       {:ok, module} ->
         start = Metadata.position(metadata)
         %Block{} = current_block = Reducer.current_block(reducer)
-        range = to_range(module, start)
+        range = to_range(reducer.document, module, start)
 
         entry =
           Entry.reference(
@@ -102,9 +103,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
   defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
     {line, column} = reducer.position
-    position = Position.new(line, column)
+    position = Position.new(reducer.document, line, column)
 
-    {:ok, expanded} = Ast.expand_aliases(unresolved_alias, reducer.quoted_document, position)
+    {:ok, expanded} =
+      Ast.expand_aliases(unresolved_alias, reducer.document, reducer.quoted_document, position)
 
     expanded
   end
@@ -147,15 +149,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     end)
   end
 
-  defp to_range(module_name, {line, column}) do
+  defp to_range(%Document{} = document, module_name, {line, column}) do
     module_length =
       module_name
       |> module_name()
       |> String.length()
 
     Range.new(
-      Position.new(line, column),
-      Position.new(line, column + module_length)
+      Position.new(document, line, column),
+      Position.new(document, line, column + module_length)
     )
   end
 
