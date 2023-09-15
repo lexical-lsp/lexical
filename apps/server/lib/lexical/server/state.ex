@@ -286,6 +286,7 @@ defmodule Lexical.Server.State do
         execute_command_provider: command_options,
         hover_provider: true,
         references_provider: Features.indexing_enabled?(),
+        rename_provider: Features.indexing_enabled?(),
         text_document_sync: sync_options
       )
 

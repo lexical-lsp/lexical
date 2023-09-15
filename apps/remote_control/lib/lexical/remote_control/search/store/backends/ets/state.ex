@@ -166,6 +166,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   defp to_subject(atom) when is_atom(atom), do: inspect(atom)
   defp to_subject(other), do: to_string(other)
 
+  @dialyzer {:nowarn_function, to_prefix: 1}
+
   defp to_prefix(prefix) when is_binary(prefix) do
     [last_char | others] = prefix |> String.to_charlist() |> Enum.reverse()
     others |> Enum.reverse() |> Enum.concat([last_char | :_])

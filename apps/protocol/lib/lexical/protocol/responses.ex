@@ -75,5 +75,11 @@ defmodule Lexical.Protocol.Responses do
     defresponse optional(Types.Message.ActionItem)
   end
 
+  defmodule Rename do
+    use Proto
+
+    defresponse optional(Types.Workspace.Edit)
+  end
+
   use Typespecs, for: :responses
 end

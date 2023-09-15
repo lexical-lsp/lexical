@@ -28,6 +28,9 @@ defmodule Lexical.Server.Provider.Handlers do
       %Requests.ExecuteCommand{} ->
         {:ok, Handlers.Commands}
 
+      %Requests.Rename{} ->
+        {:ok, Handlers.Rename}
+
       %request_module{} ->
         {:error, {:unhandled, request_module}}
     end
