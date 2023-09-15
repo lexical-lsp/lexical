@@ -106,25 +106,17 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
     if struct_type_defs != [] do
       struct_type_defs
-      |> Enum.join("\n")
+      |> Enum.join("\n\n")
       |> Markdown.code_block()
       |> Markdown.section(header: "Struct")
     end
   end
 
   defp module_footer(:module, docs) do
-    callback_defs =
-      docs.callbacks
-      |> Map.values()
-      |> List.flatten()
-      |> sort_entries()
-      |> Enum.flat_map(& &1.defs)
+    callbacks = format_callbacks(docs.callbacks)
 
-    if callback_defs != [] do
-      callback_defs
-      |> Enum.map_join("\n", &("@callback " <> &1))
-      |> Markdown.code_block()
-      |> Markdown.section(header: "Callbacks")
+    unless empty?(callbacks) do
+      Markdown.section(callbacks, header: "Callbacks")
     end
   end
 
@@ -153,7 +145,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     header = """
     #{module_name}.#{entry.name}/#{entry.arity}
 
-    #{type_defs(entry)}
+    #{type_defs(entry)}\
     """
 
     [
@@ -164,8 +156,10 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp type_defs(%Docs.Entry{metadata: %{opaque: true}} = entry) do
     Enum.map_join(entry.defs, "\n", fn def ->
-      [opaque, _] = String.split(def, "::", parts: 2)
-      opaque
+      def
+      |> String.split("::", parts: 2)
+      |> List.first()
+      |> String.trim()
     end)
   end
 
@@ -173,14 +167,35 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     Enum.join(entry.defs, "\n")
   end
 
-  defp entry_doc_content(s) when is_binary(s), do: s
+  defp format_callbacks(callbacks) do
+    callbacks
+    |> Map.values()
+    |> List.flatten()
+    |> sort_entries()
+    |> Enum.map_join("\n", fn %Docs.Entry{} = entry ->
+      header =
+        entry.defs
+        |> Enum.map_join("\n", &("@callback " <> &1))
+        |> Markdown.code_block()
+
+      if is_binary(entry.doc) do
+        """
+        #{header}
+        #{entry_doc_content(entry.doc)}
+        """
+      else
+        header
+      end
+    end)
+  end
+
+  defp entry_doc_content(s) when is_binary(s), do: String.trim(s)
   defp entry_doc_content(_), do: nil
 
   defp sort_entries(entries) do
     Enum.sort_by(entries, &{&1.name, &1.arity})
   end
 
-  defp empty?(nil), do: true
-  defp empty?(""), do: true
-  defp empty?(s) when is_binary(s), do: false
+  defp empty?(empty) when empty in [nil, "", []], do: true
+  defp empty?(_), do: false
 end

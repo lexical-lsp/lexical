@@ -138,7 +138,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       end)
     end
 
-    test "with behaviour callbacks", %{project: project} do
+    test "behaviour callbacks", %{project: project} do
       code = ~q[
         defmodule HoverBehaviour do
           @moduledoc "This is a custom behaviour."
@@ -167,8 +167,72 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       ```elixir
       @callback bar(term()) :: {:ok, custom_type()}
+      ```
+
+      ```elixir
       @callback foo(integer(), float()) :: custom_type()
       ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+        assert "«HoverBehaviour»" = hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "behaviour callbacks with docs", %{project: project} do
+      code = ~q[
+        defmodule HoverBehaviour do
+          @moduledoc "This is a custom behaviour."
+
+          @type custom_type :: term()
+
+          @doc """
+          This is the doc for `foo/2`.
+          """
+          @callback foo(integer(), float()) :: custom_type
+
+          @doc """
+          This is the doc for `bar/1`.
+          """
+          @callback bar(term()) :: {:ok, custom_type}
+
+          @callback baz(term()) :: :ok
+        end
+      ]
+
+      hovered = "|HoverBehaviour"
+
+      expected = """
+      ```elixir
+      HoverBehaviour
+      ```
+
+      ---
+
+      This is a custom behaviour.
+
+      ---
+
+      #### Callbacks
+
+      ```elixir
+      @callback bar(term()) :: {:ok, custom_type()}
+      ```
+
+      This is the doc for `bar/1`.
+
+      ```elixir
+      @callback baz(term()) :: :ok
+      ```
+
+      ```elixir
+      @callback foo(integer(), float()) :: custom_type()
+      ```
+
+      This is the doc for `foo/2`.
       """
 
       with_compiled_in(project, code, fn ->
@@ -254,7 +318,9 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       ```elixir
       @type t() :: %StructWithDoc{foo: String.t()}
+
       @type t(kind) :: %StructWithDoc{foo: kind}
+
       @type t(kind1, kind2) :: %StructWithDoc{foo: {kind1, kind2}}
       ```
 

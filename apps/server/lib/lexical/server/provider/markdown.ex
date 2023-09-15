@@ -30,7 +30,7 @@ defmodule Lexical.Server.Provider.Markdown do
 
     """
     ```#{lang}
-    #{String.trim(content)}
+    #{content}
     ```
     """
   end
@@ -68,6 +68,9 @@ defmodule Lexical.Server.Provider.Markdown do
       |> Stream.map(&String.trim(&1))
       |> Enum.intersperse("\n\n---\n\n")
 
-    IO.iodata_to_binary([with_rules, "\n"])
+    case with_rules do
+      [] -> nil
+      _ -> IO.iodata_to_binary([with_rules, "\n"])
+    end
   end
 end
