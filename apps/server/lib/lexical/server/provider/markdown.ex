@@ -44,7 +44,7 @@ defmodule Lexical.Server.Provider.Markdown do
     * `:header_level` - Defaults to `4`.
 
   """
-  @spec section([markdown], [opt]) :: markdown
+  @spec section(markdown, [opt]) :: markdown
         when opt: {:header, markdown} | {:header_level, pos_integer()}
   def section(content, opts) do
     header = Keyword.fetch!(opts, :header)
