@@ -68,6 +68,19 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
+  defp hover_content({:type, module, type, arity}, env) do
+    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(env.project, module),
+         {:ok, entries} <- Map.fetch(module_docs.types, type) do
+      case Enum.find(entries, &(&1.arity == arity)) do
+        %Docs.Entry{} = entry ->
+          {:ok, entry_sections(entry)}
+
+        _ ->
+          {:error, :no_type}
+      end
+    end
+  end
+
   defp module_header(:module, %Docs{module: module}) do
     module
     |> Ast.Module.name()
@@ -117,20 +130,47 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp module_footer(:struct, _docs), do: nil
 
-  defp entry_sections(%Docs.Entry{} = entry) do
-    [signature | _] = entry.signature
+  defp entry_sections(%Docs.Entry{kind: :function} = entry) do
+    with [signature | _] <- entry.signature do
+      module_name = Ast.Module.name(entry.module)
+      specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
+
+      [
+        Markdown.code_block(module_name <> "." <> signature),
+        if specs != "" do
+          specs
+          |> Markdown.code_block()
+          |> Markdown.section(header: "Specs")
+        end,
+        entry_doc_content(entry.doc)
+      ]
+    end
+  end
+
+  defp entry_sections(%Docs.Entry{kind: :type} = entry) do
     module_name = Ast.Module.name(entry.module)
-    specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
+
+    header = """
+    #{module_name}.#{entry.name}/#{entry.arity}
+
+    #{type_defs(entry)}
+    """
 
     [
-      Markdown.code_block(module_name <> "." <> signature),
-      if specs != "" do
-        specs
-        |> Markdown.code_block()
-        |> Markdown.section(header: "Specs")
-      end,
+      Markdown.code_block(header),
       entry_doc_content(entry.doc)
     ]
+  end
+
+  defp type_defs(%Docs.Entry{metadata: %{opaque: true}} = entry) do
+    Enum.map_join(entry.defs, "\n", fn def ->
+      [opaque, _] = String.split(def, "::", parts: 2)
+      opaque
+    end)
+  end
+
+  defp type_defs(%Docs.Entry{} = entry) do
+    Enum.join(entry.defs, "\n")
   end
 
   defp entry_doc_content(s) when is_binary(s), do: s

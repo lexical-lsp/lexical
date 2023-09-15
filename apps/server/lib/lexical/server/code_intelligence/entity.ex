@@ -17,6 +17,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
           {:module, module()}
           | {:struct, module()}
           | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
+          | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
 
   @doc """
   Attempts to resolve the entity at the given position in the document.
@@ -69,7 +70,8 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
       case Ast.path_at(document, position) do
         {:ok, path} ->
           arity = arity_at_position(path, position)
-          {:ok, {:call, module, fun, arity}, node_range}
+          kind = kind_of_call(path, position)
+          {:ok, {kind, module, fun, arity}, node_range}
 
         _ ->
           {:ok, {:call, module, fun, 0}, node_range}
@@ -170,6 +172,21 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   end
 
   defp arity_at_position([], _position), do: 0
+
+  # Walk up the path to see whether we're in the right-hand argument of
+  # a `::` type operator, which would make the kind a `:type`, not a call.
+  # Calls that occur on the right of a `::` type operator have kind `:type`
+  defp kind_of_call([{:"::", _, [_, right_arg]} | rest], position) do
+    if Ast.contains_position?(right_arg, position) do
+      :type
+    else
+      kind_of_call(rest, position)
+    end
+  end
+
+  defp kind_of_call([_ | rest], position), do: kind_of_call(rest, position)
+
+  defp kind_of_call([], _position), do: :call
 
   @doc """
   Returns the source location of the entity at the given position in the document.

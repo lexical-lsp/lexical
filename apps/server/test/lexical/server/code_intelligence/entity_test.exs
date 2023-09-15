@@ -636,6 +636,57 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
       assert {:ok, {:call, MyModule, :some_function, 1}, _} = resolve(project, code)
     end
+
+    test "qualified call on left of type operator", %{project: project} do
+      code = ~q[
+        my_dsl do
+          MyModule.|my_fun() :: MyModule.t()
+        end
+      ]
+
+      assert {:ok, {:call, MyModule, :my_fun, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «MyModule.my_fun»() :: MyModule.t()]
+    end
+  end
+
+  describe "type resolve/2" do
+    test "qualified types in @type", %{project: project} do
+      code = ~q[
+        @type my_type :: MyModule.|t()
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@type my_type :: «MyModule.t»()]
+    end
+
+    test "qualified types in @spec", %{project: project} do
+      code = ~q[
+        @spec my_fun() :: MyModule.|t()
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@spec my_fun() :: «MyModule.t»()]
+    end
+
+    test "qualified types in DSL", %{project: project} do
+      code = ~q[
+        my_dsl do
+          my_fun() :: MyModule.|t()
+        end
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  my_fun() :: «MyModule.t»()]
+    end
+
+    test "qualified types in nested structure", %{project: project} do
+      code = ~q[
+        @type my_type :: %{foo: MyModule.|t()}
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@type my_type :: %{foo: «MyModule.t»()}]
+    end
   end
 
   defp resolve(project, code) do

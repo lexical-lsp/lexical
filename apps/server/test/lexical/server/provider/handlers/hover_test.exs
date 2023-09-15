@@ -473,6 +473,138 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     end
   end
 
+  describe "type hover" do
+    test "with @typedoc", %{project: project} do
+      code = ~q[
+        defmodule TypeHover do
+          @typedoc """
+          This type has docs.
+          """
+          @type my_type() :: integer()
+        end
+      ]
+
+      hovered = "@type foo :: TypeHover.|my_type()"
+
+      expected = """
+      ```elixir
+      TypeHover.my_type/0
+
+      @type my_type() :: integer()
+      ```
+
+      ---
+
+      This type has docs.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+
+        assert "@type foo :: «TypeHover.my_type»()" =
+                 hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "without @typedoc", %{project: project} do
+      code = ~q[
+        defmodule TypeHover do
+          @type my_type() :: integer()
+        end
+      ]
+
+      hovered = "@type foo :: TypeHover.|my_type()"
+
+      expected = """
+      ```elixir
+      TypeHover.my_type/0
+
+      @type my_type() :: integer()
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+
+        assert "@type foo :: «TypeHover.my_type»()" =
+                 hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "with var", %{project: project} do
+      code = ~q[
+        defmodule TypeHover do
+          @type my_type(var) :: {integer(), var}
+        end
+      ]
+
+      hovered = "@type foo :: TypeHover.|my_type(:foo)"
+
+      expected = """
+      ```elixir
+      TypeHover.my_type/1
+
+      @type my_type(var) :: {integer(), var}
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+
+        assert "@type foo :: «TypeHover.my_type»(:foo)" =
+                 hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "opaque with var", %{project: project} do
+      code = ~q[
+        defmodule TypeHover do
+          @opaque my_type(var) :: {integer(), var}
+        end
+      ]
+
+      hovered = "@type foo :: TypeHover.|my_type(:foo)"
+
+      expected = """
+      ```elixir
+      TypeHover.my_type/1
+
+      @opaque my_type(var)
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+
+        assert "@type foo :: «TypeHover.my_type»(:foo)" =
+                 hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "private type", %{project: project} do
+      code = ~q[
+        defmodule TypeHover do
+          @typep my_type() :: integer()
+          @type other() :: my_type()
+        end
+      ]
+
+      hovered = "@type foo :: TypeHover.|my_type()"
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: nil}} = hover(project, hovered)
+      end)
+    end
+  end
+
   defp hover(project, hovered) do
     with {position, hovered} <- pop_position(hovered),
          {:ok, document} <- document_with_content(project, hovered),

@@ -30,7 +30,7 @@ defmodule Lexical.Server.Provider.Markdown do
 
     """
     ```#{lang}
-    #{content}
+    #{String.trim(content)}
     ```
     """
   end
