@@ -32,19 +32,23 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
     case RemoteControl.Api.docs(env.project, module) do
-      {:ok, %Docs{doc: doc} = module_docs} when is_binary(doc) ->
+      {:ok, %Docs{doc: doc} = module_docs} when doc != :hidden ->
         header_content = module_header(kind, module_docs)
-        defs_content = module_defs_content(kind, module_docs)
-        footer_content = module_footer_content(kind, module_docs)
+        types_content = module_types(kind, module_docs)
+        doc_content = module_doc(doc)
+        footer_content = module_footer(kind, module_docs)
 
         sections = [
-          header_content,
-          defs_content,
-          doc,
+          types_content,
+          doc_content,
           footer_content
         ]
 
-        {:ok, sections}
+        if Enum.any?(sections, &(not empty?(&1))) do
+          {:ok, [header_content | sections]}
+        else
+          {:error, :no_doc}
+        end
 
       _ ->
         {:error, :no_doc}
@@ -75,9 +79,12 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     |> Markdown.code_block()
   end
 
-  defp module_defs_content(:module, _), do: nil
+  defp module_doc(s) when is_binary(s), do: s
+  defp module_doc(_), do: nil
 
-  defp module_defs_content(:struct, docs) do
+  defp module_types(:module, _), do: nil
+
+  defp module_types(:struct, docs) do
     struct_type_defs =
       docs.types
       |> Map.get(:t, [])
@@ -92,7 +99,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
-  defp module_footer_content(:module, docs) do
+  defp module_footer(:module, docs) do
     callback_defs =
       docs.callbacks
       |> Map.values()
@@ -108,7 +115,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
-  defp module_footer_content(:struct, _docs), do: nil
+  defp module_footer(:struct, _docs), do: nil
 
   defp entry_sections(%Docs.Entry{} = entry) do
     [signature | _] = entry.signature
@@ -132,4 +139,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp sort_entries(entries) do
     Enum.sort_by(entries, &{&1.name, &1.arity})
   end
+
+  defp empty?(nil), do: true
+  defp empty?(""), do: true
+  defp empty?(s) when is_binary(s), do: false
 end
