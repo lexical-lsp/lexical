@@ -89,32 +89,14 @@ defmodule Lexical.Ast do
   @type alias_segments :: [short_alias]
 
   @doc """
-  Guard used to determined whether an AST node is an unqualified call.
-
-  ## Example
-
-      def my_fun({form, _meta, args}) when is_unqualified_call(form, args), do: ...
-
-  """
-  @non_local_calls [:., :__aliases__, :__block__, :"::", :{}, :|>, :%, :%{}]
-  defguard is_unqualified_call(form, args)
-           when is_atom(form) and is_list(args) and form not in @non_local_calls
-
-  @doc """
-  Guard used to determine whether an AST node is a dot call.
-
-  ## Example
-
-      def my_fun({form, _meta, args}) when is_dot_call(form, args), do: ...
-
-  """
-  defguard is_dot_call(form, args)
-           when is_tuple(form) and tuple_size(form) == 3 and elem(form, 0) == :. and is_list(args)
-
-  @doc """
   Guard used to determine whether an AST node is a call, either local or qualified.
   """
-  defguard is_call(form, args) when is_unqualified_call(form, args) or is_dot_call(form, args)
+  @non_call_forms [:__aliases__, :__block__, :.]
+  defguard is_call(quoted)
+           when is_tuple(quoted) and
+                  tuple_size(quoted) == 3 and
+                  is_list(elem(quoted, 2)) and
+                  elem(quoted, 0) not in @non_call_forms
 
   @doc """
   Returns an AST generated from a valid document or string.

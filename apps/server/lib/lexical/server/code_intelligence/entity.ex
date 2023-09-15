@@ -9,7 +9,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   alias Lexical.RemoteControl
   alias Lexical.Text
 
-  import Ast, only: [is_call: 2]
+  import Ast, only: [is_call: 1]
 
   require Logger
 
@@ -155,15 +155,14 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   # Calls inside of a pipe:
   # |> MyModule.some_function(1, 2)
-  defp arity_at_position([{call, _, args}, {:|>, _, _} | _], _position)
-       when is_call(call, args) do
+  defp arity_at_position([{_, _, args} = call, {:|>, _, _} | _], _position) when is_call(call) do
     length(args) + 1
   end
 
   # Calls not inside of a pipe:
   # MyModule.some_function(1, 2)
   # some_function.(1, 2)
-  defp arity_at_position([{call, _, args} | _], _position) when is_call(call, args) do
+  defp arity_at_position([{_, _, args} = call | _], _position) when is_call(call) do
     length(args)
   end
 
