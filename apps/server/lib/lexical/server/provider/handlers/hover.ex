@@ -13,14 +13,14 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   def handle(%Requests.Hover{} = request, %Env{} = env) do
     maybe_hover =
-      with {:ok, entity, _elixir_range} <- Entity.resolve(request.document, request.position),
+      with {:ok, entity, range} <- Entity.resolve(request.document, request.position),
            {:ok, sections} <- hover_content(entity, env) do
         content =
           sections
           |> Markdown.join_sections()
           |> Markdown.to_content()
 
-        %Hover{contents: content}
+        %Hover{contents: content, range: range}
       else
         error ->
           Logger.warning("Could not resolve hover request, got: #{inspect(error)}")

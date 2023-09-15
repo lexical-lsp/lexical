@@ -14,6 +14,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
+  import Lexical.Test.RangeSupport
 
   require Messages
 
@@ -106,6 +107,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«HoverWithDoc»" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -173,6 +175,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«HoverBehaviour»" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -220,6 +223,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "%«StructWithDoc»{}" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -263,6 +267,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "%«StructWithDoc»{}" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -293,6 +298,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "%«StructWithDoc»{}" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
   end
@@ -333,6 +339,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«CallHover.my_fun»(1, 2)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -366,6 +373,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«CallHover.my_fun»(1, 2)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -417,6 +425,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«CallHover.my_fun»(1, 2)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
 
@@ -459,6 +468,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
+        assert "«CallHover.my_fun»(1)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
   end
