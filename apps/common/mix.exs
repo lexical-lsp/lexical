@@ -33,7 +33,7 @@ defmodule Common.MixProject do
   defp deps do
     [
       {:lexical_shared, path: "../../projects/lexical_shared"},
-      {:sourceror, github: "zachallaun/sourceror", ref: "nil-get-range"},
+      {:sourceror, github: "doorgan/sourceror", ref: "eaf0cc6"},
       {:stream_data, "~> 0.6", only: [:test], runtime: false},
       {:patch, "~> 0.12", only: [:test], optional: true, runtime: false}
     ]
