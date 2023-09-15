@@ -1,8 +1,4 @@
 defmodule Lexical.RemoteControl.Modules do
-  @moduledoc """
-  Utilities for dealing with modules on the remote control node
-  """
-
   defmodule Predicate.Syntax do
     @moduledoc """
     Syntax helpers for the predicate syntax
@@ -47,6 +43,12 @@ defmodule Lexical.RemoteControl.Modules do
       end)
     end
   end
+
+  @moduledoc """
+  Utilities for dealing with modules on the remote control node
+  """
+
+  alias Future.Code.Typespec
 
   @typedoc "Module documentation record as defined by EEP-48"
   @type docs_v1 :: tuple()
@@ -99,12 +101,12 @@ defmodule Lexical.RemoteControl.Modules do
   """
   @spec fetch_specs(beam :: binary()) :: {:ok, [definition()]} | :error
   def fetch_specs(beam) when is_binary(beam) do
-    case Code.Typespec.fetch_specs(beam) do
+    case Typespec.fetch_specs(beam) do
       {:ok, specs} ->
         defs =
           for {{name, arity}, defs} <- specs,
               def <- defs do
-            quoted = Code.Typespec.spec_to_quoted(name, def)
+            quoted = Typespec.spec_to_quoted(name, def)
             formatted = format_definition(quoted)
 
             {name, arity, formatted, quoted}
@@ -122,12 +124,12 @@ defmodule Lexical.RemoteControl.Modules do
   """
   @spec fetch_types(beam :: binary()) :: {:ok, [definition()]} | :error
   def fetch_types(beam) when is_binary(beam) do
-    case Code.Typespec.fetch_types(beam) do
+    case Typespec.fetch_types(beam) do
       {:ok, types} ->
         defs =
           for {kind, {name, _body, args} = type} <- types do
             arity = length(args)
-            quoted_type = Code.Typespec.type_to_quoted(type)
+            quoted_type = Typespec.type_to_quoted(type)
             quoted = {:@, [], [{kind, [], [quoted_type]}]}
             formatted = format_definition(quoted)
 
@@ -146,12 +148,12 @@ defmodule Lexical.RemoteControl.Modules do
   """
   @spec fetch_callbacks(beam :: binary()) :: {:ok, [definition()]} | :error
   def fetch_callbacks(beam) when is_binary(beam) do
-    case Code.Typespec.fetch_callbacks(beam) do
+    case Typespec.fetch_callbacks(beam) do
       {:ok, callbacks} ->
         defs =
           for {{name, arity}, defs} <- callbacks,
               def <- defs do
-            quoted = Code.Typespec.spec_to_quoted(name, def)
+            quoted = Typespec.spec_to_quoted(name, def)
             formatted = format_definition(quoted)
 
             {name, arity, formatted, quoted}
