@@ -313,11 +313,6 @@ defmodule Lexical.Ast do
     end
   end
 
-  def path_at(s, pos) when is_binary(s) do
-    {:ok, ast} = from(s)
-    path_at(ast, pos)
-  end
-
   @spec path_at(Macro.t(), Position.t()) :: {:ok, [Macro.t(), ...]} | {:error, :not_found}
   def path_at(ast, %Position{} = position) do
     path =
