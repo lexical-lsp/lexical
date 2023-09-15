@@ -12,7 +12,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
     :doc,
     :metadata,
     defs: []
-    # :spec
   ]
 
   @type t(kind) :: %__MODULE__{
@@ -24,7 +23,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
           doc: content(),
           metadata: metadata(),
           defs: [String.t()]
-          # spec: String.t() | nil
         }
 
   @type content :: String.t() | :none | :hidden
