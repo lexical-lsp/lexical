@@ -324,7 +324,7 @@ defmodule Mix.Tasks.Package do
       {:ok, orig} ->
         case :os.type() do
           {:win32, _} -> 
-            origin
+            orig
            _ ->
             path
             |> Path.dirname()
