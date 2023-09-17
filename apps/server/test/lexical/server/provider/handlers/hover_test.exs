@@ -495,6 +495,34 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       end)
     end
 
+    test "hovering a public function without parens", %{project: project} do
+      code = ~q[
+        defmodule CallHover do
+          @doc "Function doc"
+          def my_fun(x), do: x + 1
+        end
+      ]
+
+      hovered = "CallHover.|my_fun"
+
+      expected = """
+      ```elixir
+      CallHover.my_fun(x)
+      ```
+
+      ---
+
+      Function doc
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+        assert "«CallHover.my_fun»" = hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
     test "private function", %{project: project} do
       code = ~q[
         defmodule CallHover do
@@ -535,6 +563,36 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert result.contents.kind == :markdown
         assert result.contents.value == expected
         assert "«CallHover.my_fun»(1)" = hovered |> strip_cursor() |> decorate(result.range)
+      end)
+    end
+
+    test "public macro with @doc", %{project: project} do
+      code = ~q[
+        defmodule MacroHover do
+          @doc "This is a macro."
+          defmacro my_macro(expr) do
+            {:ok, expr}
+          end
+        end
+      ]
+
+      hovered = "MacroHover.|my_macro(:foo)"
+
+      expected = """
+      ```elixir
+      (macro) MacroHover.my_macro(expr)
+      ```
+
+      ---
+
+      This is a macro.
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+        assert "«MacroHover.my_macro»(:foo)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
   end

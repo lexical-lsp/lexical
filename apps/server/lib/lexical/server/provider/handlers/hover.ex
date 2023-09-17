@@ -122,13 +122,13 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp module_footer(:struct, _docs), do: nil
 
-  defp entry_sections(%Docs.Entry{kind: :function} = entry) do
-    with [signature | _] <- entry.signature do
-      module_name = Ast.Module.name(entry.module)
+  defp entry_sections(%Docs.Entry{kind: fn_or_macro} = entry)
+       when fn_or_macro in [:function, :macro] do
+    with {:ok, call_header} <- call_header(entry) do
       specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
 
       [
-        Markdown.code_block(module_name <> "." <> signature),
+        call_header,
         if specs != "" do
           specs
           |> Markdown.code_block()
@@ -152,6 +152,21 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
       Markdown.code_block(header),
       entry_doc_content(entry.doc)
     ]
+  end
+
+  defp call_header(%Docs.Entry{kind: maybe_macro} = entry) do
+    with [signature | _] <- entry.signature do
+      module_name = Ast.Module.name(entry.module)
+
+      macro_prefix =
+        if maybe_macro == :macro do
+          "(macro) "
+        else
+          ""
+        end
+
+      {:ok, Markdown.code_block("#{macro_prefix}#{module_name}.#{signature}")}
+    end
   end
 
   defp type_defs(%Docs.Entry{metadata: %{opaque: true}} = entry) do
