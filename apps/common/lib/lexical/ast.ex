@@ -89,16 +89,6 @@ defmodule Lexical.Ast do
   @type alias_segments :: [short_alias]
 
   @doc """
-  Guard used to determine whether an AST node is a call, either local or qualified.
-  """
-  @non_call_forms [:__aliases__, :__block__, :.]
-  defguard is_call(quoted)
-           when is_tuple(quoted) and
-                  tuple_size(quoted) == 3 and
-                  is_list(elem(quoted, 2)) and
-                  elem(quoted, 0) not in @non_call_forms
-
-  @doc """
   Returns an AST generated from a valid document or string.
   """
   @spec from(Document.t() | String.t()) :: {:ok, Macro.t()} | {:error, parse_error()}

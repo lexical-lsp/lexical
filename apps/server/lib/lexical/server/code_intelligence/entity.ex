@@ -9,15 +9,16 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   alias Lexical.RemoteControl
   alias Lexical.Text
 
-  import Ast, only: [is_call: 1]
-
   require Logger
+  require Sourceror.Identifier
 
   @type resolved ::
           {:module, module()}
           | {:struct, module()}
           | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
           | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
+
+  defguardp is_call(form) when Sourceror.Identifier.is_call(form) and elem(form, 0) != :.
 
   @doc """
   Attempts to resolve the entity at the given position in the document.
