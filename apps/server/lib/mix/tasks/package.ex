@@ -269,7 +269,6 @@ defmodule Mix.Tasks.Package do
       case priv_dir(app_name) do
         {:ok, priv_source_dir} ->
           File.cp_r!(priv_source_dir, priv_dest_dir)
-
         _ ->
           :ok
       end
@@ -323,11 +322,16 @@ defmodule Mix.Tasks.Package do
   defp normalize_path(path) do
     case File.read_link(path) do
       {:ok, orig} ->
-        path
-        |> Path.dirname()
-        |> Path.join(orig)
-        |> Path.expand()
-        |> Path.absname()
+        case :os.type() do
+          {:win32, _} -> 
+            origin
+           _ ->
+            path
+            |> Path.dirname()
+            |> Path.join(orig)
+            |> Path.expand()
+            |> Path.absname()
+        end       
 
       _ ->
         path
