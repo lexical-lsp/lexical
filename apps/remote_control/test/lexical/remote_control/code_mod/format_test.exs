@@ -125,6 +125,28 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
     end
   end
 
+  describe "format/2 syntax correction" do
+    test "adds missing space after keyword", %{project: project} do
+      assert {:ok, result} = ~q[
+        %{foo:bar}
+      ] |> modify(project: project)
+
+      assert result == ~q[
+        %{foo: bar}
+      ]t
+    end
+
+    test "adds missing space after multiple keywords", %{project: project} do
+      assert {:ok, result} = ~q[
+        %{foo:bar, baz:buzz}
+      ] |> modify(project: project)
+
+      assert result == ~q[
+        %{foo: bar, baz: buzz}
+      ]t
+    end
+  end
+
   describe "emitting diagnostics" do
     setup [:with_real_project]
 

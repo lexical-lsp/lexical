@@ -12,42 +12,81 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
   def edits(%Project{} = project, %Document{} = document) do
-    with :ok <- Build.compile_document(project, document),
-         {:ok, formatted} <- do_format(project, document) do
-      edits = Diff.diff(document, formatted)
-      {:ok, Changes.new(document, edits)}
+    case do_format(project, document) do
+      {:ok, formatted} ->
+        edits = Diff.diff(document, formatted)
+        {:ok, Changes.new(document, edits)}
+
+      error ->
+        # Trigger diagnostics when formatting fails
+        Build.compile_document(project, document)
+        error
     end
   end
 
   defp do_format(%Project{} = project, %Document{} = document) do
     project_path = Project.project_path(project)
 
-    with :ok <- check_current_directory(document, project_path),
-         {:ok, formatter} <- formatter_for(project, document.path) do
+    with :ok <- check_current_directory(document, project_path) do
+      formatter = formatter_for(project, document.path)
+
       document
       |> Document.to_string()
       |> formatter.()
     end
   end
 
-  @spec formatter_for(Project.t(), String.t()) :: {:ok, formatter_function}
+  @spec formatter_for(Project.t(), String.t()) :: formatter_function
   defp formatter_for(%Project{} = project, uri_or_path) do
     path = Document.Path.ensure_path(uri_or_path)
-    formatter_function = formatter_for_file(project, path)
-    wrapped_formatter_function = wrap_with_try_catch(formatter_function)
-    {:ok, wrapped_formatter_function}
+
+    project
+    |> formatter_for_file(path)
+    |> wrap_with_try_rescue()
+    |> wrap_with_syntax_corrections()
   end
 
-  defp wrap_with_try_catch(formatter_fn) do
+  defp wrap_with_try_rescue(formatter_fn) do
     fn code ->
       try do
         {:ok, formatter_fn.(code)}
       rescue
-        e ->
-          {:error, e}
+        e -> {:error, e}
       end
     end
   end
+
+  defp wrap_with_syntax_corrections(formatter_fn) do
+    fn code ->
+      with {:error, error} <- formatter_fn.(code),
+           {:ok, corrected} <- try_to_correct_for_error(error, code) do
+        wrap_with_syntax_corrections(formatter_fn).(corrected)
+      end
+    end
+  end
+
+  defp try_to_correct_for_error(
+         %SyntaxError{
+           description: "keyword argument must be followed by space after: " <> keyword
+         } = error,
+         code
+       ) do
+    add_space_at = error.column + String.length(keyword)
+
+    empty_range = %{
+      start: [line: error.line, column: add_space_at],
+      end: [line: error.line, column: add_space_at]
+    }
+
+    patch = %{
+      range: empty_range,
+      change: " "
+    }
+
+    {:ok, Sourceror.patch_string(code, [patch])}
+  end
+
+  defp try_to_correct_for_error(error, _code), do: {:error, error}
 
   defp check_current_directory(%Document{} = document, project_path) do
     if subdirectory?(document.path, parent: project_path) do
