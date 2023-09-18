@@ -19,12 +19,12 @@ defmodule Lexical.AstTest do
 
     test "contains the parent AST" do
       text = ~q[
-      defmodule Foo do
-        def bar do
-          |
+        defmodule Foo do
+          def bar do
+            |
+          end
         end
-      end
-    ]
+      ]
 
       path = cursor_path(text)
 
@@ -34,9 +34,9 @@ defmodule Lexical.AstTest do
 
     test "returns cursor ast when is not in a container" do
       text = ~q[
-      |
-      defmodule Foo do
-      end
+        |
+        defmodule Foo do
+        end
       ]
 
       path = cursor_path(text)
@@ -47,20 +47,77 @@ defmodule Lexical.AstTest do
       text = ~q[
         foo(bar do baz, bat|
       ]
+
       path = cursor_path(text)
       assert path == []
+    end
+  end
+
+  describe "path_at/2" do
+    defp path_at(text) do
+      {position, document} = pop_cursor(text, as: :document)
+      Ast.path_at(document, position)
+    end
+
+    test "returns an error if the cursor cannot be found in a node" do
+      code = ~q[
+        |
+        defmodule Foo do
+        end
+      ]
+
+      assert {:error, :not_found} = path_at(code)
+    end
+
+    test "returns an error if the AST cannot be parsed" do
+      code = ~q[
+        defmodule |Foo do
+      ]
+
+      assert {:error, {[line: 2, column: 1], "missing terminator: end" <> _, ""}} = path_at(code)
+    end
+
+    test "returns a path to the innermost node at position" do
+      code = ~q[
+        defmodule Foo do
+          def bar do
+            %{foo: |:ok}
+          end
+        end
+      ]
+
+      assert {:ok, [{:__block__, _, [:ok]} | _]} = path_at(code)
+    end
+
+    test "returns a path containing all ancestors" do
+      code = ~q[
+        defmodule Foo do
+          def |bar do
+            :ok
+          end
+        end
+      ]
+
+      assert {:ok,
+              [
+                {:bar, _, nil},
+                {:def, _, _},
+                {_, _},
+                [{_, _}],
+                {:defmodule, _, _}
+              ]} = path_at(code)
     end
   end
 
   describe "traverse_line" do
     setup do
       text = ~q[
-      line = 1
-      line = 2
-      line = 3
-      line = 4
-      ""
-    ]t
+        line = 1
+        line = 2
+        line = 3
+        line = 4
+        ""
+      ]t
 
       document = Document.new("file:///file.ex", text, 1)
 

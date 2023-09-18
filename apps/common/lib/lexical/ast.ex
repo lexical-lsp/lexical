@@ -187,9 +187,40 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Returns the path to the cursor in the given document at a position.
+  Returns the path to the innermost node in the document at the given position.
 
-  May return a path even in the event of syntax errors.
+  This function differs from `cursor_path/2` in that it expects a valid
+  AST and the returned path will not contain a `:__cursor__` node.
+  """
+  @spec path_at(Document.t(), Position.t()) ::
+          {:ok, [Macro.t(), ...]} | {:error, :not_found | parse_error()}
+  @spec path_at(Macro.t(), Position.t()) ::
+          {:ok, [Macro.t(), ...]} | {:error, :not_found}
+  def path_at(%Document{} = document, %Position{} = position) do
+    with {:ok, ast} <- from(document) do
+      path_at(ast, position)
+    end
+  end
+
+  def path_at(ast, %Position{} = position) do
+    path =
+      Future.Macro.path(ast, fn node ->
+        terminal_node?(node) and contains_position?(node, position)
+      end)
+
+    case path do
+      nil -> {:error, :not_found}
+      path -> {:ok, path}
+    end
+  end
+
+  @doc """
+  Returns the path to the cursor in a fragment of the document from the
+  start to the given position.
+
+  This function differs from `path_at/2` in that it operates on an AST
+  fragment as opposed to a full AST and the call never fails, though it
+  may return an empty list.
   """
   @spec cursor_path(
           Document.t() | Macro.t(),
@@ -271,30 +302,6 @@ defmodule Lexical.Ast do
   def zipper_at(%Document{} = document, %Position{} = position) do
     with {:ok, ast} <- from(document) do
       zipper_at_position(ast, position)
-    end
-  end
-
-  @doc """
-  Returns the path to the node in the document AST at the given position.
-  """
-  @spec path_at(Document.t(), Position.t()) ::
-          {:ok, [Macro.t(), ...]} | {:error, :not_found | parse_error()}
-  def path_at(%Document{} = document, %Position{} = position) do
-    with {:ok, ast} <- from(document) do
-      path_at(ast, position)
-    end
-  end
-
-  @spec path_at(Macro.t(), Position.t()) :: {:ok, [Macro.t(), ...]} | {:error, :not_found}
-  def path_at(ast, %Position{} = position) do
-    path =
-      Future.Macro.path(ast, fn node ->
-        terminal_node?(node) and contains_position?(node, position)
-      end)
-
-    case path do
-      nil -> {:error, :not_found}
-      path -> {:ok, path}
     end
   end
 
