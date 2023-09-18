@@ -73,6 +73,7 @@ source code is `/my/home/projects/lexical`.
 3. [Visual Studio Code](#visual-studio-code)
 4. [neovim](#neovim)
 5. [Vim + Vim-LSP](#vim--vim-lsp)
+6. [Helix](#helix)
 
 ### Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
@@ -96,7 +97,7 @@ emacs configuration), insert the following code:
 
 ```
 
-Restart emacs, and Lexical should start when you open a file with a
+Restart emacs, and Lexical should start when you open a file with age
 `.ex` extension.
 
 
@@ -236,3 +237,21 @@ g:lsp_settings_filetype_elixir = ["lexical"]
 
 For more config, debugging help, or getting vim-lsp to work with ALE, see
 [this example vimrc](https://github.com/jHwls/dotfiles/blob/4425a4feef823512d96b92e5fd64feaf442485c9/vimrc#L239).
+
+### Helix
+
+Add the language server to your `~/.config/helix/languages.toml` config.
+In the case that the file doesn't exist yet, you can create a new file at this location.
+
+```toml
+[language-server.lexical]
+command = "/my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh"
+
+[[language]]
+name = "elixir"
+language-servers = ["lexical"]
+
+[[language]]
+name = "heex"
+language-servers = ["lexical"]
+```
