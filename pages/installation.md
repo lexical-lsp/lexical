@@ -240,6 +240,8 @@ For more config, debugging help, or getting vim-lsp to work with ALE, see
 
 ### Helix
 
+*Note: This configuration is applicable for Helix version 23.09 and above.*
+
 Add the language server to your `~/.config/helix/languages.toml` config.
 In the case that the file doesn't exist yet, you can create a new file at this location.
 
