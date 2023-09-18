@@ -49,8 +49,15 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     resolve_module(prefix ++ [?.] ++ charlist, node_range, document, position)
   end
 
-  defp resolve({:local_or_var, ~c"__MODULE__"}, node_range, document, position) do
-    resolve_module(~c"__MODULE__", node_range, document, position)
+  defp resolve({:local_or_var, ~c"__MODULE__" = chars}, node_range, document, position) do
+    # check whether __MODULE__ is being used as a struct
+    with {:ok, [{:__MODULE__, _, _}, {:%, _, _} | _]} <- Ast.path_at(document, position),
+         {:ok, {:module, module}, range} <- resolve_module(chars, node_range, document, position) do
+      {:ok, {:struct, module}, range}
+    else
+      _ ->
+        resolve_module(chars, node_range, document, position)
+    end
   end
 
   defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, document, position) do

@@ -526,6 +526,17 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[%«MyStruct».Nested{}]
     end
+
+    test "expands current module", %{project: project} do
+      code = ~q[
+            defmodule Example do
+              %|__MODULE__{}
+            end
+          ]
+
+      assert {:ok, {:struct, Example}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«__MODULE__»{}]
+    end
   end
 
   describe "call resolve/2" do
