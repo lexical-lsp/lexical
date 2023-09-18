@@ -97,7 +97,7 @@ emacs configuration), insert the following code:
 
 ```
 
-Restart emacs, and Lexical should start when you open a file with age
+Restart emacs, and Lexical should start when you open a file with a
 `.ex` extension.
 
 
