@@ -2,18 +2,16 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.Server.CodeIntelligence.Entity
 
+  import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
   import Lexical.Test.Fixtures
   import Lexical.Test.RangeSupport
-  import Messages
 
   use ExUnit.Case, async: false
-  use Lexical.Test.PositionSupport
 
   defp with_referenced_file(%{project: project}) do
     uri =
@@ -690,29 +688,19 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   end
 
   defp resolve(project, code) do
-    with {position, code} <- pop_position(code),
+    with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
          {:ok, resolved, range} <- Entity.resolve(document, position) do
       {:ok, resolved, decorate(document, range)}
     end
   end
 
-  defp definition(project, subject_module) do
-    with {position, subject_module} <- pop_position(subject_module),
-         {:ok, subject_module_doc} <- subject_module(project, subject_module),
+  defp definition(project, code) do
+    with {position, code} <- pop_cursor(code),
+         {:ok, document} <- subject_module(project, code),
          {:ok, %Location{} = location} <-
-           Entity.definition(project, subject_module_doc, position) do
+           Entity.definition(project, document, position) do
       {:ok, location.document.uri, decorate(location.document, location.range)}
     end
-  end
-
-  defp pop_position(subject_module) do
-    position = caller_position(subject_module)
-    {position, strip_cursor(subject_module)}
-  end
-
-  defp caller_position(subject_module) do
-    {line, character} = cursor_position(subject_module)
-    position(line, character)
   end
 end

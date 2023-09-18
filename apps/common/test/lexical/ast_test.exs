@@ -11,14 +11,12 @@ defmodule Lexical.AstTest do
 
   use ExUnit.Case, async: true
 
-  def cursor_path(text) do
-    pos = cursor_position(text)
-    text = strip_cursor(text)
-    doc = Document.new("file:///file.ex", text, 0)
-    Ast.cursor_path(doc, pos)
-  end
-
   describe "cursor_path/2" do
+    defp cursor_path(text) do
+      {position, document} = pop_cursor(text, as: :document)
+      Ast.cursor_path(document, position)
+    end
+
     test "contains the parent AST" do
       text = ~q[
       defmodule Foo do

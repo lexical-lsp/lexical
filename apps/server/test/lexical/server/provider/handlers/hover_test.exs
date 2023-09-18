@@ -19,7 +19,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   require Messages
 
   use ExUnit.Case, async: false
-  use Lexical.Test.PositionSupport
 
   setup_all do
     project = Fixtures.project()
@@ -730,16 +729,11 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   end
 
   defp hover(project, hovered) do
-    with {position, hovered} <- pop_position(hovered),
+    with {position, hovered} <- pop_cursor(hovered),
          {:ok, document} <- document_with_content(project, hovered),
          {:ok, request} <- hover_request(document.uri, position) do
       Handlers.Hover.handle(request, %Env{project: project})
     end
-  end
-
-  defp pop_position(code) do
-    {line, character} = cursor_position(code)
-    {position(line, character), strip_cursor(code)}
   end
 
   defp document_with_content(project, content) do

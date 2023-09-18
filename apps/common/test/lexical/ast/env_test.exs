@@ -1,24 +1,14 @@
 defmodule Lexical.Ast.EnvTest do
-  alias Lexical.Document
-  alias Lexical.Test.CodeSigil
-  alias Lexical.Test.CursorSupport
-  alias Lexical.Test.Fixtures
-
   use ExUnit.Case, async: true
 
-  import CodeSigil
   import Lexical.Ast.Env
-  import CursorSupport
-  import Fixtures
+  import Lexical.Test.CodeSigil
+  import Lexical.Test.CursorSupport
+  import Lexical.Test.Fixtures
 
   def new_env(text) do
     project = project()
-    {line, column} = cursor_position(text)
-    stripped_text = strip_cursor(text)
-    document = Document.new("file://foo.ex", stripped_text, 0)
-
-    position = Document.Position.new(document, line, column)
-
+    {position, document} = pop_cursor(text, as: :document)
     {:ok, env} = new(project, document, position)
     env
   end

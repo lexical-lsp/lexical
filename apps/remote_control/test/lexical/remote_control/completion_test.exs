@@ -4,7 +4,6 @@ defmodule Lexical.RemoteControl.CompletionTest do
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
-  import Lexical.Test.PositionSupport
 
   use ExUnit.Case, async: true
 
@@ -86,23 +85,9 @@ defmodule Lexical.RemoteControl.CompletionTest do
     end
   end
 
-  defp document(source) do
-    text = strip_cursor(source)
-    Document.new(file_uri(), text, 1)
-  end
-
-  defp file_uri do
-    "file:///elixir.ex"
-  end
-
-  defp position(source) do
-    {line, column} = cursor_position(source)
-    position(line, column)
-  end
-
   defp struct_fields(source) do
-    document = document(source)
-    position = position(source)
+    {position, document} = pop_cursor(source, as: :document)
+
     text = Document.to_string(document)
     Code.compile_string(text)
 
