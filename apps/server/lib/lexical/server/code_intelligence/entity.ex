@@ -148,8 +148,11 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     {_call, _, args} =
       pipe
       |> Macro.unpipe()
-      |> Stream.map(fn {ast, _arg_position} -> ast end)
-      |> Enum.find(&Ast.contains_position?(&1, position))
+      |> Enum.find_value(fn {ast, _arg_position} ->
+        if Ast.contains_position?(ast, position) do
+          ast
+        end
+      end)
 
     length(args) + 1
   end

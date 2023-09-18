@@ -65,7 +65,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
     |> Enum.map(fn raw_entry ->
       entry = Entry.from_docs_v1(module, raw_entry)
       defs = Map.get(defs_by_name_arity, {entry.name, entry.arity}, [])
-      Map.replace!(entry, :defs, defs)
+      %Entry{entry | defs: defs}
     end)
     |> Enum.group_by(& &1.name)
   end
