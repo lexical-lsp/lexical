@@ -97,8 +97,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       HoverWithDoc
       ```
 
-      ---
-
       This module has a moduledoc.
       """
 
@@ -156,13 +154,9 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       HoverBehaviour
       ```
 
-      ---
-
       This is a custom behaviour.
 
-      ---
-
-      #### Callbacks
+      ## Callbacks
 
       ```elixir
       @callback bar(term()) :: {:ok, custom_type()}
@@ -209,13 +203,9 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       HoverBehaviour
       ```
 
-      ---
-
       This is a custom behaviour.
 
-      ---
-
-      #### Callbacks
+      ## Callbacks
 
       ```elixir
       @callback bar(term()) :: {:ok, custom_type()}
@@ -263,21 +253,13 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       expected = """
       ```elixir
       %StructWithDoc{}
-      ```
 
-      ---
-
-      #### Struct
-
-      ```elixir
       @type t() :: %StructWithDoc{
               bar: integer(),
               baz: {boolean(), reference()},
               foo: String.t()
             }
       ```
-
-      ---
 
       This module has a moduledoc.
       """
@@ -309,21 +291,13 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       expected = """
       ```elixir
       %StructWithDoc{}
-      ```
 
-      ---
-
-      #### Struct
-
-      ```elixir
       @type t() :: %StructWithDoc{foo: String.t()}
 
       @type t(kind) :: %StructWithDoc{foo: kind}
 
       @type t(kind1, kind2) :: %StructWithDoc{foo: {kind1, kind2}}
       ```
-
-      ---
 
       This module has a moduledoc.
       """
@@ -354,8 +328,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       %StructWithDoc{}
       ```
 
-      ---
-
       This module has a moduledoc.
       """
 
@@ -385,17 +357,9 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       expected = """
       ```elixir
       CallHover.my_fun(x, y)
-      ```
 
-      ---
-
-      #### Specs
-
-      ```elixir
       @spec my_fun(integer(), integer()) :: integer()
       ```
-
-      ---
 
       This function has docs.
       """
@@ -422,13 +386,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       expected = """
       ```elixir
       CallHover.my_fun(x, y)
-      ```
 
-      ---
-
-      #### Specs
-
-      ```elixir
       @spec my_fun(integer(), integer()) :: integer()
       @spec my_fun(float(), float()) :: float()
       ```
@@ -461,13 +419,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       expected = """
       ```elixir
       CallHover.my_fun(x, y)
-      ```
 
-      ---
-
-      #### Specs
-
-      ```elixir
       @spec my_fun(integer(), integer()) :: integer()
       ```
 
@@ -475,13 +427,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       ```elixir
       CallHover.my_fun(x, y, z)
-      ```
 
-      ---
-
-      #### Specs
-
-      ```elixir
       @spec my_fun(integer(), integer(), integer()) :: integer()
       ```
       """
@@ -508,8 +454,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       ```elixir
       CallHover.my_fun(x)
       ```
-
-      ---
 
       Function doc
       """
@@ -582,8 +526,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       (macro) MacroHover.my_macro(expr)
       ```
 
-      ---
-
       This is a macro.
       """
 
@@ -615,8 +557,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       @type my_type() :: integer()
       ```
-
-      ---
 
       This type has docs.
       """

@@ -41,14 +41,14 @@ defmodule Lexical.Server.Provider.Markdown do
   ## Options
 
     * `:header` (required) - The section title.
-    * `:header_level` - Defaults to `4`.
+    * `:header_level` - Defaults to `2`.
 
   """
   @spec section(markdown, [opt]) :: markdown
         when opt: {:header, markdown} | {:header_level, pos_integer()}
   def section(content, opts) do
     header = Keyword.fetch!(opts, :header)
-    header_level = Keyword.get(opts, :header_level, 4)
+    header_level = Keyword.get(opts, :header_level, 2)
 
     """
     #{String.duplicate("#", header_level)} #{header}
@@ -58,18 +58,18 @@ defmodule Lexical.Server.Provider.Markdown do
   end
 
   @doc """
-  Joins multiple Markdown sections with a horizontal rule.
+  Joins multiple Markdown sections.
   """
   @spec join_sections([markdown | nil]) :: markdown
-  def join_sections(sections) when is_list(sections) do
+  def join_sections(sections, joiner \\ "\n\n") when is_list(sections) do
     with_rules =
       sections
       |> Stream.filter(&(is_binary(&1) and &1 != ""))
       |> Stream.map(&String.trim(&1))
-      |> Enum.intersperse("\n\n---\n\n")
+      |> Enum.intersperse(joiner)
 
     case with_rules do
-      [] -> nil
+      [] -> ""
       _ -> IO.iodata_to_binary([with_rules, "\n"])
     end
   end

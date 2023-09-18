@@ -14,12 +14,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   def handle(%Requests.Hover{} = request, %Env{} = env) do
     maybe_hover =
       with {:ok, entity, range} <- Entity.resolve(request.document, request.position),
-           {:ok, sections} <- hover_content(entity, env) do
-        content =
-          sections
-          |> Markdown.join_sections()
-          |> Markdown.to_content()
-
+           {:ok, markdown} <- hover_content(entity, env) do
+        content = Markdown.to_content(markdown)
         %Hover{contents: content, range: range}
       else
         error ->
@@ -33,21 +29,19 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
     case RemoteControl.Api.docs(env.project, module) do
       {:ok, %Docs{doc: doc} = module_docs} when doc != :hidden ->
-        header_content = module_header(kind, module_docs)
-        types_content = module_types(kind, module_docs)
-        doc_content = module_doc(doc)
-        footer_content = module_footer(kind, module_docs)
+        header = module_header(kind, module_docs)
+        types = module_header_types(kind, module_docs)
 
-        sections = [
-          types_content,
-          doc_content,
-          footer_content
+        additional_sections = [
+          module_doc(doc),
+          module_footer(kind, module_docs)
         ]
 
-        if Enum.any?(sections, &(not empty?(&1))) do
-          {:ok, [header_content | sections]}
-        else
+        if Enum.all?([types | additional_sections], &empty?/1) do
           {:error, :no_doc}
+        else
+          header_block = "#{header}\n\n#{types}" |> String.trim() |> Markdown.code_block()
+          {:ok, Markdown.join_sections([header_block | additional_sections])}
         end
 
       _ ->
@@ -62,9 +56,9 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
         entries
         |> Enum.sort_by(& &1.arity)
         |> Enum.filter(&(&1.arity >= arity))
-        |> Enum.flat_map(&entry_sections/1)
+        |> Enum.map(&entry_content/1)
 
-      {:ok, sections}
+      {:ok, Markdown.join_sections(sections, "\n\n---\n\n")}
     end
   end
 
@@ -73,7 +67,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
          {:ok, entries} <- Map.fetch(module_docs.types, type) do
       case Enum.find(entries, &(&1.arity == arity)) do
         %Docs.Entry{} = entry ->
-          {:ok, entry_sections(entry)}
+          {:ok, entry_content(entry)}
 
         _ ->
           {:error, :no_type}
@@ -82,35 +76,25 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   end
 
   defp module_header(:module, %Docs{module: module}) do
-    module
-    |> Ast.Module.name()
-    |> Markdown.code_block()
+    Ast.Module.name(module)
   end
 
   defp module_header(:struct, %Docs{module: module}) do
     "%#{Ast.Module.name(module)}{}"
-    |> Markdown.code_block()
+  end
+
+  defp module_header_types(:module, %Docs{}), do: ""
+
+  defp module_header_types(:struct, %Docs{} = docs) do
+    docs.types
+    |> Map.get(:t, [])
+    |> sort_entries()
+    |> Enum.flat_map(& &1.defs)
+    |> Enum.join("\n\n")
   end
 
   defp module_doc(s) when is_binary(s), do: s
   defp module_doc(_), do: nil
-
-  defp module_types(:module, _), do: nil
-
-  defp module_types(:struct, docs) do
-    struct_type_defs =
-      docs.types
-      |> Map.get(:t, [])
-      |> sort_entries()
-      |> Enum.flat_map(& &1.defs)
-
-    if struct_type_defs != [] do
-      struct_type_defs
-      |> Enum.join("\n\n")
-      |> Markdown.code_block()
-      |> Markdown.section(header: "Struct")
-    end
-  end
 
   defp module_footer(:module, docs) do
     callbacks = format_callbacks(docs.callbacks)
@@ -122,36 +106,32 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp module_footer(:struct, _docs), do: nil
 
-  defp entry_sections(%Docs.Entry{kind: fn_or_macro} = entry)
+  defp entry_content(%Docs.Entry{kind: fn_or_macro} = entry)
        when fn_or_macro in [:function, :macro] do
     with {:ok, call_header} <- call_header(entry) do
       specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
 
-      [
-        call_header,
-        if specs != "" do
-          specs
-          |> Markdown.code_block()
-          |> Markdown.section(header: "Specs")
-        end,
-        entry_doc_content(entry.doc)
-      ]
+      header =
+        [call_header, specs]
+        |> Markdown.join_sections()
+        |> String.trim()
+        |> Markdown.code_block()
+
+      Markdown.join_sections([header, entry_doc_content(entry.doc)])
     end
   end
 
-  defp entry_sections(%Docs.Entry{kind: :type} = entry) do
+  defp entry_content(%Docs.Entry{kind: :type} = entry) do
     module_name = Ast.Module.name(entry.module)
 
-    header = """
-    #{module_name}.#{entry.name}/#{entry.arity}
+    header =
+      Markdown.code_block("""
+      #{module_name}.#{entry.name}/#{entry.arity}
 
-    #{type_defs(entry)}\
-    """
+      #{type_defs(entry)}\
+      """)
 
-    [
-      Markdown.code_block(header),
-      entry_doc_content(entry.doc)
-    ]
+    Markdown.join_sections([header, entry_doc_content(entry.doc)])
   end
 
   defp call_header(%Docs.Entry{kind: maybe_macro} = entry) do
@@ -165,7 +145,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
           ""
         end
 
-      {:ok, Markdown.code_block("#{macro_prefix}#{module_name}.#{signature}")}
+      {:ok, "#{macro_prefix}#{module_name}.#{signature}"}
     end
   end
 
