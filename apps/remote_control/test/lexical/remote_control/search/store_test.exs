@@ -43,6 +43,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
   def with_a_started_store(%{project: project}) do
     start_supervised!({Store, [project, &default_create/1, &default_update/2]})
+    assert_eventually ready?()
 
     on_exit(fn ->
       project
@@ -67,7 +68,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, [], []}
       end
 
-      start_supervised!({Store, [project, create_fn, update_fn]})
+      start_store!(project, create_fn, update_fn)
 
       assert_receive :create
       refute_receive :update
@@ -82,14 +83,15 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, [], []}
       end
 
-      start_supervised!({Store, [project, create_fn, update_fn]})
+      start_store!(project, create_fn, update_fn)
       restart_store()
 
       assert_receive :update
     end
 
     test "starts empty if there are no disk files", %{project: project} do
-      Store.start_link([project, &default_create/1, &default_update/2])
+      start_store!(project, &default_create/1, &default_update/2)
+
       assert [] = Store.all()
 
       entry = definition()
@@ -107,17 +109,17 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, entries}
       end
 
-      start_supervised!({Store, [project, create, &default_update/2]})
+      start_store!(project, create, &default_update/2)
       restart_store()
-      paths = Enum.map(Store.all(), & &1.path)
 
+      paths = Enum.map(Store.all(), & &1.path)
       assert "/foo/bar/baz.ex" in paths
       assert "/foo/bar/quux.ex" in paths
     end
 
     test "fails if the reindex fails on an empty index", %{project: project} do
       create = fn _ -> {:error, :broken} end
-      start_supervised!({Store, [project, create, &default_update/2]})
+      start_store!(project, create, &default_update/2)
       assert Store.all() == []
     end
 
@@ -140,7 +142,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, entries, []}
       end
 
-      start_supervised!({Store, [project, create, update]})
+      start_store!(project, create, update)
       restart_store()
 
       entries = Enum.map(Store.all(), &{&1.ref, &1.path})
@@ -153,7 +155,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
       create = fn _ -> {:ok, []} end
       update = fn _, _ -> {:error, :bad} end
 
-      start_supervised!({Store, [project, create, update]})
+      start_store!(project, create, update)
       restart_store()
 
       assert [] = Store.all()
@@ -175,8 +177,9 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, [], ["/path/to/delete.ex", "/another/path/to/delete.ex"]}
       end
 
-      start_supervised!({Store, [project, create, update]})
+      start_store!(project, create, update)
       restart_store()
+
       assert [entry] = Store.all()
       assert entry.path == "/path/to/keep.ex"
     end
@@ -424,10 +427,15 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
       Store.stop()
 
-      assert_eventually alive?()
+      assert_eventually ready?()
       assert [found] = Store.all()
       assert found.ref == 2
     end
+  end
+
+  def start_store!(project, create_index, update_index) do
+    start_supervised!({Store, [project, create_index, update_index]})
+    assert_eventually ready?()
   end
 
   def restart_store do
@@ -439,11 +447,15 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
     receive do
       {:DOWN, _, _, _, _} ->
-        assert_eventually alive?()
+        assert_eventually ready?()
     after
       1000 ->
         raise "Could not stop store"
     end
+  end
+
+  def ready? do
+    alive?() and Store.loaded?()
   end
 
   def alive? do

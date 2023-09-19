@@ -66,7 +66,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   # function takes around 4 seconds to reindex all Lexical's
   # modules, making it 5x faster than Enum and 4x faster than
   # Task.async_stream
-  defp async_chunks(data, processor, timeout \\ 20_000) do
+  defp async_chunks(data, processor, timeout \\ :infinity) do
     data
     |> Stream.chunk_every(System.schedulers_online())
     |> Enum.map(fn chunk ->
