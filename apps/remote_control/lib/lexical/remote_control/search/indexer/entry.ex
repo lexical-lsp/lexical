@@ -2,9 +2,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type entry_type :: :module
   @type subject :: String.t()
   @type entry_subtype :: :reference | :definition
-  @type line :: non_neg_integer()
-  @type column :: non_neg_integer
-  @type position :: {line, column}
   @type version :: String.t()
   @type entry_reference :: reference() | nil
 
@@ -12,14 +9,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :application,
     :elixir_version,
     :erlang_version,
-    :range,
-    :updated_at,
-    :subject,
     :parent,
     :path,
+    :range,
     :ref,
+    :subject,
     :subtype,
-    :type
+    :type,
+    :updated_at
   ]
 
   @type t :: %__MODULE__{

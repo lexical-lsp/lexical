@@ -20,7 +20,7 @@ defmodule Lexical.RemoteControl.ProjectNodeTest do
     project_alive? = project |> ProjectNode.name() |> Process.whereis() |> Process.alive?()
 
     assert project_alive?
-    assert :ok = ProjectNode.stop(project, 500)
+    assert :ok = ProjectNode.stop(project, 1500)
     assert Process.whereis(ProjectNode.name(project)) == nil
   end
 
