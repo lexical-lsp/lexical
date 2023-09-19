@@ -54,7 +54,7 @@ defmodule Lexical.Project do
   """
   @spec name(t) :: String.t()
 
-  def name(%__MODULE__{project_module: nil} = project) do
+  def name(%__MODULE__{} = project) do
     sanitized =
       project
       |> folder_name()
@@ -71,10 +71,6 @@ defmodule Lexical.Project do
       other ->
         "p_#{other}"
     end
-  end
-
-  def name(%__MODULE__{project_module: project_module}) do
-    Atom.to_string(project_module)
   end
 
   @doc """

@@ -103,6 +103,14 @@ These are pre-commit hooks that will check for correct formatting and run credo 
 
 After this, you're ready to put together a pull request for Lexical!
 
+#### Benchmarks
+
+The `remote_control` project has a set of benchmarks that measure the speed of various internal functions and data structures. In order to use them, you first need to install [git large file storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), and then run `git pull`. Benchmarks are stored in the `benchmarks` subdirectory, and can be run via 
+
+```
+mix benchmark /benchmarks/<benchmark_file>.exs
+```
+
 ### Logging
 When lexical starts up, it creates a `.lexical` directory in the root
 directory of a project. Inside that directory are two log files,

@@ -1,7 +1,6 @@
 defmodule Lexical.Server.IEx.Helpers do
   alias Lexical.Document
   alias Lexical.Document.Position
-  alias Lexical.ProcessCache
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.RemoteControl
@@ -29,6 +28,12 @@ defmodule Lexical.Server.IEx.Helpers do
 
   def doc(text) do
     doc(:lexical, text)
+  end
+
+  def project_node(name) do
+    name
+    |> project()
+    |> Project.node_name()
   end
 
   def doc(project, text) do
@@ -102,7 +107,7 @@ defmodule Lexical.Server.IEx.Helpers do
   def project(project \\ :lexical) when is_atom(project) do
     # We're using a cache here because we need project's
     # entropy to be the same after every call.
-    ProcessCache.trans(project, fn ->
+    trans(project, fn ->
       project_path =
         [File.cwd!(), "..", to_string(project)]
         |> Path.join()
@@ -180,5 +185,20 @@ defmodule Lexical.Server.IEx.Helpers do
 
   defp ensure_project(project) when is_atom(project) do
     project(project)
+  end
+
+  defp trans(name, function) do
+    name = {__MODULE__, name}
+
+    case :persistent_term.get(name, :undefined) do
+      :undefined ->
+        value = function.()
+        :persistent_term.put(name, value)
+
+      _ ->
+        :ok
+    end
+
+    :persistent_term.get(name)
   end
 end

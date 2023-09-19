@@ -13,7 +13,8 @@ defmodule Lexical.RemoteControl.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env()),
-      aliases: aliases()
+      aliases: aliases(),
+      preferred_cli_env: [benchmark: :test]
     ]
   end
 
@@ -21,6 +22,13 @@ defmodule Lexical.RemoteControl.MixProject do
     [
       extra_applications: [:logger, :sasl, :eex],
       mod: {Lexical.RemoteControl.Application, []}
+    ]
+  end
+
+  # cli/0 is new for elixir 1.15, prior, we need to set `preferred_cli_env` in the project
+  def cli do
+    [
+      preferred_envs: [benchmark: :test]
     ]
   end
 
@@ -34,6 +42,7 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
+      {:benchee, "~> 1.1", only: :test},
       {:common, in_umbrella: true},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git"},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
@@ -47,6 +56,6 @@ defmodule Lexical.RemoteControl.MixProject do
   end
 
   defp aliases do
-    [test: "test --no-start"]
+    [test: "test --no-start", benchmark: "run"]
   end
 end

@@ -24,16 +24,17 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
     {:ok, state}
   end
 
-  def reindex(%Document{} = document, quoted_ast) do
+  defp reindex(%Document{} = document, quoted_ast) do
     with :ok <- ensure_latest_version(document),
          {:ok, entries} <- Indexer.Quoted.index(document, quoted_ast) do
-      Search.Store.update(document.path, entries)
+      Search.Store.update_async(document.path, entries)
     end
   end
 
   def delete_path(uri) do
-    path = Document.Path.ensure_path(uri)
-    Search.Store.clear(path)
+    uri
+    |> Document.Path.ensure_path()
+    |> Search.Store.clear()
   end
 
   defp ensure_latest_version(%Document{version: version, uri: uri}) do
@@ -45,7 +46,4 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
         {:error, :version_mismatch}
     end
   end
-end
-
-defmodule NewModule do
 end

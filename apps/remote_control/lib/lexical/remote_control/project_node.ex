@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.ProjectNode
   require Logger
 
   defmodule State do
@@ -28,6 +27,8 @@ defmodule Lexical.RemoteControl.ProjectNode do
     @dialyzer {:nowarn_function, start: 3}
 
     def start(%__MODULE__{} = state, paths, from) do
+      this_node = inspect(Node.self())
+
       args = [
         "--name",
         Project.node_name(state.project),
@@ -35,7 +36,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
         state.cookie,
         "--no-halt",
         "-e",
-        "Node.connect(#{inspect(Node.self())})"
+        "Node.connect(#{this_node})"
         | path_append_arguments(paths)
       ]
 
