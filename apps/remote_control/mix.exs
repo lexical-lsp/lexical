@@ -41,7 +41,7 @@ defmodule Lexical.RemoteControl.MixProject do
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false},
       {:path_glob, "~> 0.2", optional: true},
-      {:sourceror, github: "doorgan/sourceror", ref: "b0ec3cc"}
+      {:sourceror, "~> 0.14.0"}
     ]
   end
 
