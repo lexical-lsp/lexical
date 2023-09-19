@@ -30,7 +30,7 @@ test.projects:
 
 compile.umbrella: compile.projects
 	mix deps.get
-	mix compile --skip-umbrella-children --warnings-as-errors
+	mix compile --skip-umbrella-children
 
 compile.projects:
 	cd projects

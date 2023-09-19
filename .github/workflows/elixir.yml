@@ -69,6 +69,9 @@ jobs:
           mix deps.get
           mix deps.compile --skip-umbrella-children
 
+      - name: Compile and don't let warnings through
+        run: mix compile --warnings-as-errors
+
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
       # Customize this step as desired.
