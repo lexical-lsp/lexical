@@ -21,7 +21,7 @@ defmodule Lexical.Proto.Macros.Message do
       unquote(parse_fn)
       unquote(Meta.build(types))
 
-      @type t :: unquote(Typespec.typespec())
+      @type t :: unquote(Typespec.typespec(types, env))
 
       def method do
         unquote(method)
