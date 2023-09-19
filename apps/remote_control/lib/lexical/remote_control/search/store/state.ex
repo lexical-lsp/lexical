@@ -48,6 +48,15 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     {:error, :not_loaded}
   end
 
+  @doc """
+  Asynchronously loads the search state.
+
+  This function returns prior to creating or refreshing the index, which
+  occurs in a separate process. The caller should listen for a message
+  of the shape `{ref, result}`, where `ref` matches the state's
+  `:async_load_ref`. Once received, that result should be passed to
+  `async_load_complete/2`.
+  """
   def async_load(%__MODULE__{loaded?: false, async_load_ref: nil} = state) do
     case Ets.new(state.index_path) do
       {:ok, :empty, table_name} ->
