@@ -52,7 +52,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
@@ -68,6 +68,9 @@ jobs:
         run: |
           mix deps.get
           mix deps.compile --skip-umbrella-children
+
+      - name: Compile and don't let warnings through
+        run: mix compile --warnings-as-errors
 
       # Step: Check that the checked in code has already been formatted.
       # This step fails if something was found unformatted.
@@ -111,7 +114,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
@@ -189,7 +192,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
