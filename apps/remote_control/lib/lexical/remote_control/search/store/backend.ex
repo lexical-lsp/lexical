@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Store.Backend do
+  alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
   @type version :: pos_integer()
 
@@ -11,18 +12,29 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
           subtypes: [Entry.entry_subtype()]
         }
 
-  @callback new(Path.t()) :: {:ok, load_state(), name()} | {:error, :any}
-  @callback new(Path.t(), version()) :: {:ok, load_state(), name()} | {:error, any()}
+  @callback new(Project.t()) :: {:ok, load_state()} | {:error, any()}
+  @callback sync(Project.t()) :: :ok | {:error, any()}
   @callback insert([Entry.t()]) :: :ok
+
+  @doc """
+  Drops all data from the backend, but keeps the underlying structure
+  """
   @callback drop() :: boolean()
+
+  @doc """
+  Drops all data from the backend, and disposes of any underlying structure
+  """
+  @callback destroy(Project.t()) :: :ok
+
   @callback select_all :: [Entry.t()]
-  @callback select_unique_fields([field_name()]) :: [Entry.t()]
   @callback replace_all([Entry.t()]) :: :ok
-  @callback find_metadata() :: metadata
+  @callback delete_by_path(Path.t()) :: {:ok, [Entry.t()]} | {:error, any()}
   @callback find_by_subject(Entry.subject(), Entry.entry_type(), Entry.entry_subtype()) :: [
               Entry.t()
             ]
-  @callback find_by_references([reference()], Entry.entry_type(), Entry.entry_subtype()) :: [
+  @callback find_by_refs([reference()], Entry.entry_type(), Entry.entry_subtype()) :: [
               Entry.t()
             ]
+
+  @optional_callbacks sync: 1
 end

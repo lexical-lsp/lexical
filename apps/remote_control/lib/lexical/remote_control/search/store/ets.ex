@@ -1,10 +1,11 @@
 defmodule Lexical.RemoteControl.Search.Store.Ets do
-  alias Lexical.RemoteControl.Search
+  alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Store.Backend
   alias Lexical.VM.Versions
   import Record
 
-  @behaviour Search.Store.Backend
+  @behaviour Backend
   @version 1
 
   @doc """
@@ -32,7 +33,15 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
 
   @table __MODULE__
 
-  def new(file_name, version \\ @version) do
+  @impl Backend
+  def new(%Project{} = project) do
+    new(project, @version)
+  end
+
+  def new(%Project{} = project, version \\ @version) do
+    file_name = index_file_path(project)
+    ensure_index_directory_exists(file_name)
+
     path_charlist = String.to_charlist(file_name)
 
     with {:error, _} <- new_from_file(path_charlist) do
@@ -40,8 +49,24 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     end
   end
 
+  @impl Backend
   def drop do
-    :ets.delete(@table)
+    :ets.delete_all_objects(@table)
+  end
+
+  @impl Backend
+  def destroy(%Project{} = project) do
+    case :ets.info(@table) do
+      :undefined ->
+        :ok
+
+      _ ->
+        :ets.delete(@table)
+    end
+
+    project
+    |> index_file_path()
+    |> File.rm()
   end
 
   def load_from(filename) when is_binary(filename) do
@@ -60,6 +85,13 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     end
   end
 
+  @impl Backend
+  def sync(%Project{} = project) do
+    project
+    |> index_file_path()
+    |> sync_to()
+  end
+
   def sync_to(filename) when is_binary(filename) do
     sync_to(String.to_charlist(filename))
   end
@@ -68,23 +100,19 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     :ets.tab2file(@table, filename)
   end
 
+  @impl Backend
   def insert(entries) do
     true = :ets.insert(@table, Enum.map(entries, &to_ets/1))
     :ok
   end
 
+  @impl Backend
   def select_all do
     entry_wildcard = match_spec(:_, :_, :_)
     :ets.select(@table, entry_wildcard)
   end
 
-  def select_unique_fields(entry_fields) do
-    @table
-    |> :ets.select(match_spec(:_, :_, :_))
-    |> Stream.map(&Map.take(&1, entry_fields))
-    |> Enum.uniq()
-  end
-
+  @impl Backend
   def replace_all([]) do
     true = :ets.match_delete(@table, {query(), :_})
     :ok
@@ -100,18 +128,14 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     end
   end
 
-  def find_metadata do
-    [[result]] = :ets.match(@table, {:metadata, :"$1"})
-    metadata(schema_version: version, types: types, subtypes: subtypes) = result
-    %{schema_version: version, types: types, subtypes: subtypes}
-  end
-
+  @impl Backend
   def find_by_subject(subject, type, subtype) do
     match_spec = match_spec(subject, type, subtype)
     :ets.select(@table, match_spec)
   end
 
-  def find_by_references(references, type, subtype) when is_list(references) do
+  @impl Backend
+  def find_by_refs(references, type, subtype) when is_list(references) do
     for reference <- references,
         match_spec = reference_match_spec(reference, type, subtype),
         result = select_one(match_spec),
@@ -120,6 +144,7 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     end
   end
 
+  @impl Backend
   def delete_by_path(path) do
     versions = Versions.current()
 
@@ -138,6 +163,12 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     with true <- :ets.match_delete(@table, {by_path, :_}) do
       {:ok, old_entries}
     end
+  end
+
+  def find_metadata do
+    [[result]] = :ets.match(@table, {:metadata, :"$1"})
+    metadata(schema_version: version, types: types, subtypes: subtypes) = result
+    %{schema_version: version, types: types, subtypes: subtypes}
   end
 
   defp match_spec(subject, type, subtype) do
@@ -194,8 +225,8 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
 
   defp new_from_file(path_charlist) do
     with {:ok, _} <- File.stat(path_charlist),
-         {:ok, table} <- :ets.file2tab(path_charlist) do
-      {:ok, :stale, table}
+         {:ok, _table} <- :ets.file2tab(path_charlist) do
+      {:ok, :stale}
     end
   end
 
@@ -204,8 +235,17 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
     :ets.insert(table_name, {:metadata, metadata(schema_version: version)})
 
     case :ets.tab2file(table_name, path_charlist) do
-      :ok -> {:ok, :empty, table_name}
+      :ok -> {:ok, :empty}
       error -> error
     end
+  end
+
+  defp index_file_path(%Project{} = project) do
+    Project.workspace_path(project, Path.join("indexes", "source.index.ets"))
+  end
+
+  defp ensure_index_directory_exists(index_path) do
+    dir_name = Path.dirname(index_path)
+    File.mkdir_p!(dir_name)
   end
 end

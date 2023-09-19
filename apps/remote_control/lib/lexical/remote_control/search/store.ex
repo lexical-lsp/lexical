@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
 
   @type index_state :: :empty | :stale
@@ -26,16 +27,14 @@ defmodule Lexical.RemoteControl.Search.Store do
           (project :: Project.t(), entries :: existing_entries ->
              {:ok, new_entries, paths_to_delete} | {:error, term()})
 
+  @backend Store.Mnesia
+
   use GenServer
   require Logger
 
   def stop do
     GenServer.call(__MODULE__, :drop)
     GenServer.stop(__MODULE__)
-  end
-
-  def metadata do
-    GenServer.call(__MODULE__, :metadata)
   end
 
   def all do
@@ -66,27 +65,41 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, {:update, path, entries})
   end
 
-  def unique_fields(fields) do
-    GenServer.call(__MODULE__, {:unique_fields, fields})
+  def destroy do
+    GenServer.call(__MODULE__, :destroy)
   end
 
-  @spec start_link(Project.t(), create_index, refresh_index) :: GenServer.on_start()
-  def start_link(%Project{} = project, create_index, refresh_index) do
-    start_link([project, create_index, refresh_index])
+  @spec start_link(Project.t(), create_index, refresh_index, module()) :: GenServer.on_start()
+  def start_link(%Project{} = project, create_index, refresh_index, backend) do
+    GenServer.start_link(__MODULE__, [project, create_index, refresh_index, backend],
+      name: __MODULE__
+    )
   end
 
-  def start_link([%Project{} = project, create_index, refresh_index]) do
-    GenServer.start_link(__MODULE__, [project, create_index, refresh_index], name: __MODULE__)
+  def child_spec(init_args) when is_list(init_args) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, normalize_init_args(init_args)}
+    }
   end
 
-  def start_link([create_index, refresh_index]) do
-    start_link(Lexical.RemoteControl.get_project(), create_index, refresh_index)
+  defp normalize_init_args([create_index, refresh_index]) do
+    normalize_init_args([Lexical.RemoteControl.get_project(), create_index, refresh_index])
   end
 
-  def init([%Project{} = project, create_index, update_index]) do
+  defp normalize_init_args([%Project{} = project, create_index, refresh_index]) do
+    normalize_init_args([project, create_index, refresh_index, @backend])
+  end
+
+  defp normalize_init_args([%Project{}, create_index, refresh_index, backend] = args)
+       when is_function(create_index, 1) and is_function(refresh_index, 2) and is_atom(backend) do
+    args
+  end
+
+  def init([%Project{} = project, create_index, update_index, backend]) do
     state =
       project
-      |> State.new(create_index, update_index)
+      |> State.new(create_index, update_index, backend)
       |> State.async_load()
 
     {:ok, state}
@@ -139,32 +152,6 @@ defmodule Lexical.RemoteControl.Search.Store do
     {:reply, reply, new_state}
   end
 
-  def handle_call(:metadata, _from, %State{} = state) do
-    {reply, new_state} =
-      case State.metadata(state) do
-        {:ok, metadata, state} ->
-          {metadata, state}
-
-        error ->
-          {error, state}
-      end
-
-    {:reply, reply, new_state}
-  end
-
-  def handle_call({:unique_fields, fields}, _from, %State{} = state) do
-    {reply, new_state} =
-      case State.unique_fields(state, fields) do
-        {:ok, entries, new_state} ->
-          {entries, new_state}
-
-        error ->
-          {error, state}
-      end
-
-    {:reply, reply, new_state}
-  end
-
   def handle_call(:drop, _, %State{} = state) do
     State.drop(state)
     {:reply, :ok, state}
@@ -172,5 +159,10 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   def handle_call(:loaded?, _, %State{loaded?: loaded?} = state) do
     {:reply, loaded?, state}
+  end
+
+  def handle_call(:destroy, _, %State{} = state) do
+    new_state = State.destroy(state)
+    {:reply, :ok, new_state}
   end
 end

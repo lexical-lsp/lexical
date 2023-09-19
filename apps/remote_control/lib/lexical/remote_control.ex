@@ -90,7 +90,8 @@ defmodule Lexical.RemoteControl do
   end
 
   defp app_globs do
-    Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+    app_globs = Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
+    ["/**/priv" | app_globs]
   end
 
   defp ensure_epmd_started do

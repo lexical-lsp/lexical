@@ -19,6 +19,7 @@ defmodule Lexical.RemoteControl.MixProject do
 
   def application do
     [
+      included_applications: [:mnesia],
       extra_applications: [:logger, :sasl, :eex],
       mod: {Lexical.RemoteControl.Application, []}
     ]
