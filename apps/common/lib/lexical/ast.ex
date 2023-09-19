@@ -205,7 +205,7 @@ defmodule Lexical.Ast do
   def path_at(ast, %Position{} = position) do
     path =
       Future.Macro.path(ast, fn node ->
-        terminal_node?(node) and contains_position?(node, position)
+        leaf?(node) and contains_position?(node, position)
       end)
 
     case path do
@@ -665,34 +665,31 @@ defmodule Lexical.Ast do
     end
   end
 
-  # Terminal nodes are nodes in the AST that do not have any children
-  # that a cursor could be meaningfully positioned on.
-
   # data literals:
   # 1, :foo, "foo"
-  defp terminal_node?(literal) when is_number(literal) or is_binary(literal) or is_atom(literal),
+  defp leaf?(literal) when is_number(literal) or is_binary(literal) or is_atom(literal),
     do: true
 
   # wrapped data literals:
-  # as above, but may contain additional token metadata, so consider the block terminal
-  defp terminal_node?({:__block__, _, [literal]}), do: terminal_node?(literal)
+  # as above, but may contain additional token metadata, so consider the block a leaf
+  defp leaf?({:__block__, _, [literal]}), do: leaf?(literal)
 
   # unqualified calls or forms without any arguments:
   # foo(), %{}
-  defp terminal_node?({form, _, []}) when is_atom(form), do: true
+  defp leaf?({form, _, []}) when is_atom(form), do: true
 
   # dot-calls:
   # Foo.bar, baz.buzz
-  defp terminal_node?({:., _, _}), do: true
+  defp leaf?({:., _, _}), do: true
 
   # module aliases:
   # Foo.Bar.Baz, __MODULE__.Inner
-  defp terminal_node?({:__aliases__, _, _}), do: true
+  defp leaf?({:__aliases__, _, _}), do: true
 
   # variables:
   # foo
-  defp terminal_node?({var, _, namespace}) when is_atom(var) and is_atom(namespace), do: true
+  defp leaf?({var, _, namespace}) when is_atom(var) and is_atom(namespace), do: true
 
-  # consider all other forms non-terminal
-  defp terminal_node?(_), do: false
+  # consider all other forms branches
+  defp leaf?(_), do: false
 end
