@@ -73,4 +73,12 @@ defmodule Lexical.Server.Provider.Markdown do
       _ -> IO.iodata_to_binary([with_rules, "\n"])
     end
   end
+
+  @doc """
+  Returns a string that can be used to join sections with a horizontal rule.
+  """
+  @spec separator() :: markdown
+  def separator do
+    "\n\n---\n\n"
+  end
 end

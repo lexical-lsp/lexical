@@ -18,11 +18,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
 
   @doc """
   Fetches known documentation for the given module.
+
+  ## Options
+
+    * `:exclude_hidden` - if `true`, returns `{:error, :hidden}` for
+      modules that have been marked as hidden using `@moduledoc false`.
+      Defaults to `false`.
+
   """
-  @spec for_module(module()) :: {:ok, t} | {:error, any()}
-  def for_module(module) when is_atom(module) do
+  @spec for_module(module(), [opt]) :: {:ok, t} | {:error, any()}
+        when opt: {:exclude_hidden, boolean()}
+  def for_module(module, opts) when is_atom(module) do
+    exclude_hidden? = Keyword.get(opts, :exclude_hidden, false)
+
     with {:ok, beam} <- Modules.ensure_beam(module) do
-      {:ok, parse_docs(module, beam)}
+      %__MODULE__{} = docs = parse_docs(module, beam)
+
+      if docs.doc == :hidden and exclude_hidden? do
+        {:error, :hidden}
+      else
+        {:ok, docs}
+      end
     end
   end
 

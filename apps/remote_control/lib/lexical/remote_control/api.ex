@@ -72,8 +72,8 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   @spec docs(Project.t(), module()) :: {:ok, CodeIntelligence.Docs.t()} | {:error, any()}
-  def docs(%Project{} = project, module) when is_atom(module) do
-    RemoteControl.call(project, CodeIntelligence.Docs, :for_module, [module])
+  def docs(%Project{} = project, module, opts \\ []) when is_atom(module) do
+    RemoteControl.call(project, CodeIntelligence.Docs, :for_module, [module, opts])
   end
 
   def register_listener(%Project{} = project, listener_pid, message_types)

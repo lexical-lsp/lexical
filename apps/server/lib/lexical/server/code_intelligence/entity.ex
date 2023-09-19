@@ -92,7 +92,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   end
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
-  defp resolve_module(charlist, {{line, column}, {line, _}}, document, position) do
+  defp resolve_module(charlist, {{line, column}, {line, _}}, document, %Position{} = position) do
     module_string = module_before_position(charlist, column, position)
 
     with {:ok, module} <- expand_alias(module_string, document, position) do
@@ -104,7 +104,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   # Modules on multiple lines, e.g. "Foo.\n  Bar.\n  Baz"
   # Since we no longer have formatting information at this point, we
   # just return the entire module for now.
-  defp resolve_module(charlist, node_range, document, position) do
+  defp resolve_module(charlist, node_range, document, %Position{} = position) do
     with {:ok, module} <- expand_alias(charlist, document, position) do
       {:ok, {:module, module}, node_range}
     end
@@ -113,7 +113,8 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   # Take only the segments at and before the cursor, e.g.
   # Foo|.Bar.Baz -> Foo
   # Foo.|Bar.Baz -> Foo.Bar
-  defp module_before_position(charlist, start_column, position) when is_list(charlist) do
+  defp module_before_position(charlist, start_column, %Position{} = position)
+       when is_list(charlist) do
     charlist
     |> List.to_string()
     |> module_before_position(position.character - start_column)
@@ -128,21 +129,21 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, document, position) do
+  defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, document, %Position{} = position) do
     expand_alias(prefix ++ [?.] ++ charlist, document, position)
   end
 
-  defp expand_alias({:alias, charlist}, document, position) do
+  defp expand_alias({:alias, charlist}, document, %Position{} = position) do
     expand_alias(charlist, document, position)
   end
 
-  defp expand_alias(charlist, document, position) when is_list(charlist) do
+  defp expand_alias(charlist, document, %Position{} = position) when is_list(charlist) do
     charlist
     |> List.to_string()
     |> expand_alias(document, position)
   end
 
-  defp expand_alias(module, document, position) when is_binary(module) do
+  defp expand_alias(module, document, %Position{} = position) when is_binary(module) do
     [module]
     |> Module.concat()
     |> Ast.expand_aliases(document, position)
@@ -151,7 +152,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   defp expand_alias(_, _document, _position), do: :error
 
   # Pipes:
-  defp arity_at_position([{:|>, _, _} = pipe | _], position) do
+  defp arity_at_position([{:|>, _, _} = pipe | _], %Position{} = position) do
     {_call, _, args} =
       pipe
       |> Macro.unpipe()
@@ -177,7 +178,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     length(args)
   end
 
-  defp arity_at_position([_non_call | rest], position) do
+  defp arity_at_position([_non_call | rest], %Position{} = position) do
     arity_at_position(rest, position)
   end
 
@@ -186,7 +187,7 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   # Walk up the path to see whether we're in the right-hand argument of
   # a `::` type operator, which would make the kind a `:type`, not a call.
   # Calls that occur on the right of a `::` type operator have kind `:type`
-  defp kind_of_call([{:"::", _, [_, right_arg]} | rest], position) do
+  defp kind_of_call([{:"::", _, [_, right_arg]} | rest], %Position{} = position) do
     if Ast.contains_position?(right_arg, position) do
       :type
     else
@@ -194,7 +195,9 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     end
   end
 
-  defp kind_of_call([_ | rest], position), do: kind_of_call(rest, position)
+  defp kind_of_call([_ | rest], %Position{} = position) do
+    kind_of_call(rest, position)
+  end
 
   defp kind_of_call([], _position), do: :call
 

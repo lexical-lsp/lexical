@@ -27,13 +27,13 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   end
 
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
-    case RemoteControl.Api.docs(env.project, module) do
-      {:ok, %Docs{doc: doc} = module_docs} when doc != :hidden ->
+    case RemoteControl.Api.docs(env.project, module, exclude_hidden: false) do
+      {:ok, %Docs{} = module_docs} ->
         header = module_header(kind, module_docs)
         types = module_header_types(kind, module_docs)
 
         additional_sections = [
-          module_doc(doc),
+          module_doc(module_docs.doc),
           module_footer(kind, module_docs)
         ]
 
@@ -58,7 +58,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
         |> Enum.filter(&(&1.arity >= arity))
         |> Enum.map(&entry_content/1)
 
-      {:ok, Markdown.join_sections(sections, "\n\n---\n\n")}
+      {:ok, Markdown.join_sections(sections, Markdown.separator())}
     end
   end
 
