@@ -52,7 +52,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
@@ -114,7 +114,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
@@ -192,7 +192,7 @@ jobs:
         id: cache-deps
         uses: actions/cache@v3
         env:
-          cache-name: cache-elixir-deps
+          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
