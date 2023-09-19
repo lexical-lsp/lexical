@@ -139,13 +139,15 @@ defmodule Lexical.RemoteControl.Search.Store.Mnesia.State.Connection do
   defp initialize_mnesia_node(%Project{} = project) do
     path_args = Enum.flat_map(:code.get_path(), fn path -> ["-pa", "\"#{path}\""] end)
 
+    this_node = inspect(Node.self())
+
     port_args = [
       "--name",
-      to_string(mnesia_node_name(project)),
+      mnesia_node_name(project),
       "--cookie",
       Node.get_cookie(),
       "-e",
-      ~s[Node.connect(#{inspect(Node.self())})],
+      ~s[Node.connect(#{this_node})],
       "--no-halt"
       | path_args
     ]

@@ -41,7 +41,9 @@ defmodule Lexical.RemoteControl.Port do
     opts =
       opts
       |> Keyword.put_new_lazy(:cd, fn -> Project.root_path(project) end)
-      |> Keyword.update(:args, [executable], fn old_args -> [executable | old_args] end)
+      |> Keyword.update(:args, [executable], fn old_args ->
+        [executable | Enum.map(old_args, &to_string/1)]
+      end)
 
     opts =
       if Keyword.has_key?(opts, :env) do
