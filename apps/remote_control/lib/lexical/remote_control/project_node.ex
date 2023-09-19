@@ -28,21 +28,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
     @dialyzer {:nowarn_function, start: 3}
 
     def start(%__MODULE__{} = state, paths, from) do
-      port_wrapper = ProjectNode.Launcher.path()
-
-      {:ok, elixir_executable, environment_variables} =
-        RemoteControl.elixir_executable(state.project)
-
-      erlang_env =
-        Enum.map(environment_variables, fn {key, value} ->
-          # using to_string ensures nil values won't blow things up
-          erl_key = key |> to_string() |> String.to_charlist()
-          erl_value = value |> to_string() |> String.to_charlist()
-          {erl_key, erl_value}
-        end)
-
       args = [
-        elixir_executable,
         "--name",
         Project.node_name(state.project),
         "--cookie",
@@ -53,12 +39,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
         | path_append_arguments(paths)
       ]
 
-      port =
-        Port.open({:spawn_executable, port_wrapper},
-          args: args,
-          cd: Project.root_path(state.project),
-          env: erlang_env
-        )
+      port = RemoteControl.Port.open_elixir(state.project, args: args)
 
       %{state | port: port, started_by: from}
     end
