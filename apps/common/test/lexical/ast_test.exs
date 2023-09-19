@@ -1,13 +1,13 @@
 defmodule Lexical.AstTest do
   alias Lexical.Ast
   alias Lexical.Document
-  alias Lexical.Test.CodeSigil
-  alias Lexical.Test.CursorSupport
+  alias Lexical.Document.Position
   alias Sourceror.Zipper
 
-  import CursorSupport
-  import CodeSigil
+  import Lexical.Test.CodeSigil
+  import Lexical.Test.CursorSupport
   import Lexical.Test.PositionSupport
+  import Lexical.Test.RangeSupport
 
   use ExUnit.Case, async: true
 
@@ -173,32 +173,30 @@ defmodule Lexical.AstTest do
 
   describe "contains_position?/2 single line node" do
     setup do
-      [single_line_ast] = ast(~q|
+      {range, code} = pop_range(~q|
         [
-          single_line_call(1, 2, 3),
+          «single_line_call(1, 2, 3»)
         ]
       |)
 
-      range = {{2, 3}, {2, 27}}
+      [single_line_ast] = ast(code)
 
       {:ok, [ast: single_line_ast, range: range]}
     end
 
     test "at the bounds", %{ast: ast, range: range} do
-      {{start_line, start_col}, {end_line, end_col}} = range
-
-      assert Ast.contains_position?(ast, position(start_line, start_col))
-      assert Ast.contains_position?(ast, position(end_line, end_col))
+      assert Ast.contains_position?(ast, range.start)
+      assert Ast.contains_position?(ast, range.end)
     end
 
     test "within the node", %{ast: ast, range: range} do
-      {{start_line, start_col}, _} = range
-
-      assert Ast.contains_position?(ast, position(start_line, start_col + 1))
+      position = %Position{range.start | character: range.start.character + 1}
+      assert Ast.contains_position?(ast, position)
     end
 
     test "outside the bounds", %{ast: ast, range: range} do
-      {{start_line, start_col}, {end_line, end_col}} = range
+      %Position{line: start_line, character: start_col} = range.start
+      %Position{line: end_line, character: end_col} = range.end
 
       refute Ast.contains_position?(ast, position(start_line, start_col - 1))
       refute Ast.contains_position?(ast, position(start_line - 1, start_col))
@@ -209,49 +207,48 @@ defmodule Lexical.AstTest do
 
   describe "contains_position?/2 multi line node" do
     setup do
-      [three_line_ast] = ast(~q|
+      {range, code} = pop_range(~q|
         [
-          multi_line_call(
+          «multi_line_call(
             1, 2, 3
-          )
+          »)
         ]
       |)
 
-      range = {{2, 3}, {4, 3}}
+      [three_line_ast] = ast(code)
 
       {:ok, [ast: three_line_ast, range: range]}
     end
 
     test "at the bounds", %{ast: ast, range: range} do
-      {{start_line, start_col}, {end_line, end_col}} = range
-
-      assert Ast.contains_position?(ast, position(start_line, start_col))
-      assert Ast.contains_position?(ast, position(end_line, end_col))
+      assert Ast.contains_position?(ast, range.start)
+      assert Ast.contains_position?(ast, range.end)
     end
 
     test "on the first line", %{ast: ast, range: range} do
-      {{start_line, start_col}, _} = range
+      %Position{line: start_line, character: start_col} = range.start
 
       assert Ast.contains_position?(ast, position(start_line, start_col + 1))
       refute Ast.contains_position?(ast, position(start_line, start_col - 1))
     end
 
     test "on the last line", %{ast: ast, range: range} do
-      {_, {end_line, end_col}} = range
+      %Position{line: end_line, character: end_col} = range.end
 
       assert Ast.contains_position?(ast, position(end_line, end_col - 1))
       refute Ast.contains_position?(ast, position(end_line, end_col + 1))
     end
 
     test "within the lines", %{ast: ast, range: range} do
-      {{start_line, _}, _} = range
+      %Position{line: start_line} = range.start
 
       assert Ast.contains_position?(ast, position(start_line + 1, 1))
       assert Ast.contains_position?(ast, position(start_line + 1, 1_000))
     end
 
     test "outside the lines", %{ast: ast, range: range} do
-      {{start_line, start_col}, {end_line, end_col}} = range
+      %Position{line: start_line, character: start_col} = range.start
+      %Position{line: end_line, character: end_col} = range.end
 
       refute Ast.contains_position?(ast, position(start_line - 1, start_col))
       refute Ast.contains_position?(ast, position(end_line + 1, end_col))

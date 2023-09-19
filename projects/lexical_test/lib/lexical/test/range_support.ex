@@ -1,10 +1,23 @@
 defmodule Lexical.Test.RangeSupport do
   alias Lexical.Document
   alias Lexical.Document.Range
+  alias Lexical.Test.CursorSupport
+
   import Lexical.Document.Line, only: [line: 1]
 
   @range_start_marker "«"
   @range_end_marker "»"
+
+  @doc """
+  Finds range markers in `text` and returns a tuple containing the range
+  and the text with the markers stripped out.
+  """
+  @spec pop_range(text :: String.t()) :: {Range.t(), String.t()}
+  def pop_range(text) do
+    {start_position, text} = CursorSupport.pop_cursor(text, cursor: @range_start_marker)
+    {end_position, text} = CursorSupport.pop_cursor(text, cursor: @range_end_marker)
+    {Range.new(start_position, end_position), text}
+  end
 
   def decorate(%Document{} = document, %Range{} = range) do
     index_range = (range.start.line - 1)..(range.end.line - 1)
