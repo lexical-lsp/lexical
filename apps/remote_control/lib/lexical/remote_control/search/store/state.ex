@@ -6,7 +6,16 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   @index_path Path.join("indexes", "source.index.ets")
 
-  defstruct [:project, :index_path, :create_index, :update_index, :loaded?, :fuzzy, :ets_table]
+  defstruct [
+    :project,
+    :index_path,
+    :create_index,
+    :update_index,
+    :loaded?,
+    :fuzzy,
+    :ets_table,
+    :async_load_ref
+  ]
 
   def new(%Project{} = project, create_index, update_index) do
     %__MODULE__{
@@ -23,35 +32,60 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     Ets.drop()
   end
 
-  def metadata(%__MODULE__{} = state) do
-    with {:ok, state} <- load(state) do
-      {:ok, Ets.find_metadata(), state}
-    end
+  def metadata(%__MODULE__{loaded?: true} = state) do
+    {:ok, Ets.find_metadata(), state}
   end
 
-  def unique_fields(%__MODULE__{} = state, fields) do
-    with {:ok, state} <- load(state) do
-      {:ok, Ets.select_unique_fields(fields), state}
-    end
+  def metadata(%__MODULE__{}) do
+    {:error, :not_loaded}
   end
 
-  def load(%__MODULE__{loaded?: true} = state) do
-    {:ok, state}
+  def unique_fields(%__MODULE__{loaded?: true} = state, fields) do
+    {:ok, Ets.select_unique_fields(fields), state}
   end
 
-  def load(%__MODULE__{} = state) do
+  def unique_fields(%__MODULE__{}, _fields) do
+    {:error, :not_loaded}
+  end
+
+  @doc """
+  Asynchronously loads the search state.
+
+  This function returns prior to creating or refreshing the index, which
+  occurs in a separate process. The caller should listen for a message
+  of the shape `{ref, result}`, where `ref` matches the state's
+  `:async_load_ref`. Once received, that result should be passed to
+  `async_load_complete/2`.
+  """
+  def async_load(%__MODULE__{loaded?: false, async_load_ref: nil} = state) do
     case Ets.new(state.index_path) do
       {:ok, :empty, table_name} ->
         new_state = %__MODULE__{state | ets_table: table_name}
-        reindex_and_load(new_state)
+        create_index_async(new_state)
 
       {:ok, :stale, table_name} ->
         new_state = %__MODULE__{state | ets_table: table_name}
-        refresh_entries_and_load(new_state)
+        update_index_async(new_state)
 
       error ->
         Logger.error("Could not initialize index due to #{inspect(error)}")
         error
+    end
+  end
+
+  def async_load(%__MODULE__{} = state) do
+    {:ok, state}
+  end
+
+  def async_load_complete(%__MODULE__{} = state, result) do
+    new_state = Map.merge(state, %{loaded?: true, async_load_ref: nil})
+
+    case result do
+      {:create_index, result} ->
+        create_index_complete(new_state, result)
+
+      {:update_index, result} ->
+        update_index_complete(new_state, result)
     end
   end
 
@@ -120,35 +154,52 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp refresh_entries_and_load(%__MODULE__{} = state) do
-    entries = all(state)
+  defp create_index_async(%__MODULE__{async_load_ref: nil} = state) do
+    task = Task.async(fn -> {:create_index, state.create_index.(state.project)} end)
+    %__MODULE__{state | async_load_ref: task.ref}
+  end
 
-    with {:ok, updated_entries, deleted_paths} <- state.update_index.(state.project, entries) do
-      fuzzy = Fuzzy.from_entries(entries)
-      starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
+  defp create_index_complete(%__MODULE__{} = state, {:ok, entries}) do
+    case replace(state, entries) do
+      {:ok, state} ->
+        state
 
-      new_state =
-        updated_entries
-        |> Enum.group_by(& &1.path)
-        |> Enum.reduce(starting_state, fn {path, entry_list}, state ->
-          {:ok, new_state} = update_nosync(state, path, entry_list)
-          new_state
-        end)
-
-      new_state =
-        Enum.reduce(deleted_paths, new_state, fn path, state ->
-          {:ok, new_state} = update_nosync(state, path, [])
-          new_state
-        end)
-
-      {:ok, %__MODULE__{new_state | loaded?: true}}
+      {:error, _} ->
+        Logger.warning("Could not replace entries")
+        state
     end
   end
 
-  defp reindex_and_load(%__MODULE__{} = state) do
-    with {:ok, entries} <- state.create_index.(state.project),
-         {:ok, state} <- replace(state, entries) do
-      {:ok, %__MODULE__{state | loaded?: true, fuzzy: Fuzzy.from_entries(entries)}}
-    end
+  defp create_index_complete(%__MODULE__{} = state, {:error, _} = error) do
+    Logger.warning("Could not create index, got: #{inspect(error)}")
+    state
+  end
+
+  defp update_index_async(%__MODULE__{async_load_ref: nil} = state) do
+    task = Task.async(fn -> {:update_index, state.update_index.(state.project, all(state))} end)
+    %__MODULE__{state | async_load_ref: task.ref}
+  end
+
+  defp update_index_complete(%__MODULE__{} = state, {:ok, entries, deleted_paths}) do
+    fuzzy = Fuzzy.from_entries(entries)
+    starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
+
+    new_state =
+      entries
+      |> Enum.group_by(& &1.path)
+      |> Enum.reduce(starting_state, fn {path, entry_list}, state ->
+        {:ok, new_state} = update_nosync(state, path, entry_list)
+        new_state
+      end)
+
+    Enum.reduce(deleted_paths, new_state, fn path, state ->
+      {:ok, new_state} = update_nosync(state, path, [])
+      new_state
+    end)
+  end
+
+  defp update_index_complete(%__MODULE__{} = state, {:error, _} = error) do
+    Logger.warning("Could not update index, got: #{inspect(error)}")
+    state
   end
 end

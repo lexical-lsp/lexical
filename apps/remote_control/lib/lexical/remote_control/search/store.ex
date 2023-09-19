@@ -42,6 +42,10 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, :all)
   end
 
+  def loaded? do
+    GenServer.call(__MODULE__, :loaded?)
+  end
+
   def replace(entries) do
     GenServer.call(__MODULE__, {:replace, entries})
   end
@@ -80,20 +84,21 @@ defmodule Lexical.RemoteControl.Search.Store do
   end
 
   def init([%Project{} = project, create_index, update_index]) do
-    state = State.new(project, create_index, update_index)
+    state =
+      project
+      |> State.new(create_index, update_index)
+      |> State.async_load()
 
-    {:ok, state, {:continue, :load}}
+    {:ok, state}
   end
 
-  def handle_continue(:load, %State{} = state) do
-    case State.load(state) do
-      {:ok, state} ->
-        {:noreply, state}
+  # handle the result from `State.async_load/1`
+  def handle_info({ref, result}, %State{async_load_ref: ref} = state) do
+    {:noreply, State.async_load_complete(state, result)}
+  end
 
-      {:error, _} ->
-        Logger.warning("Could not load nor build search state")
-        {:noreply, state}
-    end
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   def handle_call({:replace, entities}, _from, %State{} = state) do
@@ -163,5 +168,9 @@ defmodule Lexical.RemoteControl.Search.Store do
   def handle_call(:drop, _, %State{} = state) do
     State.drop(state)
     {:reply, :ok, state}
+  end
+
+  def handle_call(:loaded?, _, %State{loaded?: loaded?} = state) do
+    {:reply, loaded?, state}
   end
 end

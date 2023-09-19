@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
   import Api.Messages
   import Lexical.Test.CodeSigil
+  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
 
   use ExUnit.Case
@@ -19,6 +20,8 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
     start_supervised!({Search.Store, [project, create_index, update_index]})
     start_supervised!(Document.Store)
+
+    assert_eventually Search.Store.loaded?(), 500
 
     {:ok, state} = Indexing.init([])
     {:ok, state: state, project: project}

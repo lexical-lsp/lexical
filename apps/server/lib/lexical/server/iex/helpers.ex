@@ -99,7 +99,7 @@ defmodule Lexical.Server.IEx.Helpers do
     Node.connect(:"#{manager_name}@127.0.0.1")
   end
 
-  def project(project) when is_atom(project) do
+  def project(project \\ :lexical) when is_atom(project) do
     # We're using a cache here because we need project's
     # entropy to be the same after every call.
     ProcessCache.trans(project, fn ->
@@ -129,6 +129,17 @@ defmodule Lexical.Server.IEx.Helpers do
     project
     |> ensure_project()
     |> Lexical.Server.Project.Supervisor.start()
+  end
+
+  def time(fun) when is_function(fun, 0) do
+    {elapsed_us, result} = :timer.tc(fun)
+
+    IO.puts([
+      IO.ANSI.format([:cyan, :bright, "Time: "]),
+      Lexical.Formats.time(elapsed_us)
+    ])
+
+    result
   end
 
   defp manager_name do
