@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.ProjectNode do
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.ProjectNode
   require Logger
 
   defmodule State do

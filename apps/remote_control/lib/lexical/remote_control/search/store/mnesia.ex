@@ -38,10 +38,7 @@ defmodule Lexical.RemoteControl.Search.Store.Mnesia do
 
   @impl Backend
   def new(%Project{} = project) do
-    with {:ok, _pid} <- start_link(project),
-         :ok <- wait_for_start() do
-      {:ok, Schema.load_state()}
-    end
+    start_link(project)
   end
 
   # Note: we need to go through the genserver to ensure mnesia has started
@@ -50,6 +47,13 @@ defmodule Lexical.RemoteControl.Search.Store.Mnesia do
   @impl Backend
   def delete_by_path(path) do
     GenServer.call(__MODULE__, {:delete_by_path, path})
+  end
+
+  @impl Backend
+  def prepare(_backend_pid) do
+    with :ok <- wait_for_start() do
+      {:ok, Schema.load_state()}
+    end
   end
 
   @impl Backend

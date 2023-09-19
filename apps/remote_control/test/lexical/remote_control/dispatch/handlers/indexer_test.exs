@@ -21,7 +21,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
     start_supervised!({Search.Store, [project, create_index, update_index]})
     start_supervised!(Document.Store)
 
-    assert_eventually Search.Store.loaded?(), 500
+    assert_eventually Search.Store.loaded?(), 1500
 
     {:ok, state} = Indexing.init([])
     {:ok, state: state, project: project}

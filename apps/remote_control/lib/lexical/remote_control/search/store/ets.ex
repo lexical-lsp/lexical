@@ -44,9 +44,18 @@ defmodule Lexical.RemoteControl.Search.Store.Ets do
 
     path_charlist = String.to_charlist(file_name)
 
-    with {:error, _} <- new_from_file(path_charlist) do
-      new_table(path_charlist, version)
+    case new_from_file(path_charlist) do
+      {:ok, _} ->
+        {:ok, :stale}
+
+      {:error, _} ->
+        new_table(path_charlist, version)
     end
+  end
+
+  @impl Backend
+  def prepare(result) do
+    {:ok, result}
   end
 
   @impl Backend

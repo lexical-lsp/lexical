@@ -42,17 +42,8 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   `async_load_complete/2`.
   """
   def async_load(%__MODULE__{loaded?: false, async_load_ref: nil} = state) do
-    case state.backend.new(state.project) do
-      {:ok, :empty} ->
-        create_index_async(state)
-
-      {:ok, :stale} ->
-        update_index_async(state)
-
-      error ->
-        Logger.error("Could not initialize index due to #{inspect(error)}")
-        error
-    end
+    {:ok, backend_result} = state.backend.new(state.project)
+    prepare_backend_async(state, backend_result)
   end
 
   def async_load(%__MODULE__{} = state) do
@@ -60,7 +51,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def async_load_complete(%__MODULE__{} = state, result) do
-    new_state = Map.merge(state, %{loaded?: true, async_load_ref: nil})
+    new_state = %__MODULE__{state | loaded?: true, async_load_ref: nil}
 
     case result do
       {:create_index, result} ->
@@ -123,8 +114,22 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     end
   end
 
-  defp create_index_async(%__MODULE__{async_load_ref: nil} = state) do
-    task = Task.async(fn -> {:create_index, state.create_index.(state.project)} end)
+  defp prepare_backend_async(%__MODULE__{async_load_ref: nil} = state, backend_result) do
+    task =
+      Task.async(fn ->
+        case state.backend.prepare(backend_result) do
+          {:ok, :empty} ->
+            {:create_index, state.create_index.(state.project)}
+
+          {:ok, :stale} ->
+            {:update_index, state.update_index.(state.project, all(state))}
+
+          error ->
+            Logger.error("Could not initialize index due to #{inspect(error)}")
+            error
+        end
+      end)
+
     %__MODULE__{state | async_load_ref: task.ref}
   end
 
@@ -142,11 +147,6 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   defp create_index_complete(%__MODULE__{} = state, {:error, _} = error) do
     Logger.warning("Could not create index, got: #{inspect(error)}")
     state
-  end
-
-  defp update_index_async(%__MODULE__{async_load_ref: nil} = state) do
-    task = Task.async(fn -> {:update_index, state.update_index.(state.project, all(state))} end)
-    %__MODULE__{state | async_load_ref: task.ref}
   end
 
   defp update_index_complete(%__MODULE__{} = state, {:ok, entries, deleted_paths}) do
