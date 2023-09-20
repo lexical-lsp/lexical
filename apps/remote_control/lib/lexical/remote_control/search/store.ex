@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
 
   @type index_state :: :empty | :stale
@@ -168,6 +169,6 @@ defmodule Lexical.RemoteControl.Search.Store do
   end
 
   defp backend do
-    Application.get_env(:remote_control, :search_store_backend, Mnesia)
+    Application.get_env(:remote_control, :search_store_backend, Store.Mnesia)
   end
 end

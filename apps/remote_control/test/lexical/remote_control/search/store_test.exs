@@ -224,7 +224,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
   defp with_a_started_store(project, backend) do
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
-    assert_eventually ready?(), 2500
+    assert_eventually ready?(), 1500
 
     on_exit(fn ->
       delete_indexes(backend, project)

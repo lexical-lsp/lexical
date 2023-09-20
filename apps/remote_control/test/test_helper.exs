@@ -1,6 +1,5 @@
-alias Lexical.RemoteControl.Search.Store
 alias Lexical.RemoteControl.Search.Store.Mnesia
-Store.set_backend(Store.Ets)
+
 Mnesia.set_persist_to_disc(false)
 
 {"", 0} = System.cmd("epmd", ~w(-daemon))
