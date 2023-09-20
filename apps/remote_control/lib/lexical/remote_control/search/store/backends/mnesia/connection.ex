@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Search.Store.Mnesia.Connection do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.State.Connection do
   @moduledoc """
   Connection handling for mnesia.
 
@@ -55,24 +55,21 @@ defmodule Lexical.RemoteControl.Search.Store.Mnesia.Connection do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Search.Store.Mnesia.Schema
-  alias Lexical.RemoteControl.Search.Store.Mnesia.State
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.State
 
   @leader_name :mnesia_leader
 
-  def connect(%State{} = state) do
-    new_state =
-      case :global.register_name(@leader_name, self()) do
-        :yes ->
-          start_port(state)
+  def ensure_node_exists(%State{} = state) do
+    case :global.register_name(@leader_name, self()) do
+      :yes ->
+        start_port(state)
 
-        :no ->
-          leader_pid = :global.whereis_name(@leader_name)
-          Process.monitor(leader_pid)
-          %State{state | leader?: false, leader_pid: leader_pid}
-      end
-
-    {:connect_to_node, new_state}
+      :no ->
+        leader_pid = :global.whereis_name(@leader_name)
+        Process.monitor(leader_pid)
+        %State{state | leader?: false, leader_pid: leader_pid}
+    end
   end
 
   def connect_to_node(%State{} = state) do
@@ -142,13 +139,15 @@ defmodule Lexical.RemoteControl.Search.Store.Mnesia.Connection do
   defp initialize_mnesia_node(%Project{} = project) do
     path_args = Enum.flat_map(:code.get_path(), fn path -> ["-pa", "\"#{path}\""] end)
 
+    this_node = inspect(Node.self())
+
     port_args = [
       "--name",
-      to_string(mnesia_node_name(project)),
+      mnesia_node_name(project),
       "--cookie",
       Node.get_cookie(),
       "-e",
-      ~s[Node.connect(#{inspect(Node.self())})],
+      ~s[Node.connect(#{this_node})],
       "--no-halt"
       | path_args
     ]

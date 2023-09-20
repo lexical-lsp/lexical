@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Search.Store.Ets do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backend

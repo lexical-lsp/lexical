@@ -1,6 +1,6 @@
-defmodule Lexical.RemoteControl.Search.Store.Mnesia.Query do
-  alias Lexical.RemoteControl.Search.Store.Mnesia
-  alias Lexical.RemoteControl.Search.Store.Mnesia.Schema
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Query do
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema
 
   import Schema,
     only: [row: 1, row_pattern: 1]

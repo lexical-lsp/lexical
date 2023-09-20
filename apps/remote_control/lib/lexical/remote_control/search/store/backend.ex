@@ -1,4 +1,7 @@
 defmodule Lexical.RemoteControl.Search.Store.Backend do
+  @moduledoc """
+  A behaviour for search store backends
+  """
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
   @type version :: pos_integer()

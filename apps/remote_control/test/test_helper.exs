@@ -1,4 +1,4 @@
-alias Lexical.RemoteControl.Search.Store.Mnesia
+alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
 
 Mnesia.set_persist_to_disc(false)
 

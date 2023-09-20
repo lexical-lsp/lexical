@@ -1,6 +1,6 @@
-defmodule Lexical.RemoteControl.Search.Store.Mnesia.State do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.State do
   alias Lexical.Project
-  alias Lexical.RemoteControl.Search.Store.Mnesia.State.Connection
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.State.Connection
 
   defdelegate connect_to_node(state), to: Connection
   defdelegate ensure_node_exists(state), to: Connection

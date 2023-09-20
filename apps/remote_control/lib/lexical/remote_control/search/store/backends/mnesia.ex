@@ -1,9 +1,10 @@
-defmodule Lexical.RemoteControl.Search.Store.Mnesia do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Store.Backend
-  alias Lexical.RemoteControl.Search.Store.Mnesia.Query
-  alias Lexical.RemoteControl.Search.Store.Mnesia.Schema
-  alias Lexical.RemoteControl.Search.Store.Mnesia.State
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.Query
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.State
 
   use GenServer
 

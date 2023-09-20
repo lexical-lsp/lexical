@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.RemoteControl.Search.Store
-  alias Lexical.RemoteControl.Search.Store.Ets
-  alias Lexical.RemoteControl.Search.Store.Mnesia
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures

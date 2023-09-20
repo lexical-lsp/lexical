@@ -1,8 +1,8 @@
-defmodule Lexical.RemoteControl.Search.Store.Mnesia.Schema do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
-  alias Lexical.RemoteControl.Search.Store.Mnesia
-  alias Lexical.RemoteControl.Search.Store.Mnesia.State
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.State
   alias Lexical.VM.Versions
 
   import Record

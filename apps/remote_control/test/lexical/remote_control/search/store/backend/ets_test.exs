@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.RemoteControl.Search.Store
-  alias Lexical.RemoteControl.Search.Store.Ets
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
