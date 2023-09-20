@@ -70,6 +70,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @callback find_by_subject(Entry.subject(), Entry.entry_type(), Entry.entry_subtype()) :: [
               Entry.t()
             ]
+
+  @doc """
+  Finds entries whose ref attribute is in the given list
+  """
   @callback find_by_refs([reference()], Entry.entry_type(), Entry.entry_subtype()) :: [
               Entry.t()
             ]
