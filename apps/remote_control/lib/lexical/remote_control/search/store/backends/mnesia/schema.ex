@@ -28,8 +28,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema do
     :mnesia.wait_for_tables([Mnesia], :infinity)
   end
 
-  def destroy do
-    :mnesia.delete_table(Mnesia)
+  def destroy(%Project{} = project) do
+    data_dir = mnesia_dir(project)
+
+    with :stopped <- :mnesia.stop(),
+         {:ok, _} <- File.rm_rf(data_dir) do
+      :ok
+    end
+  end
+
+  def destroy(%State{} = state) do
+    destroy(state.project)
   end
 
   def load_state do

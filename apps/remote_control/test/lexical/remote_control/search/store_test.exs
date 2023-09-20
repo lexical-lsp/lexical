@@ -12,27 +12,28 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   import EventualAssertions
   import Fixtures
 
-  for backend <- [Ets, Mnesia] do
-    setup do
-      backend = unquote(backend)
+  @backends [Ets, Mnesia]
 
-      project = project()
-      # These test cases require an clean slate going into them
-      # so we should remove the indexes once when the tests start,
-      # and again when tests end, so the next test has a clean slate.
-      # Removing the index at the end will also let other test cases
-      # start with a clean slate.
+  setup_all do
+    project = project()
+    # These test cases require an clean slate going into them
+    # so we should remove the indexes once when the tests start,
+    # and again when tests end, so the next test has a clean slate.
+    # Removing the index at the end will also let other test cases
+    # start with a clean slate.
 
-      delete_indexes(backend, project)
+    destroy_backends(project)
 
-      on_exit(fn ->
-        delete_indexes(backend, project)
-      end)
+    on_exit(fn ->
+      destroy_backends(project)
+    end)
 
-      {:ok, project: project}
-    end
+    {:ok, project: project}
+  end
 
-    describe "#{backend} :: replace/1" do
+  for backend <- @backends,
+      backend_name = backend |> Module.split() |> List.last() do
+    describe "#{backend_name} :: replace/1" do
       setup %{project: project} do
         with_a_started_store(project, unquote(backend))
       end
@@ -45,7 +46,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
       end
     end
 
-    describe "#{backend} :: querying" do
+    describe "#{backend_name} :: querying" do
       setup %{project: project} do
         with_a_started_store(project, unquote(backend))
       end
@@ -144,7 +145,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
       end
     end
 
-    describe "#{backend} :: updating entries in a file" do
+    describe "#{backend_name} :: updating entries in a file" do
       setup %{project: project} do
         with_a_started_store(project, unquote(backend))
       end
@@ -206,12 +207,16 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     end
   end
 
-  defp delete_indexes(Ets, project) do
+  defp destroy_backends(project) do
+    Enum.each(@backends, &destroy_backend(&1, project))
+  end
+
+  defp destroy_backend(Ets, project) do
     Ets.destroy(project)
   end
 
-  defp delete_indexes(Mnesia, _project) do
-    Mnesia.drop()
+  defp destroy_backend(Mnesia, project) do
+    :ok = Mnesia.Schema.destroy(project)
   end
 
   defp default_create(_project) do
@@ -226,11 +231,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
     assert_eventually ready?(), 1500
 
-    on_exit(fn ->
-      delete_indexes(backend, project)
-    end)
-
-    :ok
+    {:ok, backend: backend}
   end
 
   def ready? do

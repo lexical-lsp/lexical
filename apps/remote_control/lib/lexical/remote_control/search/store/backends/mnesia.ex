@@ -33,8 +33,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
 
   @impl Backend
   def destroy(_) do
-    Query.drop()
-    :ok
+    GenServer.call(__MODULE__, :destroy)
   end
 
   @impl Backend
@@ -157,8 +156,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
   end
 
   def handle_call(:destroy, _from, %State{} = state) do
-    Schema.destroy()
-    {:reply, :ok, state}
+    reply = Schema.destroy(state)
+    {:stop, :shutdown, reply, state}
   end
 
   @impl GenServer
