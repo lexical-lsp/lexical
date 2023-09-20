@@ -5,7 +5,6 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
-  alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
 
   @type index_state :: :empty | :stale
@@ -27,10 +26,12 @@ defmodule Lexical.RemoteControl.Search.Store do
           (project :: Project.t(), entries :: existing_entries ->
              {:ok, new_entries, paths_to_delete} | {:error, term()})
 
-  @backend Store.Mnesia
-
   use GenServer
   require Logger
+
+  def set_backend(backend) do
+    Application.put_env(:remote_control, :search_store_backend, backend)
+  end
 
   def stop do
     GenServer.call(__MODULE__, :drop)
@@ -88,7 +89,7 @@ defmodule Lexical.RemoteControl.Search.Store do
   end
 
   defp normalize_init_args([%Project{} = project, create_index, refresh_index]) do
-    normalize_init_args([project, create_index, refresh_index, @backend])
+    normalize_init_args([project, create_index, refresh_index, backend()])
   end
 
   defp normalize_init_args([%Project{}, create_index, refresh_index, backend] = args)
@@ -164,5 +165,9 @@ defmodule Lexical.RemoteControl.Search.Store do
   def handle_call(:destroy, _, %State{} = state) do
     new_state = State.destroy(state)
     {:reply, :ok, new_state}
+  end
+
+  defp backend do
+    Application.get_env(:remote_control, :search_store_backend, Mnesia)
   end
 end
