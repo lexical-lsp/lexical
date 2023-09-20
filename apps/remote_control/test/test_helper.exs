@@ -1,9 +1,7 @@
 alias Lexical.RemoteControl.Search.Store
-alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
-# alias Lexical.RemoteControl.Search.Store.Backends.Ets
 
-Store.set_backend(Mnesia)
-Mnesia.set_persist_to_disc(false)
+Store.set_backend(Store.Backends.Ets)
+Store.Backends.Mnesia.set_persist_to_disc(false)
 
 {"", 0} = System.cmd("epmd", ~w(-daemon))
 random_number = :rand.uniform(500)
