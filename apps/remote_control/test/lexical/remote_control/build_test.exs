@@ -50,7 +50,7 @@ defmodule Lexical.BuildTest do
       end
     ]
     compile_document(project, module)
-    assert_receive file_compiled(), 750
+    assert_receive file_compiled(), 500
     :ok
   end
 
@@ -69,8 +69,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:project_metadata)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 750
-      assert_receive project_progress(label: "Building " <> project_name), 750
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_progress(label: "Building " <> project_name), 500
       assert project_name == "project_metadata"
     end
 
@@ -78,7 +78,7 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:project_metadata)
 
       Build.schedule_compile(project, true)
-      assert_receive module_updated(name: ProjectMetadata, functions: functions), 750
+      assert_receive module_updated(name: ProjectMetadata, functions: functions), 500
 
       assert {:zero_arity, 0} in functions
       assert {:one_arity, 1} in functions
@@ -91,22 +91,22 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:umbrella)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 750
-      assert_receive project_diagnostics(diagnostics: []), 750
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: []), 500
 
-      assert_receive module_updated(name: Umbrella.First, functions: functions), 750
-
-      assert {:arity_0, 0} in functions
-      assert {:arity_1, 1} in functions
-      assert {:arity_2, 2} in functions
-
-      assert_receive module_updated(name: Umbrella.Second, functions: functions), 750
+      assert_receive module_updated(name: Umbrella.First, functions: functions), 500
 
       assert {:arity_0, 0} in functions
       assert {:arity_1, 1} in functions
       assert {:arity_2, 2} in functions
 
-      assert_receive project_progress(label: "Building " <> project_name), 750
+      assert_receive module_updated(name: Umbrella.Second, functions: functions), 500
+
+      assert {:arity_0, 0} in functions
+      assert {:arity_1, 1} in functions
+      assert {:arity_2, 2} in functions
+
+      assert_receive project_progress(label: "Building " <> project_name), 500
       assert project_name == "umbrella"
     end
   end
@@ -116,8 +116,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_errors)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 750
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{}]), 750
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{}]), 500
     end
   end
 
@@ -127,8 +127,8 @@ defmodule Lexical.BuildTest do
     test "stuff", %{project: project} do
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :error), 750
-      assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 750
+      assert_receive project_compiled(status: :error), 500
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 500
 
       assert diagnostic.uri
       assert diagnostic.message =~ "SyntaxError"
@@ -140,8 +140,8 @@ defmodule Lexical.BuildTest do
       {:ok, project} = with_project(:compilation_warnings)
       Build.schedule_compile(project, true)
 
-      assert_receive project_compiled(status: :success), 750
-      assert_receive project_diagnostics(diagnostics: diagnostics), 750
+      assert_receive project_compiled(status: :success), 500
+      assert_receive project_diagnostics(diagnostics: diagnostics), 500
 
       assert [%Diagnostic.Result{}, %Diagnostic.Result{}] = diagnostics
 
@@ -170,8 +170,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic.Result{} = diagnostic
       assert diagnostic.uri
@@ -184,8 +184,8 @@ defmodule Lexical.BuildTest do
       source = ~S[%{foo: 3]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic.Result{} = diagnostic
       assert diagnostic.uri
@@ -200,8 +200,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic.Result{} = diagnostic
       assert diagnostic.uri
@@ -222,8 +222,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert %Diagnostic.Result{} = diagnostic
       assert diagnostic.uri
@@ -239,8 +239,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, "my_test.ex", source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
       assert diagnostic.severity == :error
       assert diagnostic.uri =~ "my_test.ex"
       assert diagnostic.message =~ "function IO.ins/0 is undefined or private"
@@ -257,8 +257,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :success), 750
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 750
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 500
 
       assert diagnostic.uri
       assert diagnostic.severity == :warning
@@ -286,7 +286,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic | _]), 750
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic | _]), 500
       assert diagnostic.uri
 
       if Features.with_diagnostics?() do
@@ -297,7 +297,7 @@ defmodule Lexical.BuildTest do
 
         assert diagnostic.position == {4, 13}
       else
-        assert_receive file_compiled(status: :success), 750
+        assert_receive file_compiled(status: :success), 500
         assert diagnostic.severity == :warning
         assert diagnostic.details == {WithWarnings, :error, 0}
         assert diagnostic.position == 4
@@ -316,8 +316,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :success), 750
-      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 750
+      assert_receive file_compiled(status: :success), 500
+      assert_receive file_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic]), 500
 
       assert diagnostic.uri
       assert diagnostic.severity == :warning
@@ -336,8 +336,8 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
-      assert_receive file_diagnostics(diagnostics: [diagnostic]), 750
+      assert_receive file_compiled(status: :error), 500
+      assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
 
       assert diagnostic.uri
       assert diagnostic.severity == :error
@@ -358,13 +358,13 @@ defmodule Lexical.BuildTest do
 
       compile_document(project, source)
 
-      assert_receive file_compiled(status: :error), 750
+      assert_receive file_compiled(status: :error), 500
 
       if Features.with_diagnostics?() do
-        assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics), 750
+        assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics), 500
         assert length(diagnostics) == 3
       else
-        assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 750
+        assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics), 500
         assert length(diagnostics) == 5
       end
     end
@@ -376,7 +376,7 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_document(project, source)
-      assert_receive module_updated(name: NewModule, functions: []), 750
+      assert_receive module_updated(name: NewModule, functions: []), 500
     end
 
     test "adding a non-loaded module notifies the listener", %{project: project} do
@@ -388,7 +388,7 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive module_updated(name: NotLoaded, struct: fields), 750
+      assert_receive module_updated(name: NotLoaded, struct: fields), 500
       assert [%{field: :loaded, required?: true}] = fields
     end
 
@@ -405,9 +405,9 @@ defmodule Lexical.BuildTest do
       ]
       compile_document(project, source)
 
-      assert_receive module_updated(name: FirstModule), 750
-      assert_receive module_updated(name: SecondModule), 750
-      assert_receive module_updated(name: ThirdModule), 750
+      assert_receive module_updated(name: FirstModule), 500
+      assert_receive module_updated(name: SecondModule), 500
+      assert_receive module_updated(name: ThirdModule), 500
     end
 
     test "adding a function notifies the listener", %{project: project} do
@@ -420,7 +420,7 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_document(project, source)
-      assert_receive module_updated(name: UnderTest, functions: [added_function: 2]), 750
+      assert_receive module_updated(name: UnderTest, functions: [added_function: 2]), 500
     end
 
     test "removing a function notifies the listener", %{project: project} do
@@ -437,10 +437,10 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_document(project, initial)
-      assert_receive module_updated(), 750
+      assert_receive module_updated(), 500
 
       compile_document(project, removed)
-      assert_receive module_updated(name: Remove, functions: []), 750
+      assert_receive module_updated(name: Remove, functions: []), 500
     end
 
     test "changing a function's arity notifies the listener", %{project: project} do
@@ -451,7 +451,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, initial)
-      assert_receive module_updated(name: ArityChange, functions: [arity: 1]), 750
+      assert_receive module_updated(name: ArityChange, functions: [arity: 1]), 500
 
       changed = ~S[
         defmodule ArityChange do
@@ -460,7 +460,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, changed)
-      assert_receive module_updated(name: ArityChange, functions: [arity: 2]), 750
+      assert_receive module_updated(name: ArityChange, functions: [arity: 2]), 500
     end
 
     test "adding a macro notifies the listener", %{project: project} do
@@ -474,7 +474,7 @@ defmodule Lexical.BuildTest do
        end
       ]
       compile_document(project, changed)
-      assert_receive module_updated(name: UnderTest, macros: [something: 1]), 750
+      assert_receive module_updated(name: UnderTest, macros: [something: 1]), 500
     end
 
     test "removing a macro notifies the listener", %{project: project} do
@@ -491,10 +491,10 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_document(project, initial)
-      assert_receive module_updated(), 750
+      assert_receive module_updated(), 500
 
       compile_document(project, removed)
-      assert_receive module_updated(name: RemoveMacro, macros: []), 750
+      assert_receive module_updated(name: RemoveMacro, macros: []), 500
     end
 
     test "changing a macro's arity notifies the listener", %{project: project} do
@@ -505,7 +505,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, initial)
-      assert_receive module_updated(name: ArityChange, macros: [arity: 1]), 750
+      assert_receive module_updated(name: ArityChange, macros: [arity: 1]), 500
 
       changed = ~S[
         defmodule ArityChange do
@@ -514,7 +514,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, changed)
-      assert_receive module_updated(name: ArityChange, macros: [arity: 2]), 750
+      assert_receive module_updated(name: ArityChange, macros: [arity: 2]), 500
     end
   end
 
@@ -530,8 +530,8 @@ defmodule Lexical.BuildTest do
       ]
 
       compile_document(project, initial)
-      assert_receive file_compile_requested(uri: file_uri), 750
-      assert_receive file_diagnostics(uri: ^file_uri, diagnostics: []), 750
+      assert_receive file_compile_requested(uri: file_uri), 500
+      assert_receive file_diagnostics(uri: ^file_uri, diagnostics: []), 500
     end
   end
 
@@ -555,7 +555,7 @@ defmodule Lexical.BuildTest do
           module_name = Module.concat(["Module", submodule, "Submodule"]) do
         compile_document(project, __ENV__.file, source)
 
-        assert_receive module_updated(name: ^module_name), 750
+        assert_receive module_updated(name: ^module_name), 500
       end
 
       refute loaded?(project, Module.S.Submodule)
@@ -569,7 +569,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, source)
-      assert_receive file_compiled(status: :success), 750
+      assert_receive file_compiled(status: :success), 500
       assert loaded?(project, EmptyModule)
     end
 
@@ -580,7 +580,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, source)
-      assert_receive file_compiled(status: :success), 750
+      assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAFunction)
     end
 
@@ -591,7 +591,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, source)
-      assert_receive file_compiled(status: :success), 750
+      assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAMacro)
     end
 
@@ -602,7 +602,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, source)
-      assert_receive file_compiled(status: :success), 750
+      assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAStruct)
     end
 
@@ -613,7 +613,7 @@ defmodule Lexical.BuildTest do
         end
       ]
       compile_document(project, source)
-      assert_receive file_compiled(status: :success), 750
+      assert_receive file_compiled(status: :success), 500
       assert loaded?(project, WithAType)
     end
   end
