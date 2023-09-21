@@ -1,20 +1,24 @@
 defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Query do
   alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
   alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema
+  alias Lexical.RemoteControl.Search.Store.Backends.Mnesia.State
 
   import Schema,
     only: [row: 1, row_pattern: 1]
 
   # Querying
+  def insert(%State{} = state, entries) do
+    State.rpc_call(state, __MODULE__, :insert, [entries])
+  end
+
   def insert(entries) do
     rows = Enum.map(entries, &Schema.to_row/1)
 
-    result =
-      :mnesia.transaction(fn ->
-        Enum.map(rows, &:mnesia.write(Mnesia, &1, :write))
-      end)
+    Enum.each(rows, &:mnesia.dirty_write/1)
+  end
 
-    coerce_result(result, :ok)
+  def drop(%State{} = state) do
+    State.rpc_call(state, __MODULE__, :drop, [])
   end
 
   def drop do
@@ -38,10 +42,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Query do
     |> finder_result(&Function.identity/1)
   end
 
+  def replace_all(%State{} = state, entries) do
+    State.rpc_call(state, __MODULE__, :replace_all, [entries])
+  end
+
   def replace_all(entries) do
     drop()
     insert(entries)
     :ok
+  end
+
+  def delete_by_path(%State{} = state, path) do
+    State.rpc_call(state, __MODULE__, :delete_by_path, [path])
   end
 
   def delete_by_path(path) do

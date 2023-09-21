@@ -41,10 +41,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema do
     destroy(state.project)
   end
 
-  def load_state do
-    case :mnesia.table_info(Mnesia, :size) do
-      0 -> :empty
-      _ -> :stale
+  def load_state(%State{} = state) do
+    case State.rpc_call(state, :mnesia, :table_info, [Mnesia, :size]) do
+      0 -> {:ok, :empty}
+      count when is_number(count) -> {:ok, :stale}
+      error -> error
     end
   end
 
@@ -86,6 +87,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema do
       error ->
         error
     end
+  end
+
+  def mnesia_dir(%Project{} = project) do
+    project
+    |> Project.workspace_path(Path.join(["indexes", "mnesia"]))
+    |> ensure_directory_exists()
   end
 
   def to_key(subject, type, subtype, elixir_version \\ nil, erlang_version \\ nil) do
@@ -169,12 +176,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Schema do
       |> Keyword.put(:disc_copies, [])
       |> Keyword.put(:ram_copies, [state.mnesia_node, Node.self()])
     end
-  end
-
-  defp mnesia_dir(%Project{} = project) do
-    project
-    |> Project.workspace_path(Path.join(["indexes", "mnesia"]))
-    |> ensure_directory_exists()
   end
 
   defp ensure_directory_exists(path) do

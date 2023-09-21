@@ -14,6 +14,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.State do
   end
 
   def rpc_call(%__MODULE__{} = state, m, f, a) do
-    :rpc.call(state.mnesia_node, m, f, a)
+    :erpc.call(state.mnesia_node, m, f, a)
+  end
+
+  def rpc_multicall(%__MODULE__{} = state, m, f, a) do
+    :erpc.multicall([state.mnesia_node, Node.self()], m, f, a)
   end
 end

@@ -140,15 +140,20 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Connection do
   end
 
   defp initialize_mnesia_node(%Project{} = project) do
-    path_args = Enum.flat_map(:code.get_path(), fn path -> ["-pa", "\"#{path}\""] end)
+    path_args = Enum.flat_map(:code.get_path(), fn path -> ["-pa", path] end)
+
+    this_node = inspect(Node.self())
+    mnesia_dir = Schema.mnesia_dir(project)
 
     port_args = [
       "--name",
-      to_string(mnesia_node_name(project)),
+      mnesia_node_name(project),
+      "--erl",
+      "\"-mnesia dir #{mnesia_dir}\"",
       "--cookie",
       Node.get_cookie(),
       "-e",
-      ~s[Node.connect(#{inspect(Node.self())})],
+      ~s[Node.connect(#{this_node})],
       "--no-halt"
       | path_args
     ]

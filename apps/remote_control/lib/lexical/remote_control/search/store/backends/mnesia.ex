@@ -10,9 +10,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
 
   @behaviour Backend
 
-  @impl Backend
-  defdelegate drop(), to: Query
-
   def config do
     Application.get_env(:remote_control, __MODULE__, [])
   end
@@ -50,10 +47,13 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
   end
 
   @impl Backend
+  def drop do
+    GenServer.call(__MODULE__, :drop)
+  end
+
+  @impl Backend
   def prepare(_backend_pid) do
-    with :ok <- wait_for_start() do
-      {:ok, Schema.load_state()}
-    end
+    GenServer.call(__MODULE__, :load_state, :infinity)
   end
 
   @impl Backend
@@ -73,12 +73,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
 
   @impl Backend
   def insert(entries) do
-    GenServer.call(__MODULE__, {:insert, entries})
+    GenServer.call(__MODULE__, {:insert, entries}, :infinity)
   end
 
   @impl Backend
   def replace_all(entries) do
-    GenServer.call(__MODULE__, {:replace_all, entries})
+    GenServer.call(__MODULE__, {:replace_all, entries}, :infinity)
   end
 
   def wait_for_start do
@@ -117,12 +117,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
 
   @impl GenServer
   def handle_call({:delete_by_path, path}, _from, %State{} = state) do
-    reply = Query.delete_by_path(path)
+    reply = Query.delete_by_path(state, path)
     {:reply, reply, state}
   end
 
   def handle_call(:drop, _from, %State{} = state) do
-    reply = Query.drop()
+    reply = Query.drop(state)
     {:reply, reply, state}
   end
 
@@ -137,7 +137,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
   end
 
   def handle_call({:replace_all, entries}, _from, %State{} = state) do
-    reply = Query.replace_all(entries)
+    reply = Query.replace_all(state, entries)
     {:reply, reply, state}
   end
 
@@ -147,12 +147,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia do
   end
 
   def handle_call({:insert, entries}, _from, %State{} = state) do
-    reply = Query.insert(entries)
+    reply = Query.insert(state, entries)
     {:reply, reply, state}
   end
 
   def handle_call(:wait_for_start, _from, %State{} = state) do
     {:reply, :ok, state}
+  end
+
+  def handle_call(:load_state, _from, %State{} = state) do
+    reply = Schema.load_state(state)
+    {:reply, reply, state}
   end
 
   def handle_call(:destroy, _from, %State{} = state) do
