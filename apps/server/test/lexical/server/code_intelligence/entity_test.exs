@@ -509,7 +509,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[%«MyStruct»{}]
     end
 
-    test "succeeds when the struct spans multiple lines", %{project: project} do
+    test "succeeds when the struct fields span multiple lines", %{project: project} do
       code = ~q[
         %MyStruct.|Nested{
           foo: 1,
@@ -521,13 +521,29 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[%«MyStruct.Nested»{]
     end
 
-    test "excludes trailing module segments", %{project: project} do
+    test "succeeds when the struct spans multiple lines", %{project: project} do
+      code = ~q[
+        %On.
+          |Multiple.
+          Lines{}
+      ]
+
+      assert {:ok, {:struct, On.Multiple.Lines}, resolved_range} = resolve(project, code)
+
+      assert resolved_range =~ """
+             %«On.
+               Multiple.
+               Lines»{}\
+             """
+    end
+
+    test "includes trailing module segments", %{project: project} do
       code = ~q[
         %My|Struct.Nested{}
       ]
 
-      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
-      assert resolved_range =~ ~S[%«MyStruct».Nested{}]
+      assert {:ok, {:struct, MyStruct.Nested}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct.Nested»{}]
     end
 
     test "expands current module", %{project: project} do
@@ -539,6 +555,33 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
       assert {:ok, {:struct, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  %«__MODULE__»{}]
+    end
+
+    test "succeeds for implicitly aliased module", %{project: project} do
+      code = ~q<
+        defmodule Example do
+          defmodule Inner do
+            defstruct []
+          end
+
+          %|Inner{}
+        end
+      >
+
+      assert {:ok, {:struct, Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«Inner»{}]
+    end
+
+    test "succeeds for explicitly aliased module", %{project: project} do
+      code = ~q<
+        defmodule Example do
+          alias Something.Example
+          %Example.|Inner{}
+        end
+      >
+
+      assert {:ok, {:struct, Something.Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«Example.Inner»{}]
     end
   end
 

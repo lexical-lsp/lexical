@@ -42,22 +42,15 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   end
 
   defp resolve({:alias, charlist}, node_range, document, position) do
-    resolve_module(charlist, node_range, document, position)
+    resolve_alias(charlist, node_range, document, position)
   end
 
   defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_range, document, position) do
-    resolve_module(prefix ++ [?.] ++ charlist, node_range, document, position)
+    resolve_alias(prefix ++ [?.] ++ charlist, node_range, document, position)
   end
 
   defp resolve({:local_or_var, ~c"__MODULE__" = chars}, node_range, document, position) do
-    # check whether __MODULE__ is being used as a struct
-    with {:ok, [{:__MODULE__, _, _}, {:%, _, _} | _]} <- Ast.path_at(document, position),
-         {:ok, {:module, module}, range} <- resolve_module(chars, node_range, document, position) do
-      {:ok, {:struct, module}, range}
-    else
-      _ ->
-        resolve_module(chars, node_range, document, position)
-    end
+    resolve_alias(chars, node_range, document, position)
   end
 
   defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, document, position) do
@@ -65,9 +58,9 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
     # resolved like a normal module alias
     node_range = {{start_line, start_col + 1}, end_pos}
 
-    case resolve_module(charlist, node_range, document, position) do
-      {:ok, {:module, module}, range} -> {:ok, {:struct, module}, range}
-      error -> error
+    case resolve_alias(charlist, node_range, document, position) do
+      {:ok, {_, struct}, range} -> {:ok, {:struct, struct}, range}
+      :error -> {:error, :not_found}
     end
   end
 
@@ -89,6 +82,21 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
 
   defp resolve(context, _node_range, _document, _position) do
     {:error, {:unsupported, context}}
+  end
+
+  defp resolve_alias(charlist, node_range, document, position) do
+    with {:ok, path} <- Ast.path_at(document, position),
+         :struct <- kind_of_alias(path) do
+      resolve_struct(charlist, node_range, document, position)
+    else
+      _ -> resolve_module(charlist, node_range, document, position)
+    end
+  end
+
+  defp resolve_struct(charlist, node_range, document, %Position{} = position) do
+    with {:ok, struct} <- expand_alias(charlist, document, position) do
+      {:ok, {:struct, struct}, node_range}
+    end
   end
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
@@ -200,6 +208,26 @@ defmodule Lexical.Server.CodeIntelligence.Entity do
   end
 
   defp kind_of_call([], _position), do: :call
+
+  # There is a fixed set of situations where an alias is being used as
+  # a `:struct`, otherwise resolve as a `:module`.
+  defp kind_of_alias(path)
+
+  # %|Foo{}
+  # %|Foo.Bar{}
+  # %__MODULE__.|Foo{}
+  defp kind_of_alias([{:__aliases__, _, _}, {:%, _, _} | _]), do: :struct
+
+  # %|__MODULE__{}
+  defp kind_of_alias([{:__MODULE__, _, nil}, {:%, _, _} | _]), do: :struct
+
+  # %|__MODULE__.Foo{}
+  defp kind_of_alias([head_of_aliases, {:__aliases__, _, [head_of_aliases | _]}, {:%, _, _} | _]) do
+    :struct
+  end
+
+  # Catch-all:
+  defp kind_of_alias(_), do: :module
 
   @doc """
   Returns the source location of the entity at the given position in the document.
