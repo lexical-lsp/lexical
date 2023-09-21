@@ -573,15 +573,26 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     end
 
     test "succeeds for explicitly aliased module", %{project: project} do
-      code = ~q<
+      code = ~q[
         defmodule Example do
           alias Something.Example
           %Example.|Inner{}
         end
-      >
+      ]
 
       assert {:ok, {:struct, Something.Example.Inner}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  %«Example.Inner»{}]
+    end
+
+    test "succeeds for module nested inside current module", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          %__MODULE__.|Inner{}
+        end
+      ]
+
+      assert {:ok, {:struct, Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«__MODULE__.Inner»{}]
     end
   end
 
