@@ -114,14 +114,18 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     end
   end
 
+  require Logger
+
   defp prepare_backend_async(%__MODULE__{async_load_ref: nil} = state, backend_result) do
     task =
       Task.async(fn ->
         case state.backend.prepare(backend_result) do
           {:ok, :empty} ->
+            Logger.info("backend reports empty")
             {:create_index, state.create_index.(state.project)}
 
           {:ok, :stale} ->
+            Logger.info("backend reports stale")
             {:update_index, state.update_index.(state.project, all(state))}
 
           error ->

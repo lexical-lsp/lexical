@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Connection do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.State.Connection do
   @moduledoc """
   Connection handling for mnesia.
 
@@ -60,19 +60,16 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Connection do
 
   @leader_name :mnesia_leader
 
-  def connect(%State{} = state) do
-    new_state =
-      case :global.register_name(@leader_name, self()) do
-        :yes ->
-          start_port(state)
+  def ensure_node_exists(%State{} = state) do
+    case :global.register_name(@leader_name, self()) do
+      :yes ->
+        start_port(state)
 
-        :no ->
-          leader_pid = :global.whereis_name(@leader_name)
-          Process.monitor(leader_pid)
-          %State{state | leader?: false, leader_pid: leader_pid}
-      end
-
-    {:connect_to_node, new_state}
+      :no ->
+        leader_pid = :global.whereis_name(@leader_name)
+        Process.monitor(leader_pid)
+        %State{state | leader?: false, leader_pid: leader_pid}
+    end
   end
 
   def connect_to_node(%State{} = state) do
@@ -121,7 +118,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Connection do
     # I don't know if this will do it or not.
     with_leader_lock(:initialize, fn ->
       with :ok <- Schema.ensure_schema(state),
-           :ok <- start_remote_mnesia(state),
+           :ok <- start_mnesia_everywhere(state),
            :ok <- Schema.create_table(state) do
         join_mnesia_as_ram_copy(state)
         Schema.clean_old_ram_copies(state)
@@ -190,8 +187,19 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Mnesia.Connection do
     Node.connect(mnesia_node_name(project))
   end
 
-  defp start_remote_mnesia(state) do
-    State.rpc_call(state, :mnesia, :start, [])
+  defp start_mnesia_everywhere(state) do
+    state
+    |> State.rpc_multicall(:mnesia, :start, [])
+    |> Enum.reduce_while(:ok, fn
+      {:ok, :ok}, _ ->
+        {:cont, :ok}
+
+      {:ok, {:error, _} = error}, _ ->
+        {:halt, error}
+
+      error, _ ->
+        {:halt, error}
+    end)
   end
 
   defp join_mnesia_as_ram_copy(%State{} = state) do
