@@ -71,7 +71,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition.greet|("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
@@ -86,7 +86,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition|.greet("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[defmodule «MyDefinition» do]
@@ -101,7 +101,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition.print_hello|()
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  defmacro «print_hello» do]
@@ -137,7 +137,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MultiArity.sum|(1, 2, 3)
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -158,7 +158,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             greet|("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
@@ -174,7 +174,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             print_hello|()
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  defmacro «print_hello» do]
@@ -193,7 +193,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             greet|("World")
           end
         end
-        ]
+      ]
+
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
     end
@@ -217,7 +218,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             hello_func_in_using|()
           end
         end
-        ]
+      ]
+
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «hello_func_in_using» do]
     end
@@ -251,7 +253,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             @|b
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -270,7 +272,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             end
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -288,7 +290,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
          %{project: project} do
       subject_module = ~q[
         String.to_integer|("1")
-        ]
+      ]
 
       {:ok, uri, definition_line} = definition(project, subject_module)
 
@@ -299,7 +301,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     test "find the definition when calling a erlang module", %{project: project} do
       subject_module = ~q[
         :erlang.binary_to_atom|("1")
-        ]
+      ]
+
       {:ok, uri, definition_line} = definition(project, subject_module)
 
       assert uri =~ "/src/erlang.erl"
@@ -344,8 +347,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves module segments at and before the cursor", %{project: project} do
       code = ~q[
-            In.|The.Middle
-          ]
+        In.|The.Middle
+      ]
 
       assert {:ok, {:module, In.The}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«In.The».Middle]
@@ -353,8 +356,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "excludes trailing module segments with the cursor is on a period", %{project: project} do
       code = ~q[
-            AAA.BBB.CCC.DDD|.EEE
-          ]
+        AAA.BBB.CCC.DDD|.EEE
+      ]
 
       assert {:ok, {:module, AAA.BBB.CCC.DDD}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«AAA.BBB.CCC.DDD».EEE]
@@ -362,9 +365,9 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds for modules within a multi-line node", %{project: project} do
       code = ~q[
-            foo =
-              On.Another.Lin|e
-          ]
+        foo =
+          On.Another.Lin|e
+      ]
 
       assert {:ok, {:module, On.Another.Line}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «On.Another.Line»]
@@ -372,10 +375,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves the entire module for multi-line modules", %{project: project} do
       code = ~q[
-            On.
-              |Multiple.
-              Lines
-          ]
+        On.
+          |Multiple.
+          Lines
+      ]
 
       assert {:ok, {:module, On.Multiple.Lines}, resolved_range} = resolve(project, code)
 
@@ -388,8 +391,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds in single line calls", %{project: project} do
       code = ~q[
-            |Enum.map(1..10, & &1 + 1)
-          ]
+        |Enum.map(1..10, & &1 + 1)
+      ]
 
       assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«Enum».map(1..10, & &1 + 1)]
@@ -397,10 +400,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds in multi-line calls", %{project: project} do
       code = ~q[
-            |Enum.map(1..10, fn i ->
-              i + 1
-            end)
-          ]
+        |Enum.map(1..10, fn i ->
+          i + 1
+        end)
+      ]
 
       assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«Enum».map(1..10, fn i ->]
@@ -408,11 +411,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands top-level aliases", %{project: project} do
       code = ~q[
-            defmodule Example do
-              alias Long.Aliased.Module
-              Modul|e
-            end
-          ]
+        defmodule Example do
+          alias Long.Aliased.Module
+          Modul|e
+        end
+      ]
 
       assert {:ok, {:module, Long.Aliased.Module}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Module»]
@@ -420,11 +423,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "ignores top-level aliases made after the cursor", %{project: project} do
       code = ~q[
-            defmodule Example do
-              Modul|e
-              alias Long.Aliased.Module
-            end
-          ]
+        defmodule Example do
+          Modul|e
+          alias Long.Aliased.Module
+        end
+      ]
 
       assert {:ok, {:module, Module}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Module»]
@@ -432,13 +435,13 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves implicit aliases", %{project: project} do
       code = ~q[
-            defmodule Example do
-              defmodule Inner do
-              end
+        defmodule Example do
+          defmodule Inner do
+          end
 
-              Inne|r
-            end
-          ]
+          Inne|r
+        end
+      ]
 
       assert {:ok, {:module, Example.Inner}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Inner»]
@@ -446,10 +449,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands current module", %{project: project} do
       code = ~q[
-            defmodule Example do
-              |__MODULE__
-            end
-          ]
+        defmodule Example do
+          |__MODULE__
+        end
+      ]
 
       assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__»]
@@ -457,10 +460,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands current module used in alias", %{project: project} do
       code = ~q[
-            defmodule Example do
-              |__MODULE__.Nested
-            end
-          ]
+        defmodule Example do
+          |__MODULE__.Nested
+        end
+      ]
 
       assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__».Nested]
@@ -468,10 +471,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands alias following current module", %{project: project} do
       code = ~q[
-            defmodule Example do
-              __MODULE__.|Nested
-            end
-          ]
+        defmodule Example do
+          __MODULE__.|Nested
+        end
+      ]
 
       assert {:ok, {:module, Example.Nested}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__.Nested»]
@@ -529,10 +532,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands current module", %{project: project} do
       code = ~q[
-            defmodule Example do
-              %|__MODULE__{}
-            end
-          ]
+        defmodule Example do
+          %|__MODULE__{}
+        end
+      ]
 
       assert {:ok, {:struct, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  %«__MODULE__»{}]
