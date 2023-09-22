@@ -1,10 +1,16 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOption do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
 
-  use Translatable.Impl, for: Candidate.BitstringOption
   require Logger
+
+  defimpl Translatable, for: Candidate.BitstringOption do
+    def translate(option, builder, %Env{} = env) do
+      Translations.BitstringOption.translate(option, builder, env)
+    end
+  end
 
   def translate(%Candidate.BitstringOption{} = option, builder, %Env{} = env) do
     start_character = env.position.character - prefix_length(env)

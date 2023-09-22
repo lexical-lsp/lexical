@@ -1,10 +1,15 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
   alias Future.Code, as: Code
   alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
 
-  use Translatable.Impl, for: Candidate.StructField
+  defimpl Translatable, for: Candidate.StructField do
+    def translate(field, builder, %Env{} = env) do
+      Translations.StructField.translate(field, builder, env)
+    end
+  end
 
   def translate(%Candidate.StructField{name: "__struct__"}, _builder, _env) do
     :skip
