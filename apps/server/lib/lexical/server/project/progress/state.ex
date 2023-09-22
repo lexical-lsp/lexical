@@ -44,14 +44,14 @@ defmodule Lexical.Server.Project.Progress.State do
   end
 
   defp write_work_done(token) do
-    if Configuration.supports?(:work_done_progress?) do
+    if Configuration.client_supports?(:work_done_progress) do
       progress = Requests.CreateWorkDoneProgress.new(id: Id.next(), token: token)
       Transport.write(progress)
     end
   end
 
   defp write(%{token: token} = progress) when not is_nil(token) do
-    if Configuration.supports?(:work_done_progress?) do
+    if Configuration.client_supports?(:work_done_progress) do
       progress |> Value.to_protocol() |> Transport.write()
     end
   end

@@ -1,65 +1,71 @@
 defmodule Lexical.Server.Configuration.Support do
+  @moduledoc false
+
   alias Lexical.Protocol.Types.ClientCapabilities
 
-  defstruct code_action_dynamic_registration?: false,
-            hierarchical_document_symbols?: false,
-            snippet?: false,
-            deprecated?: false,
-            tags?: false,
-            signature_help?: false,
-            work_done_progress?: false
+  # To track a new client capability, add a new field and the path to the
+  # capability in the `Lexical.Protocol.Types.ClientCapabilities` struct
+  # to this mapping:
+  @client_capability_mapping [
+    code_action_dynamic_registration: [
+      :text_document,
+      :code_action,
+      :dynamic_registration
+    ],
+    hierarchical_symbols: [
+      :text_document,
+      :document_symbol,
+      :hierarchical_document_symbol_support
+    ],
+    snippet: [
+      :text_document,
+      :completion,
+      :completion_item,
+      :snippet_support
+    ],
+    deprecated: [
+      :text_document,
+      :completion,
+      :completion_item,
+      :deprecated_support
+    ],
+    tags: [
+      :text_document,
+      :completion,
+      :completion_item,
+      :tag_support
+    ],
+    signature_help: [
+      :text_document,
+      :signature_help
+    ],
+    work_done_progress: [
+      :window,
+      :work_done_progress
+    ]
+  ]
+
+  defstruct code_action_dynamic_registration: false,
+            hierarchical_symbols: false,
+            snippet: false,
+            deprecated: false,
+            tags: false,
+            signature_help: false,
+            work_done_progress: false
+
+  @type t :: %__MODULE__{}
 
   def new(%ClientCapabilities{} = client_capabilities) do
-    dynamic_registration? =
-      client_capabilities
-      |> get_in([:text_document, :code_action, :dynamic_registration])
-      |> bool()
+    defaults =
+      for {key, path} <- @client_capability_mapping do
+        value = get_in(client_capabilities, path) || false
+        {key, value}
+      end
 
-    hierarchical_symbols? =
-      client_capabilities
-      |> get_in([:text_document, :document_symbol, :hierarchical_document_symbol_support])
-      |> bool()
-
-    snippet? =
-      client_capabilities
-      |> get_in([:text_document, :completion, :completion_item, :snippet_support])
-      |> bool()
-
-    deprecated? =
-      client_capabilities
-      |> get_in([:text_document, :completion, :completion_item, :deprecated_support])
-      |> bool()
-
-    tags? =
-      client_capabilities
-      |> get_in([:text_document, :completion, :completion_item, :tag_support])
-      |> bool()
-
-    signature_help? =
-      client_capabilities
-      |> get_in([:text_document, :signature_help])
-      |> bool()
-
-    work_done_progress? =
-      client_capabilities
-      |> get_in([:window, :work_done_progress])
-      |> bool()
-
-    %__MODULE__{
-      code_action_dynamic_registration?: dynamic_registration?,
-      hierarchical_document_symbols?: hierarchical_symbols?,
-      snippet?: snippet?,
-      deprecated?: deprecated?,
-      tags?: tags?,
-      signature_help?: signature_help?,
-      work_done_progress?: work_done_progress?
-    }
+    struct(__MODULE__, defaults)
   end
 
-  def new(_) do
+  def new do
     %__MODULE__{}
   end
-
-  defp bool(b) when b in [true, false], do: b
-  defp bool(_), do: false
 end
