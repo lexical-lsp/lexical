@@ -169,6 +169,6 @@ defmodule Lexical.RemoteControl.Search.Store do
   end
 
   defp backend do
-    Application.get_env(:remote_control, :search_store_backend, Store.Backends.Mnesia)
+    Application.get_env(:remote_control, :search_store_backend, Store.Backends.Cub)
   end
 end

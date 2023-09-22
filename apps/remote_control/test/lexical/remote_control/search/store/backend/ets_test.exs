@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.RemoteControl.Search.Store
-  alias Lexical.RemoteControl.Search.Store.Backends.Ets
+  alias Lexical.RemoteControl.Search.Store.Backends
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   import Fixtures
 
   setup do
-    backend = Ets
+    backend = Backends.Ets
     project = project()
     # These test cases require an clean slate going into them
     # so we should remove the indexes once when the tests start,
@@ -20,13 +20,14 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     # Removing the index at the end will also let other test cases
     # start with a clean slate.
 
-    delete_indexes(project)
+    Lexical.RemoteControl.set_project(project)
+    delete_indexes(project, backend)
 
     {:ok, backend: backend, project: project}
   end
 
-  def delete_indexes(project) do
-    Ets.destroy(project)
+  def delete_indexes(project, backend) do
+    backend.destroy(project)
   end
 
   def default_create(_project) do
@@ -37,11 +38,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     {:ok, [], []}
   end
 
-  def with_a_started_store(%{project: project}) do
-    start_supervised!({Store, [project, &default_create/1, &default_update/2, Ets]})
+  def with_a_started_store(%{project: project, backend: backend}) do
+    start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
 
     on_exit(fn ->
-      delete_indexes(project)
+      delete_indexes(project, backend)
     end)
 
     :ok
@@ -223,6 +224,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   end
 
   def restart_store do
+    assert_eventually ready?()
+
     Store
     |> Process.whereis()
     |> Process.monitor()
@@ -236,6 +239,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       1000 ->
         raise "Could not stop store"
     end
+
+    assert_eventually ready?()
   end
 
   def alive? do

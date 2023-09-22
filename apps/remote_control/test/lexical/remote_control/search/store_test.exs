@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.RemoteControl.Search.Store
+  alias Lexical.RemoteControl.Search.Store.Backends.Cub
   alias Lexical.RemoteControl.Search.Store.Backends.Ets
   alias Lexical.RemoteControl.Search.Store.Backends.Mnesia
   alias Lexical.Test.Entry
@@ -12,10 +13,11 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   import EventualAssertions
   import Fixtures
 
-  @backends [Ets, Mnesia]
+  @backends [Cub, Ets]
 
   setup_all do
     project = project()
+    Lexical.RemoteControl.set_project(project)
     # These test cases require an clean slate going into them
     # so we should remove the indexes once when the tests start,
     # and again when tests end, so the next test has a clean slate.
@@ -207,6 +209,14 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     end
   end
 
+  defp after_each_test(Cub, project) do
+    destroy_backend(Cub, project)
+  end
+
+  defp after_each_test(_, _) do
+    :ok
+  end
+
   defp destroy_backends(project) do
     Enum.each(@backends, &destroy_backend(&1, project))
   end
@@ -217,6 +227,10 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
   defp destroy_backend(Mnesia, project) do
     :ok = Mnesia.Schema.destroy(project)
+  end
+
+  defp destroy_backend(Cub, project) do
+    Cub.destroy(project)
   end
 
   defp default_create(_project) do
@@ -230,6 +244,10 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   defp with_a_started_store(project, backend) do
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
     assert_eventually ready?(), 1500
+
+    on_exit(fn ->
+      after_each_test(backend, project)
+    end)
 
     {:ok, backend: backend}
   end

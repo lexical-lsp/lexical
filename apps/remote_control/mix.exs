@@ -36,6 +36,7 @@ defmodule Lexical.RemoteControl.MixProject do
   defp deps do
     [
       {:common, in_umbrella: true},
+      {:cubdb, "~> 2.0"},
       {:elixir_sense, git: "https://github.com/elixir-lsp/elixir_sense.git"},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
       {:lexical_shared, path: "../../projects/lexical_shared"},

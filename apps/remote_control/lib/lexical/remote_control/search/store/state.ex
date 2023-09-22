@@ -103,10 +103,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     with {:ok, deleted_entries} <- state.backend.delete_by_path(path),
          :ok <- state.backend.insert(entries) do
       refs_to_drop = Enum.map(deleted_entries, & &1.ref)
-      fuzzy = state.fuzzy
 
       fuzzy =
-        fuzzy
+        state.fuzzy
         |> Fuzzy.drop_values(refs_to_drop)
         |> Fuzzy.add(entries)
 
@@ -153,12 +152,16 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp update_index_complete(%__MODULE__{} = state, {:ok, entries, deleted_paths}) do
-    fuzzy = Fuzzy.from_entries(entries)
+  defp update_index_complete(%__MODULE__{} = state, {:ok, updated_entries, deleted_paths}) do
+    fuzzy =
+      state
+      |> all()
+      |> Fuzzy.from_entries()
+
     starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
 
     new_state =
-      entries
+      updated_entries
       |> Enum.group_by(& &1.path)
       |> Enum.reduce(starting_state, fn {path, entry_list}, state ->
         {:ok, new_state} = update_nosync(state, path, entry_list)
