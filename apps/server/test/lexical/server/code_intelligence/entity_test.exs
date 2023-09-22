@@ -2,18 +2,16 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.Server.CodeIntelligence.Entity
 
+  import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
   import Lexical.Test.Fixtures
   import Lexical.Test.RangeSupport
-  import Messages
 
   use ExUnit.Case, async: false
-  use Lexical.Test.PositionSupport
 
   defp with_referenced_file(%{project: project}) do
     uri =
@@ -73,7 +71,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition.greet|("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
@@ -88,7 +86,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition|.greet("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[defmodule «MyDefinition» do]
@@ -103,7 +101,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MyDefinition.print_hello|()
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  defmacro «print_hello» do]
@@ -139,7 +137,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             MultiArity.sum|(1, 2, 3)
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -160,7 +158,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             greet|("World")
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
@@ -176,7 +174,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             print_hello|()
           end
         end
-        ]
+      ]
 
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  defmacro «print_hello» do]
@@ -195,7 +193,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             greet|("World")
           end
         end
-        ]
+      ]
+
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «greet»(name) do]
     end
@@ -219,7 +218,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             hello_func_in_using|()
           end
         end
-        ]
+      ]
+
       assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
       assert definition_line == ~S[  def «hello_func_in_using» do]
     end
@@ -253,7 +253,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             @|b
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -272,7 +272,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
             end
           end
         end
-        ]
+      ]
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
@@ -290,7 +290,7 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
          %{project: project} do
       subject_module = ~q[
         String.to_integer|("1")
-        ]
+      ]
 
       {:ok, uri, definition_line} = definition(project, subject_module)
 
@@ -301,7 +301,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     test "find the definition when calling a erlang module", %{project: project} do
       subject_module = ~q[
         :erlang.binary_to_atom|("1")
-        ]
+      ]
+
       {:ok, uri, definition_line} = definition(project, subject_module)
 
       assert uri =~ "/src/erlang.erl"
@@ -346,8 +347,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves module segments at and before the cursor", %{project: project} do
       code = ~q[
-            In.|The.Middle
-          ]
+        In.|The.Middle
+      ]
 
       assert {:ok, {:module, In.The}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«In.The».Middle]
@@ -355,8 +356,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "excludes trailing module segments with the cursor is on a period", %{project: project} do
       code = ~q[
-            AAA.BBB.CCC.DDD|.EEE
-          ]
+        AAA.BBB.CCC.DDD|.EEE
+      ]
 
       assert {:ok, {:module, AAA.BBB.CCC.DDD}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«AAA.BBB.CCC.DDD».EEE]
@@ -364,9 +365,9 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds for modules within a multi-line node", %{project: project} do
       code = ~q[
-            foo =
-              On.Another.Lin|e
-          ]
+        foo =
+          On.Another.Lin|e
+      ]
 
       assert {:ok, {:module, On.Another.Line}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «On.Another.Line»]
@@ -374,10 +375,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves the entire module for multi-line modules", %{project: project} do
       code = ~q[
-            On.
-              |Multiple.
-              Lines
-          ]
+        On.
+          |Multiple.
+          Lines
+      ]
 
       assert {:ok, {:module, On.Multiple.Lines}, resolved_range} = resolve(project, code)
 
@@ -390,8 +391,8 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds in single line calls", %{project: project} do
       code = ~q[
-            |Enum.map(1..10, & &1 + 1)
-          ]
+        |Enum.map(1..10, & &1 + 1)
+      ]
 
       assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«Enum».map(1..10, & &1 + 1)]
@@ -399,10 +400,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "succeeds in multi-line calls", %{project: project} do
       code = ~q[
-            |Enum.map(1..10, fn i ->
-              i + 1
-            end)
-          ]
+        |Enum.map(1..10, fn i ->
+          i + 1
+        end)
+      ]
 
       assert {:ok, {:module, Enum}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[«Enum».map(1..10, fn i ->]
@@ -410,11 +411,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands top-level aliases", %{project: project} do
       code = ~q[
-            defmodule Example do
-              alias Long.Aliased.Module
-              Modul|e
-            end
-          ]
+        defmodule Example do
+          alias Long.Aliased.Module
+          Modul|e
+        end
+      ]
 
       assert {:ok, {:module, Long.Aliased.Module}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Module»]
@@ -422,11 +423,11 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "ignores top-level aliases made after the cursor", %{project: project} do
       code = ~q[
-            defmodule Example do
-              Modul|e
-              alias Long.Aliased.Module
-            end
-          ]
+        defmodule Example do
+          Modul|e
+          alias Long.Aliased.Module
+        end
+      ]
 
       assert {:ok, {:module, Module}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Module»]
@@ -434,13 +435,13 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "resolves implicit aliases", %{project: project} do
       code = ~q[
-            defmodule Example do
-              defmodule Inner do
-              end
+        defmodule Example do
+          defmodule Inner do
+          end
 
-              Inne|r
-            end
-          ]
+          Inne|r
+        end
+      ]
 
       assert {:ok, {:module, Example.Inner}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «Inner»]
@@ -448,10 +449,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands current module", %{project: project} do
       code = ~q[
-            defmodule Example do
-              |__MODULE__
-            end
-          ]
+        defmodule Example do
+          |__MODULE__
+        end
+      ]
 
       assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__»]
@@ -459,10 +460,10 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands current module used in alias", %{project: project} do
       code = ~q[
-            defmodule Example do
-              |__MODULE__.Nested
-            end
-          ]
+        defmodule Example do
+          |__MODULE__.Nested
+        end
+      ]
 
       assert {:ok, {:module, Example}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__».Nested]
@@ -470,40 +471,304 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
 
     test "expands alias following current module", %{project: project} do
       code = ~q[
-            defmodule Example do
-              __MODULE__.|Nested
-            end
-          ]
+        defmodule Example do
+          __MODULE__.|Nested
+        end
+      ]
 
       assert {:ok, {:module, Example.Nested}, resolved_range} = resolve(project, code)
       assert resolved_range =~ ~S[  «__MODULE__.Nested»]
     end
   end
 
+  describe "struct resolve/2" do
+    test "succeeds when the cursor is on the %", %{project: project} do
+      code = ~q[
+        |%MyStruct{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the cursor is in an alias", %{project: project} do
+      code = ~q[
+        %My|Struct{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the cursor is on the opening bracket", %{project: project} do
+      code = ~q[
+        %MyStruct|{}
+      ]
+
+      assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct»{}]
+    end
+
+    test "succeeds when the struct fields span multiple lines", %{project: project} do
+      code = ~q[
+        %MyStruct.|Nested{
+          foo: 1,
+          bar: 2
+        }
+      ]
+
+      assert {:ok, {:struct, MyStruct.Nested}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct.Nested»{]
+    end
+
+    test "succeeds when the struct spans multiple lines", %{project: project} do
+      code = ~q[
+        %On.
+          |Multiple.
+          Lines{}
+      ]
+
+      assert {:ok, {:struct, On.Multiple.Lines}, resolved_range} = resolve(project, code)
+
+      assert resolved_range =~ """
+             %«On.
+               Multiple.
+               Lines»{}\
+             """
+    end
+
+    test "includes trailing module segments", %{project: project} do
+      code = ~q[
+        %My|Struct.Nested{}
+      ]
+
+      assert {:ok, {:struct, MyStruct.Nested}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[%«MyStruct.Nested»{}]
+    end
+
+    test "expands current module", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          %|__MODULE__{}
+        end
+      ]
+
+      assert {:ok, {:struct, Example}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«__MODULE__»{}]
+    end
+
+    test "succeeds for implicitly aliased module", %{project: project} do
+      code = ~q<
+        defmodule Example do
+          defmodule Inner do
+            defstruct []
+          end
+
+          %|Inner{}
+        end
+      >
+
+      assert {:ok, {:struct, Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«Inner»{}]
+    end
+
+    test "succeeds for explicitly aliased module", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          alias Something.Example
+          %Example.|Inner{}
+        end
+      ]
+
+      assert {:ok, {:struct, Something.Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«Example.Inner»{}]
+    end
+
+    test "succeeds for module nested inside current module", %{project: project} do
+      code = ~q[
+        defmodule Example do
+          %__MODULE__.|Inner{}
+        end
+      ]
+
+      assert {:ok, {:struct, Example.Inner}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  %«__MODULE__.Inner»{}]
+    end
+  end
+
+  describe "call resolve/2" do
+    test "qualified call", %{project: project} do
+      code = ~q[
+        def example do
+          MyModule.|some_function(1, 2, 3)
+        end
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function»(1, 2, 3)]
+    end
+
+    test "qualified call without parens", %{project: project} do
+      code = ~q[
+        MyModule.|some_function 1, 2, 3
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function» 1, 2, 3]
+    end
+
+    test "qualified call with nested alias", %{project: project} do
+      code = ~q[
+        MyModule.Nested.|some_function(1, 2, 3)
+      ]
+
+      assert {:ok, {:call, MyModule.Nested, :some_function, 3}, resolved_range} =
+               resolve(project, code)
+
+      assert resolved_range =~ ~S[«MyModule.Nested.some_function»(1, 2, 3)]
+    end
+
+    test "multi-line qualified call", %{project: project} do
+      code = ~q[
+        MyModule.|some_function(
+          1, 2, 3
+        )
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[«MyModule.some_function»(]
+    end
+
+    test "qualified call at start of pipe", %{project: project} do
+      code = ~q[
+        1
+        |> MyModule.|some_function(2, 3)
+        |> other()
+        |> other()
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+
+    test "qualified call at end of pipe", %{project: project} do
+      code = ~q[
+        1
+        |> other()
+        |> other()
+        |> MyModule.|some_function(2, 3)
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+
+    test "qualified call nested in a pipe", %{project: project} do
+      code = ~q[
+        1
+        |> other()
+        |> MyModule.|some_function(2, 3)
+        |> other()
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[|> «MyModule.some_function»(2, 3)]
+    end
+
+    test "qualified call inside another call", %{project: project} do
+      code = ~q[
+        foo(1, 2, MyModule.|some_function(3))
+      ]
+
+      assert {:ok, {:call, MyModule, :some_function, 1}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[foo(1, 2, «MyModule.some_function»(3))]
+    end
+
+    test "qualified call on same line as a string with newlines", %{project: project} do
+      code = ~q[
+        Enum.map_join(list, "\n\n---\n\n", &String.tri|m(&1)) <> "\n"
+      ]
+
+      assert {:ok, {:call, String, :trim, 1}, _} = resolve(project, code)
+    end
+
+    test "qualified call within a block", %{project: project} do
+      code = ~q/
+        if true do
+          MyModule.some_|function(bar)
+          :ok
+        end
+      /
+
+      assert {:ok, {:call, MyModule, :some_function, 1}, _} = resolve(project, code)
+    end
+
+    test "qualified call on left of type operator", %{project: project} do
+      code = ~q[
+        my_dsl do
+          MyModule.|my_fun() :: MyModule.t()
+        end
+      ]
+
+      assert {:ok, {:call, MyModule, :my_fun, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  «MyModule.my_fun»() :: MyModule.t()]
+    end
+  end
+
+  describe "type resolve/2" do
+    test "qualified types in @type", %{project: project} do
+      code = ~q[
+        @type my_type :: MyModule.|t()
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@type my_type :: «MyModule.t»()]
+    end
+
+    test "qualified types in @spec", %{project: project} do
+      code = ~q[
+        @spec my_fun() :: MyModule.|t()
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@spec my_fun() :: «MyModule.t»()]
+    end
+
+    test "qualified types in DSL", %{project: project} do
+      code = ~q[
+        my_dsl do
+          my_fun() :: MyModule.|t()
+        end
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[  my_fun() :: «MyModule.t»()]
+    end
+
+    test "qualified types in nested structure", %{project: project} do
+      code = ~q[
+        @type my_type :: %{foo: MyModule.|t()}
+      ]
+
+      assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(project, code)
+      assert resolved_range =~ ~S[@type my_type :: %{foo: «MyModule.t»()}]
+    end
+  end
+
   defp resolve(project, code) do
-    with {position, code} <- pop_position(code),
+    with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
          {:ok, resolved, range} <- Entity.resolve(document, position) do
       {:ok, resolved, decorate(document, range)}
     end
   end
 
-  defp definition(project, subject_module) do
-    with {position, subject_module} <- pop_position(subject_module),
-         {:ok, subject_module_doc} <- subject_module(project, subject_module),
+  defp definition(project, code) do
+    with {position, code} <- pop_cursor(code),
+         {:ok, document} <- subject_module(project, code),
          {:ok, %Location{} = location} <-
-           Entity.definition(project, subject_module_doc, position) do
+           Entity.definition(project, document, position) do
       {:ok, location.document.uri, decorate(location.document, location.range)}
     end
-  end
-
-  defp pop_position(subject_module) do
-    position = caller_position(subject_module)
-    {position, strip_cursor(subject_module)}
-  end
-
-  defp caller_position(subject_module) do
-    {line, character} = cursor_position(subject_module)
-    position(line, character)
   end
 end

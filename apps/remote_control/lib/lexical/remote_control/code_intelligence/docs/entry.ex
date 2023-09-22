@@ -10,8 +10,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
     :arity,
     :signature,
     :doc,
-    :metadata
-    # :spec
+    :metadata,
+    defs: []
   ]
 
   @type t(kind) :: %__MODULE__{
@@ -21,8 +21,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs.Entry do
           arity: arity(),
           signature: [String.t()],
           doc: content(),
-          metadata: metadata()
-          # spec: String.t() | nil
+          metadata: metadata(),
+          defs: [String.t()]
         }
 
   @type content :: String.t() | :none | :hidden

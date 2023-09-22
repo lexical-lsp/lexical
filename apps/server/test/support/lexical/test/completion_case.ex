@@ -41,10 +41,6 @@ defmodule Lexical.Test.Server.CompletionCase do
 
   def complete(project, text, opts \\ []) do
     trigger_character = Keyword.get(opts, :trigger_character)
-    {line, column} = cursor_position(text)
-
-    text = strip_cursor(text)
-
     root_path = Project.root_path(project)
 
     file_path =
@@ -61,12 +57,7 @@ defmodule Lexical.Test.Server.CompletionCase do
           Path.join([root_path, "lib", "file.ex"])
       end
 
-    document =
-      file_path
-      |> Document.Path.ensure_uri()
-      |> Document.new(text, 0)
-
-    position = %Document.Position{line: line, character: column}
+    {position, document} = pop_cursor(text, document: file_path)
 
     context =
       if is_binary(trigger_character) do

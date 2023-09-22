@@ -1,31 +1,30 @@
 defmodule Lexical.AstTest do
   alias Lexical.Ast
   alias Lexical.Document
-  alias Lexical.Test.CodeSigil
-  alias Lexical.Test.CursorSupport
+  alias Lexical.Document.Position
   alias Sourceror.Zipper
 
-  import CursorSupport
-  import CodeSigil
+  import Lexical.Test.CodeSigil
+  import Lexical.Test.CursorSupport
+  import Lexical.Test.PositionSupport
+  import Lexical.Test.RangeSupport
 
   use ExUnit.Case, async: true
 
-  def cursor_path(text) do
-    pos = cursor_position(text)
-    text = strip_cursor(text)
-    doc = Document.new("file:///file.ex", text, 0)
-    Ast.cursor_path(doc, pos)
-  end
-
   describe "cursor_path/2" do
+    defp cursor_path(text) do
+      {position, document} = pop_cursor(text, as: :document)
+      Ast.cursor_path(document, position)
+    end
+
     test "contains the parent AST" do
       text = ~q[
-      defmodule Foo do
-        def bar do
-          |
+        defmodule Foo do
+          def bar do
+            |
+          end
         end
-      end
-    ]
+      ]
 
       path = cursor_path(text)
 
@@ -35,9 +34,9 @@ defmodule Lexical.AstTest do
 
     test "returns cursor ast when is not in a container" do
       text = ~q[
-      |
-      defmodule Foo do
-      end
+        |
+        defmodule Foo do
+        end
       ]
 
       path = cursor_path(text)
@@ -48,40 +47,98 @@ defmodule Lexical.AstTest do
       text = ~q[
         foo(bar do baz, bat|
       ]
+
       path = cursor_path(text)
       assert path == []
+    end
+  end
+
+  describe "path_at/2" do
+    defp path_at(text) do
+      {position, document} = pop_cursor(text, as: :document)
+      Ast.path_at(document, position)
+    end
+
+    test "returns an error if the cursor cannot be found in a node" do
+      code = ~q[
+        |
+        defmodule Foo do
+        end
+      ]
+
+      assert {:error, :not_found} = path_at(code)
+    end
+
+    test "returns an error if the AST cannot be parsed" do
+      code = ~q[
+        defmodule |Foo do
+      ]
+
+      assert {:error, {[line: 2, column: 1], "missing terminator: end" <> _, ""}} = path_at(code)
+    end
+
+    test "returns a path to the innermost node at position" do
+      code = ~q[
+        defmodule Foo do
+          def bar do
+            %{foo: |:ok}
+          end
+        end
+      ]
+
+      assert {:ok, [{:__block__, _, [:ok]} | _]} = path_at(code)
+    end
+
+    test "returns a path containing all ancestors" do
+      code = ~q[
+        defmodule Foo do
+          def |bar do
+            :ok
+          end
+        end
+      ]
+
+      assert {:ok,
+              [
+                {:bar, _, nil},
+                {:def, _, _},
+                {_, _},
+                [{_, _}],
+                {:defmodule, _, _}
+              ]} = path_at(code)
     end
   end
 
   describe "traverse_line" do
     setup do
       text = ~q[
-      line = 1
-      line = 2
-      line = 3
-      line = 4
-      ""
-    ]t
+        line = 1
+        line = 2
+        line = 3
+        line = 4
+        ""
+      ]t
 
       document = Document.new("file:///file.ex", text, 1)
 
       {:ok, document: document}
     end
 
-    defp underscore_variable({{var_name, meta, nil}, zipper_meta}) do
-      {{:"_#{var_name}", meta, nil}, zipper_meta}
+    defp underscore_variable(%Zipper{node: {var_name, meta, nil}} = zipper) do
+      Zipper.replace(zipper, {:"_#{var_name}", meta, nil})
     end
 
     defp underscore_variable(zipper), do: zipper
 
-    defp underscore_variable({{var_name, meta, nil}, zipper_meta}, acc) do
-      {{{:"_#{var_name}", meta, nil}, zipper_meta}, acc + 1}
+    defp underscore_variable(%Zipper{node: {_var_name, _meta, nil}} = zipper, acc) do
+      zipper = underscore_variable(zipper)
+      {zipper, acc + 1}
     end
 
     defp underscore_variable(zipper, acc), do: {zipper, acc}
 
     defp modify({:ok, zipper}) do
-      {ast, _} = Zipper.top(zipper)
+      %Zipper{node: ast} = Zipper.top(zipper)
       Sourceror.to_string(ast)
     end
 
@@ -111,6 +168,97 @@ defmodule Lexical.AstTest do
       assert converted =~ "_line = 2"
       refute converted =~ "_line = 1"
       refute converted =~ "_line = 3"
+    end
+  end
+
+  describe "contains_position?/2 single line node" do
+    setup do
+      {range, code} = pop_range(~q|
+        [
+          «single_line_call(1, 2, 3»)
+        ]
+      |)
+
+      [single_line_ast] = ast(code)
+
+      {:ok, [ast: single_line_ast, range: range]}
+    end
+
+    test "at the bounds", %{ast: ast, range: range} do
+      assert Ast.contains_position?(ast, range.start)
+      assert Ast.contains_position?(ast, range.end)
+    end
+
+    test "within the node", %{ast: ast, range: range} do
+      position = %Position{range.start | character: range.start.character + 1}
+      assert Ast.contains_position?(ast, position)
+    end
+
+    test "outside the bounds", %{ast: ast, range: range} do
+      %Position{line: start_line, character: start_col} = range.start
+      %Position{line: end_line, character: end_col} = range.end
+
+      refute Ast.contains_position?(ast, position(start_line, start_col - 1))
+      refute Ast.contains_position?(ast, position(start_line - 1, start_col))
+      refute Ast.contains_position?(ast, position(end_line, end_col + 1))
+      refute Ast.contains_position?(ast, position(end_line + 1, end_col))
+    end
+  end
+
+  describe "contains_position?/2 multi line node" do
+    setup do
+      {range, code} = pop_range(~q|
+        [
+          «multi_line_call(
+            1, 2, 3
+          »)
+        ]
+      |)
+
+      [three_line_ast] = ast(code)
+
+      {:ok, [ast: three_line_ast, range: range]}
+    end
+
+    test "at the bounds", %{ast: ast, range: range} do
+      assert Ast.contains_position?(ast, range.start)
+      assert Ast.contains_position?(ast, range.end)
+    end
+
+    test "on the first line", %{ast: ast, range: range} do
+      %Position{line: start_line, character: start_col} = range.start
+
+      assert Ast.contains_position?(ast, position(start_line, start_col + 1))
+      refute Ast.contains_position?(ast, position(start_line, start_col - 1))
+    end
+
+    test "on the last line", %{ast: ast, range: range} do
+      %Position{line: end_line, character: end_col} = range.end
+
+      assert Ast.contains_position?(ast, position(end_line, end_col - 1))
+      refute Ast.contains_position?(ast, position(end_line, end_col + 1))
+    end
+
+    test "within the lines", %{ast: ast, range: range} do
+      %Position{line: start_line} = range.start
+
+      assert Ast.contains_position?(ast, position(start_line + 1, 1))
+      assert Ast.contains_position?(ast, position(start_line + 1, 1_000))
+    end
+
+    test "outside the lines", %{ast: ast, range: range} do
+      %Position{line: start_line, character: start_col} = range.start
+      %Position{line: end_line, character: end_col} = range.end
+
+      refute Ast.contains_position?(ast, position(start_line - 1, start_col))
+      refute Ast.contains_position?(ast, position(end_line + 1, end_col))
+    end
+  end
+
+  defp ast(s) do
+    case Ast.from(s) do
+      {:ok, {:__block__, _, [node]}} -> node
+      {:ok, node} -> node
     end
   end
 end

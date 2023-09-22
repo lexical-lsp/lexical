@@ -1,20 +1,14 @@
 defmodule Lexical.Ast.AliasesTest do
   alias Lexical.Ast.Aliases
-  alias Lexical.Document
-  alias Lexical.Test.CodeSigil
-  alias Lexical.Test.CursorSupport
 
-  import Aliases
-  import CursorSupport
-  import CodeSigil
+  import Lexical.Test.CursorSupport
+  import Lexical.Test.CodeSigil
 
   use ExUnit.Case
 
   def aliases_at_cursor(text) do
-    pos = cursor_position(text)
-    text = strip_cursor(text)
-    doc = Document.new("file:///file.ex", text, 0)
-    at(doc, pos)
+    {position, document} = pop_cursor(text, as: :document)
+    Aliases.at(document, position)
   end
 
   describe "top level aliases" do

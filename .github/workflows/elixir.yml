@@ -106,7 +106,7 @@ jobs:
         id: set_mix_lock_hash
         run: |
           mix_lock_hash="${{ hashFiles(env.project_mix_lock) }}"
-          projects_hash="${{ hashFiles(env.project_ex_blob, env.projects_locks_blob) }}"
+          projects_hash="${{ hashFiles(env.projects_ex_blob, env.projects_locks_blob) }}"
           echo "mix_lock_hash=$mix_lock_hash::$projects_hash" >> "$GITHUB_OUTPUT"
 
       # Step: Define how to cache deps. Restores existing cache if present.
