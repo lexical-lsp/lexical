@@ -1,4 +1,8 @@
 defmodule Lexical.Server.Configuration do
+  @moduledoc """
+  Encapsulates server configuration options and client capability support.
+  """
+
   alias Lexical.Project
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications.DidChangeConfiguration
@@ -16,9 +20,12 @@ defmodule Lexical.Server.Configuration do
 
   @type t :: %__MODULE__{
           project: Project.t() | nil,
+          support: support | nil,
           additional_watched_extensions: [String.t()] | nil,
           dialyzer_enabled?: boolean()
         }
+
+  @opaque support :: Support.t()
 
   @dialyzer {:nowarn_function, set_dialyzer_enabled: 2}
 
@@ -27,6 +34,32 @@ defmodule Lexical.Server.Configuration do
     support = Support.new(client_capabilities)
     project = Project.new(root_uri)
     %__MODULE__{support: support, project: project} |> tap(&set/1)
+  end
+
+  @spec new() :: t
+  def new do
+    %__MODULE__{support: Support.new()}
+  end
+
+  defp set(%__MODULE__{} = config) do
+    :persistent_term.put(__MODULE__, config)
+  end
+
+  @spec get() :: t
+  def get do
+    :persistent_term.get(__MODULE__, false) || new()
+  end
+
+  @spec client_supports?(atom()) :: boolean()
+  def client_supports?(key) when is_atom(key) do
+    client_supports?(get().support, key)
+  end
+
+  defp client_supports?(%Support{} = client_support, key) do
+    case Map.fetch(client_support, key) do
+      {:ok, value} -> value
+      :error -> raise ArgumentError, "unknown key: #{inspect(key)}"
+    end
   end
 
   @spec default(t | nil) ::
@@ -101,19 +134,5 @@ defmodule Lexical.Server.Configuration do
 
   defp maybe_add_watched_extensions(%__MODULE__{} = old_config, _) do
     {:ok, old_config}
-  end
-
-  @supports_keys ~w(work_done_progress?)a
-
-  def supports?(key) when key in @supports_keys do
-    get_in(get(), [Access.key(:support), Access.key(key)]) || false
-  end
-
-  def get do
-    :persistent_term.get(__MODULE__, %__MODULE__{})
-  end
-
-  defp set(%__MODULE__{} = config) do
-    :persistent_term.put(__MODULE__, config)
   end
 end

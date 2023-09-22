@@ -43,7 +43,7 @@ defmodule Lexical.Server.Project.ProgressTest do
     setup [:with_patched_tranport]
 
     test "it should be able to send the report progress", %{project: project} do
-      patch(Configuration, :supports?, fn :work_done_progress? -> true end)
+      patch(Configuration, :client_supports?, fn :work_done_progress -> true end)
 
       begin_message = progress(:begin, "mix compile")
       RemoteControl.Api.broadcast(project, begin_message)
@@ -62,7 +62,7 @@ defmodule Lexical.Server.Project.ProgressTest do
     end
 
     test "it should write nothing when the client does not support work done", %{project: project} do
-      patch(Configuration, :supports?, fn :work_done_progress? -> false end)
+      patch(Configuration, :client_supports?, fn :work_done_progress -> false end)
 
       begin_message = progress(:begin, "mix compile")
       RemoteControl.Api.broadcast(project, begin_message)
