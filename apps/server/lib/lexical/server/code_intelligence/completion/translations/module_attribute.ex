@@ -1,8 +1,14 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribute do
+  alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
 
-  use Translatable.Impl, for: Candidate.ModuleAttribute
+  defimpl Translatable, for: Candidate.ModuleAttribute do
+    def translate(attribute, builder, %Env{} = env) do
+      Translations.ModuleAttribute.translate(attribute, builder, env)
+    end
+  end
 
   def translate(%Candidate.ModuleAttribute{name: "@moduledoc"}, builder, env) do
     doc_snippet = ~s(

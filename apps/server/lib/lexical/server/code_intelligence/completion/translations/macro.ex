@@ -1,14 +1,19 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
 
-  use Translatable.Impl, for: Candidate.Macro
-
   @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
+
+  defimpl Translatable, for: Candidate.Macro do
+    def translate(macro, builder, %Env{} = env) do
+      Translations.Macro.translate(macro, builder, env)
+    end
+  end
 
   def translate(%Candidate.Macro{name: name}, _builder, _env)
       when name in ["__before_compile__", "__using__", "__after_compile__"] do

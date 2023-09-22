@@ -1,12 +1,12 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
-  alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
+  alias Lexical.Server.CodeIntelligence.Completion.Translations
 
-  use Translatable.Impl, for: Candidate.Callback
-
-  def translate(%Candidate.Callback{} = callback, _builder, %Env{} = env) do
-    Callable.completion(callback, env)
+  defimpl Translatable, for: Candidate.Callback do
+    def translate(callback, _builder, %Env{} = env) do
+      Translations.Callable.completion(callback, env)
+    end
   end
 end

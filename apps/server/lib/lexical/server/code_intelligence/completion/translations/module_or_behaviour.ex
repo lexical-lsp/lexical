@@ -1,30 +1,35 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
 
-  use Translatable.Impl,
-    for: [Candidate.Module, Candidate.Struct, Candidate.Behaviour, Candidate.Protocol]
-
-  def translate(%Candidate.Module{} = module, builder, %Env{} = env) do
-    do_translate(module, builder, env)
+  defimpl Translatable, for: Candidate.Module do
+    def translate(module, builder, %Env{} = env) do
+      Translations.ModuleOrBehaviour.translate(module, builder, env)
+    end
   end
 
-  def translate(%Candidate.Struct{} = module, builder, %Env{} = env) do
-    do_translate(module, builder, env)
+  defimpl Translatable, for: Candidate.Struct do
+    def translate(module, builder, %Env{} = env) do
+      Translations.ModuleOrBehaviour.translate(module, builder, env)
+    end
   end
 
-  def translate(%Candidate.Behaviour{} = behaviour, builder, %Env{} = env) do
-    do_translate(behaviour, builder, env)
+  defimpl Translatable, for: Candidate.Behaviour do
+    def translate(behaviour, builder, %Env{} = env) do
+      Translations.ModuleOrBehaviour.translate(behaviour, builder, env)
+    end
   end
 
-  def translate(%Candidate.Protocol{} = protocol, builder, %Env{} = env) do
-    do_translate(protocol, builder, env)
+  defimpl Translatable, for: Candidate.Protocol do
+    def translate(protocol, builder, %Env{} = env) do
+      Translations.ModuleOrBehaviour.translate(protocol, builder, env)
+    end
   end
 
-  defp do_translate(%_{} = module, builder, %Env{} = env) do
+  def translate(%_{} = module, builder, %Env{} = env) do
     if Env.in_context?(env, :struct_reference) do
       complete_in_struct_reference(env, builder, module)
     else
