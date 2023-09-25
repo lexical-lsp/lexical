@@ -100,10 +100,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Cub.State do
         |> CubDB.Tx.get(path_key, [])
         |> Enum.unzip()
 
-      deleted_entries =
-        ref_keys
-        |> Enum.map(&CubDB.Tx.get(transaction, &1))
-        |> Enum.to_list()
+      deleted_entries = Enum.map(ref_keys, &CubDB.Tx.get(transaction, &1))
 
       keys_to_delete = [path_key | subject_keys ++ ref_keys]
 

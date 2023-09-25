@@ -33,7 +33,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Cub do
   end
 
   @impl Backend
-
   def destroy(%Project{} = project) do
     project
     |> cub_directory()
@@ -80,14 +79,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Cub do
     leader_name = leader_name(project)
 
     with :undefined <- :global.whereis_name(leader_name),
-         {:ok, :leader} <- :global.trans(leader_name, fn -> become_leader(project) end, [], 0) do
-      Process.flag(:trap_exit, true)
+         :ok <- become_leader(project) do
       {:noreply, initialize_cub(project)}
     else
       _ ->
-        leader_pid = :global.whereis_name(leader_name(project))
-        Process.monitor(leader_pid)
-        {:noreply, State.new_follower(project, leader_pid)}
+        {:noreply, follow_leader(project)}
     end
   end
 
@@ -165,19 +161,32 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Cub do
   end
 
   defp become_leader(%Project{} = project) do
-    case :global.register_name(leader_name(project), self(), &:global.random_notify_name/3) do
-      :yes ->
-        {:ok, :leader}
+    leader_name = leader_name(project)
+    :global.trans(leader_name, fn -> do_become_leader(project) end, [], 0)
+  end
 
-      :no ->
-        :aborted
+  defp do_become_leader(%Project{} = project) do
+    leader_name = leader_name(project)
+
+    with :undefined <- :global.whereis_name(leader_name),
+         :yes <- :global.register_name(leader_name, self(), &:global.random_notify_name/3) do
+      Process.flag(:trap_exit, true)
+      :ok
+    else
+      _ ->
+        :error
     end
   end
 
+  defp follow_leader(%Project{} = project) do
+    leader_pid = :global.whereis_name(leader_name(project))
+    Process.monitor(leader_pid)
+    State.new_follower(project, leader_pid)
+  end
+
   defp initialize_cub(%Project{} = project) do
-    with {:ok, cub_pid} <- CubDB.start_link(cub_directory(project), auto_compact: true) do
-      State.new_leader(project, cub_pid)
-    end
+    {:ok, cub_pid} = CubDB.start_link(cub_directory(project), auto_compact: true)
+    State.new_leader(project, cub_pid)
   end
 
   defp cub_directory(%Project{} = project) do
