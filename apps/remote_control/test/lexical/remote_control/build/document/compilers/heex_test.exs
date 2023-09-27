@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
   alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.RemoteControl.Build.CaptureServer
   alias Lexical.RemoteControl.Build.Document.Compilers
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
 
   import Lexical.Test.CodeSigil
@@ -12,6 +13,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
 
   def with_capture_server(_) do
     start_supervised!(CaptureServer)
+    start_supervised!(Dispatch)
     start_supervised!(ModuleMappings)
     :ok
   end
