@@ -95,6 +95,22 @@ defmodule Lexical.Ast.Aliases do
       |> Map.put(:__MODULE__, current_module(reducer))
     end
 
+    # Expands aliases given the rules in the special form
+    # https://hexdocs.pm/elixir/1.13.4/Kernel.SpecialForms.html#__aliases__/1
+    defp expand_alias(current_module, [:"Elixir" | _] = expanded) do
+      [current_module | expanded]
+    end
+
+    defp expand_alias(current_module, [atom | _rest] = expanded) when is_atom(atom) do
+      [current_module | expanded]
+    end
+
+    defp expand_alias(current_module, [unexpanded | rest]) do
+      expanded = Macro.expand(unexpanded, %{module: current_module})
+
+      [expanded | rest]
+    end
+
     # defmodule MyModule do
     defp apply_ast(
            %__MODULE__{} = reducer,
@@ -106,7 +122,7 @@ defmodule Lexical.Ast.Aliases do
             module_name
 
           current_module ->
-            Module.split(current_module) ++ module_name
+            expand_alias(current_module, module_name)
         end
 
       current_module_alias =
