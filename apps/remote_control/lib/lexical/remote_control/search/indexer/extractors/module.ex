@@ -152,28 +152,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   defp to_range(%Document{} = document, module_name, {line, column}) do
     module_length =
       module_name
-      |> module_name()
+      |> Ast.Module.name()
       |> String.length()
 
     Range.new(
       Position.new(document, line, column),
       Position.new(document, line, column + module_length)
     )
-  end
-
-  defp module_name(module_name) when is_list(module_name) do
-    module_name
-    |> Module.concat()
-    |> module_name()
-  end
-
-  defp module_name(module_name) when is_binary(module_name) do
-    module_name
-  end
-
-  defp module_name(module_name) when is_atom(module_name) do
-    module_name
-    |> inspect()
-    |> module_name()
   end
 end
