@@ -10,3 +10,8 @@ insert_final_newline = true
 
 [*.{md, markdown, eex}]
 trim_trailing_whitespace = false
+
+[*.sh]
+indent_style = space
+indent_size = 4
+switch_case_indent = true
