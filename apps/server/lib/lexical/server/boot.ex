@@ -16,14 +16,29 @@ defmodule Lexical.Server.Boot do
 
   def start do
     {:ok, _} = Application.ensure_all_started(:mix)
+
     Application.stop(:logger)
     load_config()
     Application.ensure_all_started(:logger)
 
     Enum.each(@dep_apps, &load_app_modules/1)
-    verify_packaging()
-    verify_versioning()
+
+    case detect_errors() do
+      [] ->
+        :ok
+
+      errors ->
+        errors
+        |> Enum.join("\n\n")
+        |> halt()
+    end
+
     Application.ensure_all_started(:server)
+  end
+
+  @doc false
+  def detect_errors do
+    List.wrap(packaging_errors()) ++ List.wrap(versioning_errors())
   end
 
   defp load_config do
@@ -68,7 +83,7 @@ defmodule Lexical.Server.Boot do
     end
   end
 
-  defp verify_packaging do
+  defp packaging_errors do
     unless Versions.compatible?() do
       {:ok, compiled_versions} = Versions.compiled()
 
@@ -78,21 +93,17 @@ defmodule Lexical.Server.Boot do
       compiled_erlang = compiled_versions.erlang
       current_erlang = current_versions.erlang
 
-      message = """
-      Lexical failed its version check. This is a FATAL Error!
-      Lexical is running on Erlang #{current_erlang} and the compiled files were built on
-      Erlang #{compiled_erlang}.
-
-      If you wish to run Lexical under Erlang version #{current_erlang}, you must rebuild lexical
-      under an Erlang version that is <= #{current_erlang.major}.
-
-      Detected Lexical running on erlang #{current_erlang.major} and needs >= #{compiled_erlang.major}
       """
+      FATAL: Lexical version check failed
 
-      halt(message)
+      The Lexical release being used must be compiled with a major version
+      of Erlang/OTP that is older or equal to the runtime.
 
-      Process.sleep(500)
-      System.halt()
+        Compiled with: #{compiled_erlang}
+        Started with:  #{current_erlang}
+
+      To run Lexical with #{current_erlang}, please recompile using Erlang/OTP <= #{current_erlang.major}.
+      """
     end
   end
 
@@ -103,53 +114,57 @@ defmodule Lexical.Server.Boot do
   }
   @allowed_erlang %{
     "24" => ">= 24.3.4",
-    "25" => "> 25.0.0",
+    "25" => ">= 25.0.0",
     "26" => ">= 26.0.2"
   }
 
-  defp verify_versioning do
+  defp versioning_errors do
     versions = Versions.to_versions(Versions.current())
 
     elixir_base = to_string(%Version{versions.elixir | patch: 0})
     erlang_base = to_string(versions.erlang.major)
 
-    detected_elixir_range = Map.get(@allowed_elixir, elixir_base)
-    detected_erlang_range = Map.get(@allowed_erlang, erlang_base)
+    detected_elixir_range = Map.get(@allowed_elixir, elixir_base, false)
+    detected_erlang_range = Map.get(@allowed_erlang, erlang_base, false)
 
-    elixir_ok? = Version.match?(versions.elixir, detected_elixir_range)
-    erlang_ok? = Version.match?(versions.erlang, detected_erlang_range)
+    elixir_ok? = detected_elixir_range && Version.match?(versions.elixir, detected_elixir_range)
+    erlang_ok? = detected_erlang_range && Version.match?(versions.erlang, detected_erlang_range)
 
-    cond do
-      not elixir_ok? ->
-        message = """
-        The version of elixir lexical found (#{versions.elixir}) is not compatible with lexical,
-        and lexical can't start.
-
-        Please change your version of elixir to #{detected_elixir_range}
+    errors = [
+      unless elixir_ok? do
         """
+        FATAL: Lexical is not compatible with Elixir #{versions.elixir}
 
-        halt(message)
+        Lexical is compatible with the following versions of Elixir:
 
-      not erlang_ok? ->
-        message = """
-        The version of erlang lexical found (#{versions.erlang}) is not compatible with lexical,
-        and lexical can't start.
-
-        Please change your version of erlang to one of the following: #{detected_erlang_range}
+        #{format_allowed_versions(@allowed_elixir)}
         """
+      end,
+      unless erlang_ok? do
+        """
+        FATAL: Lexical is not compatible with Erlang/OTP #{versions.erlang}
 
-        halt(message)
+        Lexical is compatible with the following versions of Erlang/OTP:
 
-      true ->
-        :ok
-    end
+        #{format_allowed_versions(@allowed_erlang)}
+        """
+      end
+    ]
+
+    Enum.filter(errors, &Function.identity/1)
+  end
+
+  defp format_allowed_versions(%{} = versions) do
+    versions
+    |> Map.values()
+    |> Enum.sort()
+    |> Enum.map_join("\n", fn range -> "  #{range}" end)
   end
 
   defp halt(message) do
     Mix.Shell.IO.error(message)
     Logger.emergency(message)
-    # Wait for the logs to flush
-    Process.sleep(500)
+    Logger.flush()
     System.halt()
   end
 end

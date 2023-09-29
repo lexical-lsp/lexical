@@ -64,7 +64,7 @@ defmodule Lexical.VM.Versions do
         |> Path.dirname()
         |> compatible?()
 
-      :error ->
+      _ ->
         false
     end
   end
@@ -196,20 +196,16 @@ defmodule Lexical.VM.Versions do
     Enum.join(normalized, ".")
   end
 
-  require Logger
-
   defp code_find_file(file_name) when is_binary(file_name) do
     file_name
     |> String.to_charlist()
     |> code_find_file()
   end
 
-  defp code_find_file(file_name) do
-    Logger.info("file name is #{file_name}")
-
+  defp code_find_file(file_name) when is_list(file_name) do
     case :code.where_is_file(file_name) do
       :non_existing ->
-        :error
+        {:error, {:file_missing, file_name}}
 
       path ->
         {:ok, List.to_string(path)}
