@@ -26,6 +26,17 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
     Document.new("file:///file.eex", content, 0)
   end
 
+  setup_all do
+    prev_compiler_options = Code.compiler_options()
+    Code.compiler_options(parser_options: [columns: true, token_metadata: true])
+
+    on_exit(fn ->
+      Code.compiler_options(prev_compiler_options)
+    end)
+
+    :ok
+  end
+
   describe "recognizes?/1" do
     test "is true for .eex files" do
       assert recognizes?(document_with_extension(".eex"))
@@ -65,10 +76,6 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert result.source == "EEx"
       assert result.uri
     end
-  end
-
-  setup do
-    Code.compiler_options(parser_options: [columns: true, token_metadata: true])
   end
 
   describe "compile_quoted/2" do

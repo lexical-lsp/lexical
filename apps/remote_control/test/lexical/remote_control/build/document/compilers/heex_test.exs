@@ -22,8 +22,15 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
     Document.new("file:///file.heex", content, 0)
   end
 
-  setup do
+  setup_all do
+    prev_compiler_options = Code.compiler_options()
     Code.compiler_options(parser_options: [columns: true, token_metadata: true])
+
+    on_exit(fn ->
+      Code.compiler_options(prev_compiler_options)
+    end)
+
+    :ok
   end
 
   describe "compile/1" do
