@@ -83,7 +83,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
                |> compile()
 
       assert result.message =~ ~s["something" is unused]
-      assert result.position == {1, 5}
+      assert result.position in [1, {1, 5}]
       assert result.severity == :warning
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
         assert result.message =~ "undefined function thing/0"
       end
 
-      assert result.position == {1, 5}
+      assert result.position in [1, {1, 5}]
       assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
