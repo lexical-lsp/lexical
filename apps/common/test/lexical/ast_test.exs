@@ -259,12 +259,12 @@ defmodule Lexical.AstTest do
     test "works with __MODULE__ aliases" do
       {position, document} =
         ~q[
-        defmodule Parent do
-          defmodule __MODULE__.Child do
-            |
+          defmodule Parent do
+            defmodule __MODULE__.Child do
+              |
+            end
           end
-        end
-      ]
+        ]
         |> pop_cursor(as: :document)
 
       assert {:ok, Parent.Child} =
