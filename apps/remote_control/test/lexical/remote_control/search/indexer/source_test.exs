@@ -387,5 +387,24 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other
     end
+
+    test "works with __MODULE__" do
+      {:ok, [parent, child], _} =
+        ~q[
+          defmodule Parent do
+            defmodule __MODULE__.Child do
+            end
+          end
+        ]
+        |> index()
+
+      assert parent.parent == :root
+      assert parent.type == :module
+      assert parent.subtype == :definition
+
+      assert child.parent == parent.ref
+      assert child.type == :module
+      assert child.subtype == :definition
+    end
   end
 end

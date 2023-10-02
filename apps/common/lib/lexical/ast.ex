@@ -463,17 +463,18 @@ defmodule Lexical.Ast do
     |> expand_aliases(document, quoted_document, position)
   end
 
-  def expand_aliases(
-        [first | rest] = segments,
-        %Document{} = document,
-        quoted_document,
-        %Position{} = position
-      ) do
+  def expand_aliases(segments, %Document{} = document, quoted_document, %Position{} = position)
+      when is_list(segments) do
     with {:ok, aliases_mapping} <- Aliases.at(document, quoted_document, position),
-         {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
-      {:ok, Module.concat([resolved | rest])}
+         {:ok, resolved} <- resolve_alias(segments, aliases_mapping) do
+      {:ok, Module.concat(resolved)}
     else
-      _ -> {:ok, Module.concat(segments)}
+      _ ->
+        if Enum.all?(segments, &is_atom/1) do
+          {:ok, Module.concat(segments)}
+        else
+          :error
+        end
     end
   end
 
@@ -482,7 +483,39 @@ defmodule Lexical.Ast do
     :error
   end
 
+  # Expands aliases given the rules in the special form
+  # https://hexdocs.pm/elixir/1.13.4/Kernel.SpecialForms.html#__aliases__/1
+  def reify_alias(current_module, [:"Elixir" | _] = reified) do
+    [current_module | reified]
+  end
+
+  def reify_alias(current_module, [:__MODULE__ | rest]) do
+    [current_module | rest]
+  end
+
+  def reify_alias(current_module, [atom | _rest] = reified) when is_atom(atom) do
+    [current_module | reified]
+  end
+
+  def reify_alias(current_module, [unreified | rest]) do
+    env = %Macro.Env{module: current_module}
+    reified = Macro.expand(unreified, env)
+
+    [reified | rest]
+  end
+
   # private
+  defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
+    with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
+      {:ok, reify_alias(current_module, segments)}
+    end
+  end
+
+  defp resolve_alias([first | rest], aliases_mapping) do
+    with {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
+      {:ok, [resolved | rest]}
+    end
+  end
 
   defp do_string_to_quoted(string) when is_binary(string) do
     Code.string_to_quoted(string,

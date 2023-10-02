@@ -71,6 +71,7 @@ defmodule Lexical.Ast.Aliases do
   end
 
   defmodule Reducer do
+    alias Lexical.Ast
     defstruct scopes: []
 
     def new do
@@ -106,7 +107,7 @@ defmodule Lexical.Ast.Aliases do
             module_name
 
           current_module ->
-            Module.split(current_module) ++ module_name
+            Ast.reify_alias(current_module, module_name)
         end
 
       current_module_alias =

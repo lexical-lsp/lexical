@@ -205,6 +205,20 @@ defmodule Lexical.Ast.AliasesTest do
       assert aliases[:Child] == Grandparent.Parent.Child
       assert aliases[:__MODULE__] == Grandparent.Parent.Child
     end
+
+    test "with a child that has an explicit parent" do
+      {:ok, aliases} =
+        ~q[
+          defmodule Parent do
+            defmodule __MODULE__.Child do
+              |
+            end
+          end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:__MODULE__] == Parent.Child
+    end
   end
 
   describe "alias scopes" do

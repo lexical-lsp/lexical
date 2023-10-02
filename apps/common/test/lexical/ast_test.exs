@@ -255,6 +255,23 @@ defmodule Lexical.AstTest do
     end
   end
 
+  describe "expand_aliases/4" do
+    test "works with __MODULE__ aliases" do
+      {position, document} =
+        ~q[
+          defmodule Parent do
+            defmodule __MODULE__.Child do
+              |
+            end
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      assert {:ok, Parent.Child} =
+               Ast.expand_aliases([quote(do: __MODULE__), nil], document, position)
+    end
+  end
+
   defp ast(s) do
     case Ast.from(s) do
       {:ok, {:__block__, _, [node]}} -> node
