@@ -28,7 +28,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   end
 
   setup_all do
+    prev_compiler_options = Code.compiler_options()
     Build.State.set_compiler_options()
+
+    on_exit(fn ->
+      Code.compiler_options(prev_compiler_options)
+    end)
   end
 
   describe "recognizes?/1" do
