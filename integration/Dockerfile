@@ -30,7 +30,6 @@ RUN integration/boot/set_up_asdf.sh
 COPY apps apps
 COPY bin bin
 COPY config config
-COPY priv priv
 COPY projects projects
 COPY mix* .
 
