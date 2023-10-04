@@ -26,6 +26,22 @@ defmodule Lexical.Protocol.Integrations.InitializeTest do
     validate_completion(text_doc_capabilities)
   end
 
+  test "initialize parse a request from zed" do
+    assert {:ok, %Requests.Initialize{lsp: %Requests.Initialize.LSP{} = parsed}} =
+             Requests.Initialize.parse(zed_initialize())
+
+    assert parsed.client_info == nil
+
+    assert %Types.ClientCapabilities{} = capabilities = parsed.capabilities
+    validate_workspace(capabilities)
+
+    assert %TextDocument.ClientCapabilities{} = text_doc_capabilities = capabilities.text_document
+    assert %Completion.ClientCapabilities{} = text_doc_capabilities.completion
+
+    validate_code_action(text_doc_capabilities)
+    validate_definition(text_doc_capabilities)
+  end
+
   def validate_completion(%TextDocument.ClientCapabilities{} = text_doc_capabilities) do
     assert %Completion.ClientCapabilities{} =
              completion_capabilities = text_doc_capabilities.completion
@@ -215,6 +231,114 @@ defmodule Lexical.Protocol.Integrations.InitializeTest do
           ]
         }
       }
+    )
+    |> Jason.decode!()
+  end
+
+  def zed_initialize do
+    # Zed Preview 0.106.2
+    ~S(
+    {
+      "jsonrpc":"2.0",
+      "id":0,
+      "method":"initialize",
+      "params":{
+        "processId":null,
+        "rootUri":"file:///Users/scottming/Code/dummy/mix.exs",
+        "capabilities":{
+          "workspace":{
+            "didChangeConfiguration":{
+              "dynamicRegistration":true
+            },
+            "didChangeWatchedFiles":{
+              "dynamicRegistration":true,
+              "relativePatternSupport":true
+            },
+            "symbol":{
+
+            },
+            "workspaceFolders":true,
+            "configuration":true,
+            "inlayHint":{
+              "refreshSupport":true
+            }
+          },
+          "textDocument":{
+            "completion":{
+              "completionItem":{
+                "snippetSupport":true,
+                "resolveSupport":{
+                  "properties":[
+                    "additionalTextEdits"
+                  ]
+                }
+              },
+              "completionList":{
+                "itemDefaults":[
+                  "commitCharacters",
+                  "editRange",
+                  "insertTextMode",
+                  "data"
+                ]
+              }
+            },
+            "hover":{
+              "contentFormat":[
+                "markdown"
+              ]
+            },
+            "definition":{
+              "linkSupport":true
+            },
+            "codeAction":{
+              "codeActionLiteralSupport":{
+                "codeActionKind":{
+                  "valueSet":[
+                    "refactor",
+                    "quickfix",
+                    "source"
+                  ]
+                }
+              },
+              "dataSupport":true,
+              "resolveSupport":{
+                "properties":[
+                  "edit",
+                  "command"
+                ]
+              }
+            },
+            "rename":{
+              "prepareSupport":true
+            },
+            "inlayHint":{
+              "dynamicRegistration":false,
+              "resolveSupport":{
+                "properties":[
+                  "textEdits",
+                  "tooltip",
+                  "label.tooltip",
+                  "label.location",
+                  "label.command"
+                ]
+              }
+            }
+          },
+          "window":{
+            "workDoneProgress":true
+          },
+          "experimental":{
+            "serverStatusNotification":true
+          }
+        },
+        "workspaceFolders":[
+          {
+            "uri":"file:///Users/scottming/Code/dummy/mix.exs",
+            "name":""
+          }
+        ]
+      }
+    }
     )
     |> Jason.decode!()
   end
