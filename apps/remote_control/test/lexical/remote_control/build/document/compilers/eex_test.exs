@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
+  alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.CaptureServer
   alias Lexical.RemoteControl.Build.Document.Compilers
   alias Lexical.RemoteControl.Dispatch
@@ -24,6 +25,15 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
   def document_with_content(content) do
     Document.new("file:///file.eex", content, 0)
+  end
+
+  setup_all do
+    prev_compiler_options = Code.compiler_options()
+    Build.State.set_compiler_options()
+
+    on_exit(fn ->
+      Code.compiler_options(prev_compiler_options)
+    end)
   end
 
   describe "recognizes?/1" do
@@ -69,10 +79,6 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
   describe "compile_quoted/2" do
     setup [:with_capture_server]
-
-    setup do
-      Code.compiler_options(parser_options: [columns: true, token_metadata: true])
-    end
 
     test "handles unused variables" do
       assert {:ok, [%Result{} = result]} =
