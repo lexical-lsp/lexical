@@ -258,20 +258,21 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   def error_to_diagnostic(
         %Document{} = source,
-        %ArgumentError{} = argument_error,
+        %error_struct{} = argument_error,
         stack,
         _quoted_ast
-      ) do
+      )
+      when error_struct in [ArgumentError, KeyError] do
     reversed_stack = Enum.reverse(stack)
 
     [{_, _, _, context}, {_, call, _, second_to_last_context} | _] = reversed_stack
 
     pipe_or_struct? = call in [:|>, :__struct__]
-    expanding_macro? = second_to_last_context[:file] == ~c"expanding macro"
+    expanding? = second_to_last_context[:file] in [~c"expanding macro", ~c"expanding struct"]
     message = Exception.message(argument_error)
 
     position =
-      if pipe_or_struct? or expanding_macro? do
+      if pipe_or_struct? or expanding? do
         context_to_position(context)
       else
         stack_to_position(stack)
