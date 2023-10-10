@@ -6,7 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
   describe "Kernel* macros" do
     test "do/end only has a single completion", %{project: project} do
       assert [completion] = complete(project, "def my_thing do|")
-      assert completion.insert_text == "do\n$0\nend"
+      assert completion.insert_text == "do\n  $0\nend"
       assert completion.label == "do/end block"
     end
 
