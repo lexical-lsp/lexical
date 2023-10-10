@@ -53,7 +53,8 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     end
 
     test "ignores erlang modules", %{project: project} do
-      assert %Completion.List{is_incomplete: true, items: []} = complete(project, ":e|")
+      assert %Completion.List{is_incomplete: true, items: []} =
+               complete(project, ":e|", as_list: false)
     end
   end
 
@@ -61,14 +62,13 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     test "return empty items and mark is_incomplete when single character contexts", %{
       project: project
     } do
-      assert complete(project, "def my_thing() d|") == %Completion.List{
-               is_incomplete: true,
-               items: []
-             }
+      assert %Completion.List{is_incomplete: true, items: []} =
+               complete(project, "def my_thing() d|", as_list: false)
     end
 
     test "returns an incomplete completion list when the context is empty", %{project: project} do
-      assert %Completion.List{is_incomplete: true, items: []} = complete(project, " ")
+      assert %Completion.List{is_incomplete: true, items: []} =
+               complete(project, " ", as_list: false)
     end
   end
 

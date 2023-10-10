@@ -40,6 +40,7 @@ defmodule Lexical.Test.Server.CompletionCase do
   end
 
   def complete(project, text, opts \\ []) do
+    return_as_list? = Keyword.get(opts, :as_list, true)
     trigger_character = Keyword.get(opts, :trigger_character)
     root_path = Project.root_path(project)
 
@@ -69,11 +70,19 @@ defmodule Lexical.Test.Server.CompletionCase do
         CompletionContext.new(trigger_kind: :trigger_character)
       end
 
-    Completion.complete(project, document, position, context)
+    result = Completion.complete(project, document, position, context)
+
+    if return_as_list? do
+      completion_items(result)
+    else
+      result
+    end
   end
 
   def fetch_completion(completions, label_prefix) when is_binary(label_prefix) do
-    case Enum.filter(completions, &String.starts_with?(&1.label, label_prefix)) do
+    matcher = &String.starts_with?(&1.label, label_prefix)
+
+    case completions |> completion_items() |> Enum.filter(matcher) do
       [] -> {:error, :not_found}
       [found] -> {:ok, found}
       found when is_list(found) -> {:ok, found}
@@ -91,16 +100,7 @@ defmodule Lexical.Test.Server.CompletionCase do
       end)
     end
 
-    completion_enumerable =
-      case completions do
-        %CompletionList{} = completion_list ->
-          completion_list.items
-
-        list when is_list(list) ->
-          list
-      end
-
-    case Enum.filter(completion_enumerable, matcher) do
+    case completions |> completion_items() |> Enum.filter(matcher) do
       [] -> {:error, :not_found}
       [found] -> {:ok, found}
       found when is_list(found) -> {:ok, found}
@@ -122,4 +122,7 @@ defmodule Lexical.Test.Server.CompletionCase do
         false
     end
   end
+
+  defp completion_items(%CompletionList{items: items}), do: items
+  defp completion_items(items) when is_list(items), do: items
 end
