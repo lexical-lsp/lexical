@@ -6,7 +6,9 @@ defmodule Lexical.RemoteControl.Dispatch do
   itself via a call to `register_listener`, while a process must implement the
   `Lexical.RemoteControl.Dispatch.Handler` behaviour and add the module to the @handlers module attribute.
   """
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Dispatch.PubSub
+  import Lexical.RemoteControl.Api.Messages
 
   @handlers [PubSub]
 
@@ -46,6 +48,7 @@ defmodule Lexical.RemoteControl.Dispatch do
     case :gen_event.start_link(name()) do
       {:ok, pid} = success ->
         Enum.each(@handlers, &:gen_event.add_handler(pid, &1, []))
+        register_progress_listener()
         success
 
       error ->
@@ -62,5 +65,16 @@ defmodule Lexical.RemoteControl.Dispatch do
 
   defp name do
     {:local, __MODULE__}
+  end
+
+  defp register_progress_listener do
+    register_listener(progress_pid(), [project_progress()])
+  end
+
+  def progress_pid do
+    project = RemoteControl.get_project()
+    master_node_name = RemoteControl.master_node_name(project)
+    progress_name = :rpc.call(master_node_name, Lexical.Server.Project.Progress, :name, [project])
+    :rpc.call(master_node_name, Process, :whereis, [progress_name])
   end
 end
