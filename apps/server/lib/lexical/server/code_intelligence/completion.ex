@@ -4,7 +4,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.Document.Position
-  alias Lexical.Math
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.InsertTextFormat
@@ -38,7 +37,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     case Env.new(project, document, position) do
       {:ok, env} ->
         completions = completions(project, env, context)
-        Logger.warning("Emitting completions: #{inspect(completions)}")
+        Logger.info("Emitting completions: #{inspect(completions)}")
         completion_list(completions)
 
       {:error, _} = error ->
@@ -51,7 +50,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     prefix_tokens = Env.prefix_tokens(env, 1)
 
     cond do
-      prefix_tokens == [] ->
+      prefix_tokens == [] or not context_will_give_meaningful_completions?(env) ->
         []
 
       match?([{:operator, :do, _}], prefix_tokens) and Env.empty?(env.suffix) ->
@@ -60,9 +59,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         env
         |> Builder.snippet(do_end_snippet, label: "do/end block")
         |> List.wrap()
-
-      Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
-        []
 
       Env.in_context?(env, :struct_arguments) and not Env.in_context?(env, :struct_field_value) and
           not prefix_is_trigger?(env) ->
@@ -107,30 +103,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp context_will_give_meaningful_completions?(%Env{} = env) do
-    case Code.Fragment.cursor_context(env.prefix) do
-      {:local_or_var, name} ->
-        local_length = length(name)
-
-        surround_begin =
-          Math.clamp(env.position.character - local_length - 1, 1, env.position.character)
-
-        case Code.Fragment.surround_context(env.prefix, {1, surround_begin}) do
-          :none ->
-            local_length > 1
-
-          _other ->
-            true
-        end
-
-      :none ->
-        false
-
-      {:unquoted_atom, name} ->
-        length(name) > 1
-
-      _ ->
-        true
-    end
+    Code.Fragment.cursor_context(env.prefix) != :none
   end
 
   defp displayable?(%Project{} = project, result) do
