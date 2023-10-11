@@ -18,8 +18,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       assert apply_completion(snippet_completion) == ~q[
         defmodule Docs do
           @moduledoc """
-              $0
-              """
+        $0
+        """
         end
       ]
 
@@ -55,8 +55,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       assert apply_completion(snippet_completion) == ~q[
         defmodule MyModule do
           @doc """
-              $0
-              """
+        $0
+        """
           def other_thing do
           end
         end

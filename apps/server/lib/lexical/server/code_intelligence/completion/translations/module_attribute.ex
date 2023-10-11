@@ -11,11 +11,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
   end
 
   def translate(%Candidate.ModuleAttribute{name: "@moduledoc"}, builder, env) do
-    doc_snippet = ~s(
-      @moduledoc """
-      $0
-      """
-    ) |> String.trim()
+    doc_snippet = ~s'''
+    @moduledoc """
+    $0
+    """\
+    '''
 
     case fetch_range(env) do
       {:ok, range} ->
@@ -41,11 +41,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
   end
 
   def translate(%Candidate.ModuleAttribute{name: "@doc"}, builder, env) do
-    doc_snippet = ~s(
-      @doc """
-      $0
-      """
-    ) |> String.trim()
+    doc_snippet = ~s'''
+    @doc """
+    $0
+    """\
+    '''
 
     case fetch_range(env) do
       {:ok, range} ->
