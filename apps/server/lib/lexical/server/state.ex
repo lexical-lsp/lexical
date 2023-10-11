@@ -240,6 +240,7 @@ defmodule Lexical.Server.State do
         definition_provider: true,
         document_formatting_provider: true,
         hover_provider: true,
+        references_provider: true,
         text_document_sync: sync_options
       )
 

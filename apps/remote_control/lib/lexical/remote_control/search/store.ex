@@ -4,6 +4,8 @@ defmodule Lexical.RemoteControl.Search.Store do
   """
 
   alias Lexical.Project
+  alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
@@ -36,6 +38,7 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   use GenServer
   require Logger
+  import Messages
 
   def stop do
     #    GenServer.call(__MODULE__, :on_stop)
@@ -114,6 +117,7 @@ defmodule Lexical.RemoteControl.Search.Store do
   @impl GenServer
   # handle the result from `State.async_load/1`
   def handle_info({ref, result}, {update_ref, %State{async_load_ref: ref} = state}) do
+    RemoteControl.Dispatch.broadcast(index_ready(project: state.project))
     {:noreply, {update_ref, State.async_load_complete(state, result)}}
   end
 

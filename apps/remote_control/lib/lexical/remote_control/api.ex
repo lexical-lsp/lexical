@@ -61,6 +61,10 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
+  def references(%Project{} = project, resolved_reference) do
+    RemoteControl.call(project, CodeIntelligence.References, :references, [resolved_reference])
+  end
+
   def modules_with_prefix(%Project{} = project, prefix)
       when is_binary(prefix) or is_atom(prefix) do
     RemoteControl.call(project, RemoteControl.Modules, :with_prefix, [prefix])
