@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
   alias Lexical.Ast
   alias Lexical.Document
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Dispatch.Handlers.Indexing
   alias Lexical.RemoteControl.Search
@@ -15,13 +16,14 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
   setup do
     project = project()
+    RemoteControl.set_project(project)
     create_index = &Search.Indexer.create_index/1
     update_index = &Search.Indexer.update_index/2
 
     start_supervised!({Search.Store, [project, create_index, update_index]})
     start_supervised!(Document.Store)
 
-    assert_eventually Search.Store.loaded?(), 500
+    assert_eventually(Search.Store.loaded?(), 1500)
 
     {:ok, state} = Indexing.init([])
     {:ok, state: state, project: project}
@@ -43,9 +45,9 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
     test "should add new entries to the store", %{state: state} do
       {doc, quoted} =
         ~q[
-        defmodule NewModule do
-        end
-      ]
+          defmodule NewModule do
+          end
+        ]
         |> quoted_document()
 
       assert {:ok, _} = Indexing.on_event(file_quoted_event(doc, quoted), state)

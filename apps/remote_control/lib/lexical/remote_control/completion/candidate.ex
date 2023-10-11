@@ -237,7 +237,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
   end
 
   def from_elixir_sense(elixir_sense_map) do
-    Logger.warning("Unhandled compleetion suggestion: #{inspect(elixir_sense_map)}")
+    Logger.warning("Unhandled completion suggestion: #{inspect(elixir_sense_map)}")
     nil
   end
 end

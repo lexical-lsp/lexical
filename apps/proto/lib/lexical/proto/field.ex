@@ -67,6 +67,10 @@ defmodule Lexical.Proto.Field do
     extract(alias_module.definition(), name, orig_value)
   end
 
+  def extract(nil, _name, orig_value) do
+    {:ok, orig_value}
+  end
+
   def extract(module, _name, orig_value)
       when is_atom(module) and module not in [:integer, :string, :boolean, :float] do
     module.parse(orig_value)

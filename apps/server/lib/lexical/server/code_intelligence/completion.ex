@@ -27,9 +27,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     [".", "@", "&", "%", "^", ":", "!", "-", "~"]
   end
 
-  @spec complete(Project.t(), Document.t(), Position.t(), Completion.Context.t()) :: [
-          Completion.Item
-        ]
+  @spec complete(Project.t(), Document.t(), Position.t(), Completion.Context.t()) ::
+          Completion.List.t()
   def complete(
         %Project{} = project,
         %Document{} = document,
@@ -40,11 +39,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       {:ok, env} ->
         completions = completions(project, env, context)
         Logger.warning("Emitting completions: #{inspect(completions)}")
-        completions
+        completion_list(completions)
 
       {:error, _} = error ->
         Logger.error("Failed to build completion env #{inspect(error)}")
-        empty_completion_list()
+        completion_list()
     end
   end
 
@@ -53,17 +52,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
     cond do
       prefix_tokens == [] ->
-        empty_completion_list()
+        []
 
       match?([{:operator, :do, _}], prefix_tokens) and Env.empty?(env.suffix) ->
-        do_end_snippet = "do\n$0\nend"
+        do_end_snippet = "do\n  $0\nend"
 
         env
         |> Builder.snippet(do_end_snippet, label: "do/end block")
         |> List.wrap()
 
       Enum.empty?(prefix_tokens) or not context_will_give_meaningful_completions?(env) ->
-        Completion.List.new(items: [], is_incomplete: true)
+        []
 
       Env.in_context?(env, :struct_arguments) and not Env.in_context?(env, :struct_field_value) and
           not prefix_is_trigger?(env) ->
@@ -230,7 +229,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     true
   end
 
-  defp empty_completion_list do
-    Completion.List.new(items: [], is_incomplete: true)
+  defp completion_list(items \\ []) do
+    Completion.List.new(items: items, is_incomplete: true)
   end
 end

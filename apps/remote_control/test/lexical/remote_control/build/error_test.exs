@@ -419,6 +419,50 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.position == 11
     end
 
+    test "handles struct `KeyError` when is in a function block" do
+      diagnostic =
+        ~s(
+        defmodule Foo do
+          defstruct [:a, :b]
+        end
+
+        defmodule Bar do
+          def bar do
+            %Foo{c: :value}
+          end
+        end
+        )
+        |> compile()
+        |> diagnostic()
+
+      assert diagnostic.message =~ "key :c not found"
+      assert diagnostic.position == 8
+    end
+
+    test "handles struct `CompileError` when is in a function params" do
+      diagnostic =
+        ~s/
+        defmodule Foo do
+          defstruct [:a, :b]
+        end
+
+        defmodule Bar do
+          def bar(%Foo{c: c}) do
+          end
+        end
+        /
+        |> compile()
+        |> diagnostic()
+
+      assert diagnostic.message =~ "unknown key :c for struct Foo"
+
+      if Features.with_diagnostics?() do
+        assert diagnostic.position == {7, 19}
+      else
+        assert diagnostic.position == 7
+      end
+    end
+
     test "handles struct enforce key error" do
       diagnostic =
         ~s(

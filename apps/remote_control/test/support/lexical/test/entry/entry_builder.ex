@@ -9,6 +9,7 @@ defmodule Lexical.Test.Entry.Builder do
     versions = Versions.current()
 
     defaults = [
+      subject: Module,
       ref: make_ref(),
       path: "/foo/bar/baz.ex",
       range: range(1, 1, 1, 5),
@@ -18,6 +19,7 @@ defmodule Lexical.Test.Entry.Builder do
     ]
 
     fields = Keyword.merge(defaults, fields)
+
     struct!(Entry, fields)
   end
 

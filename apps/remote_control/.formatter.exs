@@ -20,7 +20,7 @@ impossible_to_format = [
   Path.join([current_directory, "test", "fixtures", "parse_errors", "lib", "parse_errors.ex"])
 ]
 
-locals_without_parens = [with_progress: 2, with_progress: 3]
+locals_without_parens = [with_progress: 2, with_progress: 3, defkey: 2, defkey: 3]
 
 [
   locals_without_parens: locals_without_parens,
