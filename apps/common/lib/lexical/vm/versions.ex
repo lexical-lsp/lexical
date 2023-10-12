@@ -33,7 +33,7 @@ defmodule Lexical.VM.Versions do
   This function uses the code server to find `.elixir` and `.erlang` files in the code path.
   Each of these files represent the version of the runtime the artifact was compiled with.
   """
-  @spec compiled() :: {:ok, t} | {:error, atom()}
+  @spec compiled() :: {:ok, t} | {:error, term()}
   def compiled do
     with {:ok, elixir_path} <- code_find_file(version_file(:elixir)),
          {:ok, erlang_path} <- code_find_file(version_file(:erlang)),
