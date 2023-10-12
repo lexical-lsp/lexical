@@ -38,7 +38,7 @@ defmodule Lexical.Server.Boot do
 
   @doc false
   def detect_errors do
-    List.wrap(packaging_errors()) ++ List.wrap(versioning_errors())
+    packaging_errors() ++ versioning_errors()
   end
 
   defp load_config do
@@ -84,27 +84,30 @@ defmodule Lexical.Server.Boot do
   end
 
   defp packaging_errors do
-    unless Versions.compatible?() do
-      {:ok, compiled_versions} = Versions.compiled()
+    maybe_error =
+      unless Versions.compatible?() do
+        {:ok, compiled_versions} = Versions.compiled()
 
-      compiled_versions = Versions.to_versions(compiled_versions)
-      current_versions = Versions.current() |> Versions.to_versions()
+        compiled_versions = Versions.to_versions(compiled_versions)
+        current_versions = Versions.current() |> Versions.to_versions()
 
-      compiled_erlang = compiled_versions.erlang
-      current_erlang = current_versions.erlang
+        compiled_erlang = compiled_versions.erlang
+        current_erlang = current_versions.erlang
 
-      """
-      FATAL: Lexical version check failed
+        """
+        FATAL: Lexical version check failed
 
-      The Lexical release being used must be compiled with a major version
-      of Erlang/OTP that is older or equal to the runtime.
+        The Lexical release being used must be compiled with a major version
+        of Erlang/OTP that is older or equal to the runtime.
 
-        Compiled with: #{compiled_erlang}
-        Started with:  #{current_erlang}
+          Compiled with: #{compiled_erlang}
+          Started with:  #{current_erlang}
 
-      To run Lexical with #{current_erlang}, please recompile using Erlang/OTP <= #{current_erlang.major}.
-      """
-    end
+        To run Lexical with #{current_erlang}, please recompile using Erlang/OTP <= #{current_erlang.major}.
+        """
+      end
+
+    List.wrap(maybe_error)
   end
 
   @allowed_elixir %{
