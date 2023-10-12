@@ -221,5 +221,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Build integration runner
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./integration/Dockerfile
+          tags: lx
+          # GitHub Actions cache
+          # https://docs.docker.com/build/ci/github-actions/cache/
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Required to make the image available through docker
+          load: true
+
       - name: Run integration tests
-        run: ./integration/test.sh
+        run: NO_BUILD=1 ./integration/test.sh
