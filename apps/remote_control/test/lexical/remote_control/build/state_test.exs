@@ -13,6 +13,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   use Patch
 
   setup do
+    patch(RemoteControl.Dispatch, :register_progress_listener, :ok)
     start_supervised!(RemoteControl.Dispatch)
     start_supervised!(Build.CaptureServer)
     start_supervised!(RemoteControl.ModuleMappings)

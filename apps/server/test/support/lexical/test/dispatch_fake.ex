@@ -21,6 +21,8 @@ defmodule Lexical.Test.DispatchFake do
         Dispatch.broadcast(message)
       end)
 
+      patch(Dispatch, :register_progress_listener, :ok)
+
       start_supervised!(Dispatch)
     end
   end

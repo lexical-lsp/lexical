@@ -4,8 +4,10 @@ defmodule Lexical.RemoteControl.Dispatch.HandlerTest do
 
   import Messages
   use ExUnit.Case
+  use Patch
 
   setup do
+    patch(Dispatch, :register_progress_listener, fn -> :ok end)
     start_supervised!(Dispatch)
     :ok
   end
