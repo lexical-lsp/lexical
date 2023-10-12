@@ -1,7 +1,7 @@
 defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
   alias Lexical.Protocol.Requests.GoToDefinition
   alias Lexical.Protocol.Responses
-  alias Lexical.Server.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
 
   require Logger
 

@@ -1,4 +1,4 @@
-defmodule Lexical.Server.CodeIntelligence.Entity do
+defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Future.Code, as: Code
   alias Lexical.Ast
   alias Lexical.Document
