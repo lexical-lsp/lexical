@@ -24,7 +24,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       ]
 
       assert empty_completion.detail
-      assert empty_completion.label == "@moduledoc"
+      assert empty_completion.label == "@moduledoc false"
 
       assert apply_completion(empty_completion) == ~q[
         defmodule Docs do
@@ -63,7 +63,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       ]
 
       assert empty_completion.detail
-      assert empty_completion.label == "@doc"
+      assert empty_completion.label == "@doc false"
       assert empty_completion.kind == :property
 
       assert apply_completion(empty_completion) == ~q[
