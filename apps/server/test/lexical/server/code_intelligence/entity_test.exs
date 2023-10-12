@@ -47,7 +47,6 @@ defmodule Lexical.Server.CodeIntelligence.EntityTest do
     RemoteControl.Api.register_listener(project, self(), [:all])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
-    assert_receive index_ready(), 5000
 
     %{project: project}
   end

@@ -38,8 +38,6 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :struct_discovered, module: nil, fields: []
 
-  defrecord :index_ready, project: nil
-
   @type compile_status :: :successful | :error
   @type name_and_arity :: {atom, non_neg_integer}
   @type field_list :: Keyword.t() | [atom]
@@ -125,6 +123,4 @@ defmodule Lexical.RemoteControl.Api.Messages do
           )
 
   @type struct_discovered :: record(:struct_discovered, module: module(), fields: field_list())
-
-  @type index_ready :: record(:index_ready, project: Lexical.Project.t())
 end
