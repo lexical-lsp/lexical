@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
 
-set_up_version_manager() {
-    if [ -e $HOME/.asdf ] && asdf which erl -eq 0 ; then
-        VERSION_MANAGER="asdf"
-    elif [ -e $HOME/.rtx ] && rtx which erl -eq 0 ; then
-        VERSION_MANAGER="rtx"
+detect_version_manager() {
+    if command -v asdf > /dev/null && asdf which elixir > /dev/null 2>&1 ; then
+        echo "asdf"
+    elif command -v rtx > /dev/null &&  rtx which elixir > /dev/null 2>&1 ; then
+        echo "rtx"
     else
-        VERSION_MANAGER="none"
+        echo "not_detected"
     fi
 }
 
-set_up_version_manager
-
 # Start the program in the background
-case "$VERSION_MANAGER" in
+case "$(detect_version_manager)" in
     asdf)
         asdf env erl exec "$@" &
         ;;
     rtx)
-        rtx env -s bash erl exec "$@" &
+        eval "$(rtx env -s bash)"
         ;;
     *)
         exec "$@" &
