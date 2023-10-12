@@ -4,8 +4,6 @@ defmodule Lexical.RemoteControl.Search.Store do
   """
 
   alias Lexical.Project
-  alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
@@ -38,7 +36,6 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   use GenServer
   require Logger
-  import Messages
 
   def stop do
     #    GenServer.call(__MODULE__, :on_stop)
