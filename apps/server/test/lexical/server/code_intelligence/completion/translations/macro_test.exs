@@ -10,6 +10,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.label == "do/end block"
     end
 
+    test "do/end excluded when prefixed by an operator", %{project: project} do
+      assert {:error, :not_found} =
+               project
+               |> complete("@do|")
+               |> fetch_completion("do/end block")
+    end
+
+    test "do/end excluded when it's not at the end of the line", %{project: project} do
+      assert {:error, :not_found} =
+               project
+               |> complete("def my_thing do| suffix")
+               |> fetch_completion("do/end block")
+    end
+
     test "def only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project

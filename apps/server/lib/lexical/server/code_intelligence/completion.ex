@@ -53,7 +53,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       prefix_tokens == [] or not context_will_give_meaningful_completions?(env) ->
         []
 
-      match?([{:operator, :do, _}], prefix_tokens) and Env.empty?(env.suffix) ->
+      should_emit_do_end_snippet?(env) ->
         do_end_snippet = "do\n  $0\nend"
 
         env
@@ -75,7 +75,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
-  defp prefix_is_trigger?(env) do
+  # We emit a do/end snippet if the prefix token is the do operator and
+  # there is a space before the token preceding it on the same line. This
+  # handles situations like `@do|` where a do/end snippet would be invalid.
+  defp should_emit_do_end_snippet?(%Env{} = env) do
+    prefix_tokens = Env.prefix_tokens(env, 2)
+
+    valid_prefix? =
+      match?(
+        [{:operator, :do, {line, do_col}}, {_, _, {line, preceding_col}}]
+        when do_col - preceding_col > 1,
+        prefix_tokens
+      )
+
+    valid_prefix? and Env.empty?(env.suffix)
+  end
+
+  defp prefix_is_trigger?(%Env{} = env) do
     case Env.prefix_tokens(env, 1) do
       [{_, token, _}] ->
         to_string(token) in trigger_characters()
