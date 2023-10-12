@@ -39,7 +39,7 @@ jobs:
 
       # Step: Check out the code.
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Variables
         id: set_mix_lock_hash
@@ -100,7 +100,7 @@ jobs:
 
       # Step: Check out the code.
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set Variables
         id: set_mix_lock_hash
@@ -172,7 +172,7 @@ jobs:
     steps:
       # Step: Check out the code.
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step: Setup Elixir + Erlang image as the base.
       - name: Set up Elixir
@@ -210,3 +210,16 @@ jobs:
       # Step: Execute the tests.
       - name: Run tests
         run: make test.all
+
+  integration_test:
+    runs-on: ubuntu-latest
+    name: Integration tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run integration tests
+        run: ./integration/test.sh
