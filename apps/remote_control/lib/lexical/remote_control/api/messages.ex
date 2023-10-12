@@ -126,5 +126,5 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   @type struct_discovered :: record(:struct_discovered, module: module(), fields: field_list())
 
-  @type index_ready :: record(:index_ready, project: Proejct.t())
+  @type index_ready :: record(:index_ready, project: Lexical.Project.t())
 end
