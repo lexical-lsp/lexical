@@ -14,7 +14,8 @@ defmodule Lexical.Project do
             mix_target: nil,
             env_variables: %{},
             project_module: nil,
-            entropy: 1
+            entropy: 1,
+            project_config: []
 
   @type message :: String.t()
   @type restart_notification :: {:restart, Logger.level(), String.t()}
@@ -46,7 +47,7 @@ defmodule Lexical.Project do
   end
 
   def set_project_module(%__MODULE__{} = project, module) when is_atom(module) do
-    %__MODULE__{project | project_module: module}
+    %__MODULE__{project | project_module: module, project_config: module.project()}
   end
 
   @doc """
@@ -87,12 +88,12 @@ defmodule Lexical.Project do
   @doc """
   Returns the the name definied in the `project/0` of mix.exs file
   """
-  def display_name(%__MODULE__{project_module: nil} = project) do
+  def display_name(%__MODULE__{project_config: []} = project) do
     folder_name(project)
   end
 
-  def display_name(%__MODULE__{project_module: project_module} = project) do
-    Keyword.get(project_module.project(), :name, folder_name(project))
+  def display_name(%__MODULE__{} = project) do
+    Keyword.get(project.project_config, :name, folder_name(project))
   end
 
   @doc """
