@@ -152,7 +152,7 @@ changes to the running code, or run `:observer`.
 
 While in the debugging shell, all the functions in
 `Lexical.Server.IEx.Helpers` are imported for you, and some common
-modules, like like `Lexical.Project` and `Lexical.Document` are
+modules, like `Lexical.Project` and `Lexical.Document` are
 aliased.
 
 You can also start the lexical server in interactive mode via
