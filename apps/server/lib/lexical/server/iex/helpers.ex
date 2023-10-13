@@ -104,7 +104,42 @@ defmodule Lexical.Server.IEx.Helpers do
     Node.connect(:"#{manager_name}@127.0.0.1")
   end
 
-  def project(project \\ :lexical) when is_atom(project) do
+  @doc """
+  Create a Lexical Project for an application in the same directory as
+  Lexical.
+
+  Alternatively, a project for one of our test fixtures can be created
+  using the `fixture: true` option.
+
+  ## Examples
+
+      iex> project()
+      %Lexical.Project{
+        root_uri: "file:///.../lexical
+        ...
+      }
+
+      iex> project(:my_project)
+      %Lexical.Project{
+        root_uri: "file:///.../my_project"
+        ...
+      }
+
+      iex> project(:navigations, fixture: true)
+      %Lexical.Project{
+        root_uri: "file:///.../lexical/apps/remote_control/test/fixtures/navigations"
+        ...
+      }
+
+  """
+  def project(project \\ :lexical, opts \\ []) do
+    project =
+      if opts[:fixture] do
+        "lexical/apps/remote_control/test/fixtures/#{project}"
+      else
+        project
+      end
+
     # We're using a cache here because we need project's
     # entropy to be the same after every call.
     trans(project, fn ->

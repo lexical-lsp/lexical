@@ -4,10 +4,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
   describe "callback completions" do
     test "suggest callbacks", %{project: project} do
       source = ~q[
-      defmodule MyServer do
-        use GenServer
-        def handle_inf|
-      end
+        defmodule MyServer do
+          use GenServer
+          def handle_inf|
+        end
       ]
 
       {:ok, completion} =
@@ -15,7 +15,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
         |> complete(source)
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "handle_info(${1:msg}, ${2:state})"
+      assert apply_completion(completion) =~ "def handle_info(${1:msg}, ${2:state})"
     end
 
     test "do not add parens if they're already present", %{project: project} do
@@ -24,14 +24,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
           use GenServer
           def handle_inf|(msg, state)
         end
-        ]
+      ]
 
       {:ok, completion} =
         project
         |> complete(source)
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "handle_info"
+      assert apply_completion(completion) =~ "def handle_info(msg, state)"
     end
   end
 end

@@ -132,7 +132,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
 
     test "variables are included", %{project: project} do
       code = ~q[
-      bin_length = 5
+        bin_length = 5
         <<foo::binary-size(bin_l|)
       ]
 
@@ -141,7 +141,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
                |> complete(code)
                |> fetch_completion(kind: :variable)
 
-      assert completion.insert_text == "bin_length"
+      assert apply_completion(completion) == ~q[
+        bin_length = 5
+        <<foo::binary-size(bin_length)
+      ]
     end
   end
 end

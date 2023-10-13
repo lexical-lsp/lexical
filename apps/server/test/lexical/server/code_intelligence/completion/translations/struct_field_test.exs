@@ -12,7 +12,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
   end
@@ -29,7 +28,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
   end
@@ -46,9 +44,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
+    assert apply_completion(completion) =~ "struct.first_name"
   end
 
   test "a struct's fields are completed when the struct is aliased using as", %{project: project} do
@@ -63,9 +61,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
+    assert apply_completion(completion) =~ "struct.first_name"
   end
 
   test "a struct defined in function arguments fields are completed", %{project: project} do
@@ -83,9 +81,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
     assert completion.label == "first_name"
+    assert apply_completion(completion) =~ "user.first_name"
   end
 
   describe "in struct arguments" do

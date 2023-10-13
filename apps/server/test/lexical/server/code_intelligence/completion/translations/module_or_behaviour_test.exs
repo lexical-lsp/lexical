@@ -58,6 +58,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
     end
   end
 
+  describe "erlang module completions" do
+    test "unquoted atoms that are modules should emit a completion", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete(":erla|")
+               |> fetch_completion(":erlang")
+
+      assert completion.kind == :module
+      assert apply_completion(completion) == ":erlang"
+    end
+  end
+
   describe "struct references" do
     test "should work for top-level elixir structse", %{project: project} do
       source = ~q[
@@ -235,10 +247,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
         use En|
       ]
 
-      completions = complete(project, source)
-      assert length(completions) == 2
-      assert {:ok, _} = fetch_completion(completions, insert_text: "ExUnit")
-      assert {:ok, _} = fetch_completion(completions, insert_text: "ExUnitProperties")
+      assert [ex_unit_completion, ex_unit_properties_completion] = complete(project, source)
+
+      assert apply_completion(ex_unit_completion) =~ "use ExUnit"
+      assert apply_completion(ex_unit_properties_completion) =~ "use ExUnitProperties"
     end
   end
 end
