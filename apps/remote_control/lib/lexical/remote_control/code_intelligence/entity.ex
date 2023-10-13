@@ -2,12 +2,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Future.Code, as: Code
   alias Lexical.Ast
   alias Lexical.Document
-  alias Lexical.Document.Location
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Project
-  alias Lexical.RemoteControl
-  alias Lexical.Text
 
   require Logger
   require Sourceror.Identifier
@@ -35,6 +31,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       {:error, :surround_context} -> {:error, :not_found}
       error -> error
     end
+  end
+
+  @spec to_range(Document.t(), Code.position(), Code.position()) :: Range.t()
+  def to_range(%Document{} = document, {begin_line, begin_column}, {end_line, end_column}) do
+    Range.new(
+      Position.new(document, begin_line, begin_column),
+      Position.new(document, end_line, end_column)
+    )
   end
 
   defp resolve(%{context: context, begin: begin_pos, end: end_pos}, document, position) do
@@ -228,54 +232,4 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   # Catch-all:
   defp kind_of_alias(_), do: :module
-
-  @doc """
-  Returns the source location of the entity at the given position in the document.
-  """
-  def definition(%Project{} = project, %Document{} = document, %Position{} = position) do
-    project
-    |> RemoteControl.Api.definition(document, position)
-    |> parse_location(document)
-  end
-
-  defp parse_location(%ElixirSense.Location{} = location, document) do
-    %{file: file, line: line, column: column} = location
-    file_path = file || document.path
-    uri = Document.Path.ensure_uri(file_path)
-
-    with {:ok, document} <- Document.Store.open_temporary(uri),
-         {:ok, text} <- Document.fetch_text_at(document, line) do
-      range = to_precise_range(document, text, line, column)
-
-      {:ok, Location.new(range, document)}
-    else
-      _ ->
-        {:error, "Could not open source file or fetch line text: #{inspect(file_path)}"}
-    end
-  end
-
-  defp parse_location(nil, _) do
-    {:ok, nil}
-  end
-
-  defp to_precise_range(%Document{} = document, text, line, column) do
-    case Code.Fragment.surround_context(text, {line, column}) do
-      %{begin: start_pos, end: end_pos} ->
-        to_range(document, start_pos, end_pos)
-
-      _ ->
-        # If the column is 1, but the code doesn't start on the first column, which isn't what we want.
-        # The cursor will be placed to the left of the actual definition.
-        column = if column == 1, do: Text.count_leading_spaces(text) + 1, else: column
-        pos = {line, column}
-        to_range(document, pos, pos)
-    end
-  end
-
-  defp to_range(%Document{} = document, {begin_line, begin_column}, {end_line, end_column}) do
-    Range.new(
-      Position.new(document, begin_line, begin_column),
-      Position.new(document, end_line, end_column)
-    )
-  end
 end
