@@ -14,12 +14,18 @@
       let
         pkgs = import nixpkgs { inherit system; };
         erl = pkgs.beam.packages.erlang;
+        lexical = erl.callPackage ./nix/lexical.nix {};
       in
       {
-        packages = rec {
-          lexical = erl.callPackage ./nix/lexical.nix {};
+        packages = {
+          inherit lexical;
 
           default = lexical;
+
+          # Private package used to automatically generate hash for Mix deps
+          __fodHashGen = lexical.mixFodDeps.overrideAttrs(final: curr: {
+            outputHash = pkgs.lib.fakeSha256;
+          });
         };
 
         devShells.default = pkgs.mkShell {
