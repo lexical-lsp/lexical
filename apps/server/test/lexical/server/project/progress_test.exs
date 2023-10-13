@@ -18,9 +18,9 @@ defmodule Lexical.Server.Project.ProgressTest do
 
   setup do
     project = project()
-    pid = start_supervised!({Project.Progress, project})
     DispatchFake.start()
-    RemoteControl.Dispatch.register_listener(pid, project_progress())
+
+    {:ok, _} = start_supervised({Project.Progress, project})
 
     {:ok, project: project}
   end
@@ -29,7 +29,7 @@ defmodule Lexical.Server.Project.ProgressTest do
     project_progress(label: label, message: message, stage: stage)
   end
 
-  def with_patched_transport(_) do
+  def with_patched_tranport(_) do
     test = self()
 
     patch(Transport, :write, fn message ->
@@ -40,7 +40,7 @@ defmodule Lexical.Server.Project.ProgressTest do
   end
 
   describe "report the progress message" do
-    setup [:with_patched_transport]
+    setup [:with_patched_tranport]
 
     test "it should be able to send the report progress", %{project: project} do
       patch(Configuration, :client_supports?, fn :work_done_progress -> true end)

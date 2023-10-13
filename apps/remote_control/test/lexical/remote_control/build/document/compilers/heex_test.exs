@@ -11,10 +11,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
   import Compilers.HEEx, only: [compile: 1]
 
   use ExUnit.Case
-  use Patch
 
   def with_capture_server(_) do
-    patch(Dispatch, :register_progress_listener, :ok)
     start_supervised!(CaptureServer)
     start_supervised!(Dispatch)
     start_supervised!(ModuleMappings)

@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.CaptureServer
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
   require Logger
 
@@ -11,8 +10,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   use Patch
 
   setup do
-    patch(Dispatch, :register_progress_listener, :ok)
-    start_supervised!(Dispatch)
+    start_supervised!(Lexical.RemoteControl.Dispatch)
     start_supervised!(CaptureServer)
     :ok
   end

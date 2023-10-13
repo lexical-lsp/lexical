@@ -2,10 +2,8 @@ defmodule Lexical.RemoteControl.ModuleMappingsTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
   use ExUnit.Case
-  use Patch
 
   setup do
-    patch(Dispatch, :register_progress_listener, :ok)
     start_supervised!(Dispatch)
     start_supervised!(ModuleMappings)
     :ok

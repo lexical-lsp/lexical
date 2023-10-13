@@ -7,14 +7,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
 
+  use ExUnit.Case
+
   import Compilers.EEx
   import Lexical.Test.CodeSigil
 
-  use ExUnit.Case
-  use Patch
-
   def with_capture_server(_) do
-    patch(Dispatch, :register_progress_listener, :ok)
     start_supervised!(CaptureServer)
     start_supervised!(Dispatch)
     start_supervised!(ModuleMappings)

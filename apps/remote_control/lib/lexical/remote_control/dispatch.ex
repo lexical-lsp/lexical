@@ -71,7 +71,7 @@ defmodule Lexical.RemoteControl.Dispatch do
     register_listener(progress_pid(), [project_progress()])
   end
 
-  defp progress_pid do
+  def progress_pid do
     project = RemoteControl.get_project()
     master_node_name = RemoteControl.master_node_name(project)
     progress_name = :rpc.call(master_node_name, Lexical.Server.Project.Progress, :name, [project])
