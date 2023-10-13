@@ -14,7 +14,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
     doc_snippet = ~s'''
     @moduledoc """
     $0
-    """\
+    """
     '''
 
     case fetch_range(env) do
@@ -44,7 +44,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
     doc_snippet = ~s'''
     @doc """
     $0
-    """\
+    """
     '''
 
     case fetch_range(env) do

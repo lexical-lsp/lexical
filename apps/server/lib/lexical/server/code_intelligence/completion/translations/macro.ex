@@ -26,7 +26,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     def ${1:name}($2) do
       $0
-    end\
+    end
     """
 
     env
@@ -44,7 +44,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defp ${1:name}($2) do
       $0
-    end\
+    end
     """
 
     env
@@ -63,7 +63,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defmodule ${1:#{suggestion}} do
       $0
-    end\
+    end
     """
 
     env
@@ -81,7 +81,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defmacro ${1:name}($2) do
       $0
-    end\
+    end
     """
 
     env
@@ -99,7 +99,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defmacrop ${1:name}($2) do
       $0
-    end\
+    end
     """
 
     env
@@ -117,7 +117,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defprotocol ${1:protocol_name} do
       $0
-    end\
+    end
     """
 
     env
@@ -135,7 +135,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     defimpl ${1:protocol_name}, for: ${2:struct_name} do
       $0
-    end\
+    end
     """
 
     env
@@ -277,7 +277,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     quote $1 do
       $0
-    end\
+    end
     """
 
     env
@@ -295,7 +295,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     receive do
       ${1:pattern} -> $0
-    end\
+    end
     """
 
     env
@@ -313,7 +313,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     try do
       $0
-    end\
+    end
     """
 
     env
@@ -331,7 +331,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     with ${1:pattern} <- ${2:expression} do
       $0
-    end\
+    end
     """
 
     env
@@ -349,7 +349,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     case $1 do
       ${2:pattern} -> $0
-    end\
+    end
     """
 
     env
@@ -367,7 +367,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     if $1 do
       $0
-    end\
+    end
     """
 
     env
@@ -399,7 +399,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     unless $1 do
       $0
-    end\
+    end
     """
 
     env
@@ -418,7 +418,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     cond do
       ${1:test} ->
         $0
-    end\
+    end
     """
 
     env
@@ -436,7 +436,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     for ${1:pattern} <- ${2:enumerable} do
       $0
-    end\
+    end
     """
 
     env
@@ -472,7 +472,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     plain_snippet = """
     test "${1:message}" do
       $0
-    end\
+    end
     """
 
     env
@@ -490,7 +490,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     context_snippet = """
     test "${1:message}", %{${2:context}} do
       $0
-    end\
+    end
     """
 
     env
@@ -506,7 +506,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     snippet = """
     describe "${1:message}" do
       $0
-    end\
+    end
     """
 
     env
