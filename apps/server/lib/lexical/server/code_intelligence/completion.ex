@@ -113,13 +113,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         displayable?(project, result),
         applies_to_context?(project, result, context),
         applies_to_env?(env, result),
-        %Completion.Item{} = item <- List.wrap(Translatable.translate(result, Builder, env)) do
+        %Completion.Item{} = item <- to_completion_item(result, env) do
       item
     end
   end
 
+  defp to_completion_item(candidate, env) do
+    candidate
+    |> Translatable.translate(Builder, env)
+    |> List.wrap()
+  end
+
   defp context_will_give_meaningful_completions?(%Env{} = env) do
-    Code.Fragment.cursor_context(env.prefix) != :none
+    Code.Fragment.cursor_context(env.prefix) != :none && not single_char_atom_prefix?(env)
+  end
+
+  defp single_char_atom_prefix?(env) do
+    match?([{:atom, [_], _}], Env.prefix_tokens(env, 1))
   end
 
   defp displayable?(%Project{} = project, result) do

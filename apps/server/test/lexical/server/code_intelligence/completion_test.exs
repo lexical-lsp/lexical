@@ -43,8 +43,8 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     refute [] == complete(project, "Project.|")
   end
 
-  describe "single character completions" do
-    test "completes elixir modules", %{project: project} do
+  describe "single character atom completions" do
+    test "complete elixir modules", %{project: project} do
       assert [_ | _] = completions = complete(project, "E|")
 
       for completion <- completions do
@@ -52,12 +52,8 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       end
     end
 
-    test "completes erlang modules", %{project: project} do
-      assert [_ | _] = completions = complete(project, ":e|")
-
-      for completion <- completions do
-        assert completion.kind == :module
-      end
+    test "ignore erlang modules", %{project: project} do
+      assert [] == complete(project, ":e|")
     end
   end
 
