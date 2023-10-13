@@ -44,11 +44,15 @@ defmodule Lexical.RemoteControl.Dispatch do
 
   # GenServer callbacks
 
-  def start_link(_) do
+  def start_link(opts) do
     case :gen_event.start_link(name()) do
       {:ok, pid} = success ->
         Enum.each(@handlers, &:gen_event.add_handler(pid, &1, []))
-        register_progress_listener()
+
+        if opts[:progress] do
+          register_progress_listener()
+        end
+
         success
 
       error ->
@@ -56,10 +60,10 @@ defmodule Lexical.RemoteControl.Dispatch do
     end
   end
 
-  def child_spec(_) do
+  def child_spec(opts) do
     %{
       id: {__MODULE__, :dispatch},
-      start: {__MODULE__, :start_link, [[]]}
+      start: {__MODULE__, :start_link, [opts]}
     }
   end
 
@@ -71,10 +75,9 @@ defmodule Lexical.RemoteControl.Dispatch do
     register_listener(progress_pid(), [project_progress()])
   end
 
-  def progress_pid do
+  defp progress_pid do
     project = RemoteControl.get_project()
-    master_node_name = RemoteControl.master_node_name(project)
-    progress_name = :rpc.call(master_node_name, Lexical.Server.Project.Progress, :name, [project])
-    :rpc.call(master_node_name, Process, :whereis, [progress_name])
+    manager_node_name = RemoteControl.manager_node_name(project)
+    :rpc.call(manager_node_name, Lexical.Server.Project.Progress, :whereis, [project])
   end
 end

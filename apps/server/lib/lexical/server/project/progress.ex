@@ -33,4 +33,8 @@ defmodule Lexical.Server.Project.Progress do
   def name(%Project{} = project) do
     :"#{Project.name(project)}::progress"
   end
+
+  def whereis(%Project{} = project) do
+    project |> name() |> Process.whereis()
+  end
 end

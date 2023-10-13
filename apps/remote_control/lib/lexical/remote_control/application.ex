@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
-          RemoteControl.Dispatch,
+          {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer,

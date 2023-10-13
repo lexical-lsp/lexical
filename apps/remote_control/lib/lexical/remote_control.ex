@@ -50,10 +50,10 @@ defmodule Lexical.RemoteControl do
   end
 
   defp start_net_kernel(%Project{} = project) do
-    :net_kernel.start([master_node_name(project)])
+    :net_kernel.start([manager_node_name(project)])
   end
 
-  def master_node_name(%Project{} = project) do
+  def manager_node_name(%Project{} = project) do
     :"manager-#{Project.name(project)}-#{Project.entropy(project)}@127.0.0.1"
   end
 
