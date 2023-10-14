@@ -63,7 +63,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     node_range = {{start_line, start_col + 1}, end_pos}
 
     case resolve_alias(charlist, node_range, document, position) do
-      {:ok, {_, struct}, range} -> {:ok, {:struct, struct}, range}
+      {:ok, {struct_or_module, struct}, range} -> {:ok, {struct_or_module, struct}, range}
       :error -> {:error, :not_found}
     end
   end
@@ -93,13 +93,36 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
          :struct <- kind_of_alias(path) do
       resolve_struct(charlist, node_range, document, position)
     else
-      _ -> resolve_module(charlist, node_range, document, position)
+      _ ->
+        if follow_percent?(document, position) do
+          resolve_struct(charlist, node_range, document, position)
+        else
+          resolve_module(charlist, node_range, document, position)
+        end
     end
   end
 
+  # |%MyStruct{}
+  defp follow_percent?(document, position) do
+    after_cursor =
+      Document.fragment(
+        document,
+        position,
+        Position.new(document, position.line, position.character + 1)
+      )
+
+    after_cursor == "%"
+  end
+
   defp resolve_struct(charlist, node_range, document, %Position{} = position) do
-    with {:ok, struct} <- expand_alias(charlist, document, position) do
-      {:ok, {:struct, struct}, node_range}
+    {{_line, start_column}, _} = node_range
+
+    if suffix_contains_module?(charlist, start_column, position) do
+      resolve_module(charlist, node_range, document, position)
+    else
+      with {:ok, struct} <- expand_alias(charlist, document, position) do
+        {:ok, {:struct, struct}, node_range}
+      end
     end
   end
 
@@ -139,6 +162,29 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       [before_dot, _after_dot] -> prefix <> before_dot
       [before_dot] -> prefix <> before_dot
     end
+  end
+
+  defp suffix_contains_module?(charlist, start_column, %Position{} = position) do
+    charlist
+    |> List.to_string()
+    |> suffix_contains_module?(position.character - start_column)
+  end
+
+  defp suffix_contains_module?(string, index) when is_binary(string) do
+    {_, suffix} = String.split_at(string, index)
+
+    case String.split(suffix, ".", parts: 2) do
+      [_before_dot, after_dot] ->
+        uppercase?(after_dot)
+
+      [_before_dot] ->
+        false
+    end
+  end
+
+  defp uppercase?(after_dot) when is_binary(after_dot) do
+    first_char = String.at(after_dot, 0)
+    String.upcase(first_char) == first_char
   end
 
   defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, document, %Position{} = position) do
@@ -224,6 +270,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   # %|__MODULE__{}
   defp kind_of_alias([{:__MODULE__, _, nil}, {:%, _, _} | _]), do: :struct
+
+  # %Foo|{}
+  defp kind_of_alias([{:%{}, _, _}, {:%, _, _} | _]), do: :struct
 
   # %|__MODULE__.Foo{}
   defp kind_of_alias([head_of_aliases, {:__aliases__, _, [head_of_aliases | _]}, {:%, _, _} | _]) do
