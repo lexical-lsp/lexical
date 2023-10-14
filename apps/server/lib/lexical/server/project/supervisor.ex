@@ -22,10 +22,10 @@ defmodule Lexical.Server.Project.Supervisor do
 
   def init(%Project{} = project) do
     children = [
+      {Progress, project},
       {ProjectNodeSupervisor, project},
       {Node, project},
       {Diagnostics, project},
-      {Progress, project},
       {Intelligence, project}
     ]
 
