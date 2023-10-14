@@ -60,19 +60,57 @@ defmodule Lexical.RemoteControl.Search.Indexer do
     end
   end
 
-  # Note: I tried doing something very similar using
-  # Task.async_stream, but it was barely faster than just
-  # doing things with Enum (16s vs 20s on my M2 max). This
-  # function takes around 4 seconds to reindex all Lexical's
-  # modules, making it 5x faster than Enum and 4x faster than
-  # Task.async_stream
-  defp async_chunks(data, processor, timeout \\ :infinity) do
-    data
-    |> Stream.chunk_every(System.schedulers_online())
-    |> Enum.map(fn chunk ->
-      Task.async(fn -> Enum.map(chunk, processor) end)
+  # 128 K blocks indexed lexical in 5.3 seconds
+  @bytes_per_block 1024 * 128
+  defp async_chunks(file_paths, processor, timeout \\ :infinity) do
+    # this function tries to even out the amount of data processed by
+    # async stream by making each chunk emitted by the initial stream to
+    # be roughly equivalent
+
+    initial_state = {0, []}
+
+    chunk_fn = fn {path, file_size}, {block_size, paths} ->
+      new_block_size = file_size + block_size
+      new_paths = [path | paths]
+
+      if new_block_size >= @bytes_per_block do
+        {:cont, new_paths, initial_state}
+      else
+        {:cont, {new_block_size, new_paths}}
+      end
+    end
+
+    after_fn = fn
+      {_, []} ->
+        {:cont, []}
+
+      {_, paths} ->
+        {:cont, paths, []}
+    end
+
+    # Shuffling the results helps speed in some projects, as larger files tend to clump
+    # together, like when there are auto-generated elixir modules.
+    file_paths
+    |> path_to_sizes()
+    |> Enum.shuffle()
+    |> Stream.chunk_while(initial_state, chunk_fn, after_fn)
+    |> Task.async_stream(&Enum.map(&1, processor), timeout: timeout)
+    |> Enum.flat_map(fn
+      {:ok, entry_chunks} -> entry_chunks
+      _ -> []
     end)
-    |> Task.await_many(timeout)
+  end
+
+  defp path_to_sizes(paths) do
+    Enum.reduce(paths, [], fn file_path, acc ->
+      case File.stat(file_path) do
+        {:ok, %File.Stat{} = stat} ->
+          [{file_path, stat.size} | acc]
+
+        _ ->
+          acc
+      end
+    end)
   end
 
   defp newer_than?(path, timestamp) do
