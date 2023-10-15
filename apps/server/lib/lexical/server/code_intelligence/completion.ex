@@ -11,6 +11,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.RemoteControl.Modules.Predicate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace
 
@@ -50,7 +51,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     prefix_tokens = Env.prefix_tokens(env, 1)
 
     cond do
-      prefix_tokens == [] or not context_will_give_meaningful_completions?(env) ->
+      prefix_tokens == [] or not should_emit_completions?(env) ->
         []
 
       should_emit_do_end_snippet?(env) ->
@@ -72,6 +73,41 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         |> RemoteControl.Api.complete(stripped, position)
         |> to_completion_items(project, env, context)
     end
+  end
+
+  defp should_emit_completions?(%Env{} = env) do
+    always_emit_completions?() or has_meaningful_completions?(env)
+  end
+
+  defp always_emit_completions? do
+    # If VS Code receives an empty completion list, it will never issue
+    # a new request, even if `is_incomplete: true` is specified.
+    # https://github.com/lexical-lsp/lexical/issues/400
+    Configuration.get().client_name == "Visual Studio Code"
+  end
+
+  defp has_meaningful_completions?(%Env{} = env) do
+    case Code.Fragment.cursor_context(env.prefix) do
+      :none ->
+        false
+
+      {:unquoted_atom, name} ->
+        length(name) > 1
+
+      {:local_or_var, name} ->
+        local_length = length(name)
+        surround_begin = max(1, env.position.character - local_length - 1)
+
+        local_length > 1 or has_surround_context?(env.prefix, 1, surround_begin)
+
+      _ ->
+        true
+    end
+  end
+
+  defp has_surround_context?(fragment, line, column)
+       when is_binary(fragment) and line >= 1 and column >= 1 do
+    Code.Fragment.surround_context(fragment, {line, column}) != :none
   end
 
   # We emit a do/end snippet if the prefix token is the do operator and
@@ -111,14 +147,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     candidate
     |> Translatable.translate(Builder, env)
     |> List.wrap()
-  end
-
-  defp context_will_give_meaningful_completions?(%Env{} = env) do
-    Code.Fragment.cursor_context(env.prefix) != :none && not single_char_atom_prefix?(env)
-  end
-
-  defp single_char_atom_prefix?(env) do
-    match?([{:atom, [_], _}], Env.prefix_tokens(env, 1))
   end
 
   defp displayable?(%Project{} = project, result) do
@@ -218,6 +246,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp completion_list(items \\ []) do
-    Completion.List.new(items: items, is_incomplete: true)
+    Completion.List.new(items: items, is_incomplete: items == [])
   end
 end

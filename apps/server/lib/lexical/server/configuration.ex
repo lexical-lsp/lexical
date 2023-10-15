@@ -15,12 +15,14 @@ defmodule Lexical.Server.Configuration do
 
   defstruct project: nil,
             support: nil,
+            client_name: nil,
             additional_watched_extensions: nil,
             dialyzer_enabled?: false
 
   @type t :: %__MODULE__{
           project: Project.t() | nil,
           support: support | nil,
+          client_name: String.t() | nil,
           additional_watched_extensions: [String.t()] | nil,
           dialyzer_enabled?: boolean()
         }
@@ -29,11 +31,13 @@ defmodule Lexical.Server.Configuration do
 
   @dialyzer {:nowarn_function, set_dialyzer_enabled: 2}
 
-  @spec new(Lexical.uri(), map()) :: t
-  def new(root_uri, %ClientCapabilities{} = client_capabilities) do
+  @spec new(Lexical.uri(), map(), String.t() | nil) :: t
+  def new(root_uri, %ClientCapabilities{} = client_capabilities, client_name) do
     support = Support.new(client_capabilities)
     project = Project.new(root_uri)
-    %__MODULE__{support: support, project: project} |> tap(&set/1)
+
+    %__MODULE__{support: support, project: project, client_name: client_name}
+    |> tap(&set/1)
   end
 
   @spec new() :: t
