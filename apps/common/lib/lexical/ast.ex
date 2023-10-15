@@ -203,10 +203,7 @@ defmodule Lexical.Ast do
   end
 
   def path_at(ast, %Position{} = position) do
-    path =
-      Future.Macro.path(ast, fn node ->
-        leaf?(node) and contains_position?(node, position)
-      end)
+    path = innermost_path(ast, [], &contains_position?(&1, position))
 
     case path do
       nil -> {:error, :not_found}
@@ -698,31 +695,68 @@ defmodule Lexical.Ast do
     end
   end
 
-  # data literals:
-  # 1, :foo, "foo"
-  defp leaf?(literal) when is_number(literal) or is_binary(literal) or is_atom(literal),
-    do: true
+  # Similar to `Future.Macro.path/3`, but returns the path to the innermost
+  # node for which `fun` returns truthy instead of the path to the first node
+  # that returns such.
+  defp innermost_path(ast, acc, fun)
 
-  # wrapped data literals:
-  # as above, but may contain additional token metadata, so consider the block a leaf
-  defp leaf?({:__block__, _, [literal]}), do: leaf?(literal)
+  defp innermost_path({form, _, args} = ast, acc, fun) when is_atom(form) do
+    acc = [ast | acc]
 
-  # unqualified calls or forms without any arguments:
-  # foo(), %{}
-  defp leaf?({form, _, []}) when is_atom(form), do: true
+    if fun.(ast) do
+      innermost_path_args(args, acc, fun) || acc
+    else
+      innermost_path_args(args, acc, fun)
+    end
+  end
 
-  # dot-calls:
-  # Foo.bar, baz.buzz
-  defp leaf?({:., _, _}), do: true
+  defp innermost_path({form, _meta, args} = ast, acc, fun) do
+    acc = [ast | acc]
 
-  # module aliases:
-  # Foo.Bar.Baz, __MODULE__.Inner
-  defp leaf?({:__aliases__, _, _}), do: true
+    if fun.(ast) do
+      innermost_path(form, acc, fun) || innermost_path_args(args, acc, fun) || acc
+    else
+      innermost_path(form, acc, fun) || innermost_path_args(args, acc, fun)
+    end
+  end
 
-  # variables:
-  # foo
-  defp leaf?({var, _, namespace}) when is_atom(var) and is_atom(namespace), do: true
+  defp innermost_path({left, right} = ast, acc, fun) do
+    acc = [ast | acc]
 
-  # consider all other forms branches
-  defp leaf?(_), do: false
+    if fun.(ast) do
+      innermost_path(left, acc, fun) || innermost_path(right, acc, fun) || acc
+    else
+      innermost_path(left, acc, fun) || innermost_path(right, acc, fun)
+    end
+  end
+
+  defp innermost_path(list, acc, fun) when is_list(list) do
+    acc = [list | acc]
+
+    if fun.(list) do
+      innermost_path_list(list, acc, fun) || acc
+    else
+      innermost_path_list(list, acc, fun)
+    end
+  end
+
+  defp innermost_path(ast, acc, fun) do
+    if fun.(ast) do
+      [ast | acc]
+    end
+  end
+
+  defp innermost_path_args(atom, _acc, _fun) when is_atom(atom), do: nil
+
+  defp innermost_path_args(list, acc, fun) when is_list(list) do
+    innermost_path_list(list, acc, fun)
+  end
+
+  defp innermost_path_list([], _acc, _fun) do
+    nil
+  end
+
+  defp innermost_path_list([arg | args], acc, fun) do
+    innermost_path(arg, acc, fun) || innermost_path_list(args, acc, fun)
+  end
 end
