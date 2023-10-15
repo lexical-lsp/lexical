@@ -1,6 +1,5 @@
 defmodule Lexical.Server.Project.Progress do
   alias Lexical.Project
-  alias Lexical.RemoteControl
   alias Lexical.Server.Project.Progress.State
 
   import Lexical.RemoteControl.Api.Messages
@@ -22,7 +21,6 @@ defmodule Lexical.Server.Project.Progress do
 
   @impl GenServer
   def init([project]) do
-    RemoteControl.Api.register_listener(project, self(), [project_progress()])
     {:ok, State.new(project)}
   end
 
@@ -34,5 +32,9 @@ defmodule Lexical.Server.Project.Progress do
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::progress"
+  end
+
+  def whereis(%Project{} = project) do
+    project |> name() |> Process.whereis()
   end
 end

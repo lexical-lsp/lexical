@@ -18,8 +18,7 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
 
       {:error, reason} ->
         Logger.error("Formatter failed #{inspect(reason)}")
-
-        {:reply, Responses.Formatting.error(request.id, :request_failed, inspect(reason))}
+        {:reply, Responses.Formatting.new(request.id, nil)}
     end
   end
 end

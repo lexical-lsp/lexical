@@ -50,7 +50,11 @@ defmodule Lexical.RemoteControl do
   end
 
   defp start_net_kernel(%Project{} = project) do
-    :net_kernel.start([:"manager-#{Project.name(project)}-#{Project.entropy(project)}@127.0.0.1"])
+    :net_kernel.start([manager_node_name(project)])
+  end
+
+  def manager_node_name(%Project{} = project) do
+    :"manager-#{Project.name(project)}-#{Project.entropy(project)}@127.0.0.1"
   end
 
   def ensure_apps_started(node, app_names) do

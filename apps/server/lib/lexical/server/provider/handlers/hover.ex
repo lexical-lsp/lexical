@@ -5,7 +5,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   alias Lexical.Protocol.Types.Hover
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Docs
-  alias Lexical.Server.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Markdown
 

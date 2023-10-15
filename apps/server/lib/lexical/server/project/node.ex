@@ -49,7 +49,7 @@ defmodule Lexical.Server.Project.Node do
 
   @impl GenServer
   def init(%Project{} = project) do
-    case start_node(project) do
+    case with_progress(project, "Project Node", fn -> start_node(project) end) do
       {:ok, state} ->
         {:ok, state, {:continue, :trigger_build}}
 
