@@ -15,9 +15,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MapFieldTest d
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.insert_text == "first_name"
     assert completion.detail == "first_name"
-    assert completion.label == "first_name"
+    assert apply_completion(completion) =~ "user.first_name"
   end
 
   test "a map's fields are completed after a dot", %{project: project} do
@@ -31,7 +30,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MapFieldTest d
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert first_name.insert_text == "first_name"
-    assert last_name.insert_text == "last_name"
+    assert apply_completion(first_name) =~ "user.first_name"
+    assert apply_completion(last_name) =~ "user.last_name"
   end
 end
