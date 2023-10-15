@@ -39,11 +39,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       {:ok, env} ->
         completions = completions(project, env, context)
         Logger.info("Emitting completions: #{inspect(completions)}")
-        completion_list(completions)
+        maybe_to_completion_list(completions)
 
       {:error, _} = error ->
         Logger.error("Failed to build completion env #{inspect(error)}")
-        completion_list()
+        maybe_to_completion_list()
     end
   end
 
@@ -245,7 +245,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     true
   end
 
-  defp completion_list(items \\ []) do
-    Completion.List.new(items: items, is_incomplete: items == [])
+  defp maybe_to_completion_list(items \\ [])
+
+  defp maybe_to_completion_list([]) do
+    Completion.List.new(items: [], is_incomplete: true)
   end
+
+  defp maybe_to_completion_list(items), do: items
 end
