@@ -223,7 +223,7 @@ defmodule Lexical.Ast do
   may return an empty list.
   """
   @spec cursor_path(
-          Document.t() | Macro.t(),
+          Document.t(),
           Position.t() | {Position.line(), Position.character()}
         ) ::
           [Macro.t()]
