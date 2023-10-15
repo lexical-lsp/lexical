@@ -5,6 +5,7 @@ defmodule Lexical.Server.Window do
 
   @type level :: :error | :warning | :info | :log
 
+  @spec log(level, String.t(), [{:label, String.t()}]) :: String.t()
   def log(level, message, opts \\ [])
 
   def log(level, message, opts) when level in [:error, :warning, :info, :log] do
@@ -20,6 +21,7 @@ defmodule Lexical.Server.Window do
     message
   end
 
+  @spec show(level, String.t()) :: String.t()
   def show(level, message) do
     show_message = apply(ShowMessage, level, [message])
     Transport.write(show_message)
