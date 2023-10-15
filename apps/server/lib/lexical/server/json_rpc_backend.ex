@@ -22,7 +22,7 @@ defmodule Lexical.Server.JsonRpc.Backend do
 
   """
 
-  alias Lexical.Server.Transport
+  alias Lexical.Server.Window
   @behaviour :gen_event
 
   defstruct format: nil,
@@ -139,7 +139,7 @@ defmodule Lexical.Server.JsonRpc.Backend do
 
     level
     |> elixir_log_level_to_lsp()
-    |> Transport.log(output)
+    |> Window.log(output)
 
     state
   end

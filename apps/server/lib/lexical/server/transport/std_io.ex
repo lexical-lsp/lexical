@@ -1,6 +1,4 @@
 defmodule Lexical.Server.Transport.StdIO do
-  alias Lexical.Protocol.Notifications.LogMessage
-
   alias Lexical.Protocol.JsonRpc
 
   @behaviour Lexical.Server.Transport
@@ -19,22 +17,24 @@ defmodule Lexical.Server.Transport.StdIO do
     loop([], device, callback)
   end
 
-  def write(io_device \\ :stdio, payload)
+  def write(payload, opts \\ [io_device: :stdio])
 
-  def write(io_device, %_{} = payload) do
+  def write(%_{} = payload, opts) do
     with {:ok, lsp} <- Lexical.Proto.Convert.to_lsp(payload),
          {:ok, json} <- Jason.encode(lsp) do
-      write(io_device, json)
+      write(json, opts)
     end
   end
 
-  def write(io_device, %{} = payload) do
+  def write(%{} = payload, opts) do
     with {:ok, encoded} <- Jason.encode(payload) do
-      write(io_device, encoded)
+      write(encoded, opts)
     end
   end
 
-  def write(io_device, payload) when is_binary(payload) do
+  def write(payload, opts) when is_binary(payload) do
+    io_device = opts |> Keyword.get(:io_device)
+
     message =
       case io_device do
         device when device in [:stdio, :standard_io] ->
@@ -54,30 +54,7 @@ defmodule Lexical.Server.Transport.StdIO do
   def write(_, []) do
   end
 
-  def log(level, message, opts \\ [])
-
-  def log(level, message, opts) when level in [:error, :warning, :info, :log] do
-    formatted_message = format_message(message, opts)
-    log_message = apply(LogMessage, level, [formatted_message])
-    write(:standard_io, log_message)
-    message
-  end
-
-  def log(_level, message, opts) do
-    log_message = format_message(message, opts)
-
-    write(:standard_error, log_message)
-    message
-  end
-
   # private
-
-  defp format_message(message, opts) do
-    case Keyword.get(opts, :label) do
-      nil -> inspect(message) <> "\n"
-      label -> "#{label}: '#{inspect(message, limit: :infinity)}\n"
-    end
-  end
 
   defp loop(buffer, device, callback) do
     case IO.read(device, :line) do
