@@ -14,9 +14,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.VariableTest d
              |> complete(source)
              |> fetch_completion(kind: :variable)
 
-    assert completion.insert_text == "stinky"
     assert completion.label == "stinky"
     assert completion.detail == "stinky"
+
+    assert apply_completion(completion) == ~q[
+      def my_function do
+        stinky = :smelly
+        stinky
+      end
+    ]
   end
 
   test "all variables are returned", %{project: project} do

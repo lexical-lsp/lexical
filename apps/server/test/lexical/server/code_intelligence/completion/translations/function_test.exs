@@ -18,7 +18,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Application.loaded_app|")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "loaded_applications()"
+      assert apply_completion(completion) == "Application.loaded_applications()"
     end
 
     test "do not suggest arity 0 functions if in a pipeline", %{project: project} do
@@ -34,8 +34,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("|> Enum.dedu|")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "dedup()"
-      assert completion.label == "dedup()"
+      assert apply_completion(completion) == "|> Enum.dedup()"
     end
 
     test "arity > 1 omits the first argument if in a pipeline", %{project: project} do
@@ -44,7 +43,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("|> Enum.chunk_b|")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "chunk_by(${1:fun})"
+      assert apply_completion(completion) == "|> Enum.chunk_by(${1:fun})"
       assert completion.label == "chunk_by(fun)"
     end
 
@@ -54,14 +53,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Enum.dedup_b|()")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "dedup_by"
+      assert apply_completion(completion) == "Enum.dedup_by()"
+    end
+
+    test "are suggested immediately after a dot", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Enum.|")
+        |> fetch_completion("dedup_by(enumerable, fun)")
+
+      assert apply_completion(completion) == "Enum.dedup_by(${1:enumerable}, ${2:fun})"
     end
   end
 
   describe "function captures" do
     test "suggest modules", %{project: project} do
       source = ~q[
-      Enum.map(1..10, &Inte|)
+        Enum.map(1..10, &Inte|)
       ]
 
       {:ok, completion} =
@@ -74,7 +82,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
     test "of arity 1 are suggested with /1", %{project: project} do
       source = ~q[
-      Enum.map(1..10, &Integer.to_|)
+        Enum.map(1..10, &Integer.to_|)
       ]
 
       completions = complete(project, source)
@@ -87,7 +95,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert length(arity_one_completions) > 0
 
       Enum.each(arity_one_completions, fn completion ->
-        assert String.ends_with?(completion.insert_text, "/1")
+        assert completion |> apply_completion() |> String.contains?("/1)")
       end)
     end
 
@@ -107,13 +115,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert length(arity_one_completions) > 0
 
       Enum.each(arity_one_completions, fn completion ->
-        assert String.contains?(completion.insert_text, "(${1:")
+        assert completion |> apply_completion() |> String.contains?("(${1:")
       end)
     end
 
     test "arity > 1 provides a snippet with parens and commas", %{project: project} do
       source = ~q[
-      Enum.map(1..10, Enum.reduce_w|)
+        Enum.map(1..10, Enum.reduce_w|)
       ]
 
       {:ok, completion} =
@@ -123,14 +131,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
       assert completion.insert_text_format == :snippet
 
-      assert completion.insert_text ==
-               "reduce_while(${1:enumerable}, ${2:acc}, ${3:fun})"
+      assert apply_completion(completion) == ~q[
+        Enum.map(1..10, Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
+      ]
     end
 
     test "work with Kernel arity one functions", %{project: project} do
-      source = ~q[
-        &is_ma|
-      ]
+      source = "&is_ma|"
 
       [capture, args_capture] =
         project
@@ -144,22 +151,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         end)
 
       assert capture.detail == "(Capture)"
-      assert capture.insert_text == "is_map/1"
+      assert apply_completion(capture) == "&is_map/1"
 
       assert args_capture.detail == "(Capture with arguments)"
       assert args_capture.insert_text_format == :snippet
-      assert args_capture.insert_text == "is_map(${1:term})"
+      assert apply_completion(args_capture) == "&is_map(${1:term})"
     end
 
     test "work with kernel two arity functions", %{project: project} do
       [is_map_key_complete, is_map_key_args] = complete(project, "&is_map_key|")
 
-      assert is_map_key_complete.insert_text == "is_map_key/2"
       assert is_map_key_complete.detail == "(Capture)"
+      assert apply_completion(is_map_key_complete) == "&is_map_key/2"
 
-      assert is_map_key_args.insert_text == "is_map_key(${1:map}, ${2:key})"
       assert is_map_key_args.detail == "(Capture with arguments)"
       assert is_map_key_args.insert_text_format == :snippet
+      assert apply_completion(is_map_key_args) == "&is_map_key(${1:map}, ${2:key})"
     end
   end
 
@@ -170,8 +177,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.first|")
         |> fetch_completion(kind: :function)
 
-      assert arity_1.insert_text == "first_arg(${1:y})"
-      assert arity_2.insert_text == "first_arg(${1:x}, ${2:y})"
+      assert apply_completion(arity_1) == "Project.DefaultArgs.first_arg(${1:y})"
+      assert apply_completion(arity_2) == "Project.DefaultArgs.first_arg(${1:x}, ${2:y})"
     end
 
     test "works with the middle arg", %{project: project} do
@@ -180,8 +187,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.middle|")
         |> fetch_completion(kind: :function)
 
-      assert arity_1.insert_text == "middle_arg(${1:a}, ${2:c})"
-      assert arity_2.insert_text == "middle_arg(${1:a}, ${2:b}, ${3:c})"
+      assert apply_completion(arity_1) == "Project.DefaultArgs.middle_arg(${1:a}, ${2:c})"
+      assert apply_completion(arity_2) == "Project.DefaultArgs.middle_arg(${1:a}, ${2:b}, ${3:c})"
     end
 
     test "works with the last arg", %{project: project} do
@@ -190,8 +197,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.last|")
         |> fetch_completion(kind: :function)
 
-      assert arity_1.insert_text == "last_arg(${1:x})"
-      assert arity_2.insert_text == "last_arg(${1:x}, ${2:y})"
+      assert apply_completion(arity_1) == "Project.DefaultArgs.last_arg(${1:x})"
+      assert apply_completion(arity_2) == "Project.DefaultArgs.last_arg(${1:x}, ${2:y})"
     end
 
     test "works with options", %{project: project} do
@@ -200,8 +207,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.opt|")
         |> fetch_completion(kind: :function)
 
-      assert arity_1.insert_text == "options(${1:a})"
-      assert arity_2.insert_text == "options(${1:a}, ${2:opts})"
+      assert apply_completion(arity_1) == "Project.DefaultArgs.options(${1:a})"
+      assert apply_completion(arity_2) == "Project.DefaultArgs.options(${1:a}, ${2:opts})"
     end
 
     test "works with struct defaults", %{project: project} do
@@ -210,8 +217,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.struct|")
         |> fetch_completion(kind: :function)
 
-      assert arity_1.insert_text == "struct_arg(${1:a})"
-      assert arity_2.insert_text == "struct_arg(${1:a}, ${2:b})"
+      assert apply_completion(arity_1) == "Project.DefaultArgs.struct_arg(${1:a})"
+      assert apply_completion(arity_2) == "Project.DefaultArgs.struct_arg(${1:a}, ${2:b})"
     end
 
     test "works with pattern match args", %{project: project} do
@@ -220,7 +227,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.pattern_match|")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "pattern_match_arg(${1:user})"
+      assert apply_completion(completion) == "Project.DefaultArgs.pattern_match_arg(${1:user})"
     end
 
     test "works with reverse pattern match args", %{project: project} do
@@ -229,7 +236,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> complete("Project.DefaultArgs.reverse|")
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text == "reverse_pattern_match_arg(${1:user})"
+      assert apply_completion(completion) ==
+               "Project.DefaultArgs.reverse_pattern_match_arg(${1:user})"
     end
   end
 

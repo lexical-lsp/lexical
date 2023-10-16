@@ -45,6 +45,31 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       assert apply_completion(completion) == expected
     end
 
+    test "should complete in an open block", %{project: project} do
+      source = ~q[
+        defmodule Example do
+          def foo do
+            %Project.Structs.Ac|
+      ]
+
+      assert [completion] = complete(project, source)
+      assert completion.kind == :struct
+      assert apply_completion(completion) =~ "    %Project.Structs.Account{$1}"
+    end
+
+    test "should complete aliases in an open block", %{project: project} do
+      source = ~q[
+        defmodule Example do
+          alias Project.Structs.Account
+          def foo do
+            %Ac|
+      ]
+
+      assert [completion] = complete(project, source)
+      assert completion.kind == :struct
+      assert apply_completion(completion) =~ "    %Account{$1}"
+    end
+
     test "should complete, but not add curlies for aliases after %", %{project: project} do
       source = ~q[
         alias Project.Structs.User
@@ -92,9 +117,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
       ]
 
       assert [completion] = complete(project, source)
-
-      assert completion.insert_text == "User"
       assert completion.kind == :module
+
+      assert apply_completion(completion) == ~q[
+        defmodule TestModule do
+        alias Project.Structs.User
+
+        User
+      ]
     end
 
     test "should complete non-aliased correctly", %{project: project} do
@@ -244,8 +274,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructTest do
 
     test "can be aliased", %{project: project} do
       assert [completion] = complete(project, "alias Project.Structs.A|")
-
-      assert completion.insert_text == "Account"
+      assert apply_completion(completion) == "alias Project.Structs.Account"
     end
   end
 end
