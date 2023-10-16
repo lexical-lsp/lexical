@@ -60,8 +60,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         |> Builder.snippet(do_end_snippet, label: "do/end block")
         |> List.wrap()
 
-      Env.in_context?(env, :struct_arguments) and not Env.in_context?(env, :struct_field_value) and
-          not prefix_is_trigger?(env) ->
+      Env.in_context?(env, :struct_field_key) ->
         project
         |> RemoteControl.Api.complete_struct_fields(env.document, env.position)
         |> Enum.map(&Translatable.translate(&1, Builder, env))
@@ -89,16 +88,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
       )
 
     valid_prefix? and Env.empty?(env.suffix)
-  end
-
-  defp prefix_is_trigger?(%Env{} = env) do
-    case Env.prefix_tokens(env, 1) do
-      [{_, token, _}] ->
-        to_string(token) in trigger_characters()
-
-      _ ->
-        false
-    end
   end
 
   defp to_completion_items(
