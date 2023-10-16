@@ -59,7 +59,7 @@ defmodule Lexical.AstTest do
       Ast.path_at(document, position)
     end
 
-    test "returns an error if the cursor cannot be found in a node" do
+    test "returns an error if the cursor cannot be found in any node" do
       code = ~q[
         |
         defmodule Foo do
@@ -77,7 +77,7 @@ defmodule Lexical.AstTest do
       assert {:error, {[line: 2, column: 1], "missing terminator: end" <> _, ""}} = path_at(code)
     end
 
-    test "returns a path to the innermost node at position" do
+    test "returns a path to the innermost leaf at position" do
       code = ~q[
         defmodule Foo do
           def bar do
@@ -87,6 +87,16 @@ defmodule Lexical.AstTest do
       ]
 
       assert {:ok, [{:__block__, _, [:ok]} | _]} = path_at(code)
+    end
+
+    test "returns a path to the innermost branch at position" do
+      code = ~q[
+        defmodule Foo do
+          |
+        end
+      ]
+
+      assert {:ok, [{:defmodule, _, _}]} = path_at(code)
     end
 
     test "returns a path containing all ancestors" do
@@ -106,6 +116,16 @@ defmodule Lexical.AstTest do
                 [{_, _}],
                 {:defmodule, _, _}
               ]} = path_at(code)
+    end
+
+    test "returns a path to an outer struct node" do
+      code = ~q[
+        defmodule Foo do
+          |%MyStruct{}
+        end
+      ]
+
+      assert {:ok, [{:%, _, _} | _]} = path_at(code)
     end
   end
 
