@@ -132,31 +132,26 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  defp do_in_context?(env, :struct_arguments) do
+  defp do_in_context?(env, :struct_fields) do
+    env.document
+    |> Ast.cursor_path(env.position)
+    |> Enum.any?(&match?({:%, _, _}, &1))
+  end
+
+  defp do_in_context?(env, :struct_field_key) do
     cursor_path = Ast.cursor_path(env.document, env.position)
 
-    Enum.any?(cursor_path, fn
-      # struct leading by current module: `%__MODULE__.Struct{|}`
-      # or leading by a module alias: `%Alias.Struct{|}`
-      # or just a struct: `%Struct{|}`
-      {:%, _, [{:__aliases__, _, _aliases} | _]} -> true
-      # current module struct: `%__MODULE__{|}`
-      {:%, _, [{:__MODULE__, _, _} | _]} -> true
-      _ -> false
-    end)
+    match?(
+      # in the key position, the cursor will always be followed by the
+      # map node because, in any other case, there will minimally be a
+      # 2-element key-value tuple containing the cursor
+      [{:__cursor__, _, _}, {:%{}, _, _}, {:%, _, _} | _],
+      cursor_path
+    )
   end
 
   defp do_in_context?(env, :struct_field_value) do
-    if do_in_context?(env, :struct_arguments) do
-      env
-      |> prefix_tokens(2)
-      |> Enum.any?(fn
-        {:kw_identifier, _, _} -> true
-        _ -> false
-      end)
-    else
-      false
-    end
+    do_in_context?(env, :struct_fields) and not do_in_context?(env, :struct_field_key)
   end
 
   defp do_in_context?(env, :pipe) do

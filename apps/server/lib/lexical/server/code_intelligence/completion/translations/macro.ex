@@ -21,7 +21,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "def", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define a function)"
+    label = "#{macro.name} (define a function)"
 
     snippet = """
     def ${1:name}($2) do
@@ -39,7 +39,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defp", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define a private function)"
+    label = "#{macro.name} (define a private function)"
 
     snippet = """
     defp ${1:name}($2) do
@@ -57,7 +57,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
-    label = "defmodule (Define a module)"
+    label = "defmodule (define a module)"
     suggestion = suggest_module_name(env.document)
 
     snippet = """
@@ -76,7 +76,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defmacro", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define a macro)"
+    label = "#{macro.name} (define a macro)"
 
     snippet = """
     defmacro ${1:name}($2) do
@@ -94,7 +94,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defmacrop", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define a private macro)"
+    label = "#{macro.name} (define a private macro)"
 
     snippet = """
     defmacrop ${1:name}($2) do
@@ -112,10 +112,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defprotocol"} = macro, builder, env) do
-    label = "#{macro.name} (Define a protocol)"
+    label = "#{macro.name} (define a protocol)"
 
     snippet = """
-    defprotocol ${1:protocol name} do
+    defprotocol ${1:protocol_name} do
       $0
     end
     """
@@ -130,10 +130,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defimpl", arity: 3} = macro, builder, env) do
-    label = "#{macro.name} (Define a protocol implementation)"
+    label = "#{macro.name} (define a protocol implementation)"
 
     snippet = """
-    defimpl ${1:protocol name}, for: ${2:type} do
+    defimpl ${1:protocol_name}, for: ${2:struct_name} do
       $0
     end
     """
@@ -148,9 +148,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defoverridable"} = macro, builder, env) do
-    label = "#{macro.name} (Mark a function as overridable)"
+    label = "#{macro.name} (mark a function as overridable)"
 
-    snippet = "defoverridable ${1:keyword or behaviour} $0"
+    snippet = "defoverridable ${1:keyword_or_behaviour}"
 
     env
     |> builder.snippet(snippet,
@@ -162,11 +162,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defdelegate", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Define a delegate function)"
+    label = "#{macro.name} (define a delegate function)"
 
-    snippet = """
-    defdelegate ${1:call}, to: ${2:module} $0
-    """
+    snippet = "defdelegate ${1:call}(${2:args}), to: ${3:module}"
 
     env
     |> builder.snippet(snippet,
@@ -178,11 +176,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defguard", arity: 1} = macro, builder, env) do
-    label = "#{macro.name} (Define a guard macro)"
+    label = "#{macro.name} (define a guard macro)"
 
-    snippet = """
-    defguard ${1:call} $0
-    """
+    snippet = "defguard ${1:guard}(${2:args}) when $0"
 
     env
     |> builder.snippet(snippet,
@@ -194,11 +190,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defguardp", arity: 1} = macro, builder, env) do
-    label = "#{macro.name} (Define a private guard macro)"
+    label = "#{macro.name} (define a private guard macro)"
 
-    snippet = """
-    defguardp ${1:call} $0
-    """
+    snippet = "defguardp ${1:guard}(${2:args}) when $0"
 
     env
     |> builder.snippet(snippet,
@@ -210,11 +204,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defexception", arity: 1} = macro, builder, env) do
-    label = "#{macro.name} (Define an exception)"
+    label = "#{macro.name} (define an exception)"
 
-    snippet = """
-    defexception [${1:fields}] $0
-    """
+    snippet = "defexception [${1::message}]"
 
     env
     |> builder.snippet(snippet,
@@ -226,11 +218,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "defstruct", arity: 1} = macro, builder, env) do
-    label = "#{macro.name} (Define a struct)"
+    label = "#{macro.name} (define a struct)"
 
-    snippet = """
-    defstruct [${1:fields}] $0
-    """
+    snippet = "defstruct [${1:fields}]"
 
     env
     |> builder.snippet(snippet,
@@ -285,7 +275,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     label = "#{macro.name} (quote block)"
 
     snippet = """
-    quote ${1:options} do
+    quote $1 do
       $0
     end
     """
@@ -304,7 +294,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
     snippet = """
     receive do
-      ${1:message shape} -> $0
+      ${1:pattern} -> $0
     end
     """
 
@@ -336,10 +326,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "with" <> _, arity: 1} = macro, builder, env) do
-    label = "with block"
+    label = "#{macro.name} (with statement)"
 
     snippet = """
-    with ${1:match} do
+    with ${1:pattern} <- ${2:expression} do
       $0
     end
     """
@@ -354,11 +344,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "case", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Case statement)"
+    label = "#{macro.name} (case statement)"
 
     snippet = """
-    case ${1:test} do
-      ${2:match} -> $0
+    case $1 do
+      ${2:pattern} -> $0
     end
     """
 
@@ -372,10 +362,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "if", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (If statement)"
+    label = "#{macro.name} (if statement)"
 
     snippet = """
-    if ${1:test} do
+    if $1 do
       $0
     end
     """
@@ -404,10 +394,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "unless", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (Unless statement)"
+    label = "#{macro.name} (unless statement)"
 
     snippet = """
-    unless ${1:test} do
+    unless $1 do
       $0
     end
     """
@@ -422,7 +412,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "cond"} = macro, builder, env) do
-    label = "#{macro.name} (Cond statement)"
+    label = "#{macro.name} (cond statement)"
 
     snippet = """
     cond do
@@ -444,7 +434,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     label = "#{macro.name} (comprehension)"
 
     snippet = """
-    for ${1:match} <- ${2:enumerable} do
+    for ${1:pattern} <- ${2:enumerable} do
       $0
     end
     """
@@ -465,9 +455,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   def translate(%Candidate.Macro{name: "test", arity: 1}, builder, env) do
     stub_label = @stub_label
 
-    stub_snippet = """
-    test "${0:message}"
-    """
+    stub_snippet = ~S(test "${0:message}")
 
     env
     |> builder.snippet(stub_snippet,

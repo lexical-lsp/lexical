@@ -54,6 +54,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
 
   @impl Builder
   def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options \\ []) do
+    snippet = String.trim_trailing(text, "\n")
     line_number = env.position.line
 
     range =
@@ -62,7 +63,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         Position.new(env.document, line_number, end_char)
       )
 
-    edits = Document.Changes.new(env.document, Edit.new(text, range))
+    edits = Document.Changes.new(env.document, Edit.new(snippet, range))
 
     options
     |> Keyword.put(:text_edit, edits)
