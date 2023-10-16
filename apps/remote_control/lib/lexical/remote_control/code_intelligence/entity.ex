@@ -89,7 +89,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   end
 
   defp resolve_alias(charlist, node_range, document, position) do
-    with {:ok, path} <- Ast.path_at(document, position),
+    {{_line, start_column}, _} = node_range
+
+    with true <- not suffix_contains_module?(charlist, start_column, position),
+         {:ok, path} <- Ast.path_at(document, position),
          :struct <- kind_of_alias(path) do
       resolve_struct(charlist, node_range, document, position)
     else
@@ -99,14 +102,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   end
 
   defp resolve_struct(charlist, node_range, document, %Position{} = position) do
-    {{_line, start_column}, _} = node_range
-
-    if suffix_contains_module?(charlist, start_column, position) do
-      resolve_module(charlist, node_range, document, position)
-    else
-      with {:ok, struct} <- expand_alias(charlist, document, position) do
-        {:ok, {:struct, struct}, node_range}
-      end
+    with {:ok, struct} <- expand_alias(charlist, document, position) do
+      {:ok, {:struct, struct}, node_range}
     end
   end
 
@@ -148,6 +145,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
+  # %TopLevel|.Struct{} -> true
+  # %TopLevel.Str|uct{} -> false
   defp suffix_contains_module?(charlist, start_column, %Position{} = position) do
     charlist
     |> List.to_string()
