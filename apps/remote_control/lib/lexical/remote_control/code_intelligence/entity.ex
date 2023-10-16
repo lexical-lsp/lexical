@@ -94,24 +94,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       resolve_struct(charlist, node_range, document, position)
     else
       _ ->
-        if follow_percent?(document, position) do
-          resolve_struct(charlist, node_range, document, position)
-        else
-          resolve_module(charlist, node_range, document, position)
-        end
+        resolve_module(charlist, node_range, document, position)
     end
-  end
-
-  # |%MyStruct{}
-  defp follow_percent?(document, position) do
-    after_cursor =
-      Document.fragment(
-        document,
-        position,
-        Position.new(document, position.line, position.character + 1)
-      )
-
-    after_cursor == "%"
   end
 
   defp resolve_struct(charlist, node_range, document, %Position{} = position) do
@@ -262,6 +246,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   # There is a fixed set of situations where an alias is being used as
   # a `:struct`, otherwise resolve as a `:module`.
   defp kind_of_alias(path)
+
+  # |%Foo{}
+  defp kind_of_alias([{:%, _, _}]), do: :struct
 
   # %|Foo{}
   # %|Foo.Bar{}
