@@ -17,24 +17,33 @@ defmodule Lexical.Server.Transport.StdIO do
     loop([], device, callback)
   end
 
-  def write(payload)
+  def write(io_device \\ :stdio, payload)
 
-  def write(%_{} = payload) do
+  def write(io_device, %_{} = payload) do
     with {:ok, lsp} <- Lexical.Proto.Convert.to_lsp(payload),
          {:ok, json} <- Jason.encode(lsp) do
-      write(json)
+      write(io_device, json)
     end
   end
 
-  def write(%{} = payload) do
+  def write(io_device, %{} = payload) do
     with {:ok, encoded} <- Jason.encode(payload) do
-      write(encoded)
+      write(io_device, encoded)
     end
   end
 
-  def write(payload) when is_binary(payload) do
-    {:ok, json_rpc} = JsonRpc.encode(payload)
-    IO.binwrite(:stdio, json_rpc)
+  def write(io_device, payload) when is_binary(payload) do
+    message =
+      case io_device do
+        device when device in [:stdio, :standard_io] ->
+          {:ok, json_rpc} = JsonRpc.encode(payload)
+          json_rpc
+
+        _ ->
+          payload
+      end
+
+    IO.binwrite(io_device, message)
   end
 
   def write(_, nil) do
