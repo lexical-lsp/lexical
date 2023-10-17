@@ -227,7 +227,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
           Lines{}
       ]
 
-      assert {:ok, {:struct, On.Multiple.Lines}, resolved_range} = resolve(code)
+      assert {:ok, {:module, On.Multiple.Lines}, resolved_range} = resolve(code)
 
       assert resolved_range =~ """
              %«On.
@@ -236,13 +236,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
              """
     end
 
-    test "includes trailing module segments" do
+    test "shouldn't include trailing module segments" do
       code = ~q[
         %My|Struct.Nested{}
       ]
 
-      assert {:ok, {:struct, MyStruct.Nested}, resolved_range} = resolve(code)
-      assert resolved_range =~ ~S[%«MyStruct.Nested»{}]
+      assert {:ok, {:module, MyStruct}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[%«MyStruct».Nested{}]
     end
 
     test "expands current module" do
