@@ -236,7 +236,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
              """
     end
 
-    test "shouldn't includes trailing module segments" do
+    test "shouldn't include trailing module segments" do
       code = ~q[
         %My|Struct.Nested{}
       ]
