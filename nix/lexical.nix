@@ -13,7 +13,7 @@
 
     src = ./..;
 
-    sha256 = "sha256-a715z1ti1J0kKzLcIS1UuFpPAMEx2VlFpkmZrRTSWh4=";
+    sha256 = builtins.readFile ./hash;
   };
 
   installPhase = ''

@@ -6,7 +6,15 @@ defmodule Lexical.Ast.Environment do
   @type lexer_token :: {atom, token_value}
   @type token_count :: pos_integer | :all
 
-  @type context_type :: :pipe | :alias | :struct_reference | :function_capture | :bitstring
+  @type context_type ::
+          :pipe
+          | :alias
+          | :struct_reference
+          | :struct_fields
+          | :struct_field_key
+          | :struct_field_value
+          | :function_capture
+          | :bitstring
 
   @callback in_context?(t, context_type) :: boolean
 

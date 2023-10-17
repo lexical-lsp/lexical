@@ -11,26 +11,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
   end
 
   def translate(%Candidate.ModuleAttribute{name: "@moduledoc"}, builder, env) do
-    doc_snippet = ~s(
-      @moduledoc """
-      $0
-      """
-    ) |> String.trim()
+    doc_snippet = ~s'''
+    @moduledoc """
+    $0
+    """
+    '''
 
     case fetch_range(env) do
       {:ok, range} ->
         with_doc =
           builder.text_edit_snippet(env, doc_snippet, range,
-            detail: "Module documentation block",
+            detail: "Document public module",
             kind: :property,
             label: "@moduledoc"
           )
 
         without_doc =
           builder.text_edit(env, "@moduledoc false", range,
-            detail: "Skip module documentation",
+            detail: "Mark as private",
             kind: :property,
-            label: "@moduledoc"
+            label: "@moduledoc false"
           )
 
         [with_doc, without_doc]
@@ -41,26 +41,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
   end
 
   def translate(%Candidate.ModuleAttribute{name: "@doc"}, builder, env) do
-    doc_snippet = ~s(
-      @doc """
-      $0
-      """
-    ) |> String.trim()
+    doc_snippet = ~s'''
+    @doc """
+    $0
+    """
+    '''
 
     case fetch_range(env) do
       {:ok, range} ->
         with_doc =
           builder.text_edit_snippet(env, doc_snippet, range,
-            detail: "Function documentation",
+            detail: "Document public function",
             kind: :property,
             label: "@doc"
           )
 
         without_doc =
           builder.text_edit(env, "@doc false", range,
-            detail: "Skip function docs",
+            detail: "Mark as private",
             kind: :property,
-            label: "@doc"
+            label: "@doc false"
           )
 
         [with_doc, without_doc]

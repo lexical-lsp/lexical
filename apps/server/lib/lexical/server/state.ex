@@ -45,7 +45,13 @@ defmodule Lexical.Server.State do
   def initialize(%__MODULE__{initialized?: false} = state, %Initialize{
         lsp: %Initialize.LSP{} = event
       }) do
-    config = Configuration.new(event.root_uri, event.capabilities)
+    client_name =
+      case event.client_info do
+        %{name: name} -> name
+        _ -> nil
+      end
+
+    config = Configuration.new(event.root_uri, event.capabilities, client_name)
     new_state = %__MODULE__{state | configuration: config, initialized?: true}
     Logger.info("Starting project at uri #{config.project.root_uri}")
 

@@ -64,10 +64,10 @@ defmodule Lexical.Test.Server.CompletionCase do
       if is_binary(trigger_character) do
         CompletionContext.new(
           trigger_kind: :trigger_character,
-          trigger_character: nil
+          trigger_character: trigger_character
         )
       else
-        CompletionContext.new(trigger_kind: :trigger_character)
+        CompletionContext.new(trigger_kind: :invoked)
       end
 
     result = Completion.complete(project, document, position, context)

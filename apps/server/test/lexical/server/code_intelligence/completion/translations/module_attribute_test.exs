@@ -18,13 +18,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       assert apply_completion(snippet_completion) == ~q[
         defmodule Docs do
           @moduledoc """
-              $0
-              """
+        $0
+        """
         end
       ]
 
       assert empty_completion.detail
-      assert empty_completion.label == "@moduledoc"
+      assert empty_completion.label == "@moduledoc false"
 
       assert apply_completion(empty_completion) == ~q[
         defmodule Docs do
@@ -55,12 +55,42 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       assert apply_completion(snippet_completion) == ~q[
         defmodule MyModule do
           @doc """
-              $0
-              """
+        $0
+        """
           def other_thing do
           end
         end
       ]
+
+      assert empty_completion.detail
+      assert empty_completion.label == "@doc false"
+      assert empty_completion.kind == :property
+
+      assert apply_completion(empty_completion) == ~q[
+        defmodule MyModule do
+          @doc false
+          def other_thing do
+          end
+        end
+      ]
+    end
+
+    # This is a limitation of ElixirSense, which does not return @doc as
+    # a suggestion when the prefix is `@do`. It does for both `@d` and `@doc`.
+    @tag :skip
+    test "@doc completion with do prefix", %{project: project} do
+      source = ~q[
+        defmodule MyModule do
+          @do|
+          def other_thing do
+          end
+        end
+      ]
+
+      assert {:ok, [_snippet_completion, empty_completion]} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :property)
 
       assert empty_completion.detail
       assert empty_completion.label == "@doc"

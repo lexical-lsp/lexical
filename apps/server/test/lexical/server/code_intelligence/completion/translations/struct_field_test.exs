@@ -172,7 +172,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
       assert apply_completion(completion) == expected
     end
 
-    test "should complete even the struct module is aliased", %{project: project} do
+    test "should complete when the struct module is aliased", %{project: project} do
       source = ~q[
         defmodule MyModule do
           alias Project.Structs.Account, as: LocalAccount
@@ -209,7 +209,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
                |> fetch_completion(kind: :field)
     end
 
-    test "complete nothing when the prefix is a tigger", %{project: project} do
+    test "complete nothing when the prefix is invalid", %{project: project} do
       assert {:error, :not_found} ==
                project
                |> complete("%Project.Structs.Account{l.|}")
