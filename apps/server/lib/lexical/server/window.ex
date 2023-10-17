@@ -15,12 +15,6 @@ defmodule Lexical.Server.Window do
     message
   end
 
-  def log(_level, message, opts) do
-    log_message = format_message(message, opts)
-    Transport.write(log_message, io_device: :standard_error)
-    message
-  end
-
   @spec show(level, String.t()) :: String.t()
   def show(level, message) do
     show_message = apply(ShowMessage, level, [message])
@@ -31,7 +25,7 @@ defmodule Lexical.Server.Window do
   defp format_message(message, opts) do
     case Keyword.get(opts, :label) do
       nil -> inspect(message) <> "\n"
-      label -> "#{label}: '#{inspect(message, limit: :infinity)}\n"
+      label -> "#{label}: #{inspect(message, limit: :infinity)}\n"
     end
   end
 end

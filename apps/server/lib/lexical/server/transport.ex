@@ -9,5 +9,4 @@ defmodule Lexical.Server.Transport do
   @implementation Application.compile_env(:server, :transport, StdIO)
 
   defdelegate write(message), to: @implementation
-  defdelegate write(message, opts), to: @implementation
 end
