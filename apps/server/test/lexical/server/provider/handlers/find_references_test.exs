@@ -4,7 +4,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
   alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.FindReferences
   alias Lexical.Protocol.Responses
-  alias Lexical.Server.CodeIntelligence.Entity
+  alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
@@ -46,7 +46,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
 
   describe "find references" do
     test "returns locations that the entity returns", %{project: project, uri: uri} do
-      patch(Entity, :references, fn ^project, document, _position ->
+      patch(RemoteControl.Api, :references, fn ^project, document, _position, _ ->
         locations = [
           Location.new(
             Document.Range.new(
@@ -68,7 +68,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
     end
 
     test "returns nothing if the entity can't resolve it", %{project: project, uri: uri} do
-      patch(Entity, :references, {:error, :not_found})
+      patch(RemoteControl.Api, :references, {:error, :not_found})
 
       {:ok, request} = build_request(uri, 1, 5)
 

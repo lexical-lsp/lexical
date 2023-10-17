@@ -17,7 +17,12 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.Build,
           RemoteControl.Build.CaptureServer,
           RemoteControl.Plugin.Runner.Supervisor,
-          RemoteControl.Plugin.Runner.Coordinator
+          RemoteControl.Plugin.Runner.Coordinator,
+          {RemoteControl.Search.Store,
+           [
+             &RemoteControl.Search.Indexer.create_index/1,
+             &RemoteControl.Search.Indexer.update_index/2
+           ]}
         ]
       else
         []

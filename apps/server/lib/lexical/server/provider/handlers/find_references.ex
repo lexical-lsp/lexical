@@ -1,15 +1,16 @@
 defmodule Lexical.Server.Provider.Handlers.FindReferences do
   alias Lexical.Protocol.Requests.FindReferences
   alias Lexical.Protocol.Responses
-  alias Lexical.Protocol.Responses
-  alias Lexical.Server.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.Api
   alias Lexical.Server.Provider.Env
 
   require Logger
 
   def handle(%FindReferences{} = request, %Env{} = env) do
+    include_declaration? = !!request.context.include_declaration
+
     locations =
-      case Entity.references(env.project, request.document, request.position) do
+      case Api.references(env.project, request.document, request.position, include_declaration?) do
         {:ok, locations} ->
           locations
 

@@ -7,10 +7,11 @@ defmodule Lexical.RemoteControl.Dispatch do
   `Lexical.RemoteControl.Dispatch.Handler` behaviour and add the module to the @handlers module attribute.
   """
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Dispatch.Handlers
   alias Lexical.RemoteControl.Dispatch.PubSub
   import Lexical.RemoteControl.Api.Messages
 
-  @handlers [PubSub]
+  @handlers [PubSub, Handlers.Indexing]
 
   # public API
 
