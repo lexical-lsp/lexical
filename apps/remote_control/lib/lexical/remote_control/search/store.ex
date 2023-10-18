@@ -28,12 +28,17 @@ defmodule Lexical.RemoteControl.Search.Store do
              {:ok, new_entries, paths_to_delete} | {:error, term()})
 
   @backend Application.compile_env(:remote_control, :search_store_backend, Store.Backends.Ets)
+  @flush_interval_ms Application.compile_env(
+                       :remote_control,
+                       :search_store_quiescent_period_ms,
+                       2500
+                     )
 
   use GenServer
   require Logger
 
   def stop do
-    GenServer.call(__MODULE__, :drop)
+    #    GenServer.call(__MODULE__, :on_stop)
     GenServer.stop(__MODULE__)
   end
 
@@ -63,10 +68,6 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   def update(path, entries) do
     GenServer.call(__MODULE__, {:update, path, entries})
-  end
-
-  def update_async(path, entries) do
-    GenServer.cast(__MODULE__, {:update, path, entries})
   end
 
   def destroy do
@@ -100,84 +101,105 @@ defmodule Lexical.RemoteControl.Search.Store do
     args
   end
 
+  @impl GenServer
   def init([%Project{} = project, create_index, update_index, backend]) do
     state =
       project
       |> State.new(create_index, update_index, backend)
       |> State.async_load()
 
-    {:ok, state}
+    {:ok, {nil, state}}
   end
 
+  @impl GenServer
   # handle the result from `State.async_load/1`
-  def handle_info({ref, result}, %State{async_load_ref: ref} = state) do
-    {:noreply, State.async_load_complete(state, result)}
+  def handle_info({ref, result}, {update_ref, %State{async_load_ref: ref} = state}) do
+    {:noreply, {update_ref, State.async_load_complete(state, result)}}
+  end
+
+  def handle_info(:flush_updates, {_, %State{} = state}) do
+    {:ok, state} = State.flush_buffered_updates(state)
+    ref = schedule_flush()
+    {:noreply, {ref, state}}
   end
 
   def handle_info(_, state) do
     {:noreply, state}
   end
 
-  def handle_call({:replace, entities}, _from, %State{} = state) do
+  @impl GenServer
+  def handle_call({:replace, entities}, _from, {ref, %State{} = state}) do
     {reply, new_state} =
       case State.replace(state, entities) do
         {:ok, new_state} ->
-          {:ok, new_state}
+          {:ok, State.drop_buffered_updates(new_state)}
 
         {:error, _} = error ->
           {error, state}
       end
 
-    {:reply, reply, new_state}
+    {:reply, reply, {ref, new_state}}
   end
 
-  def handle_call({:exact, subject, constraints}, _from, %State{} = state) do
-    {:reply, State.exact(state, subject, constraints), state}
+  def handle_call({:exact, subject, constraints}, _from, {ref, %State{} = state}) do
+    {:reply, State.exact(state, subject, constraints), {ref, state}}
   end
 
-  def handle_call({:fuzzy, subject, constraints}, _from, %State{} = state) do
-    {:reply, State.fuzzy(state, subject, constraints), state}
+  def handle_call({:fuzzy, subject, constraints}, _from, {ref, %State{} = state}) do
+    {:reply, State.fuzzy(state, subject, constraints), {ref, state}}
   end
 
-  def handle_call(:all, _from, %State{} = state) do
-    {:reply, State.all(state), state}
+  def handle_call(:all, _from, {ref, %State{} = state}) do
+    {:reply, State.all(state), {ref, state}}
   end
 
-  def handle_call({:update, path, entries}, _from, %State{} = state) do
-    {reply, new_state} = do_update(state, path, entries)
-    {:reply, reply, new_state}
+  def handle_call({:update, path, entries}, _from, {ref, %State{} = state}) do
+    {reply, new_ref, new_state} = do_update(state, ref, path, entries)
+
+    {:reply, reply, {new_ref, new_state}}
   end
 
-  def handle_call(:drop, _, %State{} = state) do
+  def handle_call(:on_stop, _, {ref, %State{} = state}) do
+    {:ok, state} = State.flush_buffered_updates(state)
+
     State.drop(state)
-    {:reply, :ok, state}
+    {:reply, :ok, {ref, state}}
   end
 
-  def handle_call(:loaded?, _, %State{loaded?: loaded?} = state) do
-    {:reply, loaded?, state}
+  def handle_call(:loaded?, _, {ref, %State{loaded?: loaded?} = state}) do
+    {:reply, loaded?, {ref, state}}
   end
 
-  def handle_call(:destroy, _, %State{} = state) do
+  def handle_call(:destroy, _, {ref, %State{} = state}) do
     new_state = State.destroy(state)
-    {:reply, :ok, new_state}
+    {:reply, :ok, {ref, new_state}}
   end
 
-  def handle_cast({:update, path, entries}, %State{} = state) do
-    {_reply, new_state} = do_update(state, path, entries)
-    {:noreply, new_state}
+  @impl GenServer
+  def terminate(_reason, {_, state}) do
+    {:ok, state} = State.flush_buffered_updates(state)
+    State.drop(state)
+    {:noreply, state}
   end
 
   defp backend do
     @backend
   end
 
-  defp do_update(state, path, entries) do
-    case State.update(state, path, entries) do
-      {:ok, new_state} ->
-        {:ok, new_state}
+  defp do_update(state, old_ref, path, entries) do
+    {:ok, schedule_flush(old_ref), State.buffer_updates(state, path, entries)}
+  end
 
-      {:error, _} = error ->
-        {error, state}
-    end
+  defp schedule_flush(ref) when is_reference(ref) do
+    Process.cancel_timer(ref)
+    schedule_flush()
+  end
+
+  defp schedule_flush(_) do
+    schedule_flush()
+  end
+
+  defp schedule_flush do
+    Process.send_after(self(), :flush_updates, @flush_interval_ms)
   end
 end

@@ -27,7 +27,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   defp reindex(%Document{} = document, quoted_ast) do
     with :ok <- ensure_latest_version(document),
          {:ok, entries} <- Indexer.Quoted.index(document, quoted_ast) do
-      Search.Store.update_async(document.path, entries)
+      Search.Store.update(document.path, entries)
     end
   end
 

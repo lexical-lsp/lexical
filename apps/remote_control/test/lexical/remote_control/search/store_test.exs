@@ -164,7 +164,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
         Store.update(path, updated)
 
-        assert [remaining] = Store.all()
+        assert_eventually [remaining] = Store.all()
         refute remaining.ref in [1, 2]
       end
 
@@ -183,7 +183,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
         Store.update(updated_path, updated)
 
-        assert [first, second] = Store.all()
+        assert_eventually [first, second] = Store.all()
 
         assert first.ref in [3, 4]
         assert second.ref in [3, 4]
@@ -200,7 +200,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           reference(ref: 2, subject: Present, path: path)
         ])
 
-        assert {:ok, [found]} = Store.fuzzy("Pres", type: :module, subtype: :reference)
+        assert_eventually {:ok, [found]} = Store.fuzzy("Pres", type: :module, subtype: :reference)
         assert found.ref == 2
         assert found.subject == Present
       end
