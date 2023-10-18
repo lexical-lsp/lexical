@@ -11,7 +11,8 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     :update_index,
     :loaded?,
     :fuzzy,
-    :async_load_ref
+    :async_load_ref,
+    :update_buffer
   ]
 
   def new(%Project{} = project, create_index, update_index, backend) do
@@ -20,7 +21,8 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       create_index: create_index,
       project: project,
       loaded?: false,
-      update_index: update_index
+      update_index: update_index,
+      update_buffer: %{}
     }
   end
 
@@ -64,7 +66,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   def replace(%__MODULE__{} = state, entries) do
     with :ok <- state.backend.replace_all(entries),
-         :ok <- maybe_sync(state) do
+         :ok <- maybe_sync(state, false) do
       {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
     end
   end
@@ -92,10 +94,35 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state.backend.select_all()
   end
 
-  def update(%__MODULE__{} = state, path, entries) do
-    with {:ok, state} <- update_nosync(state, path, entries),
-         :ok <- maybe_sync(state) do
-      {:ok, state}
+  def buffer_updates(%__MODULE__{} = state, path, entries) do
+    %__MODULE__{state | update_buffer: Map.put(state.update_buffer, path, entries)}
+  end
+
+  def drop_buffered_updates(%__MODULE__{} = state) do
+    %__MODULE__{state | update_buffer: %{}}
+  end
+
+  def flush_buffered_updates(%__MODULE__{update_buffer: buffer} = state)
+      when map_size(buffer) == 0 do
+    maybe_sync(state, true)
+    {:ok, state}
+  end
+
+  def flush_buffered_updates(%__MODULE__{} = state) do
+    result =
+      Enum.reduce_while(state.update_buffer, state, fn {path, entries}, state ->
+        case update_nosync(state, path, entries) do
+          {:ok, new_state} ->
+            {:cont, new_state}
+
+          error ->
+            {:halt, error}
+        end
+      end)
+
+    with %__MODULE__{} = state <- result,
+         :ok <- maybe_sync(state, true) do
+      {:ok, drop_buffered_updates(state)}
     end
   end
 
@@ -177,9 +204,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp maybe_sync(%__MODULE__{} = state) do
-    if function_exported?(state.backend, :sync, 1) do
-      state.backend.sync(state.project)
+  defp maybe_sync(%__MODULE__{} = state, force?) do
+    if function_exported?(state.backend, :sync, 2) do
+      state.backend.sync(state.project, force?)
     else
       :ok
     end
