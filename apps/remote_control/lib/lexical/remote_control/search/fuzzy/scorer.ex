@@ -22,7 +22,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
   import Record
 
-  defrecord :subject, original: nil, graphemes: nil, normalized: nil
+  defrecord :subject, graphemes: nil, normalized: nil
 
   @typedoc "A match score. Higher numbers mean a more relevant match."
   @type score :: integer
@@ -30,7 +30,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   @type subject :: term()
   @type pattern :: String.t()
   @type preprocessed ::
-          record(:subject, original: String.t(), graphemes: tuple(), normalized: String.t())
+          record(:subject, graphemes: tuple(), normalized: String.t())
   @non_match_score -500
 
   @doc """
@@ -45,7 +45,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
       |> String.graphemes()
       |> List.to_tuple()
 
-    subject(original: subject, graphemes: graphemes, normalized: normalize(subject))
+    subject(graphemes: graphemes, normalized: normalize(subject))
   end
 
   def preprocess(subject) do
