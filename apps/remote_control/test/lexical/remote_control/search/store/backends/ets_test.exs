@@ -209,7 +209,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       entries = [definition(subject: My.Module)]
 
       assert :ok = Store.replace(entries)
-      Backends.Ets.sync(project, true)
+      Backends.Ets.sync(project)
 
       Store.stop()
 
@@ -241,7 +241,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   end
 
   def restart_store(%Project{} = project) do
-    Backends.Ets.sync(project, true)
+    Backends.Ets.sync(project)
 
     Store
     |> Process.whereis()

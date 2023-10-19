@@ -23,10 +23,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       query_by_subject: 1
     ]
 
-  defstruct [:project, :table_name, :leader?, :leader_pid, :needs_sync?]
+  defstruct [:project, :table_name, :leader?, :leader_pid]
 
   def new_leader(%Project{} = project) do
-    %__MODULE__{project: project, leader?: true, leader_pid: self(), needs_sync?: false}
+    %__MODULE__{project: project, leader?: true, leader_pid: self()}
   end
 
   def new_follower(%Project{} = project, leader_pid) do
@@ -119,26 +119,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     |> File.rm_rf()
   end
 
-  def sync(%__MODULE__{leader?: true} = state, true = _force?) do
-    do_sync(state)
-  end
-
-  def sync(%__MODULE__{leader?: true} = state, false = _force?) do
-    %__MODULE__{state | needs_sync?: true}
-  end
-
-  defp do_sync(%__MODULE__{leader?: true, needs_sync?: true} = state) do
+  def sync(%__MODULE__{leader?: true} = state) do
     file_path_charlist =
       state.project
       |> Schema.index_file_path(current_schema())
       |> String.to_charlist()
 
     :ets.tab2file(state.table_name, file_path_charlist)
-    %__MODULE__{state | needs_sync?: false}
+    state
   end
 
-  defp do_sync(%__MODULE__{} = state) do
-    %__MODULE__{state | needs_sync?: false}
+  def sync(%__MODULE__{leader?: false} = state) do
+    state
   end
 
   defp match_id_key(reference, versions, type, subtype) do

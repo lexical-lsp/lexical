@@ -66,7 +66,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   def replace(%__MODULE__{} = state, entries) do
     with :ok <- state.backend.replace_all(entries),
-         :ok <- maybe_sync(state, false) do
+         :ok <- maybe_sync(state) do
       {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
     end
   end
@@ -104,7 +104,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   def flush_buffered_updates(%__MODULE__{update_buffer: buffer} = state)
       when map_size(buffer) == 0 do
-    maybe_sync(state, true)
+    maybe_sync(state)
     {:ok, state}
   end
 
@@ -121,7 +121,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       end)
 
     with %__MODULE__{} = state <- result,
-         :ok <- maybe_sync(state, true) do
+         :ok <- maybe_sync(state) do
       {:ok, drop_buffered_updates(state)}
     end
   end
@@ -204,9 +204,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp maybe_sync(%__MODULE__{} = state, force?) do
-    if function_exported?(state.backend, :sync, 2) do
-      state.backend.sync(state.project, force?)
+  defp maybe_sync(%__MODULE__{} = state) do
+    if function_exported?(state.backend, :sync, 1) do
+      state.backend.sync(state.project)
     else
       :ok
     end
