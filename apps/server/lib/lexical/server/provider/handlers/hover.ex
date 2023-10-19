@@ -126,7 +126,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
     header =
       Markdown.code_block("""
-      #{module_name}.#{entry.name}/#{entry.arity}
+      #{entry.name}/#{entry.arity}
+      #{module_name}
 
       #{type_defs(entry)}\
       """)
@@ -145,7 +146,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
           ""
         end
 
-      {:ok, "#{macro_prefix}#{module_name}.#{signature}"}
+      {:ok, "#{macro_prefix}#{signature}\n#{module_name}"}
     end
   end
 

@@ -356,7 +356,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      CallHover.my_fun(x, y)
+      my_fun(x, y)
+      CallHover
 
       @spec my_fun(integer(), integer()) :: integer()
       ```
@@ -385,7 +386,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      CallHover.my_fun(x, y)
+      my_fun(x, y)
+      CallHover
 
       @spec my_fun(integer(), integer()) :: integer()
       @spec my_fun(float(), float()) :: float()
@@ -418,7 +420,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      CallHover.my_fun(x, y)
+      my_fun(x, y)
+      CallHover
 
       @spec my_fun(integer(), integer()) :: integer()
       ```
@@ -426,7 +429,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
       ---
 
       ```elixir
-      CallHover.my_fun(x, y, z)
+      my_fun(x, y, z)
+      CallHover
 
       @spec my_fun(integer(), integer(), integer()) :: integer()
       ```
@@ -452,7 +456,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      CallHover.my_fun(x)
+      my_fun(x)
+      CallHover
       ```
 
       Function doc
@@ -497,7 +502,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      CallHover.my_fun(x, y)
+      my_fun(x, y)
+      CallHover
       ```
       """
 
@@ -523,7 +529,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      (macro) MacroHover.my_macro(expr)
+      (macro) my_macro(expr)
+      MacroHover
       ```
 
       This is a macro.
@@ -553,7 +560,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      TypeHover.my_type/0
+      my_type/0
+      TypeHover
 
       @type my_type() :: integer()
       ```
@@ -582,7 +590,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      TypeHover.my_type/0
+      my_type/0
+      TypeHover
 
       @type my_type() :: integer()
       ```
@@ -609,7 +618,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      TypeHover.my_type/1
+      my_type/1
+      TypeHover
 
       @type my_type(var) :: {integer(), var}
       ```
@@ -636,7 +646,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       expected = """
       ```elixir
-      TypeHover.my_type/1
+      my_type/1
+      TypeHover
 
       @opaque my_type(var)
       ```
