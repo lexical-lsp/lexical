@@ -8,8 +8,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
   alias Lexical.RemoteControl.ModuleMappings
 
   import Lexical.Test.CodeSigil
-  import Compilers.HEEx, only: [compile: 1]
-
+  import Lexical.Test.Quiet
   use ExUnit.Case
 
   def with_capture_server(_) do
@@ -29,6 +28,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
 
     on_exit(fn ->
       Code.compiler_options(prev_compiler_options)
+    end)
+  end
+
+  def compile(document) do
+    quiet(:stderr, fn ->
+      Compilers.HEEx.compile(document)
     end)
   end
 

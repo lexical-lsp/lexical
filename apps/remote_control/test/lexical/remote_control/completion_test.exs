@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.CompletionTest do
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
+  import Lexical.Test.Quiet
 
   use ExUnit.Case, async: true
 
@@ -89,7 +90,10 @@ defmodule Lexical.RemoteControl.CompletionTest do
     {position, document} = pop_cursor(source, as: :document)
 
     text = Document.to_string(document)
-    Code.compile_string(text)
+
+    quiet(:stderr, fn ->
+      Code.compile_string(text)
+    end)
 
     Completion.struct_fields(document, position)
   end
