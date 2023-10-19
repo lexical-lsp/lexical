@@ -58,7 +58,7 @@ run_test() {
 
 test_using_system_installation() {
     local expect=(
-        "No active version manager detected"
+        "No activated version manager detected"
         "Could not activate a version manager"
     )
 
@@ -72,7 +72,7 @@ test_find_asdf_directory() {
         'export ASDF_DIR=/version_managers/asdf_vm'
     )
     local expect=(
-        "No active version manager detected"
+        "No activated version manager detected"
         "Found asdf. Activating"
         "Detected Elixir through asdf"
     )
@@ -113,7 +113,7 @@ test_unactivated_rtx() {
         'export PATH="/version_managers/rtx_vm:$PATH"'
     )
     local expect=(
-        "No active version manager detected"
+        "No activated version manager detected"
         "Found rtx"
         "Detected Elixir through rtx"
     )

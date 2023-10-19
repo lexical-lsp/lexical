@@ -15,17 +15,15 @@
 #
 
 activate_version_manager() {
-    _detect_version_manager ||
-        _try_activating_asdf && _detect_asdf ||
+    if (_detect_asdf || _detect_rtx); then
+        return 0
+    fi
+
+    echo >&2 "No activated version manager detected. Searching for version manager..."
+
+    _try_activating_asdf && _detect_asdf ||
         _try_activating_rtx && _detect_rtx
     return $?
-}
-
-_detect_version_manager() {
-    if ! (_detect_asdf || _detect_rtx); then
-        echo >&2 "No active version manager detected."
-        return 1
-    fi
 }
 
 _detect_asdf() {
