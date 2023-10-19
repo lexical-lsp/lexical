@@ -272,5 +272,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         assert boosted?(completion)
       end
     end
+    test "something", %{ project: project} do
+
+      [arity_1, arity_2] = project
+               |> complete("Enum.|")
+               |> fetch_completion("count_until")
+               |> then(fn {:ok, list} -> list end)
+               |> Enum.sort_by(& &1.sort_text)
+               |> IO.inspect(label: "result")
+
+      assert arity_1.insert_text == "count_until(${1:enumerable}, ${2:limit})"
+      assert arity_2.insert_text == "count_until(${1:enumerable}, ${2:fun}, ${3:limit})"
+    end
   end
 end
