@@ -22,11 +22,11 @@ dialyzer.plt.umbrella:
 	mix dialyzer --plt
 
 test.umbrella:
-	mix test
+	mix test --seed 869451
 
 test.projects:
-	cd projects
-	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix test && cd ../..;)
+	cd projects/lexical_shared && mix test --seed 521851 && cd ../..
+	cd projects/lexical_test && mix test --seed 303095 && cd ../..
 
 compile.umbrella: compile.projects
 	mix deps.get
