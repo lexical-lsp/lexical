@@ -108,26 +108,22 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   defp entry_content(%Docs.Entry{kind: fn_or_macro} = entry)
        when fn_or_macro in [:function, :macro] do
-    with {:ok, call_header} <- call_header(entry) do
-      specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
+    call_header = call_header(entry)
+    specs = Enum.map_join(entry.defs, "\n", &("@spec " <> &1))
 
-      header =
-        [call_header, specs]
-        |> Markdown.join_sections()
-        |> String.trim()
-        |> Markdown.code_block()
+    header =
+      [call_header, specs]
+      |> Markdown.join_sections()
+      |> String.trim()
+      |> Markdown.code_block()
 
-      Markdown.join_sections([header, entry_doc_content(entry.doc)])
-    end
+    Markdown.join_sections([header, entry_doc_content(entry.doc)])
   end
 
   defp entry_content(%Docs.Entry{kind: :type} = entry) do
-    module_name = Ast.Module.name(entry.module)
-
     header =
       Markdown.code_block("""
-      #{entry.name}/#{entry.arity}
-      #{module_name}
+      #{call_header(entry)}
 
       #{type_defs(entry)}\
       """)
@@ -135,19 +131,50 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     Markdown.join_sections([header, entry_doc_content(entry.doc)])
   end
 
-  defp call_header(%Docs.Entry{kind: maybe_macro} = entry) do
-    with [signature | _] <- entry.signature do
-      module_name = Ast.Module.name(entry.module)
+  @one_line_header_cutoff 50
 
-      macro_prefix =
-        if maybe_macro == :macro do
-          "(macro) "
-        else
-          ""
-        end
+  defp call_header(%Docs.Entry{kind: :type} = entry) do
+    module_name = Ast.Module.name(entry.module)
 
-      {:ok, "#{macro_prefix}#{signature}\n#{module_name}"}
+    one_line_header = "#{module_name}.#{entry.name}/#{entry.arity}"
+
+    two_line_header =
+      "#{last_module_name(module_name)}.#{entry.name}/#{entry.arity}\n#{module_name}"
+
+    if String.length(one_line_header) >= @one_line_header_cutoff do
+      two_line_header
+    else
+      one_line_header
     end
+  end
+
+  defp call_header(%Docs.Entry{kind: maybe_macro} = entry) do
+    [signature | _] = entry.signature
+    module_name = Ast.Module.name(entry.module)
+
+    macro_prefix =
+      if maybe_macro == :macro do
+        "(macro) "
+      else
+        ""
+      end
+
+    one_line_header = "#{macro_prefix}#{module_name}.#{signature}"
+
+    two_line_header =
+      "#{macro_prefix}#{last_module_name(module_name)}.#{signature}\n#{module_name}"
+
+    if String.length(one_line_header) >= @one_line_header_cutoff do
+      two_line_header
+    else
+      one_line_header
+    end
+  end
+
+  defp last_module_name(module_name) do
+    module_name
+    |> String.split(".")
+    |> List.last()
   end
 
   defp type_defs(%Docs.Entry{metadata: %{opaque: true}} = entry) do
