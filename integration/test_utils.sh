@@ -27,19 +27,9 @@ assert_contains() {
 
     if [ ${#not_found[@]} -ne 0 ]; then
         log_error "Assertion failed!"
-
-        log "\n  ${cyan}Expected:${reset}\n\n"
-
-        for expected in "${not_found[@]}"; do
-            prefix_lines "    " "$expected"
-        done
-
-        log "\n  ${cyan}To be in:${reset}\n\n"
-
-        prefix_lines "    " "$output"
-
+        log_section "Expected" "${not_found[@]}"
+        log_section "To be in" "$output"
         log "\n\n"
-
         return 1
     fi
 }
@@ -84,6 +74,17 @@ log_success() {
 
 log_info() {
     log "${faint}$1${reset}\n"
+}
+
+log_section() {
+    local title="$1"
+    local content=("${@:2}")
+
+    log "\n  ${cyan}${title}:${reset}\n\n"
+
+    for item in "${content[@]}"; do
+        prefix_lines "    " "$item"
+    done
 }
 
 prefix_lines() {
