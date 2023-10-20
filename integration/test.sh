@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Disable warning for interpolations in single quotes:
+# shellcheck disable=2016
+
 set -eo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
@@ -52,10 +56,9 @@ run_test() {
     fi
 }
 
-# Tests:
-
 test_using_system_installation() {
     local expect=(
+        "No activated version manager detected"
         "Could not activate a version manager"
     )
 
@@ -64,38 +67,59 @@ test_using_system_installation() {
 }
 
 test_find_asdf_directory() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        'export ASDF_DIR=/version_managers/asdf_vm'
+    )
     local expect=(
-        "No version manager detected"
-        "Found asdf"
+        "No activated version manager detected"
+        "Found asdf. Activating"
         "Detected Elixir through asdf"
     )
-    local setup="export ASDF_DIR=/version_managers/asdf_vm"
 
-    run_test "$setup" "${expect[@]}"
+    run_test "${setup[*]}" "${expect[@]}"
     return $?
 }
 
 test_activated_asdf() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        "ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh"
+    )
     local expect=(
         "Detected Elixir through asdf"
     )
-    local setup="ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh"
 
-    run_test "$setup" "${expect[@]}"
+    run_test "${setup[*]}" "${expect[@]}"
     return $?
 }
 
 test_activated_rtx() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        'eval "$(/version_managers/rtx_vm/rtx activate bash)"'
+    )
     local expect=(
         "Detected Elixir through rtx"
     )
-    # shellcheck disable=2016
-    local setup='eval "$(/version_managers/rtx_vm/rtx activate bash)"'
 
-    run_test "$setup" "${expect[@]}"
+    run_test "${setup[*]}" "${expect[@]}"
     return $?
 }
 
-# Run all tests
+test_unactivated_rtx() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        'export PATH="/version_managers/rtx_vm:$PATH"'
+    )
+    local expect=(
+        "No activated version manager detected"
+        "Found rtx"
+        "Detected Elixir through rtx"
+    )
+
+    run_test "${setup[*]}" "${expect[@]}"
+    return $?
+}
 
 run_tests_and_exit
