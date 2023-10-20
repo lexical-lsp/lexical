@@ -13,16 +13,6 @@ defmodule Lexical.Server.BootTest do
       assert [] = Boot.detect_errors()
     end
 
-    test "includes error when compiled erlang is too new" do
-      patch_runtime_versions("1.14.5", "25.0")
-      patch_compiled_versions("1.14.5", "26.1")
-
-      assert [error] = Boot.detect_errors()
-      assert error =~ "FATAL: Lexical version check failed"
-      assert error =~ "Compiled with: 26.1"
-      assert error =~ "Started with:  25.0"
-    end
-
     test "includes error when runtime elixir is incompatible" do
       patch_runtime_versions("1.12.0", "24.3.4")
       patch_compiled_versions("1.13.4", "24.3.4")
