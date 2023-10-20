@@ -21,3 +21,9 @@ end)
 end)
 
 LXical.Server.Boot.start()
+
+if System.get_env("LX_HALT_AFTER_BOOT") do
+  require Logger
+  Logger.warning("Shutting down (LX_HALT_AFTER_BOOT)")
+  System.halt()
+end

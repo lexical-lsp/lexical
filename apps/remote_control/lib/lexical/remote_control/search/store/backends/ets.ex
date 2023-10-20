@@ -21,12 +21,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def sync(%Project{}) do
-    GenServer.call(genserver_name(), :sync)
-  end
-
-  def force_sync(%Project{}) do
-    GenServer.call(genserver_name(), :force_sync)
+  def sync(%Project{}, force?) do
+    GenServer.call(genserver_name(), {:sync, force?})
   end
 
   @impl Backend
@@ -110,19 +106,19 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     {:reply, reply, new_state}
   end
 
+  def handle_call({:sync, force?}, _from, %State{} = state) do
+    state = State.sync(state, force?)
+    {:reply, :ok, state}
+  end
+
   def handle_call({function_name, arguments}, _from, %State{} = state) do
     arguments = [state | arguments]
     reply = apply(State, function_name, arguments)
     {:reply, reply, state}
   end
 
-  def handle_call(:sync, _from, %State{} = state) do
-    state = State.sync(state)
-    {:reply, :ok, state}
-  end
-
   def handle_call(:force_sync, _from, %State{} = state) do
-    new_state = State.do_sync(state)
+    new_state = State.sync(state, false)
     {:reply, :ok, new_state}
   end
 
@@ -145,7 +141,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   def handle_info(:do_sync, %State{} = state) do
-    new_state = State.do_sync(state)
+    new_state = State.sync(state, true)
     schedule_sync()
     {:noreply, new_state}
   end

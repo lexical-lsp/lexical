@@ -52,7 +52,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
       assert {:ok, _} = Indexing.on_event(file_quoted_event(doc, quoted), state)
 
-      assert {:ok, [entry]} = Search.Store.exact("NewModule", [])
+      assert_eventually {:ok, [entry]} = Search.Store.exact("NewModule", [])
 
       assert entry.subject == NewModule
     end
@@ -64,14 +64,14 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
       {doc, quoted} =
         ~q[
-        defmodule UpdatedModule do
-        end
-      ]
+          defmodule UpdatedModule do
+          end
+        ]
         |> quoted_document()
 
       assert {:ok, _} = Indexing.on_event(file_quoted_event(doc, quoted), state)
 
-      assert {:ok, [entry]} = Search.Store.exact("UpdatedModule", [])
+      assert_eventually {:ok, [entry]} = Search.Store.exact("UpdatedModule", [])
       assert entry.subject == UpdatedModule
       assert {:ok, []} = Search.Store.exact("OldModule", [])
     end
@@ -82,9 +82,9 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
       {doc, quoted} =
         ~q[
-        defmodule Stale do
-        end
-      ]
+          defmodule Stale do
+          end
+        ]
         |> quoted_document()
 
       assert {:ok, _} = Indexing.on_event(file_quoted_event(doc, quoted), state)
@@ -96,21 +96,22 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
     test "its entries should be deleted", %{project: project, state: state} do
       {doc, quoted} =
         ~q[
-        defmodule ToDelete do
-        end
-      ]
+          defmodule ToDelete do
+          end
+        ]
         |> quoted_document()
 
       {:ok, entries} = Search.Indexer.Quoted.index(doc, quoted)
       Search.Store.update(doc.path, entries)
-      assert {:ok, [_]} = Search.Store.exact("ToDelete", [])
+
+      assert_eventually {:ok, [_]} = Search.Store.exact("ToDelete", [])
 
       Indexing.on_event(
         filesystem_event(project: project, uri: doc.uri, event_type: :deleted),
         state
       )
 
-      assert {:ok, []} = Search.Store.exact("ToDelete", [])
+      assert_eventually {:ok, []} = Search.Store.exact("ToDelete", [])
     end
   end
 

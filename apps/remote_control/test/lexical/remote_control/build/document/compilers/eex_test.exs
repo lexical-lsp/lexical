@@ -9,7 +9,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
   use ExUnit.Case
 
-  import Compilers.EEx
+  import Compilers.EEx, only: [recognizes?: 1]
+  import Lexical.Test.Quiet
   import Lexical.Test.CodeSigil
 
   def with_capture_server(_) do
@@ -25,6 +26,10 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
   def document_with_content(content) do
     Document.new("file:///file.eex", content, 0)
+  end
+
+  def compile(document) do
+    quiet(:stderr, fn -> Compilers.EEx.compile(document) end)
   end
 
   setup_all do

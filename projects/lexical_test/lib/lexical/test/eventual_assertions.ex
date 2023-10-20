@@ -16,7 +16,7 @@ defmodule Lexical.Test.EventualAssertions do
   end
 
   defp do_eventually(func, {:=, _, [left, _right]} = assertion, timeout) do
-    quote do
+    quote generated: true do
       timer_ref = Process.send_after(self(), :assert_timeout, unquote(timeout))
 
       asserter = fn ->
@@ -28,7 +28,7 @@ defmodule Lexical.Test.EventualAssertions do
   end
 
   defp do_eventually(func, assertion, timeout) do
-    quote do
+    quote generated: true do
       timer_ref = Process.send_after(self(), :assert_timeout, unquote(timeout))
 
       asserter = fn ->

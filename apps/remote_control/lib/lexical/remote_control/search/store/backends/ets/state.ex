@@ -119,11 +119,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     |> File.rm_rf()
   end
 
-  def sync(%__MODULE__{leader?: true} = state) do
+  def sync(%__MODULE__{leader?: true} = state, true = _force?) do
+    do_sync(state)
+  end
+
+  def sync(%__MODULE__{leader?: true} = state, false = _force?) do
     %__MODULE__{state | needs_sync?: true}
   end
 
-  def do_sync(%__MODULE__{leader?: true, needs_sync?: true} = state) do
+  defp do_sync(%__MODULE__{leader?: true, needs_sync?: true} = state) do
     file_path_charlist =
       state.project
       |> Schema.index_file_path(current_schema())
@@ -133,7 +137,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     %__MODULE__{state | needs_sync?: false}
   end
 
-  def do_sync(%__MODULE__{} = state) do
+  defp do_sync(%__MODULE__{} = state) do
     %__MODULE__{state | needs_sync?: false}
   end
 

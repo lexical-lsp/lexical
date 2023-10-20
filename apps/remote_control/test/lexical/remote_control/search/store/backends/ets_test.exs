@@ -209,14 +209,14 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       entries = [definition(subject: My.Module)]
 
       assert :ok = Store.replace(entries)
+      Backends.Ets.sync(project, true)
 
-      Backends.Ets.force_sync(project)
       Store.stop()
 
       refute_eventually(ready?(project))
       assert_eventually(ready?(project))
 
-      assert entries == Store.all()
+      assert_eventually entries == Store.all()
     end
   end
 
@@ -231,19 +231,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
         reference(ref: 2, subject: Present, path: path)
       ])
 
-      Backends.Ets.force_sync(project)
       Store.stop()
 
       refute_eventually(ready?(project))
       assert_eventually(ready?(project))
 
-      assert [found] = Store.all()
-      assert found.ref == 2
+      assert_eventually [%{ref: 2}] = Store.all()
     end
   end
 
   def restart_store(%Project{} = project) do
-    Backends.Ets.force_sync(project)
+    Backends.Ets.sync(project, true)
 
     Store
     |> Process.whereis()
