@@ -28,12 +28,16 @@ COPY integration/boot/set_up_asdf.sh integration/boot/set_up_asdf.sh
 RUN integration/boot/set_up_asdf.sh
 
 COPY apps apps
-COPY bin bin
 COPY config config
 COPY projects projects
 COPY mix* .
 
-COPY integration/boot/set_up_lexical.sh integration/boot/set_up_lexical.sh
-RUN integration/boot/set_up_lexical.sh
+RUN mix local.hex --force
+RUN mix deps.get
+RUN mix compile
+
+COPY bin bin
+
+RUN mix package
 
 CMD bash
