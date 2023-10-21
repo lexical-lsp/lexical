@@ -5,14 +5,17 @@ defmodule Lexical.Server.Window do
 
   @type level :: :error | :warning | :info | :log
 
-  @spec log(level, String.t(), [{:label, String.t()}]) :: String.t()
-  def log(level, message, opts \\ [])
-
-  def log(level, message, opts) when level in [:error, :warning, :info, :log] do
-    formatted_message = format_message(message, opts)
-    log_message = apply(LogMessage, level, [formatted_message])
+  @spec log(level, String.t()) :: String.t()
+  def log(level, message) when level in [:error, :warning, :info, :log] do
+    log_message = apply(LogMessage, level, [message])
     Transport.write(log_message)
     message
+  end
+
+  for level <- [:error, :warning, :info] do
+    def unquote(level)(message) do
+      log(unquote(level), message)
+    end
   end
 
   @spec show(level, String.t()) :: String.t()
@@ -20,12 +23,5 @@ defmodule Lexical.Server.Window do
     show_message = apply(ShowMessage, level, [message])
     Transport.write(show_message)
     message
-  end
-
-  defp format_message(message, opts) do
-    case Keyword.get(opts, :label) do
-      nil -> inspect(message) <> "\n"
-      label -> "#{label}: #{inspect(message, limit: :infinity)}\n"
-    end
   end
 end
