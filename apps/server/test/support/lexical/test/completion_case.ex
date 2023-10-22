@@ -113,9 +113,9 @@ defmodule Lexical.Test.Server.CompletionCase do
         actual_boost = String.to_integer(boost)
 
         if expected_amount == :any do
-          actual_boost < 99
+          actual_boost < 999999
         else
-          actual_boost == 99 - expected_amount
+          actual_boost == 999999 - expected_amount
         end
 
       _ ->

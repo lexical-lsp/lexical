@@ -80,13 +80,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @impl Builder
   def boost(item, local_boost \\ 1, global_boost \\ 0)
 
-  def boost(%Completion.Item{} = item, local_boost, global_boost)
-      when local_boost in 0..9 and global_boost in 0..9 do
-    global_boost = Integer.to_string(9 - global_boost)
-    local_boost = Integer.to_string(9 - local_boost)
+  def boost(%Completion.Item{} = item, local_boost , global_boost)
+    when is_list(local_boost) and is_list(global_boost) and length(local_boost) <= 3 and length(global_boost) <= 3 do
+    sort_text = "0#{boost_to_sort_string(global_boost)}#{boost_to_sort_string(local_boost)}_#{item.label}"
 
-    sort_text = "0#{global_boost}#{local_boost}_#{item.label}"
     %Completion.Item{item | sort_text: sort_text}
+  end
+
+  def boost(%Completion.Item{} = item, local_boost, global_boost)
+      when local_boost in 0..9 do
+    boost(item, [local_boost], global_boost)
+  end
+
+  def boost(%Completion.Item{} = item, local_boost, global_boost)
+      when global_boost in 0..9 do
+    boost(item, local_boost, [global_boost])
   end
 
   # HACK: This fixes ElixirSense struct completions for certain cases.
@@ -179,4 +187,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         {:ok, length(local_name)}
     end
   end
+
+  defp boost_to_sort_string(boost) do
+    boost
+      |> Enum.map(&(9 - &1))
+      |> Enum.join()
+      |> String.pad_trailing(3, "9")
+  end
+
 end
