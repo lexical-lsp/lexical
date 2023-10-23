@@ -56,7 +56,7 @@ run_test() {
     fi
 }
 
-test_using_system_installation() {
+test_system_installation() {
     local expect=(
         "No activated version manager detected"
         "Could not activate a version manager"
@@ -66,7 +66,20 @@ test_using_system_installation() {
     return $?
 }
 
-test_find_asdf_directory() {
+test_asdf_already_activated() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        'ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh'
+    )
+    local expect=(
+        "Detected Elixir through asdf"
+    )
+
+    run_test "${setup[*]}" "${expect[@]}"
+    return $?
+}
+
+test_asdf_dir_found() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
         'export ASDF_DIR=/version_managers/asdf_vm'
@@ -81,12 +94,16 @@ test_find_asdf_directory() {
     return $?
 }
 
-test_activated_asdf() {
+test_asdf_used_when_activated_rtx_missing_elixir() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
-        "ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh"
+        'eval "$(/version_managers/rtx_vm/rtx activate bash)" && '
+        'rtx uninstall "elixir@$ELIXIR_VERSION" && '
+        'export ASDF_DIR=/version_managers/asdf_vm'
     )
     local expect=(
+        "No activated version manager detected"
+        "Found asdf. Activating"
         "Detected Elixir through asdf"
     )
 
@@ -94,7 +111,7 @@ test_activated_asdf() {
     return $?
 }
 
-test_activated_rtx() {
+test_rtx_already_activated() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
         'eval "$(/version_managers/rtx_vm/rtx activate bash)"'
@@ -107,7 +124,7 @@ test_activated_rtx() {
     return $?
 }
 
-test_unactivated_rtx() {
+test_rtx_binary_found_and_activated() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
         'export PATH="/version_managers/rtx_vm:$PATH"'
@@ -115,6 +132,23 @@ test_unactivated_rtx() {
     local expect=(
         "No activated version manager detected"
         "Found rtx"
+        "Detected Elixir through rtx"
+    )
+
+    run_test "${setup[*]}" "${expect[@]}"
+    return $?
+}
+
+test_rtx_used_when_activated_asdf_missing_elixir() {
+    local setup=(
+        'mv "$(which elixir)" "$(which elixir).hidden" && '
+        'ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh && '
+        'asdf uninstall elixir "$ELIXIR_VERSION" && '
+        'export PATH="/version_managers/rtx_vm:$PATH"'
+    )
+    local expect=(
+        "No activated version manager detected"
+        "Found rtx. Activating"
         "Detected Elixir through rtx"
     )
 
