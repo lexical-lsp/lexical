@@ -5,11 +5,13 @@ defmodule Lexical.Server.Window do
 
   @type level :: :error | :warning | :info | :log
 
-  @spec log(level, String.t()) :: String.t()
-  def log(level, message) when level in [:error, :warning, :info, :log] do
+  @levels [:error, :warning, :info, :log]
+
+  @spec log(level, String.t()) :: :ok
+  def log(level, message) when level in @levels and is_binary(message) do
     log_message = apply(LogMessage, level, [message])
     Transport.write(log_message)
-    message
+    :ok
   end
 
   for level <- [:error, :warning, :info] do
@@ -18,10 +20,10 @@ defmodule Lexical.Server.Window do
     end
   end
 
-  @spec show(level, String.t()) :: String.t()
-  def show(level, message) do
+  @spec show(level, String.t()) :: :ok
+  def show(level, message) when level in @levels and is_binary(message) do
     show_message = apply(ShowMessage, level, [message])
     Transport.write(show_message)
-    message
+    :ok
   end
 end
