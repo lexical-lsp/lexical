@@ -1,6 +1,4 @@
 defmodule Lexical.Server.Transport.StdIO do
-  alias Lexical.Protocol.Notifications.LogMessage
-
   alias Lexical.Protocol.JsonRpc
 
   @behaviour Lexical.Server.Transport
@@ -54,30 +52,7 @@ defmodule Lexical.Server.Transport.StdIO do
   def write(_, []) do
   end
 
-  def log(level, message, opts \\ [])
-
-  def log(level, message, opts) when level in [:error, :warning, :info, :log] do
-    formatted_message = format_message(message, opts)
-    log_message = apply(LogMessage, level, [formatted_message])
-    write(:standard_io, log_message)
-    message
-  end
-
-  def log(_level, message, opts) do
-    log_message = format_message(message, opts)
-
-    write(:standard_error, log_message)
-    message
-  end
-
   # private
-
-  defp format_message(message, opts) do
-    case Keyword.get(opts, :label) do
-      nil -> inspect(message) <> "\n"
-      label -> "#{label}: '#{inspect(message, limit: :infinity)}\n"
-    end
-  end
 
   defp loop(buffer, device, callback) do
     case IO.read(device, :line) do

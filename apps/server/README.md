@@ -1,3 +1,3 @@
 # Lexical.Server
 
-The Lexical Language server implemnetation
+The Lexical Language server implementation

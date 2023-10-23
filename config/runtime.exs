@@ -19,15 +19,6 @@ cond do
       path: log_file_name,
       level: :debug
 
-  Code.ensure_loaded?(JsonRpcBackend) ->
-    config :logger,
-      backends: [JsonRpcBackend]
-
-    config :logger, JsonRpcBackend,
-      level: :error,
-      format: "$message",
-      metadata: []
-
   true ->
     :ok
 end
