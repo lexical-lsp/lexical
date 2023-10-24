@@ -35,10 +35,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @callback prepare(priv_state()) :: {:ok, load_state()}
 
   @doc """
-  Optionally syncs the backend to the file system (optional)
-  If the force? option is true, the bacend ensures that it immediately writes its content
+  Synchronizes the backend to the file system (optional)
   """
-  @callback sync(Project.t(), boolean) :: :ok | {:error, any()}
+  @callback sync(Project.t()) :: :ok | {:error, any()}
 
   @doc """
   Inserts all entries into the backend
@@ -80,5 +79,5 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   """
   @callback find_by_refs([reference()], type_query(), subtype_query()) :: [Entry.t()]
 
-  @optional_callbacks sync: 2
+  @optional_callbacks sync: 1
 end
