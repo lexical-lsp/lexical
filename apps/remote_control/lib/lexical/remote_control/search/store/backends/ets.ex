@@ -101,9 +101,13 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
   @impl GenServer
   def handle_call(:prepare, _from, %State{} = state) do
-    {reply, new_state} = State.prepare(state)
+    case State.prepare(state) do
+      {:error, :not_leader} = error ->
+        {:stop, :normal, error, state}
 
-    {:reply, reply, new_state}
+      {reply, new_state} ->
+        {:reply, reply, new_state}
+    end
   end
 
   def handle_call({:sync, force?}, _from, %State{} = state) do
