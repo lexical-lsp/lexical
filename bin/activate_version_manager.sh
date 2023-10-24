@@ -21,8 +21,8 @@ activate_version_manager() {
 
     echo >&2 "No activated version manager detected. Searching for version manager..."
 
-    _try_activating_asdf && _detect_asdf ||
-        _try_activating_rtx && _detect_rtx
+    { _try_activating_asdf && _detect_asdf; } ||
+        { _try_activating_rtx && _detect_rtx; }
     return $?
 }
 
