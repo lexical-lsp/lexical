@@ -98,6 +98,29 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.ConfigTest do
       assert result.source == "Elixir"
     end
 
+    test "it produces diagnostics even in the `config_env` block" do
+      assert {:error, [result]} =
+               ~q[
+                 import Config
+
+                 if config_env() == :product do
+                   f
+                 end
+               ]
+               |> document()
+               |> compile()
+
+      if Features.with_diagnostics?() do
+        assert result.message =~ ~s[undefined variable "f"]
+      else
+        assert result.message =~ ~s[undefined function f/0]
+      end
+
+      assert result.position == 4
+      assert result.severity == :error
+      assert result.source == "Elixir"
+    end
+
     test "it produces no diagnostics on success" do
       assert {:ok, []} =
                ~q[

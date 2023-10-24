@@ -48,7 +48,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
     contents = Document.to_string(document)
 
     try do
-      Config.Reader.eval!(document.path, contents)
+      Config.Reader.eval!(document.path, contents, env: :test)
       {:ok, []}
     rescue
       e ->
