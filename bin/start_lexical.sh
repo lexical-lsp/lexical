@@ -5,7 +5,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 
 # shellcheck disable=SC1091
 if ! . "$script_dir"/activate_version_manager.sh; then
-    echo "Could not activate a version manager. Trying system installation."
+    echo >&2 "Could not activate a version manager. Trying system installation."
 fi
 
 case $1 in
