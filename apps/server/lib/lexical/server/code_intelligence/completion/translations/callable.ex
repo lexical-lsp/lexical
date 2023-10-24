@@ -99,12 +99,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
+  defp maybe_boost(item, %_{name: name, arity: arity}, default_boost \\ 5) do
     if String.starts_with?(name, "__") or name in @default_functions do
       item
     else
-      IO.inspect(name)
-      Builder.boost(item, default_boost)
+      arity_sort_text =
+        arity
+        |> to_string
+        |> String.pad_leading(3, "0")
+
+      item
+      |> Map.put(:sort_text, "#{name}:#{arity_sort_text}")
+      |> Builder.boost(default_boost)
     end
   end
 

@@ -145,8 +145,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> Enum.filter(fn completion ->
           sort_text = completion.sort_text
           # arity 1 and is is_map
-          not String.contains?(sort_text, ",") and
-            not String.contains?(sort_text, "/2") and
+          String.contains?(sort_text, ":001") and
             String.contains?(sort_text, "is_map")
         end)
 
@@ -273,16 +272,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       end
     end
 
-    test "functions with lower arity have higher completion priority", %{ project: project} do
-
-      [arity_2, arity_3] = project
-               |> complete("Enum.|")
-               |> fetch_completion("count_until")
-               |> then(fn {:ok, list} -> list end)
-               |> Enum.sort_by(& &1.sort_text)
+    test "functions with lower arity have higher completion priority", %{project: project} do
+      [arity_2, arity_3] =
+        project
+        |> complete("Enum.|")
+        |> fetch_completion("count_until")
+        |> then(fn {:ok, list} -> list end)
+        |> Enum.sort_by(& &1.sort_text)
 
       assert apply_completion(arity_2) == "Enum.count_until(${1:enumerable}, ${2:limit})"
-      assert apply_completion(arity_3) == "Enum.count_until(${1:enumerable}, ${2:fun}, ${3:limit})"
+
+      assert apply_completion(arity_3) ==
+               "Enum.count_until(${1:enumerable}, ${2:fun}, ${3:limit})"
     end
   end
 end
