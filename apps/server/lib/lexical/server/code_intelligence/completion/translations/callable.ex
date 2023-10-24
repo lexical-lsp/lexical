@@ -99,12 +99,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name, arity: arity}, default_boost \\ 5) do
+  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
     if String.starts_with?(name, "__") or name in @default_functions do
       item
     else
-      arity_boost = if arity < 9, do: 9 - arity, else: 9
-      Builder.boost(item, [default_boost, arity_boost])
+      IO.inspect(name)
+      Builder.boost(item, default_boost)
     end
   end
 
