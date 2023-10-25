@@ -50,6 +50,6 @@ jobs:
         with:
           artifacts: lexical*.zip
           makeLatest: true
-          generateReleaseNotes: true
+          generateReleaseNotes: false
           allowUpdates: true
           artifactErrorsFailBuild: true
