@@ -61,6 +61,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
       {:update_index, result} ->
         update_index_complete(new_state, result)
+
+      :initialize_fuzzy ->
+        initialize_fuzzy(new_state)
     end
   end
 
@@ -152,6 +155,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
             Logger.info("backend reports stale")
             {:update_index, state.update_index.(state.project, all(state))}
 
+          {:error, :not_leader} ->
+            :initialize_fuzzy
+
           error ->
             Logger.error("Could not initialize index due to #{inspect(error)}")
             error
@@ -178,12 +184,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp update_index_complete(%__MODULE__{} = state, {:ok, updated_entries, deleted_paths}) do
-    fuzzy =
-      state
-      |> all()
-      |> Fuzzy.from_entries()
-
-    starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
+    starting_state = initialize_fuzzy(%__MODULE__{state | loaded?: true})
 
     new_state =
       updated_entries
@@ -210,5 +211,14 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     else
       :ok
     end
+  end
+
+  defp initialize_fuzzy(%__MODULE__{} = state) do
+    fuzzy =
+      state
+      |> all()
+      |> Fuzzy.from_entries()
+
+    %__MODULE__{state | fuzzy: fuzzy}
   end
 end

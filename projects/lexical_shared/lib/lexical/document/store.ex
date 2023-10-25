@@ -334,7 +334,28 @@ defmodule Lexical.Document.Store do
     {:noreply, State.unload(state, uri)}
   end
 
+  def set_entropy(entropy) do
+    :persistent_term.put(entropy_key(), entropy)
+    entropy
+  end
+
+  def entropy do
+    case :persistent_term.get(entropy_key(), :undefined) do
+      :undefined ->
+        [:positive]
+        |> System.unique_integer()
+        |> set_entropy()
+
+      entropy ->
+        entropy
+    end
+  end
+
   def name do
-    {:via, :global, __MODULE__}
+    {:via, :global, {__MODULE__, entropy()}}
+  end
+
+  defp entropy_key do
+    {__MODULE__, :entropy}
   end
 end
