@@ -53,3 +53,5 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           artifactErrorsFailBuild: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
