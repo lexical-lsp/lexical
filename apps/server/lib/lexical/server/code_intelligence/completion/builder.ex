@@ -85,7 +85,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     global_boost = Integer.to_string(9 - global_boost)
     local_boost = Integer.to_string(9 - local_boost)
 
-    sort_text = "0#{global_boost}#{local_boost}_#{item.sort_text || item.label}"
+    sort_text = "0#{global_boost}#{local_boost}_#{fallback(item.sort_text, item.label)}"
     %Completion.Item{item | sort_text: sort_text}
   end
 

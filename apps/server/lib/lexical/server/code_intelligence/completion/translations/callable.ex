@@ -45,6 +45,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       label: label(callable, env),
       tags: tags
     )
+    |> Map.put(:sort_text, sort_text(callable))
     |> maybe_boost(callable)
   end
 
@@ -59,6 +60,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         label: name_and_arity
       )
+      |> Map.put(:sort_text, sort_text(callable))
       |> maybe_boost(callable, 4)
 
     call_capture =
@@ -68,6 +70,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         label: label(callable, env)
       )
+      |> Map.put(:sort_text, sort_text(callable))
       |> maybe_boost(callable, 4)
 
     [complete_capture, call_capture]
@@ -99,18 +102,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name, arity: arity}, default_boost \\ 5) do
+  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
     if String.starts_with?(name, "__") or name in @default_functions do
-      item
+      Builder.boost(item, 0)
     else
-      arity_sort_text =
-        arity
-        |> to_string
-        |> String.pad_leading(3, "0")
-
-      item
-      |> Map.put(:sort_text, "#{name}:#{arity_sort_text}")
-      |> Builder.boost(default_boost)
+      Builder.boost(item, default_boost)
     end
   end
 
@@ -121,5 +117,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp name_and_arity(%_{name: name, arity: arity}) do
     "#{name}/#{arity}"
+  end
+
+  defp sort_text(%_callable{name: name, arity: arity}) do
+    normalized_arity =
+      arity
+      |> Integer.to_string()
+      |> String.pad_leading(3, "0")
+
+    "#{name}:#{normalized_arity}"
   end
 end

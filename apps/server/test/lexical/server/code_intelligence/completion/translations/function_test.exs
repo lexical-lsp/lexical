@@ -257,7 +257,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
       low_priority_completion? = fn fun ->
         String.starts_with?(fun.label, "__") or
-          Enum.any?(defaults, &String.contains?(fun.sort_text, &1))
+          Enum.any?(defaults, &String.contains?(fun.label, &1))
       end
 
       {low_priority_completions, normal_completions} =
