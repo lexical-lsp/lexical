@@ -1,6 +1,7 @@
-defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
+defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceWithUnderscoreTest do
   alias Lexical.Document
-  alias Lexical.RemoteControl.CodeMod.ReplaceWithUnderscore
+  alias Lexical.RemoteControl.CodeAction.Diagnostic
+  alias Lexical.RemoteControl.CodeAction.Handlers.ReplaceWithUnderscore
 
   use Lexical.Test.CodeMod.Case
 
@@ -9,9 +10,27 @@ defmodule Lexical.RemoteControl.CodeMod.ReplaceWithUnderscoreTest do
     line_number = Keyword.get(options, :line, 1)
     document = Document.new("file:///file.ex", original_text, 0)
 
-    with {:ok, document_edits} <- ReplaceWithUnderscore.edits(document, line_number, variable) do
-      {:ok, document_edits.edits}
-    end
+    message =
+      """
+      warning: variable "#{variable}" is unused (if the variable is not meant to be used, prefix it with an underscore)
+        /file.ex:#{line_number}
+      """
+      |> String.trim()
+
+    range =
+      Document.Range.new(
+        Document.Position.new(document, line_number, 0),
+        Document.Position.new(document, line_number + 1, 0)
+      )
+
+    diagnostic = Diagnostic.new(range, message, nil)
+
+    changes =
+      document
+      |> ReplaceWithUnderscore.actions(range, [diagnostic])
+      |> Enum.flat_map(& &1.changes.edits)
+
+    {:ok, changes}
   end
 
   describe "fixes in parameters" do

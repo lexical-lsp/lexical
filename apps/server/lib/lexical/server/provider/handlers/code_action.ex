@@ -1,18 +1,42 @@
 defmodule Lexical.Server.Provider.Handlers.CodeAction do
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
-  alias Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore
-  alias Lexical.Server.Provider.CodeAction.ReplaceWithUnderscore
+  alias Lexical.Protocol.Types
+  alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
+  alias Lexical.Protocol.Types.Workspace
+  alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.CodeAction
   alias Lexical.Server.Provider.Env
 
   require Logger
 
-  @code_actions [ReplaceWithUnderscore]
-
   def handle(%Requests.CodeAction{} = request, %Env{} = env) do
-    code_actions = Enum.flat_map(@code_actions, & &1.apply(request, env))
-    reply = Responses.CodeAction.new(request.id, code_actions)
+    diagnostics = Enum.map(request.context.diagnostics, &to_code_action_diagnostic/1)
+
+    code_actions =
+      RemoteControl.Api.code_actions(
+        env.project,
+        request.document,
+        request.range,
+        diagnostics,
+        request.context.only || :all
+      )
+
+    results = Enum.map(code_actions, &to_result/1)
+    reply = Responses.CodeAction.new(request.id, results)
 
     {:reply, reply}
+  end
+
+  defp to_code_action_diagnostic(%Types.Diagnostic{} = diagnostic) do
+    CodeAction.Diagnostic.new(diagnostic.range, diagnostic.message, diagnostic.source)
+  end
+
+  defp to_result(%CodeAction{} = action) do
+    CodeActionResult.new(
+      title: action.title,
+      kind: action.kind,
+      edit: Workspace.Edit.new(changes: %{action.uri => action.changes})
+    )
   end
 end
