@@ -1,5 +1,6 @@
 defmodule Lexical.Server.State do
   alias Lexical.Document
+  alias Lexical.Features
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Notifications.DidChange
@@ -240,7 +241,7 @@ defmodule Lexical.Server.State do
         definition_provider: true,
         document_formatting_provider: true,
         hover_provider: true,
-        references_provider: true,
+        references_provider: Features.indexing_enabled?(),
         text_document_sync: sync_options
       )
 
