@@ -45,7 +45,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       label: label(callable, env),
       tags: tags
     )
-    |> Map.put(:sort_text, sort_text(callable))
+    |> Builder.set_sort_text(sort_text(callable))
     |> maybe_boost(callable)
   end
 
@@ -60,7 +60,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         label: name_and_arity
       )
-      |> Map.put(:sort_text, sort_text(callable))
+      |> Builder.set_sort_text(sort_text(callable))
       |> maybe_boost(callable, 4)
 
     call_capture =
@@ -70,7 +70,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         label: label(callable, env)
       )
-      |> Map.put(:sort_text, sort_text(callable))
+      |> Builder.set_sort_text(sort_text(callable))
       |> maybe_boost(callable, 4)
 
     [complete_capture, call_capture]

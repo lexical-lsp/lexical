@@ -89,6 +89,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     %Completion.Item{item | sort_text: sort_text}
   end
 
+  def set_sort_text(%Completion.Item{} = item, sort_text) do
+    %Completion.Item{item | sort_text: sort_text}
+  end
+
   # HACK: This fixes ElixirSense struct completions for certain cases.
   # We should try removing when we update or remove ElixirSense.
   @spec strip_struct_operator_for_elixir_sense(Env.t()) ::
