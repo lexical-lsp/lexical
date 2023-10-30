@@ -28,7 +28,7 @@ eval "$(./rtx activate bash)"
 
 export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac --without-termcap --without-wx"
 ./rtx plugins install erlang
-./rtx use --global erlang@latest
+./rtx use --global "erlang@$ERLANG_VERSION"
 
 ./rtx plugins install elixir
-./rtx use --global elixir@latest
+./rtx use --global "elixir@$ELIXIR_VERSION"

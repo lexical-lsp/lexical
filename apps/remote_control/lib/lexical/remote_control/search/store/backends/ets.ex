@@ -6,8 +6,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
   use GenServer
 
-  @sync_interval_ms 5000
-
   @behaviour Backend
 
   @impl Backend
@@ -21,8 +19,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def sync(%Project{}, force?) do
-    GenServer.call(genserver_name(), {:sync, force?})
+  def sync(%Project{}) do
+    GenServer.call(genserver_name(), :sync)
   end
 
   @impl Backend
@@ -91,7 +89,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
     with :undefined <- :global.whereis_name(leader_name),
          :ok <- become_leader(project) do
-      schedule_sync()
       {:noreply, create_leader(project)}
     else
       _ ->
@@ -101,13 +98,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
   @impl GenServer
   def handle_call(:prepare, _from, %State{} = state) do
-    {reply, new_state} = State.prepare(state)
+    case State.prepare(state) do
+      {:error, :not_leader} = error ->
+        {:stop, :normal, error, state}
 
-    {:reply, reply, new_state}
+      {reply, new_state} ->
+        {:reply, reply, new_state}
+    end
   end
 
-  def handle_call({:sync, force?}, _from, %State{} = state) do
-    state = State.sync(state, force?)
+  def handle_call(:sync, _from, %State{} = state) do
+    state = State.sync(state)
     {:reply, :ok, state}
   end
 
@@ -115,11 +116,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     arguments = [state | arguments]
     reply = apply(State, function_name, arguments)
     {:reply, reply, state}
-  end
-
-  def handle_call(:force_sync, _from, %State{} = state) do
-    new_state = State.sync(state, false)
-    {:reply, :ok, new_state}
   end
 
   @impl GenServer
@@ -137,12 +133,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     # This clause means we were randomly notified by the call to
     # :global.random_notify_name. We've been selected to be the leader!
     new_state = become_leader(state.project)
-    {:noreply, new_state}
-  end
-
-  def handle_info(:do_sync, %State{} = state) do
-    new_state = State.sync(state, true)
-    schedule_sync()
     {:noreply, new_state}
   end
 
@@ -212,9 +202,5 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
         String.contains?(node_name_string, project_substring) do
       :"#{node_name_string}@127.0.0.1"
     end
-  end
-
-  def schedule_sync do
-    Process.send_after(self(), :do_sync, @sync_interval_ms)
   end
 end

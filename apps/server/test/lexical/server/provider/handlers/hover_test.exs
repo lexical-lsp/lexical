@@ -536,6 +536,33 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
         assert "«MacroHover.my_macro»(:foo)" = hovered |> strip_cursor() |> decorate(result.range)
       end)
     end
+
+    test "splits to two lines if the signature is too long", %{project: project} do
+      code = ~q[
+        defmodule VeryVeryVeryLongModuleName.CallHover do
+          def very_very_very_long_fun(_with, _many, _args) do
+          end
+        end
+      ]
+
+      hovered = ~q[
+        alias VeryVeryVeryLongModuleName.CallHover
+        CallHover.|very_very_very_long_fun(1, 2, 3)
+      ]
+
+      expected = """
+      ```elixir
+      CallHover.very_very_very_long_fun(with, many, args)
+      VeryVeryVeryLongModuleName.CallHover
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
+      end)
+    end
   end
 
   describe "type hover" do
@@ -664,6 +691,32 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
 
       with_compiled_in(project, code, fn ->
         assert {:reply, %{result: nil}} = hover(project, hovered)
+      end)
+    end
+
+    test "splits to two lines if the signature is too long", %{project: project} do
+      code = ~q[
+        defmodule VeryVeryVeryLongModuleName.TypeHover do
+          @opaque very_very_very_long_type(var) :: {integer(), var}
+        end
+      ]
+
+      hovered =
+        "@type foo :: VeryVeryVeryLongModuleName.TypeHover.|very_very_very_long_type(:foo)"
+
+      expected = """
+      ```elixir
+      TypeHover.very_very_very_long_type/1
+      VeryVeryVeryLongModuleName.TypeHover
+
+      @opaque very_very_very_long_type(var)
+      ```
+      """
+
+      with_compiled_in(project, code, fn ->
+        assert {:reply, %{result: %Types.Hover{} = result}} = hover(project, hovered)
+        assert result.contents.kind == :markdown
+        assert result.contents.value == expected
       end)
     end
   end

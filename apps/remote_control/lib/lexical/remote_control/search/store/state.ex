@@ -61,12 +61,15 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
       {:update_index, result} ->
         update_index_complete(new_state, result)
+
+      :initialize_fuzzy ->
+        initialize_fuzzy(new_state)
     end
   end
 
   def replace(%__MODULE__{} = state, entries) do
     with :ok <- state.backend.replace_all(entries),
-         :ok <- maybe_sync(state, false) do
+         :ok <- maybe_sync(state) do
       {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
     end
   end
@@ -104,7 +107,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
   def flush_buffered_updates(%__MODULE__{update_buffer: buffer} = state)
       when map_size(buffer) == 0 do
-    maybe_sync(state, true)
+    maybe_sync(state)
     {:ok, state}
   end
 
@@ -121,7 +124,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       end)
 
     with %__MODULE__{} = state <- result,
-         :ok <- maybe_sync(state, true) do
+         :ok <- maybe_sync(state) do
       {:ok, drop_buffered_updates(state)}
     end
   end
@@ -152,6 +155,9 @@ defmodule Lexical.RemoteControl.Search.Store.State do
             Logger.info("backend reports stale")
             {:update_index, state.update_index.(state.project, all(state))}
 
+          {:error, :not_leader} ->
+            :initialize_fuzzy
+
           error ->
             Logger.error("Could not initialize index due to #{inspect(error)}")
             error
@@ -178,12 +184,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp update_index_complete(%__MODULE__{} = state, {:ok, updated_entries, deleted_paths}) do
-    fuzzy =
-      state
-      |> all()
-      |> Fuzzy.from_entries()
-
-    starting_state = %__MODULE__{state | fuzzy: fuzzy, loaded?: true}
+    starting_state = initialize_fuzzy(%__MODULE__{state | loaded?: true})
 
     new_state =
       updated_entries
@@ -204,11 +205,20 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state
   end
 
-  defp maybe_sync(%__MODULE__{} = state, force?) do
-    if function_exported?(state.backend, :sync, 2) do
-      state.backend.sync(state.project, force?)
+  defp maybe_sync(%__MODULE__{} = state) do
+    if function_exported?(state.backend, :sync, 1) do
+      state.backend.sync(state.project)
     else
       :ok
     end
+  end
+
+  defp initialize_fuzzy(%__MODULE__{} = state) do
+    fuzzy =
+      state
+      |> all()
+      |> Fuzzy.from_entries()
+
+    %__MODULE__{state | fuzzy: fuzzy}
   end
 end

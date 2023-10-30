@@ -17,7 +17,7 @@ Since the `remote_control` app only depends on `common`, `path_glob` and `elixir
 ## Language Server
 The language server (the `server` app) is the entry point to Lexical. When started by the `start_lexical.sh` command, it sets up a [transport](`Lexical.Server.Transport`) that [reads JsonRPC from standard input and writes responses to standard output](`Lexical.Server.Transport.StdIO`). 
 
-When a message is received, it is parsed into either a [LSP Request](`Lexical.Protocol.Requests`) or a [LSP Notification](`Lexical.Protocol.Notifications`) and and then it's handed to the [language server](`Lexical.Server`) to process.
+When a message is received, it is parsed into either a [LSP Request](`Lexical.Protocol.Requests`) or a [LSP Notification](`Lexical.Protocol.Notifications`) and then it's handed to the [language server](`Lexical.Server`) to process.
 
 The only messages the [lexical server process](`Lexical.Server`) handles directly are those related to the lifecycle of the language server itself. All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](`Lexical.Server.Provider.Queue`). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
 
