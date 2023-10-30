@@ -43,9 +43,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     |> Builder.snippet(insert_text,
       kind: :function,
       label: label(callable, env),
+      sort_text: sort_text(callable),
       tags: tags
     )
-    |> Builder.set_sort_text(sort_text(callable))
     |> maybe_boost(callable)
   end
 
@@ -58,9 +58,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> Builder.plain_text(name_and_arity,
         detail: "(Capture)",
         kind: :function,
-        label: name_and_arity
+        label: name_and_arity,
+        sort_text: sort_text(callable)
       )
-      |> Builder.set_sort_text(sort_text(callable))
       |> maybe_boost(callable, 4)
 
     call_capture =
@@ -68,9 +68,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> Builder.snippet(callable_snippet(callable, env),
         detail: "(Capture with arguments)",
         kind: :function,
-        label: label(callable, env)
+        label: label(callable, env),
+        sort_text: sort_text(callable)
       )
-      |> Builder.set_sort_text(sort_text(callable))
       |> maybe_boost(callable, 4)
 
     [complete_capture, call_capture]
@@ -104,7 +104,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
     if String.starts_with?(name, "__") or name in @default_functions do
-      Builder.boost(item, 0)
+      item
     else
       Builder.boost(item, default_boost)
     end

@@ -84,12 +84,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
       when local_boost in 0..9 and global_boost in 0..9 do
     global_boost = Integer.to_string(9 - global_boost)
     local_boost = Integer.to_string(9 - local_boost)
+    stripped_sort_text = strip_boost(item.sort_text)
 
-    sort_text = "0#{global_boost}#{local_boost}_#{fallback(item.sort_text, item.label)}"
-    %Completion.Item{item | sort_text: sort_text}
-  end
-
-  def set_sort_text(%Completion.Item{} = item, sort_text) do
+    sort_text = "0#{global_boost}#{local_boost}_#{fallback(stripped_sort_text, item.label)}"
     %Completion.Item{item | sort_text: sort_text}
   end
 
@@ -182,5 +179,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
       {:local_or_var, local_name} ->
         {:ok, length(local_name)}
     end
+  end
+
+  @boost_re ~r/^[0-9_]+/
+  defp strip_boost(nil), do: nil
+
+  defp strip_boost(sort_text) do
+    String.replace(sort_text, @boost_re, "")
   end
 end
