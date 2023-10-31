@@ -128,7 +128,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
     [root_dir, "**", @indexable_extensions]
     |> Path.join()
-    |> Path.wildcard()
+    |> Path.wildcard(~r"^(?!.*(build|deps)).*$")
   end
 
   # stat(path) is here for testing so it can be mocked
