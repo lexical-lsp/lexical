@@ -34,9 +34,9 @@ Lexical would need to be compiled with Erlang `24.3.2` and Elixir `1.13.3`.
 Lexical's prepackaged builds use Erlang `24.3.4.12` and Elixir `1.13.4`
 
 ## Prerequisites
+First, Install git LFS by [following these instructions](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage).
 
-The first step in getting Lexical running locally is to clone the git
-repository. Do this with
+Then, clone the git repository. Do this with
 
 ```elixir
 git clone git@github.com:lexical-lsp/lexical.git
@@ -66,6 +66,15 @@ bug.
 
 For the following examples, assume the absolute path to your Lexical
 source code is `/my/home/projects/lexical`.
+
+### Enabling indexing
+
+We've recently added indexing support to lexical. This powers features like `find references` and will go on to power a host of other features. While we're continuting to 
+develop indexing, we've disabled it by default. If you want to enable indexing (and find references), build lexical like this:
+
+```shell
+INDEXING_ENABLED=true mix package
+```
 
 ## Editor-specific setup
 1. [Vanilla Emacs with lsp-mode](#vanilla-emacs-with-lsp-mode)

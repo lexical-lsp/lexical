@@ -18,9 +18,9 @@ defmodule Lexical.Document.Location do
         }
   use Lexical.StructAccess
 
-  @spec new(Range.t(), Document.t()) :: t()
+  @spec new(Range.t(), Document.t() | String.t()) :: t()
   def new(%Range{} = range, %Document{} = document) do
-    %__MODULE__{range: range, document: document}
+    %__MODULE__{range: range, document: document, uri: document.uri}
   end
 
   def new(%Range{} = range, uri) when is_binary(uri) do

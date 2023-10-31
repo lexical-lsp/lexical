@@ -22,7 +22,8 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       project: project,
       loaded?: false,
       update_index: update_index,
-      update_buffer: %{}
+      update_buffer: %{},
+      fuzzy: Fuzzy.from_entries([])
     }
   end
 
