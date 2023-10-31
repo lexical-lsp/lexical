@@ -2,7 +2,6 @@ defmodule Lexical.Server.Provider.Handlers.CodeAction do
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
-  alias Lexical.Protocol.Types.CodeAction, as: CodeActionResult
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction
@@ -33,7 +32,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeAction do
   end
 
   defp to_result(%CodeAction{} = action) do
-    CodeActionResult.new(
+    Types.CodeAction.new(
       title: action.title,
       kind: action.kind,
       edit: Workspace.Edit.new(changes: %{action.uri => action.changes})

@@ -18,7 +18,12 @@ defmodule Lexical.RemoteControl.CodeAction do
           | :source_organize_imports
           | :source_fix_all
 
-  @type t :: %__MODULE__{title: String.t(), kind: code_action_kind, changes: Changes.t()}
+  @type t :: %__MODULE__{
+          title: String.t(),
+          kind: code_action_kind,
+          changes: Changes.t(),
+          uri: Lexical.uri()
+        }
 
   @handlers [Handlers.ReplaceWithUnderscore]
 
@@ -27,15 +32,14 @@ defmodule Lexical.RemoteControl.CodeAction do
     %__MODULE__{uri: uri, title: title, changes: changes, kind: kind}
   end
 
-  @spec for_range(Document.t(), Range.t(), [Diagnostic.t()], [code_action_kind | :all]) :: [t()]
+  @spec for_range(Document.t(), Range.t(), [Diagnostic.t()], [code_action_kind] | :all) :: [t()]
   def for_range(%Document{} = doc, %Range{} = range, diagnostics, kinds) do
     results =
-      Enum.reduce(@handlers, [], fn handler, acc ->
+      Enum.flat_map(@handlers, fn handler ->
         if applies?(kinds, handler) do
-          actions = handler.actions(doc, range, diagnostics)
-          actions ++ acc
+          handler.actions(doc, range, diagnostics)
         else
-          acc
+          []
         end
       end)
 
@@ -47,9 +51,6 @@ defmodule Lexical.RemoteControl.CodeAction do
   end
 
   defp applies?(kinds, handler_module) do
-    requested_kinds = MapSet.new(kinds)
-    handler_kinds = MapSet.new(handler_module.kinds())
-    applicable_kinds = MapSet.intersection(requested_kinds, handler_kinds)
-    not Enum.empty?(applicable_kinds)
+    kinds -- handler_module.kinds() != kinds
   end
 end
