@@ -11,12 +11,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:entries, :document, :quoted_document, :position, :ends_at, :blocks]
+  defstruct [:analysis, :entries, :document, :quoted_document, :position, :ends_at, :blocks]
 
   @extractors [Extractors.Module]
 
   def new(%Document{} = document, quoted_document) do
     %__MODULE__{
+      analysis: Lexical.Ast.analyze(document),
       document: document,
       quoted_document: quoted_document,
       entries: [],

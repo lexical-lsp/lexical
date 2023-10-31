@@ -15,6 +15,7 @@ defmodule Lexical.Document.Position do
   alias Lexical.Document
   alias Lexical.Document.Lines
 
+  @derive {Inspect, only: [:line, :character]}
   defstruct [
     :line,
     :character,

@@ -292,6 +292,33 @@ defmodule Lexical.AstTest do
     end
   end
 
+  describe "analyze/1" do
+    defp analyze(code) when is_binary(code) do
+      document = Document.new("file:///file.ex", code, 0)
+      Ast.analyze(document)
+    end
+
+    test "creates an analysis from a document with valid ast" do
+      code = ~q[
+        defmodule Valid do
+        end
+      ]
+
+      assert %Ast.Analysis{} = analysis = analyze(code)
+      assert {:defmodule, _, _} = analysis.ast
+    end
+
+    test "creates an analysis from a document with invalid ast" do
+      code = ~q[
+        defmodule Invalid do
+      ]
+
+      assert %Ast.Analysis{} = analysis = analyze(code)
+      refute analysis.ast
+      assert {:error, _} = analysis.parse_error
+    end
+  end
+
   defp ast(s) do
     case Ast.from(s) do
       {:ok, {:__block__, _, [node]}} -> node

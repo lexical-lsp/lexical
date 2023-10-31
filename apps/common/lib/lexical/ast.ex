@@ -55,6 +55,7 @@ defmodule Lexical.Ast do
 
   alias Future.Code, as: Code
   alias Lexical.Ast.Aliases
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
@@ -87,6 +88,16 @@ defmodule Lexical.Ast do
 
   @type short_alias :: atom()
   @type alias_segments :: [short_alias]
+
+  @doc """
+  Analyzes a document.
+  """
+  @spec analyze(Document.t()) :: Analysis.t()
+  def analyze(%Document{} = document) do
+    document
+    |> from()
+    |> Analysis.new(document)
+  end
 
   @doc """
   Returns an AST generated from a valid document or string.
@@ -450,6 +461,21 @@ defmodule Lexical.Ast do
     expand_aliases(module_or_segments, document, Position.new(document, line, column))
   end
 
+  def expand_aliases(segments, %Analysis{} = analysis, %Position{} = position)
+      when is_list(segments) do
+    with aliases_mapping <- Analysis.aliases_at(analysis, position),
+         {:ok, resolved} <- resolve_alias(segments, aliases_mapping) do
+      {:ok, Module.concat(resolved)}
+    else
+      _ ->
+        if Enum.all?(segments, &is_atom/1) do
+          {:ok, Module.concat(segments)}
+        else
+          :error
+        end
+    end
+  end
+
   @spec expand_aliases(alias_segments() | module(), Document.t(), Macro.t(), Position.t()) ::
           {:ok, module()} | :error
   def expand_aliases(module, %Document{} = document, quoted_document, %Position{} = position)
@@ -502,6 +528,7 @@ defmodule Lexical.Ast do
   end
 
   # private
+
   defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
     with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
       {:ok, reify_alias(current_module, segments)}

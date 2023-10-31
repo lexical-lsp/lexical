@@ -1,5 +1,5 @@
 defmodule Lexical.Ast.AliasesTest do
-  alias Lexical.Ast.Aliases
+  alias Lexical.Ast
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
@@ -8,7 +8,9 @@ defmodule Lexical.Ast.AliasesTest do
 
   def aliases_at_cursor(text) do
     {position, document} = pop_cursor(text, as: :document)
-    Aliases.at(document, position)
+    analysis = Ast.analyze(document)
+
+    {:ok, Ast.Analysis.aliases_at(analysis, position)}
   end
 
   describe "top level aliases" do
@@ -176,6 +178,19 @@ defmodule Lexical.Ast.AliasesTest do
 
       assert aliases[:Baz] == Other.Baz
     end
+
+    test "aliases used to define a module" do
+      {:ok, aliases} =
+        ~q[
+          alias Something.Else
+          defmodule Else.Other do
+            |
+          end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Else] == Something.Else
+    end
   end
 
   describe "nested modules" do
@@ -231,7 +246,7 @@ defmodule Lexical.Ast.AliasesTest do
         ]
         |> aliases_at_cursor()
 
-      assert aliases == %{Basic: Basic, __MODULE__: nil}
+      assert aliases == %{Basic: Basic}
     end
 
     test "aliases inside of nested modules" do
@@ -386,12 +401,35 @@ defmodule Lexical.Ast.AliasesTest do
       assert aliases[:Second] == Second
     end
 
-    # Note: it looks like Code.container_cursor_to_quoted doesn't work with
-    # anonymous functions
-    @tag :skip
-    test "an alias defined in a anonymous function"
+    test "an alias defined in a anonymous function" do
+      {:ok, aliases} =
+        ~q[
+          fn x ->
+            alias Foo.Bar
+            |Bar
+          end
+        ]
+        |> aliases_at_cursor()
 
-    @tag :skip
-    test "an alias defined in a anonymous function doesn't leak"
+      assert aliases[:Bar] == Foo.Bar
+    end
+
+    test "an alias defined in a anonymous function doesn't leak" do
+      {:ok, aliases} =
+        ~q[
+          fn
+            x ->
+              alias Foo.Bar
+              Bar.bar(x)
+            y ->
+              alias Baz.Buzz
+              |Buzz
+          end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Buzz] == Baz.Buzz
+      refute aliases[:Bar]
+    end
   end
 end
