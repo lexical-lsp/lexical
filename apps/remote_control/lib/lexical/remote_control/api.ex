@@ -1,9 +1,11 @@
 defmodule Lexical.RemoteControl.Api do
   alias Lexical.Document
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
 
@@ -20,17 +22,14 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, CodeMod.Format, :edits, [project, document])
   end
 
-  def replace_with_underscore(
+  def code_actions(
         %Project{} = project,
         %Document{} = document,
-        line_number,
-        variable_name
+        %Range{} = range,
+        diagnostics,
+        kinds
       ) do
-    RemoteControl.call(project, CodeMod.ReplaceWithUnderscore, :edits, [
-      document,
-      line_number,
-      variable_name
-    ])
+    RemoteControl.call(project, CodeAction, :for_range, [document, range, diagnostics, kinds])
   end
 
   def complete(%Project{} = project, %Document{} = document, %Position{} = position) do
