@@ -10,7 +10,7 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 
-  defstruct [:ast, :document, :parse_error, :scopes]
+  defstruct [:ast, :document, :parse_error, scopes: [], valid?: true]
 
   @type t :: %__MODULE__{}
 
@@ -30,7 +30,8 @@ defmodule Lexical.Ast.Analysis do
   def new(error, document) do
     %__MODULE__{
       document: document,
-      parse_error: error
+      parse_error: error,
+      valid?: false
     }
   end
 

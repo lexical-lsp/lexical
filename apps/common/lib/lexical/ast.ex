@@ -54,7 +54,6 @@ defmodule Lexical.Ast do
   """
 
   alias Future.Code, as: Code
-  alias Lexical.Ast.Aliases
   alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Edit
@@ -97,6 +96,34 @@ defmodule Lexical.Ast do
     document
     |> from()
     |> Analysis.new(document)
+  end
+
+  @doc """
+  Attempts to analyze a document at least until `position`.
+
+  This can be used to analyze an invalid AST up until, for instance, the
+  cursor position. The full analysis will be completed if the AST is
+  valid.
+
+  This function is not guaranteed to return a valid analysis.
+  """
+  @spec analyze_to(Document.t() | Analysis.t(), Position.t()) :: Analysis.t()
+  def analyze_to(%Document{} = document, %Position{} = position) do
+    with %Analysis{valid?: false} <- analyze(document) do
+      document
+      |> fragment(position)
+      |> Analysis.new(document)
+    end
+  end
+
+  def analyze_to(%Analysis{valid?: false} = analysis, %Position{} = position) do
+    analysis.document
+    |> fragment(position)
+    |> Analysis.new(analysis.document)
+  end
+
+  def analyze_to(%Analysis{valid?: true} = analysis, _position) do
+    analysis
   end
 
   @doc """
@@ -447,24 +474,15 @@ defmodule Lexical.Ast do
   """
   @spec expand_aliases(
           alias_segments() | module(),
-          Document.t(),
+          Analysis.t() | Document.t(),
           Position.t() | {Position.line(), Position.character()}
         ) ::
           {:ok, module()} | :error
-  def expand_aliases(module_or_segments, %Document{} = document, %Position{} = position) do
-    with {:ok, quoted} <- fragment(document, position) do
-      expand_aliases(module_or_segments, document, quoted, position)
-    end
-  end
-
-  def expand_aliases(module_or_segments, %Document{} = document, {line, column}) do
-    expand_aliases(module_or_segments, document, Position.new(document, line, column))
-  end
-
-  def expand_aliases(segments, %Analysis{} = analysis, %Position{} = position)
+  def expand_aliases(segments, analysis_or_document, %Position{} = position)
       when is_list(segments) do
-    with aliases_mapping <- Analysis.aliases_at(analysis, position),
-         {:ok, resolved} <- resolve_alias(segments, aliases_mapping) do
+    with %Analysis{valid?: true} = analysis <- analyze_to(analysis_or_document, position),
+         aliases <- Analysis.aliases_at(analysis, position),
+         {:ok, resolved} <- resolve_alias(segments, aliases) do
       {:ok, Module.concat(resolved)}
     else
       _ ->
@@ -476,32 +494,15 @@ defmodule Lexical.Ast do
     end
   end
 
-  @spec expand_aliases(alias_segments() | module(), Document.t(), Macro.t(), Position.t()) ::
-          {:ok, module()} | :error
-  def expand_aliases(module, %Document{} = document, quoted_document, %Position{} = position)
+  def expand_aliases(module, analysis_or_document, %Position{} = position)
       when is_atom(module) and not is_nil(module) do
     module
     |> Module.split()
     |> Enum.map(&String.to_atom/1)
-    |> expand_aliases(document, quoted_document, position)
+    |> expand_aliases(analysis_or_document, position)
   end
 
-  def expand_aliases(segments, %Document{} = document, quoted_document, %Position{} = position)
-      when is_list(segments) do
-    with {:ok, aliases_mapping} <- Aliases.at(document, quoted_document, position),
-         {:ok, resolved} <- resolve_alias(segments, aliases_mapping) do
-      {:ok, Module.concat(resolved)}
-    else
-      _ ->
-        if Enum.all?(segments, &is_atom/1) do
-          {:ok, Module.concat(segments)}
-        else
-          :error
-        end
-    end
-  end
-
-  def expand_aliases(empty, _, _, _) when empty in [nil, []] do
+  def expand_aliases(empty, _, _) when empty in [nil, []] do
     Logger.warning("Aliases are #{inspect(empty)}, can't expand them")
     :error
   end
