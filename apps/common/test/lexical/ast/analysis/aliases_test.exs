@@ -1,4 +1,4 @@
-defmodule Lexical.Ast.AliasesTest do
+defmodule Lexical.Ast.Analysis.AliasesTest do
   alias Lexical.Ast
 
   import Lexical.Test.CursorSupport
@@ -8,14 +8,15 @@ defmodule Lexical.Ast.AliasesTest do
 
   def aliases_at_cursor(text) do
     {position, document} = pop_cursor(text, as: :document)
-    analysis = Ast.analyze(document)
 
-    {:ok, Ast.Analysis.aliases_at(analysis, position)}
+    document
+    |> Ast.analyze()
+    |> Ast.Analysis.aliases_at(position)
   end
 
   describe "top level aliases" do
     test "a useless alias" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           alias Foo
           |
@@ -26,7 +27,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias outside of a module" do
-      {:ok, aliases} =
+      aliases =
         ~q[
         alias Foo.Bar.Baz
         defmodule Parent do
@@ -39,7 +40,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias inside the body of a module" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Basic do
             alias Foo.Bar
@@ -52,7 +53,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias using as" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule TopLevel do
             alias Foo.Bar, as: FooBar
@@ -66,7 +67,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "multiple aliases off of single alias" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule TopLevel do
             alias Foo.{First, Second, Third.Fourth}
@@ -81,7 +82,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "multiple aliases off of nested alias" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule TopLevel do
             alias Foo.Bar.{First, Second, Third.Fourth}
@@ -96,7 +97,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliasing __MODULE__" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Something.Is.Nested do
             alias __MODULE__|
@@ -109,7 +110,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "multiple aliases leading by current module" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule TopLevel do
             alias __MODULE__.{First, Second}
@@ -123,7 +124,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "multiple aliases leading by current module's child" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule TopLevel do
             alias __MODULE__.Child.{First, Second}
@@ -137,7 +138,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliases expanding other aliases" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           alias Foo.Bar.Baz
           alias Baz.Quux|
@@ -149,7 +150,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliases expanding current module" do
-      {:ok, aliases} = ~q[
+      aliases = ~q[
         defmodule TopLevel do
           alias __MODULE__.Foo|
         end
@@ -159,7 +160,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliases expanding current module using as" do
-      {:ok, aliases} = ~q[
+      aliases = ~q[
         defmodule TopLevel do
           alias __MODULE__.Foo|, as: OtherAlias
         end
@@ -169,7 +170,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "can be overridden" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           alias Foo.Bar.Baz
           alias Other.Baz
@@ -181,7 +182,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "can be accessed before being overridden" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           alias Foo.Bar.Baz
           |
@@ -193,7 +194,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliases used to define a module" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           alias Something.Else
           defmodule Else.Other do
@@ -208,7 +209,7 @@ defmodule Lexical.Ast.AliasesTest do
 
   describe "nested modules" do
     test "no aliases are defined for modules with dots" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule GrandParent.Parent.Child do
            |
@@ -220,7 +221,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "with children get their parents name" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Grandparent.Parent do
             defmodule Child do
@@ -235,7 +236,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "with a child that has an explicit parent" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             defmodule __MODULE__.Child do
@@ -251,7 +252,7 @@ defmodule Lexical.Ast.AliasesTest do
 
   describe "alias scopes" do
     test "aliases are removed when leaving a module" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Basic do
             alias Foo.Bar
@@ -263,7 +264,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "aliases inside of nested modules" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             alias Foo.Grandparent
@@ -283,7 +284,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "multiple nested module are aliased after definition" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             alias Foo.Grandparent
@@ -305,7 +306,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a named function" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             def fun do
@@ -320,7 +321,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a named function doesn't leak" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             def fun do
@@ -334,7 +335,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a private named function" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             defp fun do
@@ -349,7 +350,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a private named function doesn't leak" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
             defp fun do
@@ -363,7 +364,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a DSL" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
              my_dsl do
@@ -378,7 +379,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a DSL does not leak" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           defmodule Parent do
              my_dsl do
@@ -393,21 +394,21 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "sibling modules with nested blocks" do
-      {:ok, aliases} =
+      aliases =
         ~q[
-      defmodule First do
-        defstuff do
-          field :x
-        end
-      end
+          defmodule First do
+            defstuff do
+              field :x
+            end
+          end
 
-      defmodule Second do
-        defstuff do
-          field :y
-        end
-      end
-      |
-      ]
+          defmodule Second do
+            defstuff do
+              field :y
+            end
+          end
+          |
+        ]
         |> aliases_at_cursor()
 
       assert aliases[:First] == First
@@ -415,7 +416,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a anonymous function" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           fn x ->
             alias Foo.Bar
@@ -428,7 +429,7 @@ defmodule Lexical.Ast.AliasesTest do
     end
 
     test "an alias defined in a anonymous function doesn't leak" do
-      {:ok, aliases} =
+      aliases =
         ~q[
           fn
             x ->
