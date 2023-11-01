@@ -40,12 +40,9 @@ defmodule Lexical.Ast.Analysis do
     case scopes_at(analysis, position) do
       [%Analyzer.Scope{} = scope | _] ->
         scope
-        |> Analyzer.Scope.alias_map()
-        |> Stream.filter(fn {_, %Analyzer.Alias{} = alias} ->
-          alias.line <= position.line and Enum.all?(alias.module, &is_atom/1)
-        end)
-        |> Map.new(fn {as, %Analyzer.Alias{module: module}} ->
-          {as, Module.concat(module)}
+        |> Analyzer.Scope.alias_map(position)
+        |> Map.new(fn {as, %Analyzer.Alias{} = alias} ->
+          {as, Analyzer.Alias.to_module(alias)}
         end)
 
       [] ->
@@ -55,7 +52,7 @@ defmodule Lexical.Ast.Analysis do
 
   defp scopes_at(%__MODULE__{scopes: scopes}, %Position{} = position) do
     scopes
-    |> Stream.filter(fn %Analyzer.Scope{range: range} = scope ->
+    |> Enum.filter(fn %Analyzer.Scope{range: range} = scope ->
       scope.id == :global or Range.contains?(range, position)
     end)
     |> Enum.sort_by(

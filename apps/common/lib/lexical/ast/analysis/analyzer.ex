@@ -15,25 +15,43 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   defmodule Alias do
     defstruct [:module, :as, :line]
 
+    @type t :: %Alias{}
+
     def new(module, as, line) when is_list(module) and is_atom(as) and line > 0 do
       %Alias{module: module, as: as, line: line}
+    end
+
+    def to_module(%Alias{} = alias) do
+      Module.concat(alias.module)
     end
   end
 
   defmodule Scope do
     defstruct [:id, :range, module: [], parent_aliases: %{}, aliases: []]
 
+    @type t :: %Scope{}
+
     def new(id, %Range{} = range, parent_aliases \\ %{}, module \\ []) do
       %Scope{id: id, range: range, module: module, parent_aliases: parent_aliases}
     end
 
-    def global do
-      %Scope{id: :global}
+    def global(%Range{} = range) do
+      %Scope{id: :global, range: range}
     end
 
-    def alias_map(%Scope{} = scope) do
+    @spec alias_map(Scope.t(), Position.t() | :end) :: %{module() => Scope.t()}
+    def alias_map(%Scope{} = scope, position \\ :end) do
+      end_line =
+        case position do
+          :end -> scope.range.end.line
+          %Position{line: line} -> line
+        end
+
       scope.aliases
+      # sorting by line ensures that aliases on later lines
+      # override aliases on earlier lines
       |> Enum.sort_by(& &1.line)
+      |> Enum.take_while(&(&1.line <= end_line))
       |> Map.new(&{&1.as, &1})
       |> Enum.into(scope.parent_aliases)
     end
@@ -45,9 +63,10 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   defmodule State do
     defstruct [:document, scopes: [], visited: %{}]
 
-    def new(%Document{} = document) do
-      %State{document: document}
-      |> push_scope(Scope.global())
+    def new(%Document{} = document, quoted) do
+      state = %State{document: document}
+      scope = quoted |> get_range(document) |> Scope.global()
+      push_scope(state, scope)
     end
 
     def current_scope(%State{scopes: [scope | _]}), do: scope
@@ -137,7 +156,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     {_, state} =
       Macro.traverse(
         quoted,
-        State.new(document),
+        State.new(document, quoted),
         fn quoted, state ->
           {quoted, pre(quoted, state)}
         end,
@@ -167,10 +186,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   defp preprocess(quoted) do
-    Macro.prewalk(quoted, fn quoted ->
-      quoted
-      |> with_scope_id()
-    end)
+    Macro.prewalk(quoted, &with_scope_id/1)
   end
 
   defp correct_ranges(scopes, quoted, document) do
@@ -202,7 +218,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         # we go up twice to get to the real parent because ast pairs
         # are always in a list
         %Zipper{node: parent} = zipper |> Zipper.up() |> Zipper.up()
-        %{end: parent_end} = Sourceror.get_range(parent)
+        parent_end = Sourceror.get_range(parent).end
         new_end = Position.new(document, parent_end[:line], parent_end[:column])
         put_in(scope.range.end, new_end)
     end
@@ -262,9 +278,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
     Enum.reduce(aliases_nodes, state, fn {:__aliases__, _, segments}, state ->
       alias = Alias.new(base_segments ++ segments, List.last(segments), meta[:line])
-
-      state
-      |> State.push_alias(alias)
+      State.push_alias(state, alias)
     end)
   end
 
@@ -275,9 +289,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     case expand_alias(aliases, state) do
       [_ | _] = segments ->
         alias = Alias.new(segments, List.last(segments), meta[:line])
-
-        state
-        |> State.push_alias(alias)
+        State.push_alias(state, alias)
 
       [] ->
         state
@@ -296,9 +308,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     case expand_alias(aliases, state) do
       [_ | _] = segments ->
         alias = Alias.new(segments, alias_as, meta[:line])
-
-        state
-        |> State.push_alias(alias)
+        State.push_alias(state, alias)
 
       [] ->
         state
@@ -307,14 +317,12 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
   # clauses: ->
   defp pre({clause, _, _} = quoted, state) when clause in @clauses do
-    state
-    |> State.maybe_push_scope_for(quoted)
+    State.maybe_push_scope_for(state, quoted)
   end
 
   # blocks: do, else, etc.
   defp pre({{:__block__, _, [block]}, _} = quoted, state) when block in @block_keywords do
-    state
-    |> State.maybe_push_scope_for(quoted)
+    State.maybe_push_scope_for(state, quoted)
   end
 
   # catch-all

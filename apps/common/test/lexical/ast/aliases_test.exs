@@ -168,15 +168,28 @@ defmodule Lexical.Ast.AliasesTest do
       assert aliases[:OtherAlias] == TopLevel.Foo
     end
 
-    test "allows overrides" do
+    test "can be overridden" do
       {:ok, aliases} =
         ~q[
           alias Foo.Bar.Baz
           alias Other.Baz
+          |
         ]
         |> aliases_at_cursor()
 
       assert aliases[:Baz] == Other.Baz
+    end
+
+    test "can be accessed before being overridden" do
+      {:ok, aliases} =
+        ~q[
+          alias Foo.Bar.Baz
+          |
+          alias Other.Baz
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Baz] == Foo.Bar.Baz
     end
 
     test "aliases used to define a module" do
