@@ -41,26 +41,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set Variables
-        id: set_mix_lock_hash
-        run: |
-          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
-          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
-
       # Step: Define how to cache deps. Restores existing cache if present.
       - name: Cache deps
         id: cache-deps
         uses: actions/cache@v3
-        env:
-          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
             _build
 
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.DEFAULT_ELIXIR }}-${{ env.DEFAULT_OTP }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
+            ${{ runner.os }}-mix-${{ env.DEFAULT_ELIXIR }}-${{ env.DEFAULT_OTP }}-
 
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
@@ -120,9 +112,9 @@ jobs:
             deps
             _build
 
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.DEFAULT_ELIXIR }}-${{ env.DEFAULT_OTP }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
+            ${{ runner.os }}-mix-${{ env.DEFAULT_ELIXIR }}-${{ env.DEFAULT_OTP }}-
 
       # Step: Create dialyzer .plt files if they're not present
       - name: Cache dialyzer plt files
@@ -181,26 +173,18 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
 
-      - name: Set Variables
-        id: set_mix_lock_hash
-        run: |
-          mix_lock_hash="${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}"
-          echo "mix_lock_hash=$mix_lock_hash" >> "$GITHUB_OUTPUT"
-
       # Step: Define how to cache deps. Restores existing cache if present.
       - name: Cache deps
         id: cache-deps
         uses: actions/cache@v3
-        env:
-          cache-name: cache-elixir-deps-1
         with:
           path: |
             deps
             _build
 
-          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-${{ env.cache-name }}-
+            ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
 
       # Step: Download project dependencies. If unchanged, uses
       # the cached version.
