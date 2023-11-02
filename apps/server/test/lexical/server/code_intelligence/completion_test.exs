@@ -102,11 +102,24 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
         name: "#{name}-callback",
         origin: full_name,
         argument_names: [],
-        metadata: %{}
+        metadata: %{},
+        arity: 0
       },
       %Candidate.Exception{name: "#{name}-exception", full_name: full_name},
-      %Candidate.Function{name: "my_func", origin: full_name, argument_names: [], metadata: %{}},
-      %Candidate.Macro{name: "my_macro", origin: full_name, argument_names: [], metadata: %{}},
+      %Candidate.Function{
+        name: "my_func",
+        origin: full_name,
+        argument_names: [],
+        metadata: %{},
+        arity: 0
+      },
+      %Candidate.Macro{
+        name: "my_macro",
+        origin: full_name,
+        argument_names: [],
+        metadata: %{},
+        arity: 0
+      },
       %Candidate.MixTask{name: "#{name}-mix-task", full_name: full_name},
       %Candidate.Module{name: "#{name}-module", full_name: full_name},
       %Candidate.Module{name: "#{name}-submodule", full_name: "#{full_name}.Bar"},

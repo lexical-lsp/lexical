@@ -43,6 +43,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     |> Builder.snippet(insert_text,
       kind: :function,
       label: label(callable, env),
+      sort_text: sort_text(callable),
       tags: tags
     )
     |> maybe_boost(callable)
@@ -57,7 +58,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> Builder.plain_text(name_and_arity,
         detail: "(Capture)",
         kind: :function,
-        label: name_and_arity
+        label: name_and_arity,
+        sort_text: sort_text(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -66,7 +68,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> Builder.snippet(callable_snippet(callable, env),
         detail: "(Capture with arguments)",
         kind: :function,
-        label: label(callable, env)
+        label: label(callable, env),
+        sort_text: sort_text(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -114,5 +117,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp name_and_arity(%_{name: name, arity: arity}) do
     "#{name}/#{arity}"
+  end
+
+  defp sort_text(%_callable{name: name, arity: arity}) do
+    normalized_arity =
+      arity
+      |> Integer.to_string()
+      |> String.pad_leading(3, "0")
+
+    "#{name}:#{normalized_arity}"
   end
 end
