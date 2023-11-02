@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.Build do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build.State
+  alias Lexical.VM.Versions
 
   require Logger
   use GenServer
@@ -10,6 +11,15 @@ defmodule Lexical.RemoteControl.Build do
   @tick_interval_millis 50
 
   # Public interface
+
+  def path(%Project{} = project) do
+    %{elixir: elixir, erlang: erlang} = Versions.current()
+    erlang_major = erlang |> String.split(".") |> List.first()
+    elixir_version = Version.parse!(elixir)
+    elixir_major = "#{elixir_version.major}.#{elixir_version.minor}"
+    build_root = Project.build_path(project)
+    Path.join([build_root, "erl-#{erlang_major}", "elixir-#{elixir_major}"])
+  end
 
   def schedule_compile(%Project{} = project, force? \\ false) do
     RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile, force?}])
