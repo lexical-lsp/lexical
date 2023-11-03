@@ -214,11 +214,8 @@ defmodule Lexical.Document.Store do
 
     defp derive(%__MODULE__{} = store, key, document) do
       case store.derivations do
-        %{^key => fun} when is_function(fun, 1) ->
+        %{^key => fun} ->
           fun.(document)
-
-        %{^key => {module, fun_name}} ->
-          apply(module, fun_name, [document])
 
         _ ->
           known = Map.keys(store.derivations)

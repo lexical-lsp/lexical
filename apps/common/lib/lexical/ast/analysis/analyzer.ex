@@ -63,9 +63,14 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   defmodule State do
     defstruct [:document, scopes: [], visited: %{}]
 
-    def new(%Document{} = document, quoted) do
+    def new(%Document{} = document) do
       state = %State{document: document}
-      scope = quoted |> get_range(document) |> Scope.global()
+
+      scope =
+        document
+        |> global_range()
+        |> Scope.global()
+
       push_scope(state, scope)
     end
 
@@ -145,6 +150,15 @@ defmodule Lexical.Ast.Analysis.Analyzer do
           nil
       end
     end
+
+    defp global_range(%Document{} = document) do
+      num_lines = Document.size(document)
+
+      Range.new(
+        Position.new(document, 1, 1),
+        Position.new(document, num_lines + 1, 1)
+      )
+    end
   end
 
   @doc """
@@ -156,7 +170,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     {_, state} =
       Macro.traverse(
         quoted,
-        State.new(document, quoted),
+        State.new(document),
         fn quoted, state ->
           {quoted, pre(quoted, state)}
         end,

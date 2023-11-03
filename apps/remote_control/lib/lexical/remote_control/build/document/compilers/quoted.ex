@@ -1,24 +1,12 @@
 defmodule Lexical.RemoteControl.Build.Document.Compilers.Quoted do
   alias Elixir.Features
   alias Lexical.Document
-  alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
 
-  import Api.Messages
   import Lexical.RemoteControl.Build.CaptureIO, only: [capture_io: 2]
 
   def compile(%Document{} = document, quoted_ast, compiler_name) do
-    Dispatch.broadcast(
-      file_quoted(
-        project: RemoteControl.get_project(),
-        document: document,
-        quoted_ast: quoted_ast
-      )
-    )
-
     prepare_compile(document.path)
 
     {status, diagnostics} =

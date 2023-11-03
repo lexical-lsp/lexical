@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Dispatch
@@ -8,10 +9,10 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   require Logger
   import Messages
 
-  use Dispatch.Handler, [file_quoted(), filesystem_event()]
+  use Dispatch.Handler, [file_compile_requested(), filesystem_event()]
 
-  def on_event(file_quoted(document: document, quoted_ast: quoted_ast), state) do
-    reindex(document, quoted_ast)
+  def on_event(file_compile_requested(uri: uri), state) do
+    reindex(uri)
     {:ok, state}
   end
 
@@ -24,9 +25,10 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
     {:ok, state}
   end
 
-  defp reindex(%Document{} = document, quoted_ast) do
-    with :ok <- ensure_latest_version(document),
-         {:ok, entries} <- Indexer.Quoted.index(document, quoted_ast) do
+  defp reindex(uri) do
+    with {:ok, {%Document{} = document, %Analysis{} = analysis}} <-
+           Document.Store.fetch(uri, :analysis),
+         {:ok, entries} <- Indexer.Quoted.index(document, analysis) do
       Search.Store.update(document.path, entries)
     end
   end
@@ -35,15 +37,5 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
     uri
     |> Document.Path.ensure_path()
     |> Search.Store.clear()
-  end
-
-  defp ensure_latest_version(%Document{version: version, uri: uri}) do
-    case Document.Store.fetch(uri) do
-      {:ok, %Document{version: ^version}} ->
-        :ok
-
-      _ ->
-        {:error, :version_mismatch}
-    end
   end
 end

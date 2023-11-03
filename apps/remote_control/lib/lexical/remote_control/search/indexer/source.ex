@@ -7,14 +7,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source do
 
   def index(path, source) do
     document = Document.new(path, source, 1)
-
-    case Ast.from(document) do
-      {:ok, quoted} ->
-        Indexer.Quoted.index(document, quoted)
-
-      _ ->
-        Logger.error("Could not compile #{path} into AST for indexing")
-        :error
-    end
+    analysis = Ast.analyze(document)
+    Indexer.Quoted.index(document, analysis)
   end
 end
