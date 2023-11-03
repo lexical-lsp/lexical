@@ -1,6 +1,6 @@
 defmodule Lexical.Document.Store do
   @moduledoc """
-  An ETS backing store for source file documents.
+  Backing store for source file documents.
   """
 
   alias Lexical.Document
@@ -27,11 +27,9 @@ defmodule Lexical.Document.Store do
 
     require Logger
 
-    defstruct temporary_open_refs: %{}, derivations: %{}
+    defstruct documents: %{}, temporary_open_refs: %{}, derivations: %{}
 
     @type t :: %__MODULE__{}
-
-    @table_name Document.Store
 
     def new(opts \\ []) do
       [derivations: derivations] =
@@ -39,96 +37,108 @@ defmodule Lexical.Document.Store do
         |> Keyword.validate!(derivations: [])
         |> Keyword.take([:derivations])
 
-      :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
-
       %__MODULE__{derivations: Map.new(derivations)}
     end
 
-    @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
-    def fetch(uri) do
-      case ets_fetch(uri, :any) do
-        {:ok, {document, _}} -> {:ok, document}
-        :error -> {:error, :not_open}
+    @spec fetch(t, Lexical.uri()) :: {:ok, Document.t(), t} | {:error, :not_open}
+    def fetch(%__MODULE__{} = store, uri) do
+      case store.documents do
+        %{^uri => {document, _}} -> {:ok, document, store}
+        _ -> {:error, :not_open}
       end
     end
 
     @spec fetch(t, Lexical.uri(), Store.derivation_key()) ::
-            {:ok, {Document.t(), Store.derived()}} | {:error, :not_open}
-    def fetch(%__MODULE__{} = store, uri, derivation_key) do
-      case ets_fetch(uri, :any, true) do
-        {:ok, {_uri, _type, {document, %{^derivation_key => derived}}}} ->
-          {:ok, {document, derived}}
+            {:ok, {Document.t(), Store.derived()}, t} | {:error, :not_open}
+    def fetch(%__MODULE__{} = store, uri, key) do
+      case store.documents do
+        %{^uri => {document, %{^key => derived}}} ->
+          {:ok, {document, derived}, store}
 
-        {:ok, {_uri, type, {document, derivations}}} ->
-          derived = derive(store, derivation_key, document)
-          derivations = Map.put(derivations, derivation_key, derived)
-          ets_put(uri, type, {document, derivations})
-          {:ok, {document, derived}}
+        %{^uri => {document, derivations}} ->
+          derived = derive(store, key, document)
+          derivations = Map.put(derivations, key, derived)
+          store = put_document(store, document, derivations)
+          {:ok, {document, derived}, store}
 
-        :error ->
+        _ ->
           {:error, :not_open}
       end
     end
 
-    @spec save(t, Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
+    @spec save(t, Lexical.uri()) :: {:ok, t} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
-      case ets_fetch(uri, :sources) do
-        {:ok, {document, derivations}} ->
+      case store.documents do
+        %{^uri => {document, derivations}} ->
           document = Document.mark_clean(document)
-          ets_put(uri, :sources, {document, derivations})
+          store = put_document(store, document, derivations)
           {:ok, store}
 
-        :error ->
+        _ ->
           {:error, :not_open}
       end
     end
 
     @spec open(t, Lexical.uri(), String.t(), pos_integer()) :: {:ok, t} | {:error, :already_open}
+    def open(%__MODULE__{temporary_open_refs: refs} = store, uri, text, version)
+        when is_map_key(refs, uri) do
+      {_, store} =
+        store
+        |> maybe_cancel_old_ref(uri)
+        |> pop_document(uri)
+
+      open(store, uri, text, version)
+    end
+
     def open(%__MODULE__{} = store, uri, text, version) do
-      case ets_fetch(uri, :sources) do
-        {:ok, _} ->
+      case store.documents do
+        %{^uri => _} ->
           {:error, :already_open}
 
-        :error ->
+        _ ->
           document = Document.new(uri, text, version)
-          ets_put(uri, :sources, {document, %{}})
+          store = put_document(store, document)
           {:ok, store}
       end
     end
 
-    @spec open?(Lexical.uri()) :: boolean
-    def open?(uri) do
-      ets_has_key?(uri, :any)
+    @spec open?(t, Lexical.uri()) :: boolean
+    def open?(%__MODULE__{} = store, uri) do
+      Map.has_key?(store.documents, uri)
     end
 
-    @spec close(Lexical.uri()) :: :ok | {:error, :not_open}
-    def close(uri) do
-      case ets_pop(uri, :sources) do
-        nil -> {:error, :not_open}
-        _value -> :ok
+    @spec close(t, Lexical.uri()) :: {:ok, t} | {:error, :not_open}
+    def close(%__MODULE__{} = store, uri) do
+      case pop_document(store, uri) do
+        {nil, _} ->
+          {:error, :not_open}
+
+        {_, store} ->
+          {:ok, maybe_cancel_old_ref(store, uri)}
       end
     end
 
+    @spec get_and_update(t, Lexical.uri(), Store.updater()) ::
+            {:ok, Document.t(), t} | {:error, any()}
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, {document, _derivations}} <- ets_fetch(uri, :any),
-           {:ok, updated_source} <- updater_fn.(document) do
-        ets_put(uri, :sources, {updated_source, %{}})
-
-        {:ok, updated_source, store}
+      with {:ok, {document, _derivations}} <- Map.fetch(store.documents, uri),
+           {:ok, document} <- updater_fn.(document) do
+        {:ok, document, put_document(store, document)}
       else
         error ->
           normalize_error(error)
       end
     end
 
+    @spec update(t, Lexical.uri(), Store.updater()) :: {:ok, t} | {:error, any()}
     def update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, _, new_store} <- get_and_update(store, uri, updater_fn) do
-        {:ok, new_store}
+      with {:ok, _, store} <- get_and_update(store, uri, updater_fn) do
+        {:ok, store}
       end
     end
 
-    @spec open_temporarily(t(), Lexical.uri() | Path.t(), timeout()) ::
-            {:ok, Document.t(), t()} | {:error, term()}
+    @spec open_temporarily(t, Lexical.uri() | Path.t(), timeout()) ::
+            {:ok, Document.t(), t} | {:error, term()}
     def open_temporarily(%__MODULE__{} = store, path_or_uri, timeout) do
       uri = Document.Path.ensure_uri(path_or_uri)
       path = Document.Path.ensure_path(path_or_uri)
@@ -137,35 +147,48 @@ defmodule Lexical.Document.Store do
         document = Document.new(uri, contents, 0)
         ref = schedule_unload(uri, timeout)
 
-        new_refs =
+        new_store =
           store
           |> maybe_cancel_old_ref(uri)
-          |> Map.put(uri, ref)
-
-        ets_put(uri, :temp, {document, %{}})
-        new_store = %__MODULE__{store | temporary_open_refs: new_refs}
+          |> put_ref(uri, ref)
+          |> put_document(document)
 
         {:ok, document, new_store}
       end
     end
 
+    @spec extend_timeout(t, Lexical.uri(), timeout()) :: t
     def extend_timeout(%__MODULE__{} = store, uri, timeout) do
       case store.temporary_open_refs do
         %{^uri => ref} ->
           Process.cancel_timer(ref)
           new_ref = schedule_unload(uri, timeout)
-          new_open_refs = Map.put(store.temporary_open_refs, uri, new_ref)
-          %__MODULE__{store | temporary_open_refs: new_open_refs}
+          put_ref(store, uri, new_ref)
 
         _ ->
           store
       end
     end
 
+    @spec unload(t, Lexical.uri()) :: t
     def unload(%__MODULE__{} = store, uri) do
-      new_refs = Map.delete(store.temporary_open_refs, uri)
-      ets_delete(uri, :temp)
-      %__MODULE__{store | temporary_open_refs: new_refs}
+      {_, store} = pop_document(store, uri)
+      maybe_cancel_old_ref(store, uri)
+    end
+
+    defp put_document(%__MODULE__{} = store, %Document{} = document, derivations \\ %{}) do
+      put_in(store.documents[document.uri], {document, derivations})
+    end
+
+    defp pop_document(%__MODULE__{} = store, uri) do
+      case Map.pop(store.documents, uri) do
+        {nil, _} -> {nil, store}
+        {document, documents} -> {document, %__MODULE__{store | documents: documents}}
+      end
+    end
+
+    defp put_ref(%__MODULE__{} = store, uri, ref) do
+      put_in(store.temporary_open_refs[uri], ref)
     end
 
     defp maybe_cancel_old_ref(%__MODULE__{} = store, uri) do
@@ -179,7 +202,7 @@ defmodule Lexical.Document.Store do
             :pop
         end)
 
-      new_refs
+      %__MODULE__{store | temporary_open_refs: new_refs}
     end
 
     defp schedule_unload(uri, timeout) do
@@ -204,61 +227,6 @@ defmodule Lexical.Document.Store do
                 "No derivation for #{inspect(key)}, expected one of #{inspect(known)}"
       end
     end
-
-    @read_types [:sources, :temp, :any]
-    @write_types [:sources, :temp]
-
-    defp ets_fetch(key, type, entire_object? \\ false)
-
-    defp ets_fetch(key, type, false) when type in @read_types do
-      case :ets.match(@table_name, {key, type_selector(type), :"$1"}) do
-        [[value]] -> {:ok, value}
-        _ -> :error
-      end
-    end
-
-    defp ets_fetch(key, type, true) when type in @read_types do
-      type = type_selector(type)
-      match_spec = [{{key, type, :"$1"}, [], [:"$_"]}]
-
-      case :ets.select(@table_name, match_spec) do
-        [object] -> {:ok, object}
-        _ -> :error
-      end
-    end
-
-    defp ets_put(key, type, value) when type in @write_types do
-      :ets.insert(@table_name, {key, type, value})
-      :ok
-    end
-
-    defp ets_has_key?(key, type) when type in @read_types do
-      pattern = {key, type_selector(type), :"$1"}
-
-      case :ets.match(@table_name, pattern) do
-        [] -> false
-        _ -> true
-      end
-    end
-
-    defp ets_pop(key, type) when type in @write_types do
-      with {:ok, value} <- ets_fetch(key, type),
-           :ok <- ets_delete(key, type) do
-        value
-      else
-        _ ->
-          nil
-      end
-    end
-
-    defp ets_delete(key, type) when type in @write_types do
-      pattern = {key, type, :_}
-      :ets.match_delete(@table_name, pattern)
-      :ok
-    end
-
-    defp type_selector(:any), do: :_
-    defp type_selector(type), do: type
   end
 
   @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
@@ -279,7 +247,7 @@ defmodule Lexical.Document.Store do
 
   @spec open?(Lexical.uri()) :: boolean()
   def open?(uri) do
-    State.open?(uri)
+    GenServer.call(name(), {:open?, uri})
   end
 
   @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
@@ -344,15 +312,19 @@ defmodule Lexical.Document.Store do
     {:reply, reply, new_state}
   end
 
+  def handle_call({:open?, uri}, _from, %State{} = state) do
+    reply = State.open?(state, uri)
+    {:reply, reply, state}
+  end
+
   def handle_call({:open_temporarily, uri, timeout_ms}, _, %State{} = state) do
     {reply, new_state} =
-      with {:error, :not_open} <- State.fetch(uri),
+      with {:error, :not_open} <- State.fetch(state, uri),
            {:ok, document, new_state} <- State.open_temporarily(state, uri, timeout_ms) do
         {{:ok, document}, new_state}
       else
-        {:ok, document} ->
-          new_state = State.extend_timeout(state, uri, timeout_ms)
-          {{:ok, document}, new_state}
+        {:ok, document, new_state} ->
+          {{:ok, document}, State.extend_timeout(new_state, uri, timeout_ms)}
 
         error ->
           {error, state}
@@ -362,18 +334,33 @@ defmodule Lexical.Document.Store do
   end
 
   def handle_call({:fetch, uri}, _from, %State{} = state) do
-    reply = State.fetch(uri)
-    {:reply, reply, state}
+    {reply, new_state} =
+      case State.fetch(state, uri) do
+        {:ok, value, new_state} -> {{:ok, value}, new_state}
+        error -> {error, state}
+      end
+
+    {:reply, reply, new_state}
   end
 
   def handle_call({:fetch, uri, key}, _from, %State{} = state) do
-    reply = State.fetch(state, uri, key)
-    {:reply, reply, state}
+    {reply, new_state} =
+      case State.fetch(state, uri, key) do
+        {:ok, value, new_state} -> {{:ok, value}, new_state}
+        error -> {error, state}
+      end
+
+    {:reply, reply, new_state}
   end
 
   def handle_call({:close, uri}, _from, %State{} = state) do
-    reply = State.close(uri)
-    {:reply, reply, state}
+    {reply, new_state} =
+      case State.close(state, uri) do
+        {:ok, new_state} -> {:ok, new_state}
+        error -> {error, state}
+      end
+
+    {:reply, reply, new_state}
   end
 
   def handle_call({:get_and_update, uri, update_fn}, _from, %State{} = state) do
@@ -389,7 +376,7 @@ defmodule Lexical.Document.Store do
   def handle_call({:update, uri, updater_fn}, _, %State{} = state) do
     {reply, new_state} =
       case State.update(state, uri, updater_fn) do
-        {:ok, _} = success -> success
+        {:ok, new_state} -> {:ok, new_state}
         error -> {error, state}
       end
 
