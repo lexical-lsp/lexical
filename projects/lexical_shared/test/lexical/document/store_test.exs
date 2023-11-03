@@ -183,26 +183,27 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "derivations" do
-    def document_length(%Document{} = document) do
-      document
-      |> Document.to_string()
-      |> String.length()
+    setup context do
+      me = self()
+
+      length_fun = fn doc ->
+        send(me, :length_called)
+
+        doc
+        |> Document.to_string()
+        |> String.length()
+      end
+
+      :ok = with_store(%{store: [derive: [length: length_fun]]})
+      :ok = with_an_open_document(context)
     end
 
-    @describetag store: [derivations: [length: {__MODULE__, :document_length}]]
-
-    test "can be fetched with the document by key", context do
-      :ok = with_store(context)
-      :ok = with_an_open_document(context)
-
+    test "can be fetched with the document by key" do
       assert {:ok, {doc, 5}} = Document.Store.fetch(uri(), :length)
       assert Document.to_string(doc) == "hello"
     end
 
-    test "update when the document changes", context do
-      :ok = with_store(context)
-      :ok = with_an_open_document(context)
-
+    test "update when the document changes" do
       assert :ok =
                Document.Store.update(uri(), fn document ->
                  Document.apply_content_changes(document, 2, [
@@ -214,24 +215,17 @@ defmodule Lexical.Document.StoreTest do
       assert Document.to_string(doc) == "dog"
     end
 
-    test "are lazily computed when fetched", context do
-      me = self()
+    test "are lazily computed when first fetched" do
+      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
+    end
 
-      length_fun = fn doc ->
-        send(me, :length_fun)
-        document_length(doc)
-      end
+    test "are only computed again when the document changes" do
+      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
 
-      store_opts = [derivations: [length: length_fun]]
-
-      :ok = with_store(%{store: store_opts})
-      :ok = with_an_open_document(context)
-
-      assert {:ok, {_, 5}} = Document.Store.fetch(uri(), :length)
-      assert_received :length_fun
-
-      assert {:ok, {_, 5}} = Document.Store.fetch(uri(), :length)
-      refute_received :length_fun
+      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      refute_received :length_called
 
       assert :ok =
                Document.Store.update(uri(), fn document ->
@@ -240,8 +234,8 @@ defmodule Lexical.Document.StoreTest do
                  ])
                end)
 
-      assert {:ok, {_, 3}} = Document.Store.fetch(uri(), :length)
-      assert_received :length_fun
+      assert {:ok, {%Document{}, 3}} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
     end
   end
 end

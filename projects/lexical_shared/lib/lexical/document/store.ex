@@ -17,7 +17,7 @@ defmodule Lexical.Document.Store do
   @type derived :: any()
 
   @type start_opts :: [start_opt]
-  @type start_opt :: {:derivations, derivations}
+  @type start_opt :: {:derive, derivations}
 
   defmodule State do
     @moduledoc false
@@ -32,10 +32,10 @@ defmodule Lexical.Document.Store do
     @type t :: %__MODULE__{}
 
     def new(opts \\ []) do
-      [derivations: derivations] =
+      [derive: derivations] =
         opts
-        |> Keyword.validate!(derivations: [])
-        |> Keyword.take([:derivations])
+        |> Keyword.validate!(derive: [])
+        |> Keyword.take([:derive])
 
       %__MODULE__{derivations: Map.new(derivations)}
     end
