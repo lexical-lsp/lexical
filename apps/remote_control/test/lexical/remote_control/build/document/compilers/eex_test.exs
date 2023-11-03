@@ -114,25 +114,5 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
     end
-
-    @tag :with_diagnostics
-    test "handles undefinied variable" do
-      document = document_with_content(~q[
-        <%= thing %>
-      ])
-
-      assert {:error, [%Result{} = result]} = compile(document)
-
-      if Features.with_diagnostics?() do
-        assert result.message =~ "undefined variable \"thing\""
-      else
-        assert result.message =~ "undefined function thing/0"
-      end
-
-      assert result.position in [1, {1, 5}]
-      assert result.severity == :error
-      assert result.source == "EEx"
-      assert result.uri =~ "file:///file.eex"
-    end
   end
 end

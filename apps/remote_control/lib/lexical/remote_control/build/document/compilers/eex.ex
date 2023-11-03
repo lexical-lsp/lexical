@@ -80,6 +80,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
           |> Enum.reverse()
           |> Build.Error.refine_diagnostics()
           |> Enum.map(&Map.replace!(&1, :source, "EEx"))
+          |> reject_undefined_variables()
 
         {:error, diagnostics}
     end
@@ -91,7 +92,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     apply(Code, :with_diagnostics, [fn -> do_eval_quoted(quoted_ast, path) end])
   end
 
-  def do_eval_quoted(quoted_ast, path) do
+  defp do_eval_quoted(quoted_ast, path) do
     try do
       {result, _} = Code.eval_quoted(quoted_ast, [assigns: %{}], file: path)
       {:ok, result}
@@ -108,6 +109,20 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     # for example: `<%= @name %>`
     Enum.reject(errors, fn %Result{message: message} ->
       message =~ ~s[undefined variable "assigns"]
+    end)
+  end
+
+  defp reject_undefined_variables(errors) do
+    # NOTE: Ignoring error for undefined variables
+    # for example:
+    # ```heex
+    # <.inputs_for :let={finner} field={f[:inner]}>
+    #  <%= finner %>
+    # </.inputs_for>
+    # ```
+    # the `finner` variable is defined by `:let` of `inputs_for`
+    Enum.reject(errors, fn %Result{message: message} ->
+      message =~ ~s[undefined variable]
     end)
   end
 
