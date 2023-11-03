@@ -34,7 +34,7 @@ defmodule Lexical.RemoteControl do
   end
 
   def get_project do
-    :persistent_term.get({__MODULE__, :project}, nil)
+    :persistent_term.get({__MODULE__, :project})
   end
 
   def set_project(%Project{} = project) do

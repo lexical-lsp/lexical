@@ -10,6 +10,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   replacement range will be determined by the preceding token.
   """
 
+  alias Future.Code, as: Code
   alias Lexical.Ast.Env
   alias Lexical.Completion.Builder
   alias Lexical.Document
@@ -126,6 +127,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
       [{:atom, token, _}] ->
         length(token) + 1
 
+      [{:eol, '\n', []}] ->
+        # we don't have any tokens on the current line because the prefix
+        # can't be tokenized. Try to get somethng from Code.Fragment
+        code_fragment_prefix_length(env)
+
       [{_, token, _}] when is_binary(token) ->
         String.length(token)
 
@@ -188,5 +194,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @boost_re ~r/^[0-9_]+/
   defp strip_boost(sort_text) do
     String.replace(sort_text, @boost_re, "")
+  end
+
+  defp code_fragment_prefix_length(%Env{} = env) do
+    case Code.Fragment.cursor_context(env.prefix) do
+      {:local_or_var, name} ->
+        length(name)
+
+      {:unquoted_atom, name} ->
+        # add one to account for the leading quote
+        length(name) + 1
+
+      {:alias, alias_name} ->
+        length(alias_name)
+
+      _other ->
+        0
+    end
   end
 end
