@@ -1,41 +1,81 @@
 defmodule Lexical.Document.Store do
   @moduledoc """
-  A backing store for source file documents
-
-  This implementation stores documents in ETS, and partitions read and write operations. Read operations are served
-  immediately by querying the ETS table, while writes go through a GenServer process (which is the owner of the ETS table).
+  An ETS backing store for source file documents.
   """
+
+  alias Lexical.Document
+  alias Lexical.ProcessCache
+
+  use GenServer
+
+  @type updater :: (Document.t() -> {:ok, Document.t()} | {:error, any()})
+
+  @type derivations :: [derivation]
+  @type derivation :: {derivation_key, derivation_fun}
+  @type derivation_key :: atom()
+  @type derivation_fun :: (Document.t() -> derived) | {module(), atom()}
+  @type derived :: any()
+
+  @type start_opts :: [start_opt]
+  @type start_opt :: {:derivations, derivations}
 
   defmodule State do
     @moduledoc false
+
     alias Lexical.Document
+    alias Lexical.Document.Store
+
     require Logger
 
-    defstruct temporary_open_refs: %{}
+    defstruct temporary_open_refs: %{}, derivations: %{}
+
     @type t :: %__MODULE__{}
 
     @table_name Document.Store
 
-    def new do
+    def new(opts \\ []) do
+      [derivations: derivations] =
+        opts
+        |> Keyword.validate!(derivations: [])
+        |> Keyword.take([:derivations])
+
       :ets.new(@table_name, [:named_table, :set, :protected, read_concurrency: true])
 
-      %__MODULE__{}
+      %__MODULE__{derivations: Map.new(derivations)}
     end
 
     @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
     def fetch(uri) do
       case ets_fetch(uri, :any) do
-        {:ok, _} = success -> success
+        {:ok, {document, _}} -> {:ok, document}
         :error -> {:error, :not_open}
+      end
+    end
+
+    @spec fetch(t, Lexical.uri(), Store.derivation_key()) ::
+            {:ok, {Document.t(), Store.derived()}} | {:error, :not_open}
+    def fetch(%__MODULE__{} = store, uri, derivation_key) do
+      case ets_fetch(uri, :any, true) do
+        {:ok, {_uri, _type, {document, %{^derivation_key => derived}}}} ->
+          {:ok, {document, derived}}
+
+        {:ok, {_uri, type, {document, derivations}}} ->
+          derived = derive(store, derivation_key, document)
+          derivations = Map.put(derivations, derivation_key, derived)
+          ets_put(uri, type, {document, derivations})
+          {:ok, {document, derived}}
+
+        :error ->
+          {:error, :not_open}
       end
     end
 
     @spec save(t, Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
       case ets_fetch(uri, :sources) do
-        {:ok, document} ->
+        {:ok, {document, derivations}} ->
           document = Document.mark_clean(document)
-          ets_put(uri, :sources, document)
+          ets_put(uri, :sources, {document, derivations})
           {:ok, store}
 
         :error ->
@@ -51,7 +91,7 @@ defmodule Lexical.Document.Store do
 
         :error ->
           document = Document.new(uri, text, version)
-          ets_put(uri, :sources, document)
+          ets_put(uri, :sources, {document, %{}})
           {:ok, store}
       end
     end
@@ -61,21 +101,18 @@ defmodule Lexical.Document.Store do
       ets_has_key?(uri, :any)
     end
 
-    @spec close(t(), Lexical.uri()) :: {:ok, t()} | {:error, :not_open}
-    def close(%__MODULE__{} = store, uri) do
+    @spec close(Lexical.uri()) :: :ok | {:error, :not_open}
+    def close(uri) do
       case ets_pop(uri, :sources) do
-        nil ->
-          {:error, :not_open}
-
-        _document ->
-          {:ok, store}
+        nil -> {:error, :not_open}
+        _value -> :ok
       end
     end
 
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, document} <- fetch(uri),
+      with {:ok, {document, _derivations}} <- ets_fetch(uri, :any),
            {:ok, updated_source} <- updater_fn.(document) do
-        ets_put(uri, :sources, updated_source)
+        ets_put(uri, :sources, {updated_source, %{}})
 
         {:ok, updated_source, store}
       else
@@ -105,7 +142,7 @@ defmodule Lexical.Document.Store do
           |> maybe_cancel_old_ref(uri)
           |> Map.put(uri, ref)
 
-        ets_put(uri, :temp, document)
+        ets_put(uri, :temp, {document, %{}})
         new_store = %__MODULE__{store | temporary_open_refs: new_refs}
 
         {:ok, document, new_store}
@@ -152,11 +189,40 @@ defmodule Lexical.Document.Store do
     defp normalize_error(:error), do: {:error, :not_open}
     defp normalize_error(e), do: e
 
+    defp derive(%__MODULE__{} = store, key, document) do
+      case store.derivations do
+        %{^key => fun} when is_function(fun, 1) ->
+          fun.(document)
+
+        %{^key => {module, fun_name}} ->
+          apply(module, fun_name, [document])
+
+        _ ->
+          known = Map.keys(store.derivations)
+
+          raise ArgumentError,
+                "No derivation for #{inspect(key)}, expected one of #{inspect(known)}"
+      end
+    end
+
     @read_types [:sources, :temp, :any]
     @write_types [:sources, :temp]
-    defp ets_fetch(key, type) when type in @read_types do
+
+    defp ets_fetch(key, type, entire_object? \\ false)
+
+    defp ets_fetch(key, type, false) when type in @read_types do
       case :ets.match(@table_name, {key, type_selector(type), :"$1"}) do
         [[value]] -> {:ok, value}
+        _ -> :error
+      end
+    end
+
+    defp ets_fetch(key, type, true) when type in @read_types do
+      type = type_selector(type)
+      match_spec = [{{key, type, :"$1"}, [], [:"$_"]}]
+
+      case :ets.select(@table_name, match_spec) do
+        [object] -> {:ok, object}
         _ -> :error
       end
     end
@@ -167,9 +233,9 @@ defmodule Lexical.Document.Store do
     end
 
     defp ets_has_key?(key, type) when type in @read_types do
-      match_spec = {key, type_selector(type), :"$1"}
+      pattern = {key, type_selector(type), :"$1"}
 
-      case :ets.match(@table_name, match_spec) do
+      case :ets.match(@table_name, pattern) do
         [] -> false
         _ -> true
       end
@@ -186,8 +252,8 @@ defmodule Lexical.Document.Store do
     end
 
     defp ets_delete(key, type) when type in @write_types do
-      match_spec = {key, type, :_}
-      :ets.match_delete(@table_name, match_spec)
+      pattern = {key, type, :_}
+      :ets.match_delete(@table_name, pattern)
       :ok
     end
 
@@ -195,18 +261,15 @@ defmodule Lexical.Document.Store do
     defp type_selector(type), do: type
   end
 
-  alias Lexical.Document
-  alias Lexical.ProcessCache
-
-  @type t :: %State{}
-
-  @type updater :: (Document.t() -> {:ok, Document.t()} | {:error, any()})
-
-  use GenServer
-
   @spec fetch(Lexical.uri()) :: {:ok, Document.t()} | {:error, :not_open}
   def fetch(uri) do
     GenServer.call(name(), {:fetch, uri})
+  end
+
+  @spec fetch(Lexical.uri(), derivation_key) ::
+          {:ok, {Document.t(), derived}} | {:error, :not_open}
+  def fetch(uri, key) do
+    GenServer.call(name(), {:fetch, uri, key})
   end
 
   @spec save(Lexical.uri()) :: :ok | {:error, :not_open}
@@ -240,24 +303,27 @@ defmodule Lexical.Document.Store do
     GenServer.call(name(), {:close, uri})
   end
 
-  @spec get_and_update(Lexical.uri(), updater()) :: {:ok, Document.t()} | {:error, any()}
+  @spec get_and_update(Lexical.uri(), updater) :: {:ok, Document.t()} | {:error, any()}
   def get_and_update(uri, update_fn) do
     GenServer.call(name(), {:get_and_update, uri, update_fn})
   end
 
-  @spec update(Lexical.uri(), updater()) :: :ok | {:error, any()}
+  @spec update(Lexical.uri(), updater) :: :ok | {:error, any()}
   def update(uri, update_fn) do
     GenServer.call(name(), {:update, uri, update_fn})
   end
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, [], name: name())
+  @spec start_link(start_opts) :: GenServer.on_start()
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: name())
   end
 
-  def init(_) do
-    {:ok, State.new()}
+  @impl GenServer
+  def init(opts) do
+    {:ok, State.new(opts)}
   end
 
+  @impl GenServer
   def handle_call({:save, uri}, _from, %State{} = state) do
     {reply, new_state} =
       case State.save(state, uri) do
@@ -300,14 +366,14 @@ defmodule Lexical.Document.Store do
     {:reply, reply, state}
   end
 
-  def handle_call({:close, uri}, _from, %State{} = state) do
-    {reply, new_state} =
-      case State.close(state, uri) do
-        {:ok, _} = success -> success
-        error -> {error, state}
-      end
+  def handle_call({:fetch, uri, key}, _from, %State{} = state) do
+    reply = State.fetch(state, uri, key)
+    {:reply, reply, state}
+  end
 
-    {:reply, reply, new_state}
+  def handle_call({:close, uri}, _from, %State{} = state) do
+    reply = State.close(uri)
+    {:reply, reply, state}
   end
 
   def handle_call({:get_and_update, uri, update_fn}, _from, %State{} = state) do
@@ -330,6 +396,7 @@ defmodule Lexical.Document.Store do
     {:reply, reply, new_state}
   end
 
+  @impl GenServer
   def handle_info({:unload, uri}, %State{} = state) do
     {:noreply, State.unload(state, uri)}
   end

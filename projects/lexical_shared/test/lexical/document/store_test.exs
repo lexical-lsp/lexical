@@ -6,18 +6,18 @@ defmodule Lexical.Document.StoreTest do
 
   use ExUnit.Case
 
-  setup do
-    {:ok, _} = start_supervised(Document.Store)
+  def with_store(%{} = context) do
+    store_opts = Map.get(context, :store, [])
+    {:ok, _} = start_supervised({Document.Store, store_opts})
     :ok
-  end
-
-  def uri do
-    "file:///file.ex"
   end
 
   def with_an_open_document(_) do
     :ok = Document.Store.open(uri(), "hello", 1)
-    :ok
+  end
+
+  def uri do
+    "file:///file.ex"
   end
 
   defp build_position(_, nil) do
@@ -51,6 +51,8 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "a clean store" do
+    setup [:with_store]
+
     test "a document can be opened" do
       :ok = Document.Store.open(uri(), "hello", 1)
       assert {:ok, file} = Document.Store.fetch(uri())
@@ -70,7 +72,7 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "a document that is already open" do
-    setup [:with_an_open_document]
+    setup [:with_store, :with_an_open_document]
 
     test "can be fetched" do
       assert {:ok, doc} = Document.Store.fetch(uri())
@@ -148,7 +150,7 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "a temp document" do
-    setup [:with_a_temp_document]
+    setup [:with_store, :with_a_temp_document]
 
     test "can be opened", ctx do
       assert {:ok, doc} = Document.Store.open_temporary(ctx.uri, 100)
@@ -177,6 +179,69 @@ defmodule Lexical.Document.StoreTest do
       assert :ok = Document.Store.open(ctx.uri, ctx.contents, 1)
       Process.sleep(120)
       assert Document.Store.open?(ctx.uri)
+    end
+  end
+
+  describe "derivations" do
+    def document_length(%Document{} = document) do
+      document
+      |> Document.to_string()
+      |> String.length()
+    end
+
+    @describetag store: [derivations: [length: {__MODULE__, :document_length}]]
+
+    test "can be fetched with the document by key", context do
+      :ok = with_store(context)
+      :ok = with_an_open_document(context)
+
+      assert {:ok, {doc, 5}} = Document.Store.fetch(uri(), :length)
+      assert Document.to_string(doc) == "hello"
+    end
+
+    test "update when the document changes", context do
+      :ok = with_store(context)
+      :ok = with_an_open_document(context)
+
+      assert :ok =
+               Document.Store.update(uri(), fn document ->
+                 Document.apply_content_changes(document, 2, [
+                   build_change(text: "dog")
+                 ])
+               end)
+
+      assert {:ok, {doc, 3}} = Document.Store.fetch(uri(), :length)
+      assert Document.to_string(doc) == "dog"
+    end
+
+    test "are lazily computed when fetched", context do
+      me = self()
+
+      length_fun = fn doc ->
+        send(me, :length_fun)
+        document_length(doc)
+      end
+
+      store_opts = [derivations: [length: length_fun]]
+
+      :ok = with_store(%{store: store_opts})
+      :ok = with_an_open_document(context)
+
+      assert {:ok, {_, 5}} = Document.Store.fetch(uri(), :length)
+      assert_received :length_fun
+
+      assert {:ok, {_, 5}} = Document.Store.fetch(uri(), :length)
+      refute_received :length_fun
+
+      assert :ok =
+               Document.Store.update(uri(), fn document ->
+                 Document.apply_content_changes(document, 2, [
+                   build_change(text: "dog")
+                 ])
+               end)
+
+      assert {:ok, {_, 3}} = Document.Store.fetch(uri(), :length)
+      assert_received :length_fun
     end
   end
 end
