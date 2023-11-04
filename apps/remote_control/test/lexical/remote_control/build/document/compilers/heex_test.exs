@@ -52,7 +52,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
         <div><%= @thing %></div>
       ])
 
-      assert {:ok, _} = compile(document)
+      assert {:error, []} = compile(document)
     end
 
     test "handles undefinied variables" do
@@ -60,15 +60,15 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
         <div><%= thing %></div>
       ])
 
-      if Features.with_diagnostics?() do
-        assert {:error, [%Result{} = result]} = compile(document)
+      assert {:error, [%Result{} = result]} = compile(document)
 
+      if Features.with_diagnostics?() do
         assert result.message =~ ~S[undefined variable "thing"]
-        assert result.position == {1, 10}
+      else
+        assert result.message =~ "undefined function thing/0"
+        assert result.position in [1, {1, 10}]
         assert result.severity == :error
         assert result.source == "EEx"
-      else
-        assert {:ok, []} = compile(document)
       end
     end
 
@@ -85,24 +85,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
           </.form>
         |)
 
-      assert {:ok, _} = compile(document)
-    end
-
-    @tag :skip
-    test "undefinied functions" do
-      document = document_with_content(~q|
-          <.form
-            :let={f}
-            phx-change="change_name"
-          >
-            <.inputs_for :let={f_nested} field={f[:nested]}>
-              <.input type="text" field={f_nested[:name]} />
-              <%= print() %>
-            </.inputs_for>
-          </.form>
-        |)
-
-      assert {:error, [_error]} = compile(document)
+      if Features.with_diagnostics?() do
+        assert {:error, []} = compile(document)
+      else
+        # we don't want to ignore the undefined function error when Elixir < 1.15
+        assert {:error, [_]} = compile(document)
+      end
     end
 
     test "returns error when there are unclosed tags" do

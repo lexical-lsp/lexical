@@ -45,12 +45,13 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     end
   end
 
-  def eval_quoted(%Document{} = document, quoted_ast) do
+  @spec eval_quoted(Document.t(), Macro.t(), String.t()) :: :ok | {:error, [Result.t()]}
+  def eval_quoted(%Document{} = document, quoted_ast, eval_for \\ "eex") do
     result =
       if Elixir.Features.with_diagnostics?() do
-        eval_quoted_with_diagnostics(quoted_ast, document.path)
+        eval_quoted_with_diagnostics(quoted_ast, document.path, eval_for)
       else
-        do_eval_quoted(quoted_ast, document.path)
+        do_eval_quoted(quoted_ast, document.path, eval_for)
       end
 
     case result do
@@ -85,15 +86,22 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     end
   end
 
-  defp eval_quoted_with_diagnostics(quoted_ast, path) do
+  defp eval_quoted_with_diagnostics(quoted_ast, path, eval_for) do
     # Using apply to prevent a compile warning on elixir < 1.15
     # credo:disable-for-next-line
-    apply(Code, :with_diagnostics, [fn -> do_eval_quoted(quoted_ast, path) end])
+    apply(Code, :with_diagnostics, [fn -> do_eval_quoted(quoted_ast, path, eval_for) end])
   end
 
-  def do_eval_quoted(quoted_ast, path) do
+  def do_eval_quoted(quoted_ast, path, eval_for) do
     try do
-      env = Map.put(__ENV__, :file, path)
+      env =
+        if eval_for == "heex" do
+          # __ENV is required for heex quoted evaluations.
+          Map.put(__ENV__, :file, path)
+        else
+          [file: path]
+        end
+
       {result, _} = Code.eval_quoted(quoted_ast, [assigns: %{}], env)
       {:ok, result}
     rescue

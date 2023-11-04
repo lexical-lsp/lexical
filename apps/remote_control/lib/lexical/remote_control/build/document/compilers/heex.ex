@@ -19,10 +19,28 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HEEx do
   end
 
   def compile(%Document{} = document) do
-    with {:ok, quoted} <- heex_to_quoted(document),
-         :ok <- Compilers.EEx.eval_quoted(document, quoted) do
-      {:ok, []}
+    with :ok <- eval_heex_quoted(document) do
+      compile_eex_quoted(document)
     end
+  end
+
+  defp eval_heex_quoted(document) do
+    with {:ok, quoted} <- heex_to_quoted(document) do
+      Compilers.EEx.eval_quoted(document, quoted, "heex")
+    end
+  end
+
+  defp compile_eex_quoted(document) do
+    with {:error, errors} <- Compilers.EEx.compile(document) do
+      {:error, reject_undefined_variables(errors)}
+    end
+  end
+
+  defp reject_undefined_variables(errors) do
+    # the undefined variable error is handled by the `eval_heex_quoted`
+    Enum.reject(errors, fn error ->
+      error.message =~ "undefined variable"
+    end)
   end
 
   defp heex_to_quoted(%Document{} = document) do
@@ -56,6 +74,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HEEx do
 
   defp error_to_result(document, %error_struct{} = error)
        when error_struct in [
+              SyntaxError,
               TokenMissingError,
               Phoenix.LiveView.Tokenizer.ParseError
             ] do
