@@ -26,7 +26,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   end
 
   defp reindex(uri) do
-    with {:ok, {%Document{} = document, %Analysis{} = analysis}} <-
+    with {:ok, %Document{} = document, %Analysis{} = analysis} <-
            Document.Store.fetch(uri, :analysis),
          {:ok, entries} <- Indexer.Quoted.index(document, analysis) do
       Search.Store.update(document.path, entries)

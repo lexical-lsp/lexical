@@ -13,8 +13,8 @@ defmodule Lexical.Document.Store do
   @type derivations :: [derivation]
   @type derivation :: {derivation_key, derivation_fun}
   @type derivation_key :: atom()
-  @type derivation_fun :: (Document.t() -> derived) | {module(), atom()}
-  @type derived :: any()
+  @type derivation_fun :: (Document.t() -> derived_value)
+  @type derived_value :: any()
 
   @type start_opts :: [start_opt]
   @type start_opt :: {:derive, derivations}
@@ -27,39 +27,43 @@ defmodule Lexical.Document.Store do
 
     require Logger
 
-    defstruct documents: %{}, temporary_open_refs: %{}, derivations: %{}
+    import Record
+
+    defstruct open: %{}, temporary_open_refs: %{}, derivation_funs: %{}
 
     @type t :: %__MODULE__{}
 
+    defrecord :open_doc, document: nil, derived: %{}
+
     def new(opts \\ []) do
-      [derive: derivations] =
+      [derive: funs] =
         opts
         |> Keyword.validate!(derive: [])
         |> Keyword.take([:derive])
 
-      %__MODULE__{derivations: Map.new(derivations)}
+      %__MODULE__{derivation_funs: Map.new(funs)}
     end
 
     @spec fetch(t, Lexical.uri()) :: {:ok, Document.t(), t} | {:error, :not_open}
     def fetch(%__MODULE__{} = store, uri) do
-      case store.documents do
-        %{^uri => {document, _}} -> {:ok, document, store}
+      case store.open do
+        %{^uri => open_doc(document: document)} -> {:ok, document, store}
         _ -> {:error, :not_open}
       end
     end
 
     @spec fetch(t, Lexical.uri(), Store.derivation_key()) ::
-            {:ok, {Document.t(), Store.derived()}, t} | {:error, :not_open}
+            {:ok, Document.t(), Store.derived_value(), t} | {:error, :not_open}
     def fetch(%__MODULE__{} = store, uri, key) do
-      case store.documents do
-        %{^uri => {document, %{^key => derived}}} ->
-          {:ok, {document, derived}, store}
+      case store.open do
+        %{^uri => open_doc(document: document, derived: %{^key => derivation})} ->
+          {:ok, document, derivation, store}
 
-        %{^uri => {document, derivations}} ->
-          derived = derive(store, key, document)
-          derivations = Map.put(derivations, key, derived)
-          store = put_document(store, document, derivations)
-          {:ok, {document, derived}, store}
+        %{^uri => open_doc(document: document, derived: derived)} ->
+          derivation = derive(store, key, document)
+          derived = Map.put(derived, key, derivation)
+          store = put_open_doc(store, document, derived)
+          {:ok, document, derivation, store}
 
         _ ->
           {:error, :not_open}
@@ -68,10 +72,10 @@ defmodule Lexical.Document.Store do
 
     @spec save(t, Lexical.uri()) :: {:ok, t} | {:error, :not_open}
     def save(%__MODULE__{} = store, uri) do
-      case store.documents do
-        %{^uri => {document, derivations}} ->
+      case store.open do
+        %{^uri => open_doc(document: document, derived: derived)} ->
           document = Document.mark_clean(document)
-          store = put_document(store, document, derivations)
+          store = put_open_doc(store, document, derived)
           {:ok, store}
 
         _ ->
@@ -84,46 +88,46 @@ defmodule Lexical.Document.Store do
         when is_map_key(refs, uri) do
       {_, store} =
         store
-        |> maybe_cancel_old_ref(uri)
-        |> pop_document(uri)
+        |> maybe_cancel_ref(uri)
+        |> pop_open_doc(uri)
 
       open(store, uri, text, version)
     end
 
     def open(%__MODULE__{} = store, uri, text, version) do
-      case store.documents do
+      case store.open do
         %{^uri => _} ->
           {:error, :already_open}
 
         _ ->
           document = Document.new(uri, text, version)
-          store = put_document(store, document)
+          store = put_open_doc(store, document)
           {:ok, store}
       end
     end
 
     @spec open?(t, Lexical.uri()) :: boolean
     def open?(%__MODULE__{} = store, uri) do
-      Map.has_key?(store.documents, uri)
+      Map.has_key?(store.open, uri)
     end
 
     @spec close(t, Lexical.uri()) :: {:ok, t} | {:error, :not_open}
     def close(%__MODULE__{} = store, uri) do
-      case pop_document(store, uri) do
+      case pop_open_doc(store, uri) do
         {nil, _} ->
           {:error, :not_open}
 
         {_, store} ->
-          {:ok, maybe_cancel_old_ref(store, uri)}
+          {:ok, maybe_cancel_ref(store, uri)}
       end
     end
 
     @spec get_and_update(t, Lexical.uri(), Store.updater()) ::
             {:ok, Document.t(), t} | {:error, any()}
     def get_and_update(%__MODULE__{} = store, uri, updater_fn) do
-      with {:ok, {document, _derivations}} <- Map.fetch(store.documents, uri),
+      with {:ok, open_doc(document: document)} <- Map.fetch(store.open, uri),
            {:ok, document} <- updater_fn.(document) do
-        {:ok, document, put_document(store, document)}
+        {:ok, document, put_open_doc(store, document)}
       else
         error ->
           normalize_error(error)
@@ -149,9 +153,9 @@ defmodule Lexical.Document.Store do
 
         new_store =
           store
-          |> maybe_cancel_old_ref(uri)
+          |> maybe_cancel_ref(uri)
           |> put_ref(uri, ref)
-          |> put_document(document)
+          |> put_open_doc(document)
 
         {:ok, document, new_store}
       end
@@ -172,18 +176,18 @@ defmodule Lexical.Document.Store do
 
     @spec unload(t, Lexical.uri()) :: t
     def unload(%__MODULE__{} = store, uri) do
-      {_, store} = pop_document(store, uri)
-      maybe_cancel_old_ref(store, uri)
+      {_, store} = pop_open_doc(store, uri)
+      maybe_cancel_ref(store, uri)
     end
 
-    defp put_document(%__MODULE__{} = store, %Document{} = document, derivations \\ %{}) do
-      put_in(store.documents[document.uri], {document, derivations})
+    defp put_open_doc(%__MODULE__{} = store, %Document{} = document, derived \\ %{}) do
+      put_in(store.open[document.uri], open_doc(document: document, derived: derived))
     end
 
-    defp pop_document(%__MODULE__{} = store, uri) do
-      case Map.pop(store.documents, uri) do
+    defp pop_open_doc(%__MODULE__{} = store, uri) do
+      case Map.pop(store.open, uri) do
+        {open_doc() = doc, open} -> {doc, %__MODULE__{store | open: open}}
         {nil, _} -> {nil, store}
-        {document, documents} -> {document, %__MODULE__{store | documents: documents}}
       end
     end
 
@@ -191,18 +195,15 @@ defmodule Lexical.Document.Store do
       put_in(store.temporary_open_refs[uri], ref)
     end
 
-    defp maybe_cancel_old_ref(%__MODULE__{} = store, uri) do
-      {_, new_refs} =
-        Map.get_and_update(store.temporary_open_refs, uri, fn
-          nil ->
-            :pop
+    defp maybe_cancel_ref(%__MODULE__{} = store, uri) do
+      case pop_in(store.temporary_open_refs[uri]) do
+        {ref, store} when is_reference(ref) ->
+          Process.cancel_timer(ref)
+          store
 
-          old_ref when is_reference(old_ref) ->
-            Process.cancel_timer(old_ref)
-            :pop
-        end)
-
-      %__MODULE__{store | temporary_open_refs: new_refs}
+        _ ->
+          store
+      end
     end
 
     defp schedule_unload(uri, timeout) do
@@ -213,12 +214,12 @@ defmodule Lexical.Document.Store do
     defp normalize_error(e), do: e
 
     defp derive(%__MODULE__{} = store, key, document) do
-      case store.derivations do
+      case store.derivation_funs do
         %{^key => fun} ->
           fun.(document)
 
         _ ->
-          known = Map.keys(store.derivations)
+          known = Map.keys(store.derivation_funs)
 
           raise ArgumentError,
                 "No derivation for #{inspect(key)}, expected one of #{inspect(known)}"
@@ -232,7 +233,7 @@ defmodule Lexical.Document.Store do
   end
 
   @spec fetch(Lexical.uri(), derivation_key) ::
-          {:ok, {Document.t(), derived}} | {:error, :not_open}
+          {:ok, Document.t(), derived_value} | {:error, :not_open}
   def fetch(uri, key) do
     GenServer.call(name(), {:fetch, uri, key})
   end
@@ -343,7 +344,7 @@ defmodule Lexical.Document.Store do
   def handle_call({:fetch, uri, key}, _from, %State{} = state) do
     {reply, new_state} =
       case State.fetch(state, uri, key) do
-        {:ok, value, new_state} -> {{:ok, value}, new_state}
+        {:ok, value, derived_value, new_state} -> {{:ok, value, derived_value}, new_state}
         error -> {error, state}
       end
 

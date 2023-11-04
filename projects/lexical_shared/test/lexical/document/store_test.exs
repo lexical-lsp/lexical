@@ -182,7 +182,7 @@ defmodule Lexical.Document.StoreTest do
     end
   end
 
-  describe "derivations" do
+  describe "derived values" do
     setup context do
       me = self()
 
@@ -199,7 +199,7 @@ defmodule Lexical.Document.StoreTest do
     end
 
     test "can be fetched with the document by key" do
-      assert {:ok, {doc, 5}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, doc, 5} = Document.Store.fetch(uri(), :length)
       assert Document.to_string(doc) == "hello"
     end
 
@@ -211,20 +211,20 @@ defmodule Lexical.Document.StoreTest do
                  ])
                end)
 
-      assert {:ok, {doc, 3}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, doc, 3} = Document.Store.fetch(uri(), :length)
       assert Document.to_string(doc) == "dog"
     end
 
     test "are lazily computed when first fetched" do
-      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
       assert_received :length_called
     end
 
     test "are only computed again when the document changes" do
-      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
       assert_received :length_called
 
-      assert {:ok, {%Document{}, 5}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
       refute_received :length_called
 
       assert :ok =
@@ -234,7 +234,7 @@ defmodule Lexical.Document.StoreTest do
                  ])
                end)
 
-      assert {:ok, {%Document{}, 3}} = Document.Store.fetch(uri(), :length)
+      assert {:ok, %Document{}, 3} = Document.Store.fetch(uri(), :length)
       assert_received :length_called
     end
   end
