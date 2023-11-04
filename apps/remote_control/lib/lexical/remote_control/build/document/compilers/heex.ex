@@ -19,12 +19,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HEEx do
   end
 
   def compile(%Document{} = document) do
-    case heex_to_quoted(document) do
-      {:ok, _} ->
-        Compilers.EEx.compile(document)
-
-      other ->
-        other
+    with {:ok, quoted} <- heex_to_quoted(document),
+         :ok <- Compilers.EEx.eval_quoted(document, quoted) do
+      {:ok, []}
     end
   end
 

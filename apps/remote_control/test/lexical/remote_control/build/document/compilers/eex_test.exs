@@ -126,7 +126,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       if Features.with_diagnostics?() do
         assert result.message =~ "undefined variable \"thing\""
       else
-        assert result.message =~ "undefined function thing/0"
+        assert result.message =~ "function :erl_eval.thing/0 is undefined or private"
       end
 
       assert result.position in [1, {1, 5}]

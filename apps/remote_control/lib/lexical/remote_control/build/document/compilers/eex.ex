@@ -45,7 +45,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     end
   end
 
-  defp eval_quoted(%Document{} = document, quoted_ast) do
+  def eval_quoted(%Document{} = document, quoted_ast) do
     result =
       if Elixir.Features.with_diagnostics?() do
         eval_quoted_with_diagnostics(quoted_ast, document.path)
@@ -93,7 +93,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
 
   def do_eval_quoted(quoted_ast, path) do
     try do
-      {result, _} = Code.eval_quoted(quoted_ast, [assigns: %{}], file: path)
+      env = Map.put(__ENV__, :file, path)
+      {result, _} = Code.eval_quoted(quoted_ast, [assigns: %{}], env)
       {:ok, result}
     rescue
       exception ->

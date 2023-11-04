@@ -234,7 +234,7 @@ defmodule Lexical.RemoteControl.Build.Error do
     message = Exception.message(undefined_function)
 
     position =
-      if context == [] do
+      if context == [] and is_list(arguments) do
         arity = length(arguments)
         mfa = {module, function, arity}
         mfa_to_position(mfa, quoted_ast)

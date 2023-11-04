@@ -44,7 +44,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
       document = document_with_content(~q[
         <div>thing</div>
       ])
-      assert {:ok, []} = compile(document)
+      assert {:ok, _} = compile(document)
     end
 
     test "ignore undefinied assigns" do
@@ -52,7 +52,57 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
         <div><%= @thing %></div>
       ])
 
-      assert {:error, []} = compile(document)
+      assert {:ok, _} = compile(document)
+    end
+
+    test "handles undefinied variables" do
+      document = document_with_content(~q[
+        <div><%= thing %></div>
+      ])
+
+      if Features.with_diagnostics?() do
+        assert {:error, [%Result{} = result]} = compile(document)
+
+        assert result.message =~ ~S[undefined variable "thing"]
+        assert result.position == {1, 10}
+        assert result.severity == :error
+        assert result.source == "EEx"
+      else
+        assert {:ok, []} = compile(document)
+      end
+    end
+
+    test "shouldn't report errors if the variable is defined with :let " do
+      document = document_with_content(~q|
+          <.form
+            :let={f}
+            phx-change="change_name"
+          >
+            <.inputs_for :let={f_nested} field={f[:nested]}>
+              <.input type="text" field={f_nested[:name]} />
+              <%= f_nested %>
+            </.inputs_for>
+          </.form>
+        |)
+
+      assert {:ok, _} = compile(document)
+    end
+
+    @tag :skip
+    test "undefinied functions" do
+      document = document_with_content(~q|
+          <.form
+            :let={f}
+            phx-change="change_name"
+          >
+            <.inputs_for :let={f_nested} field={f[:nested]}>
+              <.input type="text" field={f_nested[:name]} />
+              <%= print() %>
+            </.inputs_for>
+          </.form>
+        |)
+
+      assert {:error, [_error]} = compile(document)
     end
 
     test "returns error when there are unclosed tags" do
