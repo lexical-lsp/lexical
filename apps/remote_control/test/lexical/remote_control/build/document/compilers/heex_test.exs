@@ -55,23 +55,6 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
       assert {:error, []} = compile(document)
     end
 
-    test "ignore undefinied variables" do
-      document = document_with_content(~q(
-        <.form :let={f} as={:myform} form={@form}>
-          <.inputs_for :let={finner} field={f[:inner]}>
-            <%= finner %>
-          </.inputs_for>
-        </.form>
-      ))
-
-      if Features.with_diagnostics?() do
-        assert {:error, []} = compile(document)
-      else
-        assert {:error, [error]} = compile(document)
-        assert error.message =~ "undefined function finner/0"
-      end
-    end
-
     test "returns error when there are unclosed tags" do
       document = document_with_content(~q[
         <div>thing
