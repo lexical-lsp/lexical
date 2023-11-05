@@ -45,13 +45,13 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     end
   end
 
-  @spec eval_quoted(Document.t(), Macro.t(), String.t()) :: :ok | {:error, [Result.t()]}
-  def eval_quoted(%Document{} = document, quoted_ast, eval_for \\ "eex") do
+  @spec eval_quoted(Document.t(), Macro.t()) :: :ok | {:error, [Result.t()]}
+  def eval_quoted(%Document{} = document, quoted_ast) do
     result =
       if Elixir.Features.with_diagnostics?() do
-        eval_quoted_with_diagnostics(quoted_ast, document.path, eval_for)
+        eval_quoted_with_diagnostics(quoted_ast, document.path)
       else
-        do_eval_quoted(quoted_ast, document.path, eval_for)
+        do_eval_quoted(quoted_ast, document.path)
       end
 
     case result do
@@ -86,22 +86,27 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
     end
   end
 
-  defp eval_quoted_with_diagnostics(quoted_ast, path, eval_for) do
+  defp eval_quoted_with_diagnostics(quoted_ast, path) do
     # Using apply to prevent a compile warning on elixir < 1.15
     # credo:disable-for-next-line
-    apply(Code, :with_diagnostics, [fn -> do_eval_quoted(quoted_ast, path, eval_for) end])
+    apply(Code, :with_diagnostics, [fn -> do_eval_quoted(quoted_ast, path) end])
   end
 
-  def do_eval_quoted(quoted_ast, path, eval_for) do
-    try do
-      env =
-        if eval_for == "heex" do
-          # __ENV is required for heex quoted evaluations.
-          Map.put(__ENV__, :file, path)
-        else
-          [file: path]
-        end
+  def do_eval_quoted(quoted_ast, path) do
+    eval_heex_quoted? =
+      quoted_ast
+      |> Future.Macro.path(&match?({:require, [context: Phoenix.LiveView.TagEngine], _}, &1))
+      |> then(&(not is_nil(&1)))
 
+    env =
+      if eval_heex_quoted? do
+        # __ENV__ is required for heex quoted evaluations.
+        Map.put(__ENV__, :file, path)
+      else
+        [file: path]
+      end
+
+    try do
       {result, _} = Code.eval_quoted(quoted_ast, [assigns: %{}], env)
       {:ok, result}
     rescue

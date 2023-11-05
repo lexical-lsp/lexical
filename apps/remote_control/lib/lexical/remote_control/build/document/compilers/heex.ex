@@ -26,7 +26,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HEEx do
 
   defp eval_heex_quoted(document) do
     with {:ok, quoted} <- heex_to_quoted(document) do
-      Compilers.EEx.eval_quoted(document, quoted, "heex")
+      Compilers.EEx.eval_quoted(document, quoted)
     end
   end
 
