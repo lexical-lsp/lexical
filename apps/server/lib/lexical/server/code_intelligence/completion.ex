@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
+  alias Lexical.Ast
   alias Lexical.Ast.Env
   alias Lexical.Completion.Translatable
   alias Lexical.Document
@@ -62,8 +63,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         |> List.wrap()
 
       Env.in_context?(env, :struct_field_key) ->
+        analysis = Ast.analyze_to(env.document, env.position)
+
         project
-        |> RemoteControl.Api.complete_struct_fields(env.document, env.position)
+        |> RemoteControl.Api.complete_struct_fields(analysis, env.position)
         |> Enum.map(&Translatable.translate(&1, Builder, env))
 
       true ->

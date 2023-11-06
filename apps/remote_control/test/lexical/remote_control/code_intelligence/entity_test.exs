@@ -467,7 +467,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
   defp resolve(code) do
     with {position, code} <- pop_cursor(code),
          document = subject_module(code),
-         {:ok, resolved, range} <- Entity.resolve(document, position) do
+         analysis = Lexical.Ast.analyze(document),
+         {:ok, resolved, range} <- Entity.resolve(analysis, position) do
       {:ok, resolved, decorate(document, range)}
     end
   end

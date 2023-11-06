@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Api do
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -46,9 +47,9 @@ defmodule Lexical.RemoteControl.Api do
     ])
   end
 
-  def complete_struct_fields(%Project{} = project, %Document{} = document, %Position{} = position) do
+  def complete_struct_fields(%Project{} = project, %Analysis{} = analysis, %Position{} = position) do
     RemoteControl.call(project, RemoteControl.Completion, :struct_fields, [
-      document,
+      analysis,
       position
     ])
   end

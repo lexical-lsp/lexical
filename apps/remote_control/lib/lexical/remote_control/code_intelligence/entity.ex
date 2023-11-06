@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Future.Code, as: Code
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -21,15 +22,17 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   Returns `{:ok, resolved, range}` if successful, `{:error, error}` otherwise.
   """
-  @spec resolve(Document.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
-  def resolve(%Document{} = document, %Position{} = position) do
-    with {:ok, surround_context} <- Ast.surround_context(document, position),
-         {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, document, position) do
+  @spec resolve(Analysis.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
+  def resolve(%Analysis{} = analysis, %Position{} = position) do
+    analysis = Ast.analyze_to(analysis, position)
+
+    with {:ok, surround_context} <- Ast.surround_context(analysis, position),
+         {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, analysis, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
-      {:ok, resolved, to_range(document, begin_pos, end_pos)}
+      {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
     else
       {:error, :surround_context} -> {:error, :not_found}
-      error -> error
+      {:error, _} = error -> error
     end
   end
 
@@ -41,38 +44,38 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     )
   end
 
-  defp resolve(%{context: context, begin: begin_pos, end: end_pos}, document, position) do
-    resolve(context, {begin_pos, end_pos}, document, position)
+  defp resolve(%{context: context, begin: begin_pos, end: end_pos}, analysis, position) do
+    resolve(context, {begin_pos, end_pos}, analysis, position)
   end
 
-  defp resolve({:alias, charlist}, node_range, document, position) do
-    resolve_alias(charlist, node_range, document, position)
+  defp resolve({:alias, charlist}, node_range, analysis, position) do
+    resolve_alias(charlist, node_range, analysis, position)
   end
 
-  defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_range, document, position) do
-    resolve_alias(prefix ++ [?.] ++ charlist, node_range, document, position)
+  defp resolve({:alias, {:local_or_var, prefix}, charlist}, node_range, analysis, position) do
+    resolve_alias(prefix ++ [?.] ++ charlist, node_range, analysis, position)
   end
 
-  defp resolve({:local_or_var, ~c"__MODULE__" = chars}, node_range, document, position) do
-    resolve_alias(chars, node_range, document, position)
+  defp resolve({:local_or_var, ~c"__MODULE__" = chars}, node_range, analysis, position) do
+    resolve_alias(chars, node_range, analysis, position)
   end
 
-  defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, document, position) do
+  defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, analysis, position) do
     # exclude the leading % from the node range so that it can be
     # resolved like a normal module alias
     node_range = {{start_line, start_col + 1}, end_pos}
 
-    case resolve_alias(charlist, node_range, document, position) do
+    case resolve_alias(charlist, node_range, analysis, position) do
       {:ok, {struct_or_module, struct}, range} -> {:ok, {struct_or_module, struct}, range}
       :error -> {:error, :not_found}
     end
   end
 
-  defp resolve({:dot, alias_node, fun_chars}, node_range, document, position) do
+  defp resolve({:dot, alias_node, fun_chars}, node_range, analysis, position) do
     fun = List.to_atom(fun_chars)
 
-    with {:ok, module} <- expand_alias(alias_node, document, position) do
-      case Ast.path_at(document, position) do
+    with {:ok, module} <- expand_alias(alias_node, analysis, position) do
+      case Ast.path_at(analysis, position) do
         {:ok, path} ->
           arity = arity_at_position(path, position)
           kind = kind_of_call(path, position)
@@ -84,34 +87,34 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
-  defp resolve(context, _node_range, _document, _position) do
+  defp resolve(context, _node_range, _analysis, _position) do
     {:error, {:unsupported, context}}
   end
 
-  defp resolve_alias(charlist, node_range, document, position) do
+  defp resolve_alias(charlist, node_range, analysis, position) do
     {{_line, start_column}, _} = node_range
 
     with false <- suffix_contains_module?(charlist, start_column, position),
-         {:ok, path} <- Ast.path_at(document, position),
+         {:ok, path} <- Ast.path_at(analysis, position),
          :struct <- kind_of_alias(path) do
-      resolve_struct(charlist, node_range, document, position)
+      resolve_struct(charlist, node_range, analysis, position)
     else
       _ ->
-        resolve_module(charlist, node_range, document, position)
+        resolve_module(charlist, node_range, analysis, position)
     end
   end
 
-  defp resolve_struct(charlist, node_range, document, %Position{} = position) do
-    with {:ok, struct} <- expand_alias(charlist, document, position) do
+  defp resolve_struct(charlist, node_range, analysis, %Position{} = position) do
+    with {:ok, struct} <- expand_alias(charlist, analysis, position) do
       {:ok, {:struct, struct}, node_range}
     end
   end
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
-  defp resolve_module(charlist, {{line, column}, {line, _}}, document, %Position{} = position) do
+  defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
     module_string = module_before_position(charlist, column, position)
 
-    with {:ok, module} <- expand_alias(module_string, document, position) do
+    with {:ok, module} <- expand_alias(module_string, analysis, position) do
       end_column = column + String.length(module_string)
       {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
@@ -120,8 +123,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   # Modules on multiple lines, e.g. "Foo.\n  Bar.\n  Baz"
   # Since we no longer have formatting information at this point, we
   # just return the entire module for now.
-  defp resolve_module(charlist, node_range, document, %Position{} = position) do
-    with {:ok, module} <- expand_alias(charlist, document, position) do
+  defp resolve_module(charlist, node_range, analysis, %Position{} = position) do
+    with {:ok, module} <- expand_alias(charlist, analysis, position) do
       {:ok, {:module, module}, node_range}
     end
   end
@@ -170,27 +173,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     String.upcase(first_char) == first_char
   end
 
-  defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, document, %Position{} = position) do
-    expand_alias(prefix ++ [?.] ++ charlist, document, position)
+  defp expand_alias({:alias, {:local_or_var, prefix}, charlist}, analysis, %Position{} = position) do
+    expand_alias(prefix ++ [?.] ++ charlist, analysis, position)
   end
 
-  defp expand_alias({:alias, charlist}, document, %Position{} = position) do
-    expand_alias(charlist, document, position)
+  defp expand_alias({:alias, charlist}, analysis, %Position{} = position) do
+    expand_alias(charlist, analysis, position)
   end
 
-  defp expand_alias(charlist, document, %Position{} = position) when is_list(charlist) do
+  defp expand_alias(charlist, analysis, %Position{} = position) when is_list(charlist) do
     charlist
     |> List.to_string()
-    |> expand_alias(document, position)
+    |> expand_alias(analysis, position)
   end
 
-  defp expand_alias(module, document, %Position{} = position) when is_binary(module) do
+  defp expand_alias(module, analysis, %Position{} = position) when is_binary(module) do
     [module]
     |> Module.concat()
-    |> Ast.expand_aliases(document, position)
+    |> Ast.expand_alias(analysis, position)
   end
 
-  defp expand_alias(_, _document, _position), do: :error
+  defp expand_alias(_, _analysis, _position), do: :error
 
   # Pipes:
   defp arity_at_position([{:|>, _, _} = pipe | _], %Position{} = position) do

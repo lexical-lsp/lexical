@@ -88,6 +88,8 @@ defmodule Lexical.Ast do
   @type short_alias :: atom()
   @type alias_segments :: [short_alias]
 
+  @type position :: Position.t() | {Position.line(), Position.character()}
+
   @doc """
   Analyzes a document.
   """
@@ -107,8 +109,10 @@ defmodule Lexical.Ast do
 
   This function is not guaranteed to return a valid analysis.
   """
-  @spec analyze_to(Document.t() | Analysis.t(), Position.t()) :: Analysis.t()
-  def analyze_to(%Document{} = document, %Position{} = position) do
+  @spec analyze_to(Document.t() | Analysis.t(), position) :: Analysis.t()
+  def analyze_to(%Document{} = document, position) do
+    %Position{} = position = normalize_position(position, document)
+
     with %Analysis{valid?: false} <- analyze(document) do
       document
       |> fragment(position)
@@ -116,7 +120,9 @@ defmodule Lexical.Ast do
     end
   end
 
-  def analyze_to(%Analysis{valid?: false} = analysis, %Position{} = position) do
+  def analyze_to(%Analysis{valid?: false} = analysis, position) do
+    %Position{} = position = normalize_position(position, analysis.document)
+
     analysis.document
     |> fragment(position)
     |> Analysis.new(analysis.document)
@@ -129,12 +135,16 @@ defmodule Lexical.Ast do
   @doc """
   Returns an AST generated from a valid document or string.
   """
-  @spec from(Document.t() | String.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
+  @spec from(Document.t() | Analysis.t() | String.t()) ::
+          {:ok, Macro.t()} | {:error, parse_error()}
   def from(%Document{} = document) do
     document
     |> Document.to_string()
     |> from()
   end
+
+  def from(%Analysis{valid?: true, ast: ast}), do: {:ok, ast}
+  def from(%Analysis{valid?: false, parse_error: error}), do: error
 
   def from(s) when is_binary(s) do
     do_string_to_quoted(s)
@@ -143,13 +153,13 @@ defmodule Lexical.Ast do
   @doc """
   Returns an AST fragment from the start of the document to the given position.
   """
-  @spec fragment(Document.t(), Position.t()) :: {:ok, Macro.t()} | {:error, parse_error()}
-  def fragment(%Document{} = document, %Position{} = position) do
+  @spec fragment(Document.t(), position) :: {:ok, Macro.t()} | {:error, parse_error()}
+  def fragment(%Document{} = document, position) do
     # https://github.com/elixir-lang/elixir/issues/12673#issuecomment-1592845875
     # Note: because of the above issue: Using `cursor_context` + `container_cursor_to_quoted`
     # can't deal with some cases like: `alias Foo.Bar, as: AnotherBar`,
     # so we need to add a new line to make sure we can get the parrent node of the cursor
-    %{line: line} = position
+    %{line: line} = normalize_position(position, document)
     added_new_line_position = Position.new(document, line + 1, 1)
     fragment = Document.fragment(document, added_new_line_position)
 
@@ -177,51 +187,35 @@ defmodule Lexical.Ast do
   @doc """
   Returns the cursor context of the document at a position.
   """
-  @spec cursor_context(Document.t(), Position.t()) ::
+  @spec cursor_context(Analysis.t() | Document.t(), position) ::
           {:ok, cursor_context()} | {:error, :cursor_context}
-  def cursor_context(%Document{} = document, %Position{} = position) do
+  def cursor_context(%Analysis{} = analysis, position) do
+    cursor_context(analysis.document, position)
+  end
+
+  def cursor_context(%Document{} = document, position) do
+    %Position{} = position = normalize_position(position, document)
+
     document
     |> Document.fragment(position)
     |> do_cursor_context()
   end
 
   @doc """
-  Returns the cursor context of the fragment.
-  """
-  @spec cursor_context(String.t()) :: {:ok, cursor_context()} | {:error, :cursor_context}
-  def cursor_context(s) when is_binary(s) do
-    do_cursor_context(s)
-  end
-
-  @doc """
   Returns the surround context of the document at a position.
   """
-  @spec surround_context(
-          Document.t() | String.t(),
-          Position.t() | {Position.line(), Position.character()}
-        ) ::
+  @spec surround_context(Analysis.t() | Document.t(), position) ::
           {:ok, surround_context()} | {:error, :surround_context}
-  def surround_context(%Document{} = document, %Position{} = position) do
-    %{line: line, character: column} = position
+  def surround_context(%Analysis{} = analysis, position) do
+    surround_context(analysis.document, position)
+  end
+
+  def surround_context(%Document{} = document, position) do
+    %Position{} = position = normalize_position(position, document)
 
     document
     |> Document.to_string()
-    |> do_surround_context({line, column})
-  end
-
-  def surround_context(string, %Position{} = position) do
-    %{line: line, character: column} = position
-    do_surround_context(string, {line, column})
-  end
-
-  def surround_context(%Document{} = document, {_line, _column} = pos) do
-    document
-    |> Document.to_string()
-    |> do_surround_context(pos)
-  end
-
-  def surround_context(string, {_line, _column} = pos) when is_binary(string) do
-    do_surround_context(string, pos)
+    |> do_surround_context(position)
   end
 
   @doc """
@@ -230,16 +224,17 @@ defmodule Lexical.Ast do
   This function differs from `cursor_path/2` in that it expects a valid
   AST and the returned path will not contain a `:__cursor__` node.
   """
-  @spec path_at(Document.t(), Position.t()) ::
+  @spec path_at(Analysis.t() | Document.t(), position) ::
           {:ok, [Macro.t(), ...]} | {:error, :not_found | parse_error()}
-  @spec path_at(Macro.t(), Position.t()) ::
-          {:ok, [Macro.t(), ...]} | {:error, :not_found}
-  def path_at(%Document{} = document, %Position{} = position) do
-    with {:ok, ast} <- from(document) do
+  def path_at(%struct{} = document_or_analysis, %Position{} = position)
+      when struct in [Document, Analysis] do
+    with {:ok, ast} <- from(document_or_analysis) do
       path_at(ast, position)
     end
   end
 
+  @spec path_at(Macro.t(), Position.t()) ::
+          {:ok, [Macro.t(), ...]} | {:error, :not_found}
   def path_at(ast, %Position{} = position) do
     path = innermost_path(ast, [], &contains_position?(&1, position))
 
@@ -257,16 +252,13 @@ defmodule Lexical.Ast do
   fragment as opposed to a full AST and the call never fails, though it
   may return an empty list.
   """
-  @spec cursor_path(
-          Document.t(),
-          Position.t() | {Position.line(), Position.character()}
-        ) ::
-          [Macro.t()]
-  def cursor_path(%Document{} = doc, {line, character}) do
-    cursor_path(doc, Position.new(doc, line, character))
+  @spec cursor_path(Analysis.t() | Document.t(), position) :: [Macro.t()]
+  def cursor_path(%Analysis{} = analysis, position) do
+    cursor_path(analysis.document, position)
   end
 
-  def cursor_path(%Document{} = document, %Position{} = position) do
+  def cursor_path(%Document{} = document, position) do
+    %Position{} = position = normalize_position(position, document)
     document_fragment = Document.fragment(document, position)
 
     case do_container_cursor_to_quoted(document_fragment) do
@@ -278,56 +270,6 @@ defmodule Lexical.Ast do
       _ ->
         []
     end
-  end
-
-  @doc """
-  Traverses the given ast until the given end position.
-  """
-  def prewalk_until(
-        ast,
-        acc,
-        prewalk_fn,
-        %Position{} = start_position,
-        %Position{} = end_position
-      ) do
-    range = Range.new(start_position, end_position)
-
-    {_, acc} =
-      ast
-      |> Zipper.zip()
-      |> Zipper.traverse_while(acc, fn zipper, acc ->
-        # We can have a cursor at the end of the document, and due
-        # to how elixir's AST traversal handles `end` statements (it doesn't),
-        # we will never receive a callback where we match the end block. Adding
-        # a cursor node will allow us to place cursors after the document has ended
-        # and things will still work.
-        zipper = maybe_insert_cursor(zipper, end_position)
-
-        case Zipper.node(zipper) do
-          {_, _, _} = element ->
-            current_line = Sourceror.get_line(element)
-            current_column = Sourceror.get_column(element)
-
-            cond do
-              match?({:__cursor__, _, _}, element) ->
-                new_acc = prewalk_fn.(element, acc)
-                {:halt, zipper, new_acc}
-
-              within_range?({current_line, current_column}, range) ->
-                new_acc = prewalk_fn.(element, acc)
-                {:cont, zipper, new_acc}
-
-              true ->
-                {:halt, zipper, acc}
-            end
-
-          element ->
-            new_acc = prewalk_fn.(element, acc)
-            {:cont, zipper, new_acc}
-        end
-      end)
-
-    acc
   end
 
   @doc """
@@ -430,7 +372,8 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Expands an alias in the context of the document at a given position.
+  Expands an alias at the given position in the context of a document
+  analysis.
 
   When we refer to a module, it's usually a short name, often aliased or
   in a nested module. This function finds the full name of the module at
@@ -438,49 +381,55 @@ defmodule Lexical.Ast do
 
   For example, if we have:
 
-    ```elixir
-    defmodule Project do
-      defmodule Issue do
-        defstruct [:message]
+      defmodule Project do
+        defmodule Issue do
+          defstruct [:message]
+        end
+
+        def message(%Issue{|} = issue) do # cursor marked as `|`
+        end
       end
 
-      def message(%Issue{|} = issue) do # cursor marked as `|`
-      end
-    end
-    ```
+  We could get the expansion for the `Issue` alias at the cursor position
+  like so:
 
-  Then the expanded module is `Project.Issue`.
+      iex> Ast.expand_alias([:Issue], analysis, position)
+      {:ok, Project.Issue}
 
   Another example:
 
-    ```elixir
-    defmodule Project do
-      defmodule Issue do
-        defstruct [:message]
+      defmodule Project do
+        defmodule Issue do
+          defstruct [:message]
+        end
       end
-    end
 
-    defmodule MyModule do
-      alias Project, as: MyProject
+      defmodule MyModule do
+        alias Project, as: MyProject
 
-      def message(%MyProject.Issue{|} = issue) do
+        def message(%MyProject.Issue{|} = issue) do
+        end
       end
-    end
-    ```
 
-  Then the the expanded module is still `Project.Issue`.
+  This would yield the same result:
 
-  If no aliases can be found, the given alias is returned unmodified.
+      iex> Ast.expand_alias([:MyProject, :Issue], analysis, position)
+      {:ok, Project.Issue}
+
+  If no aliases are present at the given position, no expansion occurs:
+
+      iex> Ast.expand_alias([:Some, :Other, :Module], analysis, position)
+      {:ok, Some.Other.Module}
+
   """
-  @spec expand_aliases(
+  @spec expand_alias(
           alias_segments() | module(),
-          Analysis.t() | Document.t(),
+          Analysis.t(),
           Position.t() | {Position.line(), Position.character()}
         ) ::
           {:ok, module()} | :error
-  def expand_aliases(segments, analysis_or_document, %Position{} = position)
-      when is_list(segments) do
-    with %Analysis{valid?: true} = analysis <- analyze_to(analysis_or_document, position),
+  def expand_alias([_ | _] = segments, %Analysis{} = analysis, %Position{} = position) do
+    with %Analysis{valid?: true} = analysis <- analyze_to(analysis, position),
          aliases <- Analysis.aliases_at(analysis, position),
          {:ok, resolved} <- resolve_alias(segments, aliases) do
       {:ok, Module.concat(resolved)}
@@ -494,16 +443,16 @@ defmodule Lexical.Ast do
     end
   end
 
-  def expand_aliases(module, analysis_or_document, %Position{} = position)
+  def expand_alias(module, %Analysis{} = analysis, %Position{} = position)
       when is_atom(module) and not is_nil(module) do
     module
     |> Module.split()
     |> Enum.map(&String.to_atom/1)
-    |> expand_aliases(analysis_or_document, position)
+    |> expand_alias(analysis, position)
   end
 
-  def expand_aliases(empty, _, _) when empty in [nil, []] do
-    Logger.warning("Aliases are #{inspect(empty)}, can't expand them")
+  def expand_alias(empty, _, _) when empty in [nil, []] do
+    Logger.warning("nothing to expand (expand_alias was passed #{inspect(empty)})")
     :error
   end
 
@@ -567,8 +516,8 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp do_surround_context(fragment, {line, column}) when is_binary(fragment) do
-    case Code.Fragment.surround_context(fragment, {line, column}) do
+  defp do_surround_context(fragment, %Position{} = position) when is_binary(fragment) do
+    case Code.Fragment.surround_context(fragment, {position.line, position.character}) do
       :none -> {:error, :surround_context}
       context -> {:ok, context}
     end
@@ -707,22 +656,6 @@ defmodule Lexical.Ast do
     default
   end
 
-  defp maybe_insert_cursor(zipper, %Position{} = position) do
-    case Zipper.next(zipper) do
-      nil ->
-        cursor = {:__cursor__, [line: position.line, column: position.character], nil}
-
-        if zipper == Zipper.top(zipper) do
-          Zipper.insert_child(zipper, cursor)
-        else
-          Zipper.insert_right(zipper, cursor)
-        end
-
-      _ ->
-        zipper
-    end
-  end
-
   # Similar to `Future.Macro.path/3`, but returns the path to the innermost
   # node for which `fun` returns truthy instead of the path to the first node
   # that returns such.
@@ -786,5 +719,11 @@ defmodule Lexical.Ast do
 
   defp innermost_path_list([arg | args], acc, fun) do
     innermost_path(arg, acc, fun) || innermost_path_list(args, acc, fun)
+  end
+
+  defp normalize_position(%Position{} = position, _document), do: position
+
+  defp normalize_position({line, character}, %Document{} = document) do
+    Position.new(document, line, character)
   end
 end

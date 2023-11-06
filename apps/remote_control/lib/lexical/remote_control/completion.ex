@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Completion do
   alias Lexical.Ast
-  alias Lexical.Document
+  alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.RemoteControl.Completion.Candidate
 
@@ -20,13 +20,13 @@ defmodule Lexical.RemoteControl.Completion do
     end
   end
 
-  def struct_fields(%Document{} = document, %Position{} = position) do
+  def struct_fields(%Analysis{} = analysis, %Position{} = position) do
     container_struct_module =
-      document
+      analysis
       |> Lexical.Ast.cursor_path(position)
       |> container_struct_module()
 
-    with {:ok, struct_module} <- Ast.expand_aliases(container_struct_module, document, position),
+    with {:ok, struct_module} <- Ast.expand_alias(container_struct_module, analysis, position),
          true <- function_exported?(struct_module, :__struct__, 0) do
       struct_module
       |> struct()

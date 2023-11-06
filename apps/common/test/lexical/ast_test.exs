@@ -275,7 +275,7 @@ defmodule Lexical.AstTest do
     end
   end
 
-  describe "expand_aliases/4" do
+  describe "expand_alias/4" do
     test "works with __MODULE__ aliases" do
       {position, document} =
         ~q[
@@ -287,8 +287,10 @@ defmodule Lexical.AstTest do
         ]
         |> pop_cursor(as: :document)
 
+      analysis = Ast.analyze(document)
+
       assert {:ok, Parent.Child} =
-               Ast.expand_aliases([quote(do: __MODULE__), nil], document, position)
+               Ast.expand_alias([quote(do: __MODULE__), nil], analysis, position)
     end
   end
 

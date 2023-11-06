@@ -23,7 +23,7 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   setup_all do
     project = Fixtures.project()
 
-    {:ok, _} = start_supervised(Document.Store)
+    {:ok, _} = start_supervised({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
     {:ok, _} = start_supervised({Server.Project.Supervisor, project})
 

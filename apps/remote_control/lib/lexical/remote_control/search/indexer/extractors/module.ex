@@ -105,7 +105,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     {line, column} = reducer.position
     position = Position.new(reducer.document, line, column)
 
-    {:ok, expanded} = Ast.expand_aliases(unresolved_alias, reducer.analysis, position)
+    {:ok, expanded} = Ast.expand_alias(unresolved_alias, reducer.analysis, position)
 
     expanded
   end
