@@ -1,6 +1,19 @@
 defmodule Lexical.Ast do
   @moduledoc """
-  Utilities for working with syntax trees.
+  Utilities for analyzing Lexical documents as syntax trees.
+
+  ## Analysis
+
+  The preferred way to use this module is by first passing a document to
+  `analyze/1`, which returns a `%Lexical.Ast.Analysis{}` struct that
+  will have already parsed and analyzed a significant portion of the
+  document, thus reducing the cost of successive operations.
+
+  An analysis looks at the entire AST, and thus may fail if the document
+  contains syntax errors that prevent parsing. To a partial analysis up
+  to a certain point (usually the cursor position), use `analyze_to/2`,
+  which analyzes the document up to the given position and can therefore
+  be used even if later parts of the document contain syntax errors.
 
   ## Differences from `Code`
 
