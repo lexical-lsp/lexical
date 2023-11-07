@@ -111,35 +111,62 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     {start_char, end_char}
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp prefix_length(%Env{} = env) do
-    case Env.prefix_tokens(env, 1) do
-      [{:operator, :"::", _}] ->
+    case Code.Fragment.cursor_context(env.prefix) do
+      {:alias, alias_charlist} ->
+        alias_charlist
+        |> :string.split('.', :all)
+        |> List.last()
+        |> length()
+
+      {:dot, _inside_dot, charlist} ->
+        length(charlist)
+
+      {:dot_arity, _inside_dot, charlist} ->
+        length(charlist)
+
+      {:dot_call, _inside_dot, _charlist} ->
         0
 
-      [{:operator, :., _}] ->
+      :expr ->
+        String.length(env.prefix)
+
+      {:local_or_var, local} ->
+        length(local)
+
+      {:local_arity, local} ->
+        length(local)
+
+      {:local_call, call} ->
+        length(call)
+
+      {:module_attribute, attr} ->
+        length(attr)
+
+      {:operator, operator} ->
+        length(operator)
+
+      {:operator_arity, _} ->
         0
 
-      [{:operator, :in, _}] ->
-        # they're typing integer and got "in" out, which the lexer thinks
-        # is Kernel.in/2
-        2
+      {:operator_call, _} ->
+        0
 
-      [{:atom, token, _}] ->
-        length(token) + 1
+      {:sigil, sigil} ->
+        # The sigil charlist doesn't include the leading `~`
+        length(sigil) + 1
 
-      [{:eol, '\n', []}] ->
-        # we don't have any tokens on the current line because the prefix
-        # can't be tokenized. Try to get somethng from Code.Fragment
-        code_fragment_prefix_length(env)
+      {:struct, struct} ->
+        length(struct)
 
-      [{_, token, _}] when is_binary(token) ->
-        String.length(token)
+      :none ->
+        0
 
-      [{_, token, _}] when is_list(token) ->
-        length(token)
-
-      [{_, token, _}] when is_atom(token) ->
-        token |> Atom.to_string() |> String.length()
+      {:unquoted_atom, atom} ->
+        # add one to include the leading colon, which isn't included
+        # in the atom charlist
+        length(atom) + 1
     end
   end
 
@@ -194,22 +221,5 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @boost_re ~r/^[0-9_]+/
   defp strip_boost(sort_text) do
     String.replace(sort_text, @boost_re, "")
-  end
-
-  defp code_fragment_prefix_length(%Env{} = env) do
-    case Code.Fragment.cursor_context(env.prefix) do
-      {:local_or_var, name} ->
-        length(name)
-
-      {:unquoted_atom, name} ->
-        # add one to account for the leading quote
-        length(name) + 1
-
-      {:alias, alias_name} ->
-        length(alias_name)
-
-      _other ->
-        0
-    end
   end
 end
