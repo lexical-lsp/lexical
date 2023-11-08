@@ -3,7 +3,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
 
-  @callables [Candidate.Function, Candidate.Macro, Candidate.Callback]
+  @callables [Candidate.Function, Candidate.Macro, Candidate.Callback, Candidate.Typespec]
 
   @syntax_macros ~w(= == == === =~ .. ..// ! != !== &&)
 
