@@ -13,10 +13,10 @@ dialyzer.umbrella:
 	mix dialyzer
 
 dialyzer.projects:
-	$(foreach dir, $(dialyzer_dirs), cd projects/$(dir) && mix dialyzer; cd ../..;)
+	$(foreach dir, $(dialyzer_dirs), cd projects/$(dir) && mix dialyzer && cd ../..;)
 
 dialyzer.plt.projects:
-	$(foreach dir, $(dialyzer_dirs), cd projects/$(dir) && mix dialyzer --plt; cd ../..;)
+	$(foreach dir, $(dialyzer_dirs), cd projects/$(dir) && mix dialyzer --plt && cd ../..;)
 
 dialyzer.plt.umbrella:
 	mix dialyzer --plt
@@ -26,7 +26,7 @@ test.umbrella:
 
 test.projects:
 	cd projects
-	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix test; cd ../..;)
+	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix test && cd ../..;)
 
 compile.umbrella: compile.projects
 	mix deps.get
@@ -34,5 +34,5 @@ compile.umbrella: compile.projects
 
 compile.projects:
 	cd projects
-	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix deps.get && mix do clean, compile --warnings-as-errors; cd ../..;)
+	$(foreach dir, $(project_dirs), cd projects/$(dir) && mix deps.get && mix do clean, compile --warnings-as-errors && cd ../..;)
 
