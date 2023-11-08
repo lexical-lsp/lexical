@@ -170,7 +170,10 @@ defmodule Lexical.Ast.Env do
       {:arrow_op, nil, _}, _ ->
         {:halt, true}
 
-      _x, _acc ->
+      {:atom, _, _}, _ ->
+        {:cont, false}
+
+      _token, _acc ->
         {:halt, false}
     end)
   end
