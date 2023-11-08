@@ -605,6 +605,11 @@ defmodule Lexical.Ast.EnvTest do
       assert in_context?(env, :pipe)
     end
 
+    test "is true if we're in a remote erlang call" do
+      env = new_env("[] |> :string.|")
+      assert in_context?(env, :pipe)
+    end
+
     test "is false if the pipe is in a function call and the cursor is outside it" do
       env = new_env("foo( a |> b |> c)|")
       refute in_context?(env, :pipe)
