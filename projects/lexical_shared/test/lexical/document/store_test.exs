@@ -50,6 +50,30 @@ defmodule Lexical.Document.StoreTest do
     Edit.new(text, range)
   end
 
+  describe "startup" do
+    test "succeeds without options" do
+      assert {:ok, _} = start_supervised(Document.Store)
+    end
+
+    test "succeeds with empty :derive" do
+      assert {:ok, _} = start_supervised({Document.Store, [derive: []]})
+    end
+
+    test "succeeds with valid :derive" do
+      valid_fun = fn _ -> :ok end
+      assert {:ok, _} = start_supervised({Document.Store, [derive: [valid: valid_fun]]})
+    end
+
+    test "fails with invalid :derive" do
+      invalid_fun = fn _, _ -> :ok end
+      assert {:error, _} = start_supervised({Document.Store, [derive: [invalid: invalid_fun]]})
+    end
+
+    test "fails with invalid options" do
+      assert {:error, _} = start_supervised({Document.Store, [invalid: []]})
+    end
+  end
+
   describe "a clean store" do
     setup [:with_store]
 

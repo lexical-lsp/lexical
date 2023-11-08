@@ -36,12 +36,20 @@ defmodule Lexical.Document.Store do
     defrecord :open_doc, document: nil, derived: %{}
 
     def new(opts \\ []) do
-      [derive: funs] =
+      {derivation_funs, invalid} =
         opts
         |> Keyword.validate!(derive: [])
-        |> Keyword.take([:derive])
+        |> Keyword.fetch!(:derive)
+        |> Enum.split_with(fn
+          {atom, fun} when is_atom(atom) and is_function(fun, 1) -> true
+          _ -> false
+        end)
 
-      %__MODULE__{derivation_funs: Map.new(funs)}
+      if invalid != [] do
+        raise ArgumentError, "invalid derive: #{inspect(invalid)}"
+      end
+
+      %__MODULE__{derivation_funs: Map.new(derivation_funs)}
     end
 
     @spec fetch(t, Lexical.uri()) :: {:ok, Document.t(), t} | {:error, :not_open}
