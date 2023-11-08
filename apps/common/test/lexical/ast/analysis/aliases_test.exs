@@ -66,6 +66,32 @@ defmodule Lexical.Ast.Analysis.AliasesTest do
       assert aliases[:FooBar] == Foo.Bar
     end
 
+    test "an alias using warn" do
+      aliases =
+        ~q[
+          defmodule TopLevel do
+            alias Foo.Bar, warn: false
+            |
+          end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Bar] == Foo.Bar
+    end
+
+    test "an alias using warn and as" do
+      aliases =
+        ~q[
+          defmodule TopLevel do
+            alias Foo.Bar, warn: false, as: FooBar
+            |
+          end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:FooBar] == Foo.Bar
+    end
+
     test "multiple aliases off of single alias" do
       aliases =
         ~q[

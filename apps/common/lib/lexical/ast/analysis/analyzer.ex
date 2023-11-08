@@ -311,21 +311,14 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   # alias Foo, as: Bar
-  defp pre(
-         {:alias, meta,
-          [
-            aliases,
-            [{{:__block__, _, [:as]}, {:__aliases__, _, [alias_as]}}]
-          ]},
-         state
-       ) do
-    case expand_alias(aliases, state) do
-      [_ | _] = segments ->
-        alias = Alias.new(segments, alias_as, meta[:line])
-        State.push_alias(state, alias)
-
-      [] ->
-        state
+  defp pre({:alias, meta, [aliases, options]}, state) do
+    with {:ok, alias_as} <- fetch_alias_as(options),
+         [_ | _] = segments <- expand_alias(aliases, state) do
+      alias = Alias.new(segments, alias_as, meta[:line])
+      State.push_alias(state, alias)
+    else
+      _ ->
+        pre({:alias, meta, [aliases]}, state)
     end
   end
 
@@ -441,6 +434,19 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       [reified | rest]
     else
       rest
+    end
+  end
+
+  defp fetch_alias_as(options) do
+    alias_as =
+      Enum.find_value(options, fn
+        {{:__block__, _, [:as]}, {:__aliases__, _, [alias_as]}} -> alias_as
+        _ -> nil
+      end)
+
+    case alias_as do
+      nil -> :error
+      _ -> {:ok, alias_as}
     end
   end
 end
