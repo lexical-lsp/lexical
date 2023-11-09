@@ -234,12 +234,18 @@ defmodule Lexical.RemoteControl.Build.State do
     build_root = Project.build_path(project)
     two_months_ago = System.system_time(:second) - @two_month_seconds
 
-    for file_name <- File.ls!(build_root),
-        absolute_path = Path.join(build_root, file_name),
-        File.dir?(absolute_path),
-        newest_beam_mtime(absolute_path) <=
-          two_months_ago do
-      File.rm_rf!(absolute_path)
+    case File.ls(build_root) do
+      {:ok, entries} ->
+        for file_name <- entries,
+            absolute_path = Path.join(build_root, file_name),
+            File.dir?(absolute_path),
+            newest_beam_mtime(absolute_path) <=
+              two_months_ago do
+          File.rm_rf!(absolute_path)
+        end
+
+      _ ->
+        :ok
     end
   end
 
