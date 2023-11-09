@@ -49,7 +49,7 @@ defmodule Lexical.RemoteControl.Build.State do
     # If the project directory isn't there, for some reason the main build fails, so we create it here
     # to ensure that the build will succeed.
     project = state.project
-    build_path = Project.build_path(project)
+    build_path = RemoteControl.Build.path(project)
 
     unless Versions.compatible?(build_path) do
       Logger.info("Build path #{build_path} was compiled on a previous erlang version. Deleting")
@@ -58,6 +58,8 @@ defmodule Lexical.RemoteControl.Build.State do
         File.rm_rf(build_path)
       end
     end
+
+    maybe_delete_old_builds(project)
 
     unless File.exists?(build_path) do
       File.mkdir_p!(build_path)
@@ -225,5 +227,34 @@ defmodule Lexical.RemoteControl.Build.State do
 
   defp increment_build_number(%__MODULE__{} = state) do
     %__MODULE__{state | build_number: state.build_number + 1}
+  end
+
+  @two_month_seconds 86_400 * 31 * 2
+  defp maybe_delete_old_builds(%Project{} = project) do
+    build_root = Project.build_path(project)
+    two_months_ago = System.system_time(:second) - @two_month_seconds
+
+    for file_name <- File.ls!(build_root),
+        absolute_path = Path.join(build_root, file_name),
+        File.dir?(absolute_path),
+        newest_beam_mtime(absolute_path) <=
+          two_months_ago do
+      File.rm_rf!(absolute_path)
+    end
+  end
+
+  defp newest_beam_mtime(directory) do
+    directory
+    |> Path.join("**/*.beam")
+    |> Path.wildcard()
+    |> then(fn
+      [] ->
+        0
+
+      beam_files ->
+        beam_files
+        |> Enum.map(&File.stat!(&1, time: :posix).mtime)
+        |> Enum.max()
+    end)
   end
 end
