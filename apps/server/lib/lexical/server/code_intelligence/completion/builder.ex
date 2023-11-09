@@ -10,7 +10,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   replacement range will be determined by the preceding token.
   """
 
-  alias Future.Code, as: Code
   alias Lexical.Ast.Env
   alias Lexical.Completion.Builder
   alias Lexical.Document
@@ -111,62 +110,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     {start_char, end_char}
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp prefix_length(%Env{} = env) do
-    case Code.Fragment.cursor_context(env.prefix) do
-      {:alias, alias_charlist} ->
-        alias_charlist
-        |> :string.split('.', :all)
-        |> List.last()
-        |> length()
-
-      {:dot, _inside_dot, charlist} ->
-        length(charlist)
-
-      {:dot_arity, _inside_dot, charlist} ->
-        length(charlist)
-
-      {:dot_call, _inside_dot, _charlist} ->
+    case Env.prefix_tokens(env, 1) do
+      [{:operator, :"::", _}] ->
         0
 
-      :expr ->
-        String.length(env.prefix)
-
-      {:local_or_var, local} ->
-        length(local)
-
-      {:local_arity, local} ->
-        length(local)
-
-      {:local_call, call} ->
-        length(call)
-
-      {:module_attribute, attr} ->
-        length(attr)
-
-      {:operator, operator} ->
-        length(operator)
-
-      {:operator_arity, _} ->
+      [{:operator, :., _}] ->
         0
 
-      {:operator_call, _} ->
-        0
+      [{:operator, :in, _}] ->
+        # they're typing integer and got "in" out, which the lexer thinks
+        # is Kernel.in/2
+        2
 
-      {:sigil, sigil} ->
-        # The sigil charlist doesn't include the leading `~`
-        length(sigil) + 1
+      [{:atom, token, _}] ->
+        length(token) + 1
 
-      {:struct, struct} ->
-        length(struct)
+      [{_, token, _}] when is_binary(token) ->
+        String.length(token)
 
-      :none ->
-        0
+      [{_, token, _}] when is_list(token) ->
+        length(token)
 
-      {:unquoted_atom, atom} ->
-        # add one to include the leading colon, which isn't included
-        # in the atom charlist
-        length(atom) + 1
+      [{_, token, _}] when is_atom(token) ->
+        token |> Atom.to_string() |> String.length()
     end
   end
 
