@@ -98,9 +98,7 @@ defmodule Lexical.Server.Project.Node do
   end
 
   defp delete_build_artifacts(%Project{} = project) do
-    build_path = RemoteControl.Build.path(project)
-
-    case File.rm_rf(build_path) do
+    case File.rm_rf(Project.build_path(project)) do
       {:ok, _deleted} -> :ok
       error -> error
     end
