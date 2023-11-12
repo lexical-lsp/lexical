@@ -7,7 +7,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
 
-  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use ::)
 
   defimpl Translatable, for: Candidate.Macro do
     def translate(macro, builder, %Env{} = env) do
