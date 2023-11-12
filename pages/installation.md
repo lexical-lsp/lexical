@@ -81,8 +81,9 @@ INDEXING_ENABLED=true mix package
 2. [Vanilla Emacs with eglot](#vanilla-emacs-with-eglot)
 3. [Visual Studio Code](#visual-studio-code)
 4. [neovim](#neovim)
-5. [Vim + Vim-LSP](#vim--vim-lsp)
-6. [Helix](#helix)
+5. [Vim + ALE](#vim--ale)
+6. [Vim + Vim-LSP](#vim--vim-lsp)
+7. [Helix](#helix)
 
 ### Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
@@ -207,14 +208,30 @@ configuration below as a reference:
 
 If the configuration above doesn't work for you, please try this minimal [neovim configuration](https://github.com/scottming/nvim-mini-for-lexical), It can eliminate other plugin factors.
 
+### Vim + ALE
+
+[ALE](https://github.com/dense-analysis/ale) includes built-in LSP support for Lexical.
+To enable it, you'll need to tell ALE where your Lexical release is located (including
+the `bin` directory) and add `lexical` to the list of enabled Elixir linters.
+
+A good way to do this is to add the following to a `~/.vim/after/ftplugin/elixir.vim`
+file:
+
+```viml
+let b:ale_linters = ['lexical', 'mix']
+let b:ale_elixir_lexical_release = '/my/home/projects/_build/dev/package/lexical/bin'
+```
+
+That will automatically enable the `lexical` and `mix` linters for all buffers with
+the `elixir` file type.
+
 ### Vim + Vim-LSP
 
 An example of configuring Lexical as the Elixir language server for
 [Vim-LSP](https://github.com/prabirshrestha/vim-lsp). Uses the newer vim9script syntax but
 can be converted to Vim 8 etc (`:h vim9script`).
 
-```
-vim9script
+```vim9script
 
 # Loading vim-lsp with minpac:
 call minpac#add("prabirshrestha/vim-lsp")
@@ -239,7 +256,7 @@ endif
 If you use [Vim-LSP-Settings](mattn/vim-lsp-settings) for installing and configuring language servers,
 you can use the following flag to disable prompts to install elixir-ls:
 
-```
+```viml
 g:lsp_settings_filetype_elixir = ["lexical"]
 
 ```
