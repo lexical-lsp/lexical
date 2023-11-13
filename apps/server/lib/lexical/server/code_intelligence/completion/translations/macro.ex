@@ -7,7 +7,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
 
-  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use ::)
+  @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
+  @unuseful_macros ~w(:: alias! in and or destructure)
 
   defimpl Translatable, for: Candidate.Macro do
     def translate(macro, builder, %Env{} = env) do
@@ -549,7 +550,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: name} = macro, _builder, env)
-      when name not in @snippet_macros do
+      when name not in (@snippet_macros ++ @unuseful_macros) do
     Callable.completion(macro, env)
   end
 
