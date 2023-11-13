@@ -592,6 +592,37 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     test "__block__ is hidden", %{project: project} do
       assert [] = complete(project, "__block|")
     end
+
+    test ":: is hidden", %{project: project} do
+      assert [] = complete(project, "::|")
+    end
+
+    test "alias! is hidden", %{project: project} do
+      assert [] = complete(project, "alias!|")
+    end
+
+    test "in is hidden", %{project: project} do
+      {:ok, completions} =
+        project
+        |> complete("in|")
+        |> fetch_completion("in")
+
+      completion_labels = completions |> Enum.map(fn completion -> completion.label end)
+
+      assert "in(left, right)" not in completion_labels
+    end
+
+    test "and is hidden", %{project: project} do
+      assert [] = complete(project, "and|")
+    end
+
+    test "or is hidden", %{project: project} do
+      assert [] = complete(project, "or|")
+    end
+
+    test "destructure is hidden", %{project: project} do
+      assert [] = complete(project, "destructure|")
+    end
   end
 
   describe "normal macro completion" do

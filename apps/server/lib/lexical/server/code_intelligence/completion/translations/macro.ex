@@ -549,20 +549,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     :skip
   end
 
-  def translate(%Candidate.Macro{name: name} = _macro, _builder, _env)
-      when name in @snippet_macros,
-      do: :skip
-
-  def translate(%Candidate.Macro{name: name} = _macro, _builder, _env)
-      when name in @unhelpful_macros,
-      do: :skip
-
-  def translate(%Candidate.Macro{} = macro, _builder, env) do
-    Callable.completion(macro, env)
+  def translate(%Candidate.Macro{name: name}, _builder, _env)
+      when name in @unhelpful_macros do
+    :skip
   end
 
   def translate(%Candidate.Macro{name: name} = macro, _builder, env)
-      when name not in (@snippet_macros ++ @unhelpful_macros) do
+      when name not in @snippet_macros do
     Callable.completion(macro, env)
   end
 
