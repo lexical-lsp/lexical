@@ -183,7 +183,7 @@ configuration below as a reference:
     local configs = require("lspconfig.configs")
 
     local lexical_config = {
-      filetypes = { "elixir", "eelixir", },
+      filetypes = { "elixir", "eelixir", "heex" },
       cmd = { "/my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh" },
       settings = {},
     }
