@@ -69,6 +69,14 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       completions = complete(project, "for a <- something do|")
       assert hd(completions).label == "do/end block"
     end
+
+    test "returns do/end as the one of the suggestion when the last token is d", %{
+      project: project
+    } do
+      completions = complete(project, "for a <- something d|")
+      completion_labels = completions |> Enum.map(fn completion -> completion.label end)
+      assert "do/end block" in completion_labels
+    end
   end
 
   describe "sorting" do

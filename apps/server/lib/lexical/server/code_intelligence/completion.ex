@@ -117,20 +117,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     Code.Fragment.surround_context(fragment, {line, column}) != :none
   end
 
-  # We emit a do/end snippet if the prefix token is the do operator and
+  defp has_valid_prefix?(type, value, prefix_tokens) do
+    match?(
+      [{^type, ^value, {line, do_col}}, {_, _, {line, preceding_col}}]
+      when do_col - preceding_col > 1,
+      prefix_tokens
+    )
+  end
+
+  # We emit a do/end snippet if the prefix token is the do operator or a d identifier and
   # there is a space before the token preceding it on the same line. This
   # handles situations like `@do|` where a do/end snippet would be invalid.
   defp should_emit_do_end_snippet?(%Env{} = env) do
     prefix_tokens = Env.prefix_tokens(env, 2)
 
-    valid_prefix? =
-      match?(
-        [{:operator, :do, {line, do_col}}, {_, _, {line, preceding_col}}]
-        when do_col - preceding_col > 1,
-        prefix_tokens
-      )
+    check_d_identifier = has_valid_prefix?(:identifier, ~c"d", prefix_tokens)
+    check_do_operator = has_valid_prefix?(:operator, :do, prefix_tokens)
 
-    valid_prefix? and Env.empty?(env.suffix)
+    (check_do_operator or check_d_identifier) and Env.empty?(env.suffix)
   end
 
   defp to_completion_items(
