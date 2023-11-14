@@ -8,6 +8,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
 
   @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
+  @unhelpful_macros ~w(:: alias! in and or destructure)
 
   defimpl Translatable, for: Candidate.Macro do
     def translate(macro, builder, %Env{} = env) do
@@ -545,6 +546,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   def translate(%Candidate.Macro{name: dunder_form}, _builder, _env)
       when dunder_form in ~w(__aliases__ __block__) do
+    :skip
+  end
+
+  def translate(%Candidate.Macro{name: name}, _builder, _env)
+      when name in @unhelpful_macros do
     :skip
   end
 
