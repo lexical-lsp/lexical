@@ -65,9 +65,9 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
   end
 
   describe "do/end" do
-    test "returns do/end when the last token is do", %{project: project} do
-      assert [completion] = complete(project, "for a <- something do|")
-      assert completion.label == "do/end block"
+    test "returns do/end as the first suggestion when the last token is do", %{project: project} do
+      completions = complete(project, "for a <- something do|")
+      assert hd(completions).label == "do/end block"
     end
   end
 

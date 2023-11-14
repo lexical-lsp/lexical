@@ -47,19 +47,25 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
+  defp maybe_add_do_end_snippet(items, env) do
+    if should_emit_do_end_snippet?(env) do
+      do_end_snippet = "do\n  $0\nend"
+
+      env
+      |> Builder.snippet(do_end_snippet, label: "do/end block")
+      |> List.wrap()
+      |> Kernel.++(items)
+    else
+      items
+    end
+  end
+
   defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
     prefix_tokens = Env.prefix_tokens(env, 1)
 
     cond do
       prefix_tokens == [] or not should_emit_completions?(env) ->
         []
-
-      should_emit_do_end_snippet?(env) ->
-        do_end_snippet = "do\n  $0\nend"
-
-        env
-        |> Builder.snippet(do_end_snippet, label: "do/end block")
-        |> List.wrap()
 
       Env.in_context?(env, :struct_field_key) ->
         project
@@ -72,6 +78,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         project
         |> RemoteControl.Api.complete(stripped, position)
         |> to_completion_items(project, env, context)
+        |> maybe_add_do_end_snippet(env)
     end
   end
 
