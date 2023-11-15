@@ -29,3 +29,6 @@ lexical_debug
 priv/plts
 
 apps/common/src/future_elixir_parser.erl
+
+# nix files
+result
