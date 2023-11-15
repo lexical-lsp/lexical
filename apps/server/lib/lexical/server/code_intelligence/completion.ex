@@ -176,22 +176,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp applies_to_env?(%Env{} = env, %struct_module{} = result) do
-    struct_reference? = Env.in_context?(env, :struct_reference)
-
     cond do
-      struct_reference? and struct_module == Candidate.Struct ->
-        true
-
-      struct_reference? and struct_module == Candidate.Module ->
-        Intelligence.defines_struct?(env.project, result.full_name, to: :child)
-
-      struct_reference? and match?(%Candidate.Macro{name: "__MODULE__"}, result) ->
-        true
-
-      struct_reference? ->
-        false
+      Env.in_context?(env, :struct_reference) ->
+        struct_reference_completion?(result, env)
 
       Env.in_context?(env, :bitstring) ->
         struct_module in [Candidate.BitstringOption, Candidate.Variable]
@@ -220,9 +208,48 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
             false
         end
 
+      Env.in_context?(env, :spec) or Env.in_context?(env, :type) ->
+        typespec_or_type_candidate?(result, env)
+
       true ->
-        true
+        struct_module != Candidate.Typespec
     end
+  end
+
+  defp struct_reference_completion?(%Candidate.Struct{}, _) do
+    true
+  end
+
+  defp struct_reference_completion?(%Candidate.Module{} = module, %Env{} = env) do
+    Intelligence.defines_struct?(env.project, module.full_name, to: :child)
+  end
+
+  defp struct_reference_completion?(%Candidate.Macro{name: "__MODULE__"}, _) do
+    true
+  end
+
+  defp struct_reference_completion?(_, _) do
+    false
+  end
+
+  defp typespec_or_type_candidate?(%struct_module{}, _)
+       when struct_module in [Candidate.Module, Candidate.Typespec, Candidate.ModuleAttribute] do
+    true
+  end
+
+  defp typespec_or_type_candidate?(%Candidate.Function{} = function, %Env{} = env) do
+    case Lexical.Ast.Aliases.at(env.document, env.position) do
+      {:ok, alias_map} ->
+        result = "Elixir." <> function.origin == to_string(alias_map[:__MODULE__])
+        result
+
+      _error ->
+        false
+    end
+  end
+
+  defp typespec_or_type_candidate?(_, _) do
+    false
   end
 
   defp applies_to_context?(%Project{} = project, result, %Completion.Context{

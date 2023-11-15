@@ -6,9 +6,10 @@ defmodule Lexical.Ast.EnvTest do
   import Lexical.Test.CursorSupport
   import Lexical.Test.Fixtures
 
-  def new_env(text) do
+  def new_env(text, opts \\ []) do
+    opts = Keyword.merge([as: :document], opts)
     project = project()
-    {position, document} = pop_cursor(text, as: :document)
+    {position, document} = pop_cursor(text, opts)
     {:ok, env} = new(project, document, position)
     env
   end
@@ -648,6 +649,162 @@ defmodule Lexical.Ast.EnvTest do
     test "is false if in a bitstring" do
       env = new_env("<< foo::in|")
       refute in_context?(env, :pipe)
+    end
+  end
+
+  describe "in_context?(env, :type)" do
+    test "should be true right after the type" do
+      env = new_env("@type |")
+      assert in_context?(env, :type)
+    end
+
+    test "should be true if you're in a type definition" do
+      env = new_env("@type my_type :: :mine")
+      assert in_context?(env, :type)
+    end
+
+    test "should be true if you're in a composite type definition" do
+      env = new_env("@type my_type :: :yours | :mine | :the_truth")
+      assert in_context?(env, :type)
+    end
+
+    test "should work on a multi-line type definition" do
+      env =
+        new_env(
+          ~q[
+            @type on_multiple_lines ::
+            integer()
+            | String.t()
+            | Something.t() !
+          ],
+          cursor: "!"
+        )
+
+      assert in_context?(env, :type)
+    end
+
+    test "should work on private types" do
+      env = new_env("@typep private :: integer()")
+      assert in_context?(env, :type)
+    end
+
+    test "should work on opaque types" do
+      env = new_env("@opaque private :: integer()")
+      assert in_context?(env, :type)
+    end
+
+    test "is false if the cursor is just after the type" do
+      env = new_env(~q[
+            @type my_type :: atom()
+            |
+          ])
+      refute in_context?(env, :type)
+    end
+
+    test "is false if the cursor is just after the type without a block" do
+      env = new_env("@type my_type :: atom()\nsomething()|\n")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in a function capture" do
+      env = new_env("&MyModule.fun|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in an alias" do
+      env = new_env("alias MyModule.Othe|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in an import" do
+      env = new_env("import MyModule.Othe|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in a require" do
+      env = new_env("require MyModule.Othe|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in a use" do
+      env = new_env("alias MyModule.Othe|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if in a bitstring" do
+      env = new_env("<< foo::in|")
+      refute in_context?(env, :type)
+    end
+
+    test "is false if you're in a variable named type" do
+      env = new_env("type = 3")
+      refute in_context?(env, :type)
+    end
+  end
+
+  describe "in_context?(env, :spec)" do
+    test "should be true right after the spec" do
+      env = new_env("@spec ")
+      assert in_context?(env, :spec)
+    end
+
+    test "should be true if you're in a typespec" do
+      env = new_env("@spec function_name(String.t) :: any()")
+      assert in_context?(env, :spec)
+    end
+
+    test "should be true if you're in a composite spec definition" do
+      env = new_env("@spec my_spec :: :yours | :mine | :the_truth")
+      assert in_context?(env, :spec)
+    end
+
+    test "should work on a multi-line spec definition" do
+      env =
+        new_env(
+          ~q[
+        @spec on_multiple_lines :: integer()
+        | String.t()
+        | Something.t() !
+        ],
+          cursor: "!"
+        )
+
+      assert in_context?(env, :spec)
+    end
+
+    test "is false if in a function capture" do
+      env = new_env("&MyModule.fun|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if in an alias" do
+      env = new_env("alias MyModule.Othe|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if in an import" do
+      env = new_env("import MyModule.Othe|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if in a require" do
+      env = new_env("require MyModule.Othe|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if in a use" do
+      env = new_env("alias MyModule.Othe|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if in a bitstring" do
+      env = new_env("<< foo::in|")
+      refute in_context?(env, :spec)
+    end
+
+    test "is false if you're in a variable named spec" do
+      env = new_env("spec = 3")
+      refute in_context?(env, :spec)
     end
   end
 

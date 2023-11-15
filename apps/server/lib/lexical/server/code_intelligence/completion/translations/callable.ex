@@ -3,7 +3,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
 
-  @callables [Candidate.Function, Candidate.Macro, Candidate.Callback]
+  @callables [Candidate.Function, Candidate.Macro, Candidate.Callback, Candidate.Typespec]
 
   @syntax_macros ~w(= == == === =~ .. ..// ! != !== &&)
 
@@ -39,9 +39,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         [:deprecated]
       end
 
+    kind =
+      case callable do
+        %Candidate.Typespec{} ->
+          :type_parameter
+
+        _ ->
+          :function
+      end
+
     env
     |> Builder.snippet(insert_text,
-      kind: :function,
+      kind: kind,
       label: label(callable, env),
       sort_text: sort_text(callable),
       tags: tags

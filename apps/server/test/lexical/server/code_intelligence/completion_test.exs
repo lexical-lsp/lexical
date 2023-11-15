@@ -127,7 +127,12 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       %Candidate.Protocol{name: "#{name}-protocol", full_name: full_name},
       %Candidate.Struct{name: "#{name}-struct", full_name: full_name},
       %Candidate.StructField{name: "#{name}-struct-field", origin: full_name},
-      %Candidate.Typespec{name: "#{name}-typespec"},
+      %Candidate.Typespec{
+        name: "#{name}-typespec",
+        argument_names: ["value"],
+        arity: 1,
+        metadata: %{}
+      },
       %Candidate.Variable{name: "#{name}-variable"}
     ]
 
@@ -149,6 +154,21 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert {:ok, _} = fetch_completion(completions, label: "Foo-module")
       assert {:ok, _} = fetch_completion(completions, label: "Foo-protocol")
       assert {:ok, _} = fetch_completion(completions, label: "Foo-struct")
+    end
+
+    test "only modules, typespecs and module attributes are returned in types", %{
+      project: project
+    } do
+      completions =
+        for completion <- complete(project, "@spec F"), into: MapSet.new() do
+          completion.label
+        end
+
+      assert "Foo-module" in completions
+      assert "Foo-module-attribute" in completions
+      assert "Foo-submodule" in completions
+      assert "Foo-typespec(value)" in completions
+      assert Enum.count(completions) == 4
     end
 
     test "modules are sorted before functions", %{project: project} do

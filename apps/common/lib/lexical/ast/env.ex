@@ -236,6 +236,14 @@ defmodule Lexical.Ast.Env do
     end)
   end
 
+  defp do_in_context?(env, :type) do
+    ancestor_is_type?(env)
+  end
+
+  defp do_in_context?(env, :spec) do
+    ancestor_is_spec?(env)
+  end
+
   defp do_in_context?(env, :import) do
     in_directive?(env, ~c"import")
   end
@@ -415,12 +423,52 @@ defmodule Lexical.Ast.Env do
     end)
   end
 
+  @type_keys [:type, :typep, :opaque]
   defp ancestor_is_type?(env) do
     env.document
     |> Ast.cursor_path(env.position)
     |> Enum.any?(fn
-      {:type, _, _} -> true
-      _ -> false
+      {:@, metadata, [{type_key, _, _}]} when type_key in @type_keys ->
+        # single line type
+        cursor_in_range?(env, metadata)
+
+      {:__block__, _, [{:@, metadata, [{type_key, _, _}]}, _]}
+      when type_key in @type_keys ->
+        # multi-line type
+        cursor_in_range?(env, metadata)
+
+      _ ->
+        false
     end)
+  end
+
+  defp ancestor_is_spec?(env) do
+    env.document
+    |> Ast.cursor_path(env.position)
+    |> Enum.any?(fn
+      {:@, metadata, [{:spec, _, _}]} ->
+        # single line spec
+        cursor_in_range?(env, metadata)
+
+      {:__block__, _, [{:@, metadata, [{:spec, _, _}]}, _]} ->
+        # multi-line spec
+        cursor_in_range?(env, metadata)
+
+      _ ->
+        false
+    end)
+  end
+
+  defp cursor_in_range?(env, metadata) do
+    expression_end_line = get_in(metadata, [:end_of_expression, :line])
+    expression_end_column = get_in(metadata, [:end_of_expression, :column])
+    cursor_line = env.position.line
+    cursor_column = env.position.character
+
+    if cursor_line == expression_end_line do
+      expression_end_column > cursor_column
+    else
+      cursor_line < expression_end_line
+    end
   end
 end

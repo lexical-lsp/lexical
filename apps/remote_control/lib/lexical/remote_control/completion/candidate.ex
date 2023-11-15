@@ -53,6 +53,23 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
     end
   end
 
+  defmodule Typespec do
+    @moduledoc false
+    defstruct [:argument_names, :arity, :doc, :metadata, :name, :signature, :spec]
+
+    def new(%{} = elixir_sense_map) do
+      arg_names =
+        case ArgumentNames.from_elixir_sense_map(elixir_sense_map) do
+          :error -> []
+          names -> names
+        end
+
+      __MODULE__
+      |> struct(elixir_sense_map)
+      |> Map.put(:argument_names, arg_names)
+    end
+  end
+
   defmodule Module do
     @moduledoc false
     defstruct [:full_name, :metadata, :name, :summary]
@@ -123,15 +140,6 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
   defmodule ModuleAttribute do
     @moduledoc false
     defstruct [:name]
-
-    def new(%{} = elixir_sense_map) do
-      struct(__MODULE__, elixir_sense_map)
-    end
-  end
-
-  defmodule Typespec do
-    @moduledoc false
-    defstruct [:args_list, :arity, :doc, :metadata, :name, :signature, :spec]
 
     def new(%{} = elixir_sense_map) do
       struct(__MODULE__, elixir_sense_map)
