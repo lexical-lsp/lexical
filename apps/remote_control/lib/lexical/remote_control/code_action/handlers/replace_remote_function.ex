@@ -28,7 +28,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     [:quick_fix]
   end
 
-  @spec to_code_actions(Document.t(), non_neg_integer(), module(), atom(), [atom()]) ::
+  @spec to_code_actions(Document.t(), non_neg_integer(), module(), String.t(), [atom()]) ::
           [CodeAction.t()]
   defp to_code_actions(%Document{} = doc, line_number, module, function, suggestions) do
     suggestions
@@ -47,12 +47,15 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     |> Enum.reverse()
   end
 
-  @spec apply_transform(Document.t(), non_neg_integer(), module(), atom(), atom()) ::
+  @spec apply_transform(Document.t(), non_neg_integer(), module(), String.t(), atom()) ::
           {:ok, [Edit.t()]} | :error
   defp apply_transform(%Document{} = doc, line_number, module, function, suggestion) do
+    function_atom = String.to_atom(function)
+
     doc
     |> Ast.traverse_line(line_number, [], fn
-      %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function]}, _, _} = node} = zipper,
+      %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function_atom]}, _, _} = node} =
+          zipper,
       patches ->
         case Lexical.Ast.expand_aliases(module_alias, doc, {line_number, 0}) do
           {:ok, ^module} ->
@@ -82,22 +85,24 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     end
   end
 
-  @function_re ~r/(.*)\/(.*) is undefined or private. Did you mean:(.*)/
+  @function_re ~r/(.*)\/(.*) is undefined or private. Did you mean:.*/
   defp extract_function(message) do
-    with [[_, function, arity, _]] <- Regex.scan(@function_re, message),
-         {:ok, module, function_name} <- separate_module_from_function(function) do
+    with [[_, module_and_function, arity]] <- Regex.scan(@function_re, message),
+         {:ok, module, function_name} <- separate_module_from_function(module_and_function) do
       {:ok, module, function_name, String.to_integer(arity)}
     end
   end
 
-  defp separate_module_from_function(function) do
-    function
+  defp separate_module_from_function(module_and_function) do
+    module_and_function
     |> String.split(".")
-    |> Enum.map(&String.to_atom/1)
     |> List.pop_at(-1)
     |> case do
-      {function_name, [_ | _] = module_alias} -> {:ok, Module.concat(module_alias), function_name}
-      _ -> :error
+      {function_name, [_ | _] = module_alias} ->
+        {:ok, Module.concat(module_alias), function_name}
+
+      _ ->
+        :error
     end
   end
 
@@ -108,28 +113,15 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   @function_threshold 0.77
   @max_suggestions 5
   defp prepare_suggestions(module, function, arity) do
-    function_as_string = Atom.to_string(function)
-
     suggestions =
-      :functions
-      |> module.__info__()
-      |> Enum.filter(fn
-        {_suggestion, ^arity} -> true
-        _ -> false
-      end)
-      |> Enum.map(fn {suggestion, _arity} ->
-        distance =
-          suggestion
-          |> Atom.to_string()
-          |> String.jaro_distance(function_as_string)
-
-        {suggestion, distance}
-      end)
-      |> Enum.filter(fn {_suggestion, distance} -> distance >= @function_threshold end)
-      |> Enum.sort(&(elem(&1, 1) >= elem(&2, 1)))
+      for {module_function, ^arity} <- module.__info__(:functions),
+          distance = module_function |> Atom.to_string() |> String.jaro_distance(function),
+          distance >= @function_threshold do
+        {distance, module_function}
+      end
+      |> Enum.sort(:desc)
       |> Enum.take(@max_suggestions)
-      |> Enum.sort(&(elem(&1, 0) <= elem(&2, 0)))
-      |> Enum.map(&elem(&1, 0))
+      |> Enum.map(fn {_distance, module_function} -> module_function end)
 
     {:ok, suggestions}
   end
