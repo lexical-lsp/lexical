@@ -6,6 +6,15 @@ eventual_assertions = [
   refute_eventually: 2
 ]
 
+detected_assertions = [
+  assert_detected: 1,
+  assert_detected: 2,
+  refute_detected: 1,
+  refute_detected: 2
+]
+
+assertions = eventual_assertions ++ detected_assertions
+
 [
   inputs: [
     "{mix,.formatter}.exs",
@@ -13,6 +22,6 @@ eventual_assertions = [
     "lib/lexical/**/*.{ex,ex}",
     "lib/mix/**/*.{ex,exs}"
   ],
-  locals_without_parens: eventual_assertions,
-  export: [locals_without_parens: eventual_assertions]
+  locals_without_parens: assertions,
+  export: [locals_without_parens: assertions]
 ]

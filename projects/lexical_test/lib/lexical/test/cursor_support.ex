@@ -62,19 +62,18 @@ defmodule Lexical.Test.CursorSupport do
   @spec pop_cursor(text :: String.t(), [opt]) :: {Position.t(), String.t() | Document.t()}
         when opt: {:cursor, String.t()} | {:as, :text | :document} | {:document, String.t()}
   def pop_cursor(text, opts \\ []) do
-    cursor = Keyword.get(opts, :cursor, @default_cursor)
     as_document? = opts[:as] == :document or is_binary(opts[:document])
 
-    {line, column} = cursor_position(text, cursor)
-    stripped_text = strip_cursor(text, cursor)
+    position = cursor_position(text, Keyword.take(opts, [:cursor, :default_to_end]))
+    stripped_text = strip_cursor(text, Keyword.take(opts, [:cursor]))
 
     if as_document? do
       uri = opts |> Keyword.get(:document, "file:///file.ex") |> Document.Path.ensure_uri()
       document = Document.new(uri, stripped_text, 0)
-      position = Position.new(document, line, column)
+      position = position(document, position)
       {position, document}
     else
-      position = PositionSupport.position(line, column)
+      position = position(position)
       {position, stripped_text}
     end
   end
@@ -83,41 +82,67 @@ defmodule Lexical.Test.CursorSupport do
   Strips all instances of `cursor` from `text`.
   """
   @spec strip_cursor(text :: String.t(), cursor :: String.t()) :: String.t()
-  def strip_cursor(text, cursor \\ @default_cursor) do
-    text
-    |> String.graphemes()
-    |> Enum.chunk_every(2, 1, [""])
-    |> Enum.reduce([], fn
-      # don't strip the pipe in a `|>` operator when using the default cursor
-      ["|", ">"], iodata ->
-        [iodata, "|"]
+  def strip_cursor(text, opts \\ []) do
+    cursor = Keyword.get(opts, :cursor, @default_cursor)
 
-      [^cursor, _lookahead], iodata ->
-        iodata
+    {_found, iodata} =
+      text
+      |> String.graphemes()
+      |> Enum.chunk_every(2, 1, [""])
+      |> Enum.reduce({false, []}, fn
+        # don't strip the pipe in a `|>` operator when using the default cursor
+        ["|", ">"], {found?, iodata} ->
+          {found?, [iodata, "|"]}
 
-      [c, _], iodata ->
-        [iodata, c]
-    end)
-    |> IO.iodata_to_binary()
+        [^cursor, _lookahead], {false, iodata} ->
+          {true, iodata}
+
+        [c, _], {found?, iodata} ->
+          {found?, [iodata, c]}
+      end)
+
+    IO.iodata_to_binary(iodata)
   end
 
-  defp cursor_position(text, cursor) do
-    text
-    |> String.graphemes()
-    |> Enum.chunk_every(2, 1, [""])
-    |> Enum.reduce_while({@starting_line, @starting_column}, fn
-      # don't consider the pipe in a `|>` operator when using the default cursor
-      ["|", ">"], {line, column} ->
-        {:cont, {line, column + 1}}
+  defp cursor_position(text, opts) do
+    cursor = Keyword.get(opts, :cursor, @default_cursor)
+    default_to_end? = Keyword.get(opts, :default_to_end, true)
 
-      [^cursor, _], position ->
-        {:halt, position}
+    {found?, position} =
+      text
+      |> String.graphemes()
+      |> Enum.chunk_every(2, 1, [""])
+      |> Enum.reduce_while({false, {@starting_line, @starting_column}}, fn
+        # don't consider the pipe in a `|>` operator when using the default cursor
+        ["|", ">"], {found?, {line, column}} ->
+          {:cont, {found?, {line, column + 1}}}
 
-      ["\n", _], {line, _column} ->
-        {:cont, {line + 1, @starting_column}}
+        [^cursor, _], {_, position} ->
+          {:halt, {true, position}}
 
-      _, {line, column} ->
-        {:cont, {line, column + 1}}
-    end)
+        ["\n", _], {found?, {line, _column}} ->
+          {:cont, {found?, {line + 1, @starting_column}}}
+
+        _, {found?, {line, column}} ->
+          {:cont, {found?, {line, column + 1}}}
+      end)
+
+    if found? or default_to_end? do
+      position
+    else
+      nil
+    end
   end
+
+  defp position(%Document{} = document, {line, column}) do
+    Position.new(document, line, column)
+  end
+
+  defp position(%Document{}, nil), do: nil
+
+  defp position({line, column}) do
+    PositionSupport.position(line, column)
+  end
+
+  defp position(nil), do: nil
 end

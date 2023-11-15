@@ -5,10 +5,11 @@ defmodule Lexical.Ast.Env do
   This module implements the `Lexical.Ast.Environment` behaviour.
   """
 
-  alias Future.Code, as: Code
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Detection
   alias Lexical.Ast.Environment
+  alias Lexical.Ast.Tokens
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
@@ -26,7 +27,7 @@ defmodule Lexical.Ast.Env do
 
   @type t :: %__MODULE__{
           project: Project.t(),
-          analysis: Ast.Analysis.t(),
+          analysis: Analysis.t(),
           prefix: String.t(),
           suffix: String.t(),
           position: Position.t(),
@@ -62,20 +63,63 @@ defmodule Lexical.Ast.Env do
 
   @impl Environment
   def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
+    stream = Tokens.prefix_stream(env.document, env.position)
+
     case count do
       :all ->
-        prefix_token_stream(env)
+        stream
 
       count when is_integer(count) ->
-        env
-        |> prefix_token_stream()
-        |> Enum.take(count)
+        Enum.take(stream, count)
     end
   end
 
   @impl Environment
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def in_context?(%__MODULE__{} = env, context_type) do
-    do_in_context?(env, context_type)
+    document = env.document
+    position = env.position
+
+    case context_type do
+      :alias ->
+        Detection.Alias.detected?(document, position)
+
+      :bitstring ->
+        Detection.Bitstring.detected?(document, position)
+
+      :function_capture ->
+        Detection.FunctionCapture.detected?(document, position)
+
+      :import ->
+        Detection.Import.detected?(document, position)
+
+      :pipe ->
+        Detection.Pipe.detected?(document, position)
+
+      :require ->
+        Detection.Require.detected?(document, position)
+
+      :spec ->
+        Detection.Spec.detected?(document, position)
+
+      :struct_fields ->
+        Detection.StructFields.detected?(document, position)
+
+      :struct_field_key ->
+        Detection.StructFieldKey.detected?(document, position)
+
+      :struct_field_value ->
+        Detection.StructFieldValue.detected?(document, position)
+
+      :struct_reference ->
+        Detection.StructReference.detected?(document, position)
+
+      :type ->
+        Detection.Type.detected?(document, position)
+
+      :use ->
+        Detection.Use.detected?(document, position)
+    end
   end
 
   @impl Environment
@@ -86,392 +130,5 @@ defmodule Lexical.Ast.Env do
   @impl Environment
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
-  end
-
-  defp do_in_context?(env, :function_capture) do
-    env
-    |> prefix_token_stream()
-    |> Enum.reduce_while(false, fn
-      {:paren, :")", _}, _ ->
-        {:halt, false}
-
-      {:operator, :&, _}, _ ->
-        {:halt, true}
-
-      {:int, _, _} = maybe_arity, _ ->
-        {:cont, maybe_arity}
-
-      {:operator, :/, _}, {:int, _, _} ->
-        # if we encounter a trailing /<arity> in the prefix, the
-        # function capture is complete, and we're not inside it
-        {:halt, false}
-
-      _, _ ->
-        {:cont, false}
-    end)
-  end
-
-  defp do_in_context?(env, :struct_reference) do
-    case cursor_context(env) do
-      {:ok, _line, {:struct, _}} ->
-        true
-
-      {:ok, _line, {:local_or_var, [?_ | _rest]}} ->
-        # a reference to `%__MODULE`, often in a function head, as in
-        # def foo(%__)
-
-        starts_with_percent? =
-          env
-          |> prefix_tokens(2)
-          |> Enum.any?(fn
-            {:percent, :%, _} -> true
-            _ -> false
-          end)
-
-        starts_with_percent? and (ancestor_is_def?(env) or ancestor_is_type?(env))
-
-      _ ->
-        false
-    end
-  end
-
-  defp do_in_context?(env, :struct_fields) do
-    env.analysis
-    |> Ast.cursor_path(env.position)
-    |> Enum.any?(&match?({:%, _, _}, &1))
-  end
-
-  defp do_in_context?(env, :struct_field_key) do
-    cursor_path = Ast.cursor_path(env.analysis, env.position)
-
-    match?(
-      # in the key position, the cursor will always be followed by the
-      # map node because, in any other case, there will minimally be a
-      # 2-element key-value tuple containing the cursor
-      [{:__cursor__, _, _}, {:%{}, _, _}, {:%, _, _} | _],
-      cursor_path
-    )
-  end
-
-  defp do_in_context?(env, :struct_field_value) do
-    do_in_context?(env, :struct_fields) and not do_in_context?(env, :struct_field_key)
-  end
-
-  defp do_in_context?(env, :pipe) do
-    env
-    |> prefix_token_stream()
-    |> Enum.reduce_while(false, fn
-      {:identifier, _, _}, _ ->
-        {:cont, false}
-
-      {:operator, :., _}, _ ->
-        {:cont, false}
-
-      {:alias, _, _}, _ ->
-        {:cont, false}
-
-      {:arrow_op, nil, _}, _ ->
-        {:halt, true}
-
-      {:atom, _, _}, _ ->
-        {:cont, false}
-
-      _token, _acc ->
-        {:halt, false}
-    end)
-  end
-
-  defp do_in_context?(env, :bitstring) do
-    env
-    |> prefix_tokens(:all)
-    |> Enum.reduce_while(
-      false,
-      fn
-        {:operator, :">>", _}, _ -> {:halt, false}
-        {:operator, :"<<", _}, _ -> {:halt, true}
-        _, _ -> {:cont, false}
-      end
-    )
-  end
-
-  defp do_in_context?(env, :alias) do
-    # Aliases are complicated, especially if we're trying to find out if we're in
-    # them from the current cursor position moving backwards.
-    # I'll try to describe the state machine below.
-    # First off, if we're outside of a } on the current line, we cannot be in an alias, so that
-    # halts with false.
-    # Similarly an alias on the current line is also simple, we just backtrack until we see the alias identifier.
-    # However, if we're on the current line, and see an EOL, we set that as our accumulator, then we get
-    # to the previous line, we see if it ends in a comma. If not, we can't be in an alias. If it does, we keep
-    # backtracking until we hit the alias keyword.
-    # So basically, if we hit an EOL, and the previous token isn't an open curly or a comma, we stop, otherwise
-    # we backtrack until we hit the alias keyword
-
-    env
-    |> prefix_token_stream()
-    |> Stream.with_index()
-    |> Enum.reduce_while(false, fn
-      {{:curly, :"{", _}, _index}, :eol ->
-        {:cont, false}
-
-      {{:comma, _, _}, _index}, :eol ->
-        {:cont, false}
-
-      {{:eol, _, _}, _index}, _acc ->
-        {:cont, :eol}
-
-      {{_, _, _}, _}, :eol ->
-        {:halt, false}
-
-      {{:curly, :"}", _}, _index}, _ ->
-        {:halt, false}
-
-      {{:identifier, ~c"alias", _}, 0}, _ ->
-        # there is nothing after the alias directive, so we're not
-        # inside the context *yet*
-        {:halt, false}
-
-      {{:identifier, ~c"alias", _}, _index}, _ ->
-        {:halt, true}
-
-      _, _ ->
-        {:cont, false}
-    end)
-  end
-
-  defp do_in_context?(env, :type) do
-    ancestor_is_type?(env)
-  end
-
-  defp do_in_context?(env, :spec) do
-    ancestor_is_spec?(env)
-  end
-
-  defp do_in_context?(env, :import) do
-    in_directive?(env, ~c"import")
-  end
-
-  defp do_in_context?(env, :use) do
-    in_directive?(env, ~c"use")
-  end
-
-  defp do_in_context?(env, :require) do
-    in_directive?(env, ~c"require")
-  end
-
-  defp in_directive?(%__MODULE__{} = env, context_name) do
-    env
-    |> prefix_token_stream()
-    |> Enum.reduce_while(false, fn
-      {:identifier, ^context_name, _}, _ ->
-        {:halt, true}
-
-      {:eol, _, _}, _ ->
-        {:halt, false}
-
-      _, _ ->
-        {:cont, false}
-    end)
-  end
-
-  defp cursor_context(%__MODULE__{} = env) do
-    with {:ok, line} <- Document.fetch_text_at(env.document, env.position.line) do
-      fragment = String.slice(line, 0..(env.zero_based_character - 1))
-      {:ok, line, Code.Fragment.cursor_context(fragment)}
-    end
-  end
-
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  defp normalize_token(token) do
-    case token do
-      :eol ->
-        {:eol, ~c"\n", []}
-
-      {:bin_string, context, [string_value]} ->
-        {:string, string_value, to_position(context)}
-
-      {:bin_string, context, interpolated} ->
-        {:interpolated_string, interpolated, to_position(context)}
-
-      {:capture_op, context, value} ->
-        {:operator, value, to_position(context)}
-
-      {:dual_op, context, value} ->
-        {:operator, value, to_position(context)}
-
-      {:type_op, context, _value} ->
-        {:operator, :"::", to_position(context)}
-
-      {:mult_op, context, operator} ->
-        {:operator, operator, to_position(context)}
-
-      {:in_op, context, _} ->
-        {:operator, :in, to_position(context)}
-
-      {:operator, context, value} ->
-        {:operator, value, to_position(context)}
-
-      {:sigil, {line, column, _}, sigil_char, _sigil_context, _, _opts, delim} ->
-        # NOTE: should we need to return context too?
-        {:sigil, [sigil_char], {line, column}, delim}
-
-      {type, {line, column, nil}, value} when is_list(value) ->
-        {normalize_type(type), value, {line, column}}
-
-      {type, {line, column, token_value}, _} ->
-        {normalize_type(type), token_value, {line, column}}
-
-      {type, context, value} when is_atom(value) ->
-        {normalize_type(type), value, to_position(context)}
-
-      {operator, context} ->
-        {map_operator(operator), operator, to_position(context)}
-    end
-  end
-
-  defp to_position({line, column, _}) do
-    {line, column}
-  end
-
-  defp map_operator(:"("), do: :paren
-  defp map_operator(:")"), do: :paren
-  defp map_operator(:"{"), do: :curly
-  defp map_operator(:"}"), do: :curly
-  defp map_operator(:","), do: :comma
-  defp map_operator(:%{}), do: :map_new
-  defp map_operator(:%), do: :percent
-  defp map_operator(_), do: :operator
-
-  defp normalize_type(:flt), do: :float
-  defp normalize_type(:bin_string), do: :string
-  defp normalize_type(type), do: type
-
-  defp prefix_token_stream(%__MODULE__{} = env) do
-    init_function = fn ->
-      {env, ~c"", env.position.line}
-    end
-
-    next_function = fn
-      {env, _, 0} ->
-        {:halt, env}
-
-      {env, current_context, line_number} ->
-        case find_and_tokenize(env, line_number, current_context) do
-          {:ok, tokens, new_context} ->
-            prev_line_number = line_number - 1
-
-            tokens =
-              if prev_line_number > 0 do
-                tokens ++ [:eol]
-              else
-                tokens
-              end
-
-            {tokens, {env, new_context, prev_line_number}}
-
-          :stop ->
-            {:halt, env}
-        end
-    end
-
-    finalize_function = fn _ -> :ok end
-
-    init_function
-    |> Stream.resource(next_function, finalize_function)
-    |> Stream.map(&normalize_token/1)
-  end
-
-  defp find_and_tokenize(%__MODULE__{position: %{line: line_number}} = env, line_number, context) do
-    tokenize(env.prefix, line_number, context)
-  end
-
-  defp find_and_tokenize(%__MODULE__{} = env, line_number, context) do
-    case Document.fetch_text_at(env.document, line_number) do
-      {:ok, line_text} ->
-        tokenize(line_text, line_number, context)
-
-      :error ->
-        :stop
-    end
-  end
-
-  defp tokenize(line_text, line_number, context) do
-    line_charlist = String.to_charlist(line_text)
-    current_context = line_charlist ++ context
-
-    case :future_elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
-      {:ok, _, _, _, tokens} ->
-        {:ok, Enum.reverse(tokens), ~c""}
-
-      {:error, {_, _, ~c"unexpected token: ", _}, _, _, _} ->
-        {:ok, [], ~c"\n" ++ current_context}
-
-      {:error, _, _, _, tokens} ->
-        {:ok, tokens, ~c""}
-    end
-  end
-
-  defp ancestor_is_def?(env) do
-    env.analysis
-    |> Ast.cursor_path(env.position)
-    |> Enum.any?(fn
-      {:def, _, _} ->
-        true
-
-      {:defp, _, _} ->
-        true
-
-      _ ->
-        false
-    end)
-  end
-
-  @type_keys [:type, :typep, :opaque]
-  defp ancestor_is_type?(env) do
-    env.analysis
-    |> Ast.cursor_path(env.position)
-    |> Enum.any?(fn
-      {:@, metadata, [{type_key, _, _}]} when type_key in @type_keys ->
-        # single line type
-        cursor_in_range?(env, metadata)
-
-      {:__block__, _, [{:@, metadata, [{type_key, _, _}]}, _]}
-      when type_key in @type_keys ->
-        # multi-line type
-        cursor_in_range?(env, metadata)
-
-      _ ->
-        false
-    end)
-  end
-
-  defp ancestor_is_spec?(env) do
-    env.analysis
-    |> Ast.cursor_path(env.position)
-    |> Enum.any?(fn
-      {:@, metadata, [{:spec, _, _}]} ->
-        # single line spec
-        cursor_in_range?(env, metadata)
-
-      {:__block__, _, [{:@, metadata, [{:spec, _, _}]}, _]} ->
-        # multi-line spec
-        cursor_in_range?(env, metadata)
-
-      _ ->
-        false
-    end)
-  end
-
-  defp cursor_in_range?(env, metadata) do
-    expression_end_line = get_in(metadata, [:end_of_expression, :line])
-    expression_end_column = get_in(metadata, [:end_of_expression, :column])
-    cursor_line = env.position.line
-    cursor_column = env.position.character
-
-    if cursor_line == expression_end_line do
-      expression_end_column > cursor_column
-    else
-      cursor_line < expression_end_line
-    end
   end
 end

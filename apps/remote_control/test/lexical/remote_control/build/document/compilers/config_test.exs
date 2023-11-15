@@ -36,21 +36,21 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.ConfigTest do
   end
 
   describe "recognizes/1" do
-    test "files in the config directory are recognized" do
+    test "files in the config directory are detected" do
       assert recognizes?(document_with_path(config_dir(), "test.exs"))
       assert recognizes?(document_with_path(config_dir(), "foo.exs"))
       assert recognizes?(document_with_path([config_dir(), "other", "foo.exs"]))
     end
 
-    test "files in the config directory with relative paths are recognized" do
+    test "files in the config directory with relative paths are detected" do
       assert recognizes?(document_with_path("../../config/test.exs"))
     end
 
-    test "files outside the config directory are not recognized" do
+    test "files outside the config directory are not detected" do
       refute recognizes?(document_with_path(__ENV__.file))
     end
 
-    test "only .exs files are recognized" do
+    test "only .exs files are detected" do
       refute recognizes?(document_with_path(config_dir(), "foo.ex"))
       refute recognizes?(document_with_path(config_dir(), "foo.yaml"))
       refute recognizes?(document_with_path(config_dir(), "foo.eex"))
