@@ -16,7 +16,7 @@
 
         mkLexical = {erlang}: erlang.callPackage ./nix/lexical.nix {};
       in rec {
-        overlay = _final: _prev: {
+        overlays.default = _final: _prev: {
           inherit mkLexical;
           inherit (packages) lexical;
         };
