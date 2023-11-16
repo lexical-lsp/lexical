@@ -31,6 +31,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
     else
+      :error -> {:error, :not_found}
       {:error, :surround_context} -> {:error, :not_found}
       {:error, _} = error -> error
     end
