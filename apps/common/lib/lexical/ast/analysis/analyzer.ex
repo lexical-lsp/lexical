@@ -352,12 +352,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
           current_module ++ [first_segment]
       end
 
-    implicit_alias = %Alias{
-      as: first_segment,
-      module: segments,
-      line: line
-    }
-
+    implicit_alias = Alias.new(segments, first_segment, line)
     State.push_alias(state, implicit_alias)
   end
 
