@@ -1,4 +1,5 @@
 defmodule Lexical.Server.IEx.Helpers do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
@@ -75,14 +76,15 @@ defmodule Lexical.Server.IEx.Helpers do
   def complete(project, source, context) when is_binary(source) do
     case completion_position(source) do
       {:found, line, character} ->
-        complete(project, doc(source), line, character, context)
+        analysis = source |> doc() |> Ast.analyze()
+        complete(project, analysis, line, character, context)
 
       other ->
         other
     end
   end
 
-  def complete(project, %Document{} = source, line, character, context) do
+  def complete(project, %Ast.Analysis{} = analysis, line, character, context) do
     context =
       if is_nil(context) do
         Completion.Context.new(trigger_kind: :trigger_character)
@@ -90,11 +92,11 @@ defmodule Lexical.Server.IEx.Helpers do
         context
       end
 
-    position = pos(source, line, character)
+    position = pos(analysis.document, line, character)
 
     project
     |> ensure_project()
-    |> CodeIntelligence.Completion.complete(source, position, context)
+    |> CodeIntelligence.Completion.complete(analysis, position, context)
   end
 
   def connect do

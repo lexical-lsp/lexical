@@ -1,4 +1,7 @@
 defmodule Lexical.Server.Provider.Handlers.Completion do
+  alias Lexical.Ast
+  alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Completion
@@ -11,12 +14,24 @@ defmodule Lexical.Server.Provider.Handlers.Completion do
     completions =
       CodeIntelligence.Completion.complete(
         env.project,
-        request.document,
+        document_analysis(request.document, request.position),
         request.position,
         request.context || Completion.Context.new(trigger_kind: :invoked)
       )
 
     response = Responses.Completion.new(request.id, completions)
     {:reply, response}
+  end
+
+  defp document_analysis(%Document{} = document, %Position{} = position) do
+    case Document.Store.fetch(document.uri, :analysis) do
+      {:ok, %Document{}, %Ast.Analysis{} = analysis} ->
+        Ast.analyze_to(analysis, position)
+
+      _ ->
+        document
+        |> Ast.analyze()
+        |> Ast.analyze_to(position)
+    end
   end
 end

@@ -23,9 +23,9 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   setup_all do
     project = Fixtures.project()
 
-    {:ok, _} = start_supervised({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
-    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
-    {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+    start_supervised!(Server.Application.document_store_child_spec())
+    start_supervised!({DynamicSupervisor, Server.Project.Supervisor.options()})
+    start_supervised!({Server.Project.Supervisor, project})
 
     :ok = RemoteControl.Api.register_listener(project, self(), [Messages.project_compiled()])
     assert_receive Messages.project_compiled(), 5000

@@ -1,8 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MapFieldTest do
-  # alias Lexical.Server.CodeIntelligence.Completion.Translations.MapField
   use Lexical.Test.Server.CompletionCase
-
-  use ExUnit.Case, async: true
 
   test "a map's fields are completed", %{project: project} do
     source = ~q[

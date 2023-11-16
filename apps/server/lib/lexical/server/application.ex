@@ -14,7 +14,7 @@ defmodule Lexical.Server.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]},
+      document_store_child_spec(),
       Server,
       {DynamicSupervisor, Project.Supervisor.options()},
       Provider.Queue.Supervisor.child_spec(),
@@ -24,5 +24,10 @@ defmodule Lexical.Server.Application do
 
     opts = [strategy: :one_for_one, name: Server.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  @doc false
+  def document_store_child_spec do
+    {Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]}
   end
 end

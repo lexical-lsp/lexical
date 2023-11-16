@@ -7,6 +7,7 @@ defmodule Lexical.Ast.Env do
 
   alias Future.Code, as: Code
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Environment
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -14,6 +15,7 @@ defmodule Lexical.Ast.Env do
 
   defstruct [
     :project,
+    :analysis,
     :document,
     :line,
     :prefix,
@@ -23,25 +25,26 @@ defmodule Lexical.Ast.Env do
   ]
 
   @type t :: %__MODULE__{
-          project: Lexical.Project.t(),
-          document: Lexical.Document.t(),
+          project: Project.t(),
+          analysis: Ast.Analysis.t(),
           prefix: String.t(),
           suffix: String.t(),
-          position: Lexical.Document.Position.t(),
+          position: Position.t(),
           zero_based_character: non_neg_integer()
         }
 
   @behaviour Environment
-  def new(%Project{} = project, %Document{} = document, %Position{} = cursor_position) do
+  def new(%Project{} = project, %Analysis{} = analysis, %Position{} = cursor_position) do
     zero_based_character = cursor_position.character - 1
 
-    case Document.fetch_text_at(document, cursor_position.line) do
+    case Document.fetch_text_at(analysis.document, cursor_position.line) do
       {:ok, line} ->
         prefix = String.slice(line, 0, zero_based_character)
         suffix = String.slice(line, zero_based_character..-1)
 
         env = %__MODULE__{
-          document: document,
+          analysis: Ast.analyze_to(analysis, cursor_position),
+          document: analysis.document,
           line: line,
           position: cursor_position,
           prefix: prefix,
@@ -133,13 +136,13 @@ defmodule Lexical.Ast.Env do
   end
 
   defp do_in_context?(env, :struct_fields) do
-    env.document
+    env.analysis
     |> Ast.cursor_path(env.position)
     |> Enum.any?(&match?({:%, _, _}, &1))
   end
 
   defp do_in_context?(env, :struct_field_key) do
-    cursor_path = Ast.cursor_path(env.document, env.position)
+    cursor_path = Ast.cursor_path(env.analysis, env.position)
 
     match?(
       # in the key position, the cursor will always be followed by the
@@ -409,7 +412,7 @@ defmodule Lexical.Ast.Env do
   end
 
   defp ancestor_is_def?(env) do
-    env.document
+    env.analysis
     |> Ast.cursor_path(env.position)
     |> Enum.any?(fn
       {:def, _, _} ->
@@ -425,7 +428,7 @@ defmodule Lexical.Ast.Env do
 
   @type_keys [:type, :typep, :opaque]
   defp ancestor_is_type?(env) do
-    env.document
+    env.analysis
     |> Ast.cursor_path(env.position)
     |> Enum.any?(fn
       {:@, metadata, [{type_key, _, _}]} when type_key in @type_keys ->
@@ -443,7 +446,7 @@ defmodule Lexical.Ast.Env do
   end
 
   defp ancestor_is_spec?(env) do
-    env.document
+    env.analysis
     |> Ast.cursor_path(env.position)
     |> Enum.any?(fn
       {:@, metadata, [{:spec, _, _}]} ->
