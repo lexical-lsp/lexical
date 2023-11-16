@@ -4,7 +4,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   """
 
   alias Lexical.Ast
-  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.ProcessCache
@@ -22,11 +21,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     %Block{} = block = Reducer.current_block(reducer)
     aliased_module = resolve_alias(reducer, module_name)
     module_position = Metadata.position(module_name_meta)
-    range = to_range(reducer.document, module_name, module_position)
+    range = to_range(reducer, module_name, module_position)
 
     entry =
       Entry.definition(
-        reducer.document.path,
+        reducer.analysis.document.path,
         block.ref,
         block.parent_ref,
         aliased_module,
@@ -49,12 +48,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     case module(reducer, maybe_module) do
       {:ok, module} ->
         start = Metadata.position(metadata)
-        range = to_range(reducer.document, maybe_module, start)
+        range = to_range(reducer, maybe_module, start)
         %Block{} = current_block = Reducer.current_block(reducer)
 
         entry =
           Entry.reference(
-            reducer.document.path,
+            reducer.analysis.document.path,
             make_ref(),
             current_block.ref,
             module,
@@ -77,11 +76,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       {:ok, module} ->
         start = Metadata.position(metadata)
         %Block{} = current_block = Reducer.current_block(reducer)
-        range = to_range(reducer.document, module, start)
+        range = to_range(reducer, module, start)
 
         entry =
           Entry.reference(
-            reducer.document.path,
+            reducer.analysis.document.path,
             make_ref(),
             current_block.ref,
             module,
@@ -103,7 +102,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
   defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
     {line, column} = reducer.position
-    position = Position.new(reducer.document, line, column)
+    position = Position.new(reducer.analysis.document, line, column)
 
     {:ok, expanded} = Ast.expand_alias(unresolved_alias, reducer.analysis, position)
 
@@ -148,7 +147,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     end)
   end
 
-  defp to_range(%Document{} = document, module_name, {line, column}) do
+  defp to_range(%Reducer{} = reducer, module_name, {line, column}) do
+    document = reducer.analysis.document
+
     module_length =
       module_name
       |> Ast.Module.name()

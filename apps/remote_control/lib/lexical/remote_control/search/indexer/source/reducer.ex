@@ -7,20 +7,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   """
 
   alias Lexical.Ast.Analysis
-  alias Lexical.Document
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Extractors
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:analysis, :entries, :document, :position, :ends_at, :blocks]
+  defstruct [:analysis, :entries, :position, :ends_at, :blocks]
 
   @extractors [Extractors.Module]
 
-  def new(%Document{} = document, %Analysis{} = analysis) do
+  def new(%Analysis{} = analysis) do
     %__MODULE__{
       analysis: analysis,
-      document: document,
       entries: [],
       position: {0, 0},
       blocks: [Block.root()]

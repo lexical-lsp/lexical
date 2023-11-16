@@ -5,7 +5,6 @@ defmodule Lexical.Server.Application do
 
   alias Lexical.Document
   alias Lexical.Server
-  alias Lexical.Server.Project
   alias Lexical.Server.Provider
   alias Lexical.Server.Transport
 
@@ -16,7 +15,7 @@ defmodule Lexical.Server.Application do
     children = [
       document_store_child_spec(),
       Server,
-      {DynamicSupervisor, Project.Supervisor.options()},
+      {DynamicSupervisor, Server.Project.Supervisor.options()},
       Provider.Queue.Supervisor.child_spec(),
       Provider.Queue.child_spec(),
       {Transport.StdIO, [:standard_io, &Server.protocol_message/1]}
