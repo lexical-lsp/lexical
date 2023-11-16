@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CompletionTest do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion
 
@@ -94,7 +95,11 @@ defmodule Lexical.RemoteControl.CompletionTest do
       Code.compile_string(text)
     end)
 
-    analysis = Lexical.Ast.analyze_to(document, position)
+    analysis =
+      document
+      |> Ast.analyze()
+      |> Ast.reanalyze_to(position)
+
     Completion.struct_fields(analysis, position)
   end
 end

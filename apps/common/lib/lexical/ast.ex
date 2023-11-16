@@ -11,7 +11,7 @@ defmodule Lexical.Ast do
 
   An analysis looks at the entire AST, and thus may fail if the document
   contains syntax errors that prevent parsing. To a partial analysis up
-  to a certain point (usually the cursor position), use `analyze_to/2`,
+  to a certain point (usually the cursor position), use `reanalyze_to/2`,
   which analyzes the document up to the given position and can therefore
   be used even if later parts of the document contain syntax errors.
 
@@ -114,26 +114,26 @@ defmodule Lexical.Ast do
   end
 
   @doc """
-  Attempts to analyze a document at least until `position`.
+  Reanalyzes a document up to `position` if `analysis` is not valid.
 
-  This can be used to analyze an invalid AST up until, for instance, the
-  cursor position. The full analysis will be completed if the AST is
-  valid.
+  This can be used to analyze a fragment of an analyzed document up to
+  the cursor position. If the given analysis is already valid, this
+  function returns in unchanged.
 
-  This function is not guaranteed to return a valid analysis.
+  Note that the analysis generated for this may give invalid or incomplete
+  results for positions after the fragment.
+
+  ## Examples
+
+      iex> analysis = Ast.analyze(invalid_document)
+      %Ast.Analysis{valid?: false}
+
+      iex> Ast.reanalyze_to(analysis, cursor_position)
+      %Ast.Analysis{} # may be valid or invalid
+
   """
-  @spec analyze_to(Document.t() | Analysis.t(), position) :: Analysis.t()
-  def analyze_to(%Document{} = document, position) do
-    %Position{} = position = normalize_position(position, document)
-
-    with %Analysis{valid?: false} <- analyze(document) do
-      document
-      |> fragment(position)
-      |> Analysis.new(document)
-    end
-  end
-
-  def analyze_to(%Analysis{valid?: false} = analysis, position) do
+  @spec reanalyze_to(Analysis.t(), position) :: Analysis.t()
+  def reanalyze_to(%Analysis{valid?: false} = analysis, position) do
     %Position{} = position = normalize_position(position, analysis.document)
 
     analysis.document
@@ -141,7 +141,7 @@ defmodule Lexical.Ast do
     |> Analysis.new(analysis.document)
   end
 
-  def analyze_to(%Analysis{valid?: true} = analysis, _position) do
+  def reanalyze_to(%Analysis{valid?: true} = analysis, _position) do
     analysis
   end
 
@@ -442,7 +442,7 @@ defmodule Lexical.Ast do
         ) ::
           {:ok, module()} | :error
   def expand_alias([_ | _] = segments, %Analysis{} = analysis, %Position{} = position) do
-    with %Analysis{valid?: true} = analysis <- analyze_to(analysis, position),
+    with %Analysis{valid?: true} = analysis <- reanalyze_to(analysis, position),
          aliases <- Analysis.aliases_at(analysis, position),
          {:ok, resolved} <- resolve_alias(segments, aliases) do
       {:ok, Module.concat(resolved)}

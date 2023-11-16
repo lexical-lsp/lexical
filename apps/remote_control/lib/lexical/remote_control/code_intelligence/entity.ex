@@ -24,7 +24,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   """
   @spec resolve(Analysis.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
   def resolve(%Analysis{} = analysis, %Position{} = position) do
-    analysis = Ast.analyze_to(analysis, position)
+    analysis = Ast.reanalyze_to(analysis, position)
 
     with {:ok, surround_context} <- Ast.surround_context(analysis, position),
          {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, analysis, position) do

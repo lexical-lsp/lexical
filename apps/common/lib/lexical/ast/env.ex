@@ -43,7 +43,7 @@ defmodule Lexical.Ast.Env do
         suffix = String.slice(line, zero_based_character..-1)
 
         env = %__MODULE__{
-          analysis: Ast.analyze_to(analysis, cursor_position),
+          analysis: Ast.reanalyze_to(analysis, cursor_position),
           document: analysis.document,
           line: line,
           position: cursor_position,
