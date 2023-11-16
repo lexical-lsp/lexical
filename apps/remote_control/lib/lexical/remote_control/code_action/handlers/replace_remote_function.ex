@@ -78,18 +78,11 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     end
   end
 
-  defp extract_function_and_line(%Diagnostic{} = diagnostic) do
-    with {:ok, module, function, arity} <- extract_function(diagnostic.message),
-         {:ok, line_number} <- extract_line(diagnostic) do
-      {:ok, module, function, arity, line_number}
-    end
-  end
-
   @function_re ~r/(.*)\/(.*) is undefined or private. Did you mean:.*/
-  defp extract_function(message) do
+  defp extract_function_and_line(%Diagnostic{message: message, range: range}) do
     with [[_, module_and_function, arity]] <- Regex.scan(@function_re, message),
          {:ok, module, function_name} <- separate_module_from_function(module_and_function) do
-      {:ok, module, function_name, String.to_integer(arity)}
+      {:ok, module, function_name, String.to_integer(arity), range.start.line}
     end
   end
 
@@ -104,10 +97,6 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
       _ ->
         :error
     end
-  end
-
-  defp extract_line(%Diagnostic{} = diagnostic) do
-    {:ok, diagnostic.range.start.line}
   end
 
   @function_threshold 0.77
