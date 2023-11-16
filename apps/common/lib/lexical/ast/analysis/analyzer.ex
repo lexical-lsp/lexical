@@ -172,7 +172,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         quoted,
         State.new(document),
         fn quoted, state ->
-          {quoted, pre(quoted, state)}
+          {quoted, analyze_node(quoted, state)}
         end,
         fn quoted, state ->
           case {scope_id(quoted), State.current_scope(state)} do
@@ -269,7 +269,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   # defmodule Foo do
-  defp pre({:defmodule, meta, [{:__aliases__, _, segments} | _]} = quoted, state) do
+  defp analyze_node({:defmodule, meta, [{:__aliases__, _, segments} | _]} = quoted, state) do
     module =
       case State.current_module(state) do
         [] -> segments
@@ -287,7 +287,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   # alias Foo.{Bar, Baz, Buzz.Qux}
-  defp pre({:alias, meta, [{{:., _, [aliases, :{}]}, _, aliases_nodes}]}, state) do
+  defp analyze_node({:alias, meta, [{{:., _, [aliases, :{}]}, _, aliases_nodes}]}, state) do
     base_segments = expand_alias(aliases, state)
 
     Enum.reduce(aliases_nodes, state, fn {:__aliases__, _, segments}, state ->
@@ -299,7 +299,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   # alias Foo
   # alias Foo.Bar
   # alias __MODULE__.Foo
-  defp pre({:alias, meta, [aliases]}, state) do
+  defp analyze_node({:alias, meta, [aliases]}, state) do
     case expand_alias(aliases, state) do
       [_ | _] = segments ->
         alias = Alias.new(segments, List.last(segments), meta[:line])
@@ -311,29 +311,30 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   # alias Foo, as: Bar
-  defp pre({:alias, meta, [aliases, options]}, state) do
+  defp analyze_node({:alias, meta, [aliases, options]}, state) do
     with {:ok, alias_as} <- fetch_alias_as(options),
          [_ | _] = segments <- expand_alias(aliases, state) do
       alias = Alias.new(segments, alias_as, meta[:line])
       State.push_alias(state, alias)
     else
       _ ->
-        pre({:alias, meta, [aliases]}, state)
+        analyze_node({:alias, meta, [aliases]}, state)
     end
   end
 
   # clauses: ->
-  defp pre({clause, _, _} = quoted, state) when clause in @clauses do
+  defp analyze_node({clause, _, _} = quoted, state) when clause in @clauses do
     State.maybe_push_scope_for(state, quoted)
   end
 
   # blocks: do, else, etc.
-  defp pre({{:__block__, _, [block]}, _} = quoted, state) when block in @block_keywords do
+  defp analyze_node({{:__block__, _, [block]}, _} = quoted, state)
+       when block in @block_keywords do
     State.maybe_push_scope_for(state, quoted)
   end
 
   # catch-all
-  defp pre(_quoted, state) do
+  defp analyze_node(_quoted, state) do
     state
   end
 
