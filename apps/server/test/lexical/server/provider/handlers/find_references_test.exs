@@ -1,10 +1,12 @@
 defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.FindReferences
   alias Lexical.Protocol.Responses
   alias Lexical.RemoteControl
+  alias Lexical.Server
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
@@ -15,7 +17,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
   use Patch
 
   setup_all do
-    start_supervised!(Document.Store)
+    start_supervised(Server.Application.document_store_child_spec())
     :ok
   end
 
@@ -46,7 +48,10 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
 
   describe "find references" do
     test "returns locations that the entity returns", %{project: project, uri: uri} do
-      patch(RemoteControl.Api, :references, fn ^project, document, _position, _ ->
+      patch(RemoteControl.Api, :references, fn ^project,
+                                               %Analysis{document: document},
+                                               _position,
+                                               _ ->
         locations = [
           Location.new(
             Document.Range.new(
