@@ -236,4 +236,161 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert usage_in_else.parent == :root
     end
   end
+
+  describe "variables in the function header" do
+    test "no variables in the parameter list" do
+      assert {:ok, [], _doc} = ~q[
+        def foo do
+        end
+      ] |> index()
+    end
+
+    test "in parameter list" do
+      {:ok, [a, b], doc} = ~q[
+        def foo(a, b) do
+        end
+      ] |> index()
+
+      assert a.subject == :a
+      assert decorate(doc, a.range) =~ "def foo(«a», b)"
+
+      assert b.subject == :b
+      assert decorate(doc, b.range) =~ "def foo(a, «b»)"
+    end
+
+    test "in a private function's parameter list" do
+      {:ok, [a, b], doc} = ~q[
+        defp foo(a, b) do
+        end
+      ] |> index()
+
+      assert a.subject == :a
+      assert decorate(doc, a.range) =~ "defp foo(«a», b)"
+
+      assert b.subject == :b
+      assert decorate(doc, b.range) =~ "defp foo(a, «b»)"
+    end
+
+    test "in parameter list with default value" do
+      {:ok, [a, b], doc} = ~q[
+        def foo(a, b \\ 2) do
+        end
+      ] |> index()
+
+      assert a.subject == :a
+      assert decorate(doc, a.range) =~ "def foo(«a», b \\\\ 2)"
+
+      assert b.subject == :b
+      assert decorate(doc, b.range) =~ "def foo(a, «b» \\\\ 2)"
+    end
+
+    test "in parameter list but on the right side" do
+      {:ok, [a, b], doc} = ~q[
+        def foo(:a = a, 1 = b) do
+        end
+      ] |> index()
+
+      assert a.subject == :a
+      assert decorate(doc, a.range) =~ "def foo(:a = «a», 1 = b)"
+
+      assert b.subject == :b
+      assert decorate(doc, b.range) =~ "def foo(:a = a, 1 = «b»)"
+    end
+
+    test "multiple variables with nested structure" do
+      assert {:ok, [var_d, var_a, var_b, var_c], doc} = ~q/
+        def myfunc({:a, a, [b, c]} = d) do
+        end
+      / |> index()
+
+      assert decorate(doc, var_d.range) =~ "def myfunc({:a, a, [b, c]} = «d»)"
+      assert decorate(doc, var_a.range) =~ "def myfunc({:a, «a», [b, c]} = d)"
+      assert decorate(doc, var_b.range) =~ "def myfunc({:a, a, [«b», c]} = d)"
+      assert decorate(doc, var_c.range) =~ "def myfunc({:a, a, [b, «c»]} = d)"
+    end
+
+    test "matching struct in parameter list" do
+      {:ok, [foo, value], doc} = ~q[
+        def func(%Foo{field: value}=foo) do
+        end
+      ] |> index()
+
+      assert foo.subject == :foo
+      assert decorate(doc, foo.range) =~ "def func(%Foo{field: value}=«foo»)"
+
+      assert value.subject == :value
+      assert decorate(doc, value.range) =~ "def func(%Foo{field: «value»}=foo)"
+    end
+  end
+
+  describe "usages of the function params" do
+    test "simple usages" do
+      {:ok, [definition, usage], doc} = ~q/
+        def foo(a) do
+          a
+        end
+      / |> index()
+
+      assert definition.subject == :a
+      assert decorate(doc, definition.range) =~ "def foo(«a»)"
+
+      assert usage.subject == :a
+      assert decorate(doc, usage.range) =~ "«a»"
+      assert usage.parent == definition.ref
+    end
+
+    test "usage after `when`" do
+      {:ok, [definition, usage], doc} = ~q/
+        def foo(a) when is_integer(a) do
+        end
+      / |> index()
+
+      assert decorate(doc, definition.range) =~ "def foo(«a») when is_integer(a)"
+
+      assert decorate(doc, usage.range) =~ "is_integer(«a»)"
+      assert usage.parent == definition.ref
+    end
+
+    test "multiple usages after `when`" do
+      {:ok, [definition, usage1, usage2], doc} = ~q/
+        def foo(a) when is_integer(a) and a > 1 do
+        end
+      / |> index()
+
+      assert decorate(doc, definition.range) =~ "def foo(«a») when is_integer(a) and a > 1"
+      assert decorate(doc, usage1.range) =~ "is_integer(«a»)"
+      assert decorate(doc, usage2.range) =~ "«a» > 1"
+
+      assert usage1.parent == definition.ref
+      assert usage2.parent == definition.ref
+    end
+
+    test "shouldn't confuse with the same name variables in different functions" do
+      assert {:ok,
+              [
+                def1_in_foo_function_params,
+                def2_in_foo_function_block,
+                usage_in_foo_function_block,
+                def_in_bar_function_params,
+                usage_in_bar_function_block
+              ], doc} = ~q/
+        def foo(a) do
+          a = 2
+          {a, 2}
+        end
+
+        def bar(a) do
+          [a]
+        end
+      / |> index()
+
+      assert decorate(doc, def1_in_foo_function_params.range) =~ "def foo(«a»)"
+      assert decorate(doc, def2_in_foo_function_block.range) =~ "«a» = 2"
+      assert decorate(doc, usage_in_foo_function_block.range) =~ "{«a», 2}"
+      assert usage_in_foo_function_block.parent == def2_in_foo_function_block.ref
+
+      assert decorate(doc, def_in_bar_function_params.range) =~ "def bar(«a»)"
+      assert decorate(doc, usage_in_bar_function_block.range) =~ "[«a»]"
+    end
+  end
 end

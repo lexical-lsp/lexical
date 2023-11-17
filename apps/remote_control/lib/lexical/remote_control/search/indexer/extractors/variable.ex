@@ -9,6 +9,25 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
   require Logger
 
+  @callable_operators ~w(def defp)a
+
+  def extract({operator, _, [function_header, _block]} = elem, %Reducer{} = reducer)
+      when operator in @callable_operators do
+    params = pick_function_params(function_header)
+
+    subject_with_ranges = [
+      extract_from_left(params, reducer) ++ extract_right_side(params, reducer)
+    ]
+
+    entries = to_definition_entries(subject_with_ranges, reducer)
+    {:ok, entries, elem}
+  end
+
+  # `def foo(a, b)` without a block
+  def extract({operator, _, [_]} = _elem, _) when operator in @callable_operators do
+    :ignored
+  end
+
   def extract({:=, _assignment_meta, [left, _right]} = elem, %Reducer{} = reducer) do
     subject_with_ranges = left |> extract_from_left(reducer) |> List.wrap() |> List.flatten()
     entries = to_definition_entries(subject_with_ranges, reducer)
@@ -28,6 +47,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
 
   def extract(_elem, %Reducer{} = _reducer) do
     :ignored
+  end
+
+  defp pick_function_params({:when, _meta, [function_header, _condition]}) do
+    pick_function_params(function_header)
+  end
+
+  defp pick_function_params({_function_name, _meta, params}) do
+    List.wrap(params)
   end
 
   defp extract_usage(variable_atom, meta, %Reducer{} = reducer) do
@@ -108,6 +135,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
         get_application(document)
       )
     end
+  end
+
+  # like params: def foo«(1 = a, 2 = b)»
+  defp extract_right_side(ast_list, reducer) when is_list(ast_list) do
+    Enum.map(ast_list, fn ast -> extract_right_side(ast, reducer) end)
+  end
+
+  # pattern matching: def foo(a, «1 = b») do
+  # won't pattern matching like: def foo(a, «b = %Struct{}»))` do
+  defp extract_right_side({:=, _meta, [_left, {variable, _, nil} = right]}, reducer)
+       when is_atom(variable) do
+    do_extract(right, reducer)
+  end
+
+  defp extract_right_side(_, _) do
+    []
   end
 
   # «a» = 1
