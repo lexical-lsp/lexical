@@ -13,8 +13,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     doc = Document.new("file:///#{path}", source, 1)
 
     case Indexer.Source.index("/foo/bar/baz.ex", source) do
-      {:ok, indexed_items} -> {:ok, indexed_items, doc}
-      error -> error
+      {:ok, indexed_items} ->
+        items = Enum.filter(indexed_items, &(&1.type == :module))
+        {:ok, items, doc}
+
+      error ->
+        error
     end
   end
 
