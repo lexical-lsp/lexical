@@ -63,12 +63,12 @@ defmodule Lexical.RemoteControl.Api do
 
   def references(
         %Project{} = project,
-        %Document{} = document,
+        %Analysis{} = analysis,
         %Position{} = position,
         include_definitions?
       ) do
     RemoteControl.call(project, CodeIntelligence.References, :references, [
-      document,
+      analysis,
       position,
       include_definitions?
     ])
