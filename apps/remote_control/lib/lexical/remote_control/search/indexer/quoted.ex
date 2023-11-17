@@ -1,14 +1,18 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Quoted do
-  alias Lexical.Document
+  alias Lexical.Ast.Analysis
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
-  def index(%Document{} = document, quoted_ast) do
+  def index(%Analysis{valid?: true} = analysis) do
     {_, reducer} =
-      Macro.prewalk(quoted_ast, Reducer.new(document, quoted_ast), fn elem, reducer ->
+      Macro.prewalk(analysis.ast, Reducer.new(analysis), fn elem, reducer ->
         {reducer, elem} = Reducer.reduce(reducer, elem)
         {elem, reducer}
       end)
 
     {:ok, Reducer.entries(reducer)}
+  end
+
+  def index(%Analysis{valid?: false}) do
+    {:ok, []}
   end
 end

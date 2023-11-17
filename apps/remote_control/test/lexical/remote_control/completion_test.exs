@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CompletionTest do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion
 
@@ -88,13 +89,17 @@ defmodule Lexical.RemoteControl.CompletionTest do
 
   defp struct_fields(source) do
     {position, document} = pop_cursor(source, as: :document)
-
     text = Document.to_string(document)
 
     quiet(:stderr, fn ->
       Code.compile_string(text)
     end)
 
-    Completion.struct_fields(document, position)
+    analysis =
+      document
+      |> Ast.analyze()
+      |> Ast.reanalyze_to(position)
+
+    Completion.struct_fields(analysis, position)
   end
 end

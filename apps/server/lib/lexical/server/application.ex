@@ -3,6 +3,8 @@ defmodule Lexical.Server.Application do
   # for more information on OTP Applications
   @moduledoc false
 
+  alias Lexical.Document
+  alias Lexical.Server
   alias Lexical.Server.Provider
   alias Lexical.Server.Transport
 
@@ -11,15 +13,20 @@ defmodule Lexical.Server.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      Lexical.Document.Store,
-      Lexical.Server,
-      {DynamicSupervisor, Lexical.Server.Project.Supervisor.options()},
+      document_store_child_spec(),
+      Server,
+      {DynamicSupervisor, Server.Project.Supervisor.options()},
       Provider.Queue.Supervisor.child_spec(),
       Provider.Queue.child_spec(),
-      {Transport.StdIO, [:standard_io, &Lexical.Server.protocol_message/1]}
+      {Transport.StdIO, [:standard_io, &Server.protocol_message/1]}
     ]
 
-    opts = [strategy: :one_for_one, name: Lexical.Server.Supervisor]
+    opts = [strategy: :one_for_one, name: Server.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  @doc false
+  def document_store_child_spec do
+    {Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]}
   end
 end

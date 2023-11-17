@@ -1,5 +1,4 @@
 defmodule Lexical.RemoteControl.Build.Document do
-  alias Elixir.Features
   alias Lexical.Document
   alias Lexical.RemoteControl.Build.Document.Compilers
 

@@ -1,14 +1,16 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.References do
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Location
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
 
   require Logger
 
-  def references(%Document{} = document, %Document.Position{} = position, include_definitions?) do
-    with {:ok, resolved, _range} <- Entity.resolve(document, position) do
+  def references(%Analysis{} = analysis, %Position{} = position, include_definitions?) do
+    with {:ok, resolved, _range} <- Entity.resolve(analysis, position) do
       find_references(resolved, include_definitions?)
     end
   end

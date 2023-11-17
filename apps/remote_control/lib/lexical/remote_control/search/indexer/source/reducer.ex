@@ -5,20 +5,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   The reducer keeps track of blocks and parent / child relationships so extractors don't have to concern themselves
   with the AST's overall structure, and can focus on extracting content from it.
   """
-  alias Lexical.Document
+
+  alias Lexical.Ast.Analysis
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Extractors
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:entries, :document, :quoted_document, :position, :ends_at, :blocks]
+  defstruct [:analysis, :entries, :position, :ends_at, :blocks]
 
   @extractors [Extractors.Module]
 
-  def new(%Document{} = document, quoted_document) do
+  def new(%Analysis{} = analysis) do
     %__MODULE__{
-      document: document,
-      quoted_document: quoted_document,
+      analysis: analysis,
       entries: [],
       position: {0, 0},
       blocks: [Block.root()]

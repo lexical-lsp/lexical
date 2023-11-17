@@ -1,6 +1,8 @@
 defmodule Lexical.Ast.EnvTest do
   use ExUnit.Case, async: true
 
+  alias Lexical.Ast
+
   import Lexical.Ast.Env
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
@@ -10,7 +12,8 @@ defmodule Lexical.Ast.EnvTest do
     opts = Keyword.merge([as: :document], opts)
     project = project()
     {position, document} = pop_cursor(text, opts)
-    {:ok, env} = new(project, document, position)
+    analysis = Ast.analyze(document)
+    {:ok, env} = new(project, analysis, position)
     env
   end
 

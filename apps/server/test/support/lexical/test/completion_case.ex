@@ -1,4 +1,5 @@
 defmodule Lexical.Test.Server.CompletionCase do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion.Context, as: CompletionContext
@@ -17,8 +18,8 @@ defmodule Lexical.Test.Server.CompletionCase do
   setup_all do
     project = project()
 
-    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
-    {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+    start_supervised!({DynamicSupervisor, Server.Project.Supervisor.options()})
+    start_supervised!({Server.Project.Supervisor, project})
 
     RemoteControl.Api.register_listener(project, self(), [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
@@ -70,7 +71,8 @@ defmodule Lexical.Test.Server.CompletionCase do
         CompletionContext.new(trigger_kind: :invoked)
       end
 
-    result = Completion.complete(project, document, position, context)
+    analysis = Ast.analyze(document)
+    result = Completion.complete(project, analysis, position, context)
 
     if return_as_list? do
       completion_items(result)

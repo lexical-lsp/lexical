@@ -1,5 +1,6 @@
 defmodule Lexical.AstTest do
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Sourceror.Zipper
@@ -275,7 +276,7 @@ defmodule Lexical.AstTest do
     end
   end
 
-  describe "expand_aliases/4" do
+  describe "expand_alias/4" do
     test "works with __MODULE__ aliases" do
       {position, document} =
         ~q[
@@ -287,8 +288,60 @@ defmodule Lexical.AstTest do
         ]
         |> pop_cursor(as: :document)
 
+      analysis = Ast.analyze(document)
+
       assert {:ok, Parent.Child} =
-               Ast.expand_aliases([quote(do: __MODULE__), nil], document, position)
+               Ast.expand_alias([quote(do: __MODULE__), nil], analysis, position)
+    end
+  end
+
+  describe "analyze/1" do
+    test "creates an analysis from a document with valid ast" do
+      code = ~q[
+        defmodule Valid do
+        end
+      ]
+
+      assert %Analysis{} = analysis = analyze(code)
+      assert {:defmodule, _, _} = analysis.ast
+    end
+
+    test "creates an analysis from a document with invalid ast" do
+      code = ~q[
+        defmodule Invalid do
+      ]
+
+      assert %Analysis{} = analysis = analyze(code)
+      refute analysis.ast
+      assert {:error, _} = analysis.parse_error
+    end
+  end
+
+  describe "reanalyze_to/2" do
+    test "is a no-op if the analysis is already valid" do
+      {position, document} =
+        ~q[
+          defmodule Valid do
+            |
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      assert %Analysis{valid?: true} = analysis = Ast.analyze(document)
+      assert analysis == Ast.reanalyze_to(analysis, position)
+    end
+
+    test "returns a valid analysis if fragment can be parsed" do
+      {position, document} =
+        ~q[
+          defmodule Invalid do
+            |
+        ]
+        |> pop_cursor(as: :document)
+
+      assert %Analysis{valid?: false} = analysis = Ast.analyze(document)
+      assert %Analysis{valid?: true} = analysis = Ast.reanalyze_to(analysis, position)
+      assert {:ok, Invalid} = Ast.expand_alias([:__MODULE__], analysis, position)
     end
   end
 
@@ -297,5 +350,10 @@ defmodule Lexical.AstTest do
       {:ok, {:__block__, _, [node]}} -> node
       {:ok, node} -> node
     end
+  end
+
+  defp analyze(code) when is_binary(code) do
+    document = Document.new("file:///file.ex", code, 0)
+    Ast.analyze(document)
   end
 end

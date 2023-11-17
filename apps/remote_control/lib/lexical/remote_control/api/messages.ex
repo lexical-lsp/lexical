@@ -17,8 +17,6 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :file_compile_requested, project: nil, build_number: 0, uri: nil
 
-  defrecord :file_quoted, project: nil, document: nil, quoted_ast: nil
-
   defrecord :file_compiled,
     project: nil,
     build_number: 0,
@@ -71,18 +69,12 @@ defmodule Lexical.RemoteControl.Api.Messages do
             to_version: maybe_version,
             open?: boolean()
           )
+
   @type file_compile_requested ::
           record(:file_compile_requested,
             project: Lexical.Project.t(),
             build_number: non_neg_integer(),
             uri: Lexical.uri()
-          )
-
-  @type file_quoted ::
-          record(:file_quoted,
-            project: Lexical.Project.t(),
-            document: Lexical.Document.t(),
-            quoted_ast: Macro.t()
           )
 
   @type file_compiled ::

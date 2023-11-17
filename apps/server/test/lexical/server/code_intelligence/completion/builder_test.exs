@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
+  alias Lexical.Ast
   alias Lexical.Ast.Env
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
 
@@ -12,7 +13,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
   def new_env(text) do
     project = project()
     {position, document} = pop_cursor(text, as: :document)
-    {:ok, env} = Env.new(project, document, position)
+    analysis = Ast.analyze(document)
+    {:ok, env} = Env.new(project, analysis, position)
     env
   end
 
@@ -25,6 +27,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
 
   defp sort_items(items) do
     Enum.sort_by(items, &{&1.sort_text, &1.label})
+  end
+
+  setup do
+    start_supervised!(Lexical.Server.Application.document_store_child_spec())
+    :ok
   end
 
   describe "boosting" do

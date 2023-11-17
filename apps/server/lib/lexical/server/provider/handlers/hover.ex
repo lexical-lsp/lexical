@@ -1,5 +1,6 @@
 defmodule Lexical.Server.Provider.Handlers.Hover do
   alias Lexical.Ast
+  alias Lexical.Document
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Hover
@@ -13,7 +14,9 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
 
   def handle(%Requests.Hover{} = request, %Env{} = env) do
     maybe_hover =
-      with {:ok, entity, range} <- Entity.resolve(request.document, request.position),
+      with {:ok, _document, %Ast.Analysis{} = analysis} <-
+             Document.Store.fetch(request.document.uri, :analysis),
+           {:ok, entity, range} <- Entity.resolve(analysis, request.position),
            {:ok, markdown} <- hover_content(entity, env) do
         content = Markdown.to_content(markdown)
         %Hover{contents: content, range: range}

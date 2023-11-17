@@ -1,8 +1,9 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
+  alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Env
   alias Lexical.Completion.Translatable
-  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
@@ -27,15 +28,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     [".", "@", "&", "%", "^", ":", "!", "-", "~"]
   end
 
-  @spec complete(Project.t(), Document.t(), Position.t(), Completion.Context.t()) ::
+  @spec complete(Project.t(), Analysis.t(), Position.t(), Completion.Context.t()) ::
           Completion.List.t()
   def complete(
         %Project{} = project,
-        %Document{} = document,
+        %Analysis{} = analysis,
         %Position{} = position,
         %Completion.Context{} = context
       ) do
-    case Env.new(project, document, position) do
+    case Env.new(project, analysis, position) do
       {:ok, env} ->
         completions = completions(project, env, context)
         Logger.info("Emitting completions: #{inspect(completions)}")
@@ -63,7 +64,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
       Env.in_context?(env, :struct_field_key) ->
         project
-        |> RemoteControl.Api.complete_struct_fields(env.document, env.position)
+        |> RemoteControl.Api.complete_struct_fields(env.analysis, env.position)
         |> Enum.map(&Translatable.translate(&1, Builder, env))
 
       true ->
@@ -238,10 +239,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp typespec_or_type_candidate?(%Candidate.Function{} = function, %Env{} = env) do
-    case Lexical.Ast.Aliases.at(env.document, env.position) do
-      {:ok, alias_map} ->
-        result = "Elixir." <> function.origin == to_string(alias_map[:__MODULE__])
-        result
+    case Ast.expand_alias([:__MODULE__], env.analysis, env.position) do
+      {:ok, expanded} ->
+        expanded == function.origin
 
       _error ->
         false

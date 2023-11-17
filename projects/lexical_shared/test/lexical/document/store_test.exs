@@ -6,18 +6,18 @@ defmodule Lexical.Document.StoreTest do
 
   use ExUnit.Case
 
-  setup do
-    {:ok, _} = start_supervised(Document.Store)
+  def with_store(%{} = context) do
+    store_opts = Map.get(context, :store, [])
+    {:ok, _} = start_supervised({Document.Store, store_opts})
     :ok
-  end
-
-  def uri do
-    "file:///file.ex"
   end
 
   def with_an_open_document(_) do
     :ok = Document.Store.open(uri(), "hello", 1)
-    :ok
+  end
+
+  def uri do
+    "file:///file.ex"
   end
 
   defp build_position(_, nil) do
@@ -50,7 +50,33 @@ defmodule Lexical.Document.StoreTest do
     Edit.new(text, range)
   end
 
+  describe "startup" do
+    test "succeeds without options" do
+      assert {:ok, _} = start_supervised(Document.Store)
+    end
+
+    test "succeeds with empty :derive" do
+      assert {:ok, _} = start_supervised({Document.Store, [derive: []]})
+    end
+
+    test "succeeds with valid :derive" do
+      valid_fun = fn _ -> :ok end
+      assert {:ok, _} = start_supervised({Document.Store, [derive: [valid: valid_fun]]})
+    end
+
+    test "fails with invalid :derive" do
+      invalid_fun = fn _, _ -> :ok end
+      assert {:error, _} = start_supervised({Document.Store, [derive: [invalid: invalid_fun]]})
+    end
+
+    test "fails with invalid options" do
+      assert {:error, _} = start_supervised({Document.Store, [invalid: []]})
+    end
+  end
+
   describe "a clean store" do
+    setup [:with_store]
+
     test "a document can be opened" do
       :ok = Document.Store.open(uri(), "hello", 1)
       assert {:ok, file} = Document.Store.fetch(uri())
@@ -70,7 +96,7 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "a document that is already open" do
-    setup [:with_an_open_document]
+    setup [:with_store, :with_an_open_document]
 
     test "can be fetched" do
       assert {:ok, doc} = Document.Store.fetch(uri())
@@ -148,7 +174,7 @@ defmodule Lexical.Document.StoreTest do
   end
 
   describe "a temp document" do
-    setup [:with_a_temp_document]
+    setup [:with_store, :with_a_temp_document]
 
     test "can be opened", ctx do
       assert {:ok, doc} = Document.Store.open_temporary(ctx.uri, 100)
@@ -177,6 +203,63 @@ defmodule Lexical.Document.StoreTest do
       assert :ok = Document.Store.open(ctx.uri, ctx.contents, 1)
       Process.sleep(120)
       assert Document.Store.open?(ctx.uri)
+    end
+  end
+
+  describe "derived values" do
+    setup context do
+      me = self()
+
+      length_fun = fn doc ->
+        send(me, :length_called)
+
+        doc
+        |> Document.to_string()
+        |> String.length()
+      end
+
+      :ok = with_store(%{store: [derive: [length: length_fun]]})
+      :ok = with_an_open_document(context)
+    end
+
+    test "can be fetched with the document by key" do
+      assert {:ok, doc, 5} = Document.Store.fetch(uri(), :length)
+      assert Document.to_string(doc) == "hello"
+    end
+
+    test "update when the document changes" do
+      assert :ok =
+               Document.Store.update(uri(), fn document ->
+                 Document.apply_content_changes(document, 2, [
+                   build_change(text: "dog")
+                 ])
+               end)
+
+      assert {:ok, doc, 3} = Document.Store.fetch(uri(), :length)
+      assert Document.to_string(doc) == "dog"
+    end
+
+    test "are lazily computed when first fetched" do
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
+    end
+
+    test "are only computed again when the document changes" do
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
+
+      assert {:ok, %Document{}, 5} = Document.Store.fetch(uri(), :length)
+      refute_received :length_called
+
+      assert :ok =
+               Document.Store.update(uri(), fn document ->
+                 Document.apply_content_changes(document, 2, [
+                   build_change(text: "dog")
+                 ])
+               end)
+
+      assert {:ok, %Document{}, 3} = Document.Store.fetch(uri(), :length)
+      assert_received :length_called
     end
   end
 end

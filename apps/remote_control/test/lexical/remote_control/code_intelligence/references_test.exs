@@ -123,12 +123,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
     end
   end
 
-  defp references(project, referenced_item, code, include_definitions? \\ false) do
-    with {position, referenced_item} <- pop_cursor(referenced_item, as: :document),
+  defp references(project, referenced, code, include_definitions? \\ false) do
+    with {position, referenced} <- pop_cursor(referenced, as: :document),
          {:ok, document} <- project_module(project, code),
          {:ok, entries} <- Search.Indexer.Source.index(document.path, code),
          :ok <- Search.Store.replace(entries) do
-      References.references(referenced_item, position, include_definitions?)
+      referenced
+      |> Lexical.Ast.analyze()
+      |> References.references(position, include_definitions?)
     end
   end
 end
