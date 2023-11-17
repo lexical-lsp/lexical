@@ -4,7 +4,7 @@ defmodule Lexical.Ast.Detection.StructFields do
   alias Lexical.Document
   alias Lexical.Document.Position
 
-  @behaviour Detection
+  use Detection
 
   @impl Detection
   def detected?(%Document{} = document, %Position{} = position) do

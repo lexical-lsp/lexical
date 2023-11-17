@@ -1,12 +1,11 @@
 defmodule Lexical.Ast.Detection.StructReference do
   alias Lexical.Ast
   alias Lexical.Ast.Detection
-  alias Lexical.Ast.Detection.Ancestor
   alias Lexical.Ast.Tokens
   alias Lexical.Document
   alias Lexical.Document.Position
 
-  @behaviour Detection
+  use Detection
 
   @impl Detection
   def detected?(%Document{} = document, %Position{} = position) do
@@ -31,7 +30,7 @@ defmodule Lexical.Ast.Detection.StructReference do
           end)
 
         starts_with_percent? and possible_dunder_module(possible_module_struct) and
-          (Ancestor.is_def?(document, position) or Ancestor.is_type?(document, position))
+          (ancestor_is_def?(document, position) or ancestor_is_type?(document, position))
 
       _ ->
         false

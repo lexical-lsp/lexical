@@ -4,7 +4,8 @@ defmodule Lexical.Ast.Detection.Alias do
   alias Lexical.Document
   alias Lexical.Document.Position
 
-  @behaviour Detection
+  use Detection
+
   @doc """
   Recognizes an alias at the current position
 
