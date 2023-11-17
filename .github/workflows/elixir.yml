@@ -81,6 +81,7 @@ jobs:
       project_mix_lock: ${{ format('{0}{1}', github.workspace, '/mix.lock') }}
       projects_ex_blob: ${{ format('{0}{1}', github.workspace, '/projects/**/*.ex') }}
       projects_locks_blob: ${{ format('{0}{1}', github.workspace, '/projects/*/mix.lock') }}
+      MIX_ENV: dev
     steps:
       # Step: Setup Elixir + Erlang image as the base.
       - name: Set up Elixir
