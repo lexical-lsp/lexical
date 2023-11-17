@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
   require Logger
 
-  @callable_operators ~w(def defp)a
+  @callable_operators ~w(def defp ->)a
 
   def extract({operator, _, [function_header, _block]} = elem, %Reducer{} = reducer)
       when operator in @callable_operators do
@@ -51,6 +51,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
 
   defp pick_function_params({:when, _meta, [function_header, _condition]}) do
     pick_function_params(function_header)
+  end
+
+  # `when` in anonymous function
+  defp pick_function_params([{:when, _meta, params}]) when is_list(params) do
+    params
+  end
+
+  defp pick_function_params(params) when is_list(params) do
+    params
   end
 
   defp pick_function_params({_function_name, _meta, params}) do
