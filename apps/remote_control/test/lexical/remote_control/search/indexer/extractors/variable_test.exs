@@ -155,4 +155,85 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, struct_variable.range) =~ "«foo» = %Foo{field: 1}"
     end
   end
+
+  describe "variable usages" do
+    test "simple usage" do
+      {:ok, [definition, usage], doc} = ~q/
+        a = 1
+        [a]
+      / |> index()
+
+      assert definition.subject == :a
+      assert decorate(doc, definition.range) =~ "«a» = 1"
+      assert definition.subtype == :definition
+
+      assert usage.subject == :a
+      assert decorate(doc, usage.range) =~ "[«a»]"
+      assert usage.subtype == :reference
+      assert usage.parent == definition.ref
+    end
+
+    test "usages in if" do
+      {:ok, [definition, usage, another_usage], doc} = ~q/
+        a = 1
+        if true do
+          a
+        else
+          [a]
+        end
+      / |> index()
+
+      assert decorate(doc, definition.range) =~ "«a» = 1"
+
+      assert decorate(doc, usage.range) =~ "  «a»"
+      assert decorate(doc, another_usage.range) =~ "[«a»]"
+
+      assert usage.parent == definition.ref
+      assert another_usage.parent == definition.ref
+    end
+
+    test "it doesn't confuse same name variables in diffrent blocks" do
+      assert {:ok, [def1_in_root, def2_in_root, def_in_if, usage_in_if, usage_in_root], doc} = ~q/
+        a = 1
+        a = 2
+        if true do
+          a = 3
+          {a, 1}
+        end
+        [a]
+      / |> index()
+
+      assert decorate(doc, def1_in_root.range) =~ "«a» = 1"
+      assert decorate(doc, def2_in_root.range) =~ "«a» = 2"
+      assert decorate(doc, def_in_if.range) =~ "«a» = 3"
+
+      assert decorate(doc, usage_in_if.range) =~ "«a», 1"
+      assert usage_in_if.parent == def_in_if.ref
+
+      assert decorate(doc, usage_in_root.range) =~ "[«a»]"
+      assert usage_in_root.parent == def2_in_root.ref
+    end
+
+    @tag :skip
+    test "usages in `else`" do
+      {:ok, [definition, def_in_if, usage_in_if, usage_in_else], doc} = ~q/
+        a = 1
+        if false do
+          a = 2
+          {a, 2}
+        else
+          [a]
+        end
+      / |> index()
+
+      assert decorate(doc, definition.range) =~ "«a» = 1"
+      assert decorate(doc, def_in_if.range) =~ "«a» = 2"
+      assert decorate(doc, usage_in_if.range) =~ "{«a», 2}"
+      assert usage_in_if.parent == def_in_if.ref
+
+      assert decorate(doc, usage_in_else.range) =~ "[«a»]"
+      # we need to build scope for this kind of usage in `else`
+      assert usage_in_else.parent == :root
+    end
+  end
 end

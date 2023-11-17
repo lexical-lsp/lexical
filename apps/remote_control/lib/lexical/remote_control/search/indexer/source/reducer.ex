@@ -95,8 +95,42 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     Map.put(reducer, :position, position)
   end
 
-  def current_block(%__MODULE__{} = reducer) do
+  def latest_block(%__MODULE__{} = reducer) do
     List.first(reducer.blocks)
+  end
+
+  def current_block(%__MODULE__{} = reducer) do
+    {line, column} = reducer.position
+
+    Enum.reduce_while(reducer.blocks, nil, fn
+      %Block{ref: :root}, _acc ->
+        {:halt, Block.root()}
+
+      block, acc ->
+        {starts_at_line, starts_at_column} = block.starts_at
+        {ends_at_line, ends_at_column} = block.ends_at
+
+        position_in_block? =
+          cond do
+            line == starts_at_line and column >= starts_at_column ->
+              true
+
+            line == ends_at_line and column <= ends_at_column ->
+              true
+
+            line > starts_at_line and line < ends_at_line ->
+              true
+
+            true ->
+              false
+          end
+
+        if position_in_block? do
+          {:halt, block}
+        else
+          {:cont, acc}
+        end
+    end)
   end
 
   defp push_block(%__MODULE__{} = reducer, %Block{} = block) do
@@ -117,7 +151,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   defp block_ended?(%__MODULE__{blocks: [%Block{ref: :root}]}), do: false
 
   defp block_ended?(%__MODULE__{} = reducer) do
-    %Block{} = block = current_block(reducer)
+    %Block{} = block = latest_block(reducer)
 
     {ends_at_line, ends_at_column} = block.ends_at
 

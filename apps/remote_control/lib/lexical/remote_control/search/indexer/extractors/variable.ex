@@ -15,8 +15,82 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     {:ok, entries, elem}
   end
 
+  def extract({variable_atom, meta, nil}, %Reducer{} = reducer)
+      when is_atom(variable_atom) and variable_atom != :_ do
+    variable = to_string(variable_atom)
+
+    if String.starts_with?(variable, "_") do
+      :ignored
+    else
+      extract_usage(variable_atom, meta, reducer)
+    end
+  end
+
   def extract(_elem, %Reducer{} = _reducer) do
     :ignored
+  end
+
+  defp extract_usage(variable_atom, meta, %Reducer{} = reducer) do
+    position = {line, column} = Metadata.position(meta)
+    %Analysis{document: document} = reducer.analysis
+
+    case find_definition(reducer, variable_atom) do
+      nil ->
+        Logger.warning(
+          "Variable definition not found for #{inspect(variable_atom)} at #{document.path}:#{line}:#{column}"
+        )
+
+        :ignored
+
+      %Entry{range: %Range{start: %Position{line: definition_line, character: definition_char}}}
+      when definition_line == line and definition_char == column ->
+        # That means current position is the `definition`
+        :ignored
+
+      definition ->
+        {:ok,
+         Entry.reference(
+           document.path,
+           make_ref(),
+           definition.ref,
+           variable_atom,
+           :variable,
+           to_range(document, variable_atom, position),
+           get_application(document)
+         )}
+    end
+  end
+
+  defp find_definition(reducer, variable_atom) do
+    block_parent_links = Map.new(reducer.blocks, fn block -> {block.ref, block.parent_ref} end)
+
+    current_block = Reducer.current_block(reducer)
+
+    current_block_ancestors =
+      current_block.ref
+      |> block_ancestors(block_parent_links, [current_block.ref])
+      |> MapSet.new()
+
+    Enum.find(reducer.entries, fn entry ->
+      entry.type == :variable and
+        entry.subtype == :definition and
+        entry.subject == variable_atom and MapSet.member?(current_block_ancestors, entry.parent)
+    end)
+  end
+
+  defp block_ancestors(block_ref, block_parent_links, acc) do
+    root_ref = Block.root().ref
+
+    case Map.get(block_parent_links, block_ref) do
+      nil ->
+        acc
+
+      ^root_ref ->
+        [root_ref | acc]
+
+      parent_ref ->
+        block_ancestors(parent_ref, block_parent_links, [parent_ref | acc])
+    end
   end
 
   defp to_definition_entries(subject_with_ranges, %Reducer{} = reducer) do
