@@ -232,6 +232,37 @@ defmodule Lexical.Ast do
   end
 
   @doc """
+  Retrieves the position of a quoted element.
+  """
+  @spec get_position(Macro.t(), Analysis.t() | Document.t()) :: Position.t() | nil
+  def get_position(quoted, analysis_or_document) do
+    with %Range{} = range <- get_range(quoted, analysis_or_document) do
+      range.start
+    end
+  end
+
+  @doc """
+  Retrieves the range of a quoted element.
+  """
+  @spec get_range(Macro.t(), Analysis.t() | Document.t()) :: Range.t() | nil
+  def get_range(quoted, %Document{} = document) do
+    case Sourceror.get_range(quoted) do
+      %{start: start_pos, end: end_pos} ->
+        Range.new(
+          Position.new(document, start_pos[:line], start_pos[:column]),
+          Position.new(document, end_pos[:line], end_pos[:column])
+        )
+
+      nil ->
+        nil
+    end
+  end
+
+  def get_range(quoted, %Analysis{} = analysis) do
+    get_range(quoted, analysis.document)
+  end
+
+  @doc """
   Returns the path to the innermost node in the document at the given position.
 
   This function differs from `cursor_path/2` in that it expects a valid

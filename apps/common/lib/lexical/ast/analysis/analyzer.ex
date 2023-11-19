@@ -2,6 +2,9 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   @moduledoc false
 
   alias __MODULE__
+  alias Lexical.Ast
+  alias Lexical.Ast.Analysis.Alias
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -12,54 +15,6 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   @block_keywords [:do, :else, :rescue, :catch, :after]
   @clauses [:->]
 
-  defmodule Alias do
-    defstruct [:module, :as, :line]
-
-    @type t :: %Alias{}
-
-    def new(module, as, line) when is_list(module) and is_atom(as) and line > 0 do
-      %Alias{module: module, as: as, line: line}
-    end
-
-    def to_module(%Alias{} = alias) do
-      Module.concat(alias.module)
-    end
-  end
-
-  defmodule Scope do
-    defstruct [:id, :range, module: [], parent_aliases: %{}, aliases: []]
-
-    @type t :: %Scope{}
-
-    def new(id, %Range{} = range, parent_aliases \\ %{}, module \\ []) do
-      %Scope{id: id, range: range, module: module, parent_aliases: parent_aliases}
-    end
-
-    def global(%Range{} = range) do
-      %Scope{id: :global, range: range}
-    end
-
-    @spec alias_map(Scope.t(), Position.t() | :end) :: %{module() => Scope.t()}
-    def alias_map(%Scope{} = scope, position \\ :end) do
-      end_line =
-        case position do
-          :end -> scope.range.end.line
-          %Position{line: line} -> line
-        end
-
-      scope.aliases
-      # sorting by line ensures that aliases on later lines
-      # override aliases on earlier lines
-      |> Enum.sort_by(& &1.line)
-      |> Enum.take_while(&(&1.line <= end_line))
-      |> Map.new(&{&1.as, &1})
-      |> Enum.into(scope.parent_aliases)
-    end
-
-    def empty?(%Scope{aliases: []}), do: true
-    def empty?(%Scope{}), do: false
-  end
-
   defmodule State do
     defstruct [:document, scopes: [], visited: %{}]
 
@@ -68,8 +23,8 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
       scope =
         document
-        |> global_range()
-        |> Scope.global()
+        |> root_range()
+        |> Scope.root()
 
       push_scope(state, scope)
     end
@@ -84,27 +39,27 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       Map.update!(state, :scopes, &[scope | &1])
     end
 
-    def push_scope(%State{} = state, id, %Range{} = range, module) when is_list(module) do
+    def push_scope(%State{} = state, id, %Range{} = range, kind, module) when is_list(module) do
       parent_aliases = state |> current_scope() |> Scope.alias_map()
-      scope = Scope.new(id, range, parent_aliases, module)
+      scope = Scope.new(id, range, kind, module, parent_aliases)
       push_scope(state, scope)
     end
 
-    def push_scope_for(%State{} = state, quoted, %Range{} = range, module) do
+    def push_scope_for(%State{} = state, quoted, %Range{} = range, kind, module) do
       module = module || current_module(state)
       id = Analyzer.scope_id(quoted)
-      push_scope(state, id, range, module)
+      push_scope(state, id, range, kind, module)
     end
 
-    def push_scope_for(%State{} = state, quoted, module) do
-      range = get_range(quoted, state.document)
-      push_scope_for(state, quoted, range, module)
+    def push_scope_for(%State{} = state, quoted, kind, module) do
+      range = Ast.get_range(quoted, state.document)
+      push_scope_for(state, quoted, range, kind, module)
     end
 
-    def maybe_push_scope_for(%State{} = state, quoted) do
-      case get_range(quoted, state.document) do
+    def maybe_push_scope_for(%State{} = state, quoted, kind) do
+      case Ast.get_range(quoted, state.document) do
         %Range{} = range ->
-          push_scope_for(state, quoted, range, nil)
+          push_scope_for(state, quoted, range, kind, nil)
 
         nil ->
           state
@@ -138,20 +93,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       end)
     end
 
-    defp get_range(quoted, %Document{} = document) do
-      case Sourceror.get_range(quoted) do
-        %{start: start_pos, end: end_pos} ->
-          Range.new(
-            Position.new(document, start_pos[:line], start_pos[:column]),
-            Position.new(document, end_pos[:line], end_pos[:column])
-          )
-
-        nil ->
-          nil
-      end
-    end
-
-    defp global_range(%Document{} = document) do
+    defp root_range(%Document{} = document) do
       num_lines = Document.size(document)
 
       Range.new(
@@ -187,11 +129,11 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
     unless length(state.scopes) == 1 do
       raise RuntimeError,
-            "invariant not met, :scopes should only contain the global scope: #{inspect(state)}"
+            "invariant not met, :scopes should only contain the root scope: #{inspect(state)}"
     end
 
     state
-    # pop the final, global state
+    # pop the final, root scope
     |> State.pop_scope()
     |> Map.fetch!(:visited)
     |> Map.reject(fn {_id, scope} -> Scope.empty?(scope) end)
@@ -282,7 +224,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     # implicit alias belongs to the current scope
     |> maybe_push_implicit_alias(segments, meta[:line])
     # new __MODULE__ alias belongs to the new scope
-    |> State.push_scope_for(quoted, module)
+    |> State.push_scope_for(quoted, :module, module)
     |> State.push_alias(current_module_alias)
   end
 
@@ -324,13 +266,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
   # clauses: ->
   defp analyze_node({clause, _, _} = quoted, state) when clause in @clauses do
-    State.maybe_push_scope_for(state, quoted)
+    State.maybe_push_scope_for(state, quoted, :block)
   end
 
   # blocks: do, else, etc.
   defp analyze_node({{:__block__, _, [block]}, _} = quoted, state)
        when block in @block_keywords do
-    State.maybe_push_scope_for(state, quoted)
+    State.maybe_push_scope_for(state, quoted, :block)
   end
 
   # catch-all
