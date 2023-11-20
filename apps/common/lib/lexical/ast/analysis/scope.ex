@@ -4,6 +4,7 @@ defmodule Lexical.Ast.Analysis.Scope do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 
+  @enforce_keys [:id, :range, :kind]
   defstruct [
     :id,
     :range,
@@ -32,7 +33,7 @@ defmodule Lexical.Ast.Analysis.Scope do
   end
 
   def root(%Range{} = range) do
-    %__MODULE__{id: :root, range: range}
+    %__MODULE__{id: :root, kind: :block, range: range}
   end
 
   @spec alias_map(t(), Position.t() | :end) :: %{atom() => Alias.t()}
@@ -52,6 +53,10 @@ defmodule Lexical.Ast.Analysis.Scope do
     |> Enum.into(scope.parent_aliases)
   end
 
-  def empty?(%__MODULE__{aliases: []}), do: true
-  def empty?(%__MODULE__{}), do: false
+  def empty?(%__MODULE__{} = scope) do
+    root? = scope.id == :root
+    has_aliases? = scope.aliases != []
+
+    not (root? or has_aliases?)
+  end
 end

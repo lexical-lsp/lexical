@@ -18,15 +18,9 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   defmodule State do
     defstruct [:document, scopes: [], visited: %{}]
 
-    def new(%Document{} = document) do
-      state = %State{document: document}
-
-      scope =
-        document
-        |> root_range()
-        |> Scope.root()
-
-      push_scope(state, scope)
+    def new(%Document{} = document, %Range{} = root_range) do
+      root_scope = Scope.root(root_range)
+      %State{document: document, scopes: [root_scope]}
     end
 
     def current_scope(%State{scopes: [scope | _]}), do: scope
@@ -92,27 +86,19 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         fun.(scope)
       end)
     end
-
-    defp root_range(%Document{} = document) do
-      num_lines = Document.size(document)
-
-      Range.new(
-        Position.new(document, 1, 1),
-        Position.new(document, num_lines + 1, 1)
-      )
-    end
   end
 
   @doc """
-  Traverses an AST, returning a list of scopes.
+  Traverses an AST, returning a list of scopes in their order of appearance.
   """
-  def traverse(quoted, %Document{} = document) do
+  def extract_scopes(quoted, %Document{} = document) do
     quoted = preprocess(quoted)
+    root_range = root_range(quoted, document)
 
     {_, state} =
       Macro.traverse(
         quoted,
-        State.new(document),
+        State.new(document, root_range),
         fn quoted, state ->
           {quoted, analyze_node(quoted, state)}
         end,
@@ -139,6 +125,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     |> Map.reject(fn {_id, scope} -> Scope.empty?(scope) end)
     |> correct_ranges(quoted, document)
     |> Map.values()
+    |> sort_scopes()
   end
 
   defp preprocess(quoted) do
@@ -182,6 +169,17 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
   defp maybe_correct_range(scope, _zipper, _document) do
     scope
+  end
+
+  defp sort_scopes(scopes) do
+    Enum.sort_by(
+      scopes,
+      fn
+        %Scope{id: :root} -> 0
+        %Scope{range: range} -> {range.start.line, range.start.character}
+      end,
+      :asc
+    )
   end
 
   # add a unique ID to 3-element tuples
@@ -388,5 +386,20 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       nil -> :error
       _ -> {:ok, alias_as}
     end
+  end
+
+  defp root_range(quoted, %Document{} = document) do
+    end_line =
+      case Sourceror.get_range(quoted) do
+        %{end: end_pos} -> end_pos[:line]
+        _ -> 0
+      end
+
+    lines_in_doc = Document.size(document)
+
+    Range.new(
+      Position.new(document, 1, 1),
+      Position.new(document, max(end_line, lines_in_doc) + 1, 1)
+    )
   end
 end

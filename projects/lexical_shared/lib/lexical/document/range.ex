@@ -37,7 +37,9 @@ defmodule Lexical.Document.Range do
   @doc """
   Returns whether the range contains the given position.
   """
-  def contains?(%__MODULE__{} = range, %Position{} = position) do
+  def contains?(range, range_or_position, inclusive_end_character? \\ false)
+
+  def contains?(%__MODULE__{} = range, %Position{} = position, inclusive?) do
     %__MODULE__{start: start_pos, end: end_pos} = range
 
     cond do
@@ -45,10 +47,19 @@ defmodule Lexical.Document.Range do
         position.character >= start_pos.character
 
       position.line == end_pos.line ->
-        position.character < end_pos.character
+        if inclusive? do
+          position.character <= end_pos.character
+        else
+          position.character < end_pos.character
+        end
 
       true ->
         position.line > start_pos.line and position.line < end_pos.line
     end
+  end
+
+  def contains?(%__MODULE__{} = range, %__MODULE__{} = maybe_child, inclusive?) do
+    contains?(range, maybe_child.start, inclusive?) and
+      contains?(range, maybe_child.end, inclusive?)
   end
 end
