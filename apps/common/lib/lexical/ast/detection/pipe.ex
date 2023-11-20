@@ -8,13 +8,9 @@ defmodule Lexical.Ast.Detection.Pipe do
 
   @impl Detection
   def detected?(%Document{} = document, %Position{} = position) do
-    # Document.fragment(document, Position.new(document, position.line, 1), position)
-    # |> IO.inspect()
-
     document
     |> Tokens.prefix_stream(position)
     |> Enum.to_list()
-    #    |> IO.inspect()
     |> Enum.reduce_while(false, fn
       {:identifier, _, _}, _ ->
         {:cont, false}
