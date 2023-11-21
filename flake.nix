@@ -2,28 +2,33 @@
   description = "Reimagined language server for Elixir";
 
   inputs.nixpkgs.url = "flake:nixpkgs";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.flake-parts.url = "github:hercules-ci/flake-parts";
+  inputs.systems.url = "github:nix-systems/default";
 
-  outputs =
-    { self
-    , nixpkgs
-    , flake-utils
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
+  outputs = {
+    self,
+    nixpkgs,
+    systems,
+    ...
+  } @ inputs:
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} {
+      systems = import systems;
+
+      perSystem = {
+        self',
+        pkgs,
+        ...
+      }: let
         erl = pkgs.beam.packages.erlang;
         lexical = erl.callPackage ./nix/lexical.nix {};
-      in
-      {
+      in {
+        formatter = pkgs.alejandra;
+
         packages = {
           inherit lexical;
-
           default = lexical;
 
-          # Private package used to automatically generate hash for Mix deps
-          __fodHashGen = lexical.mixFodDeps.overrideAttrs(final: curr: {
+          __fodHashGen = lexical.mixFodDeps.overrideAttrs (final: curr: {
             outputHash = pkgs.lib.fakeSha256;
           });
         };
@@ -38,6 +43,6 @@
               pkgs.darwin.apple_sdk.frameworks.CoreServices
             ];
         };
-      }
-    );
+      };
+    };
 }

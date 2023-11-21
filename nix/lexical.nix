@@ -1,7 +1,9 @@
-{ mixRelease
-, fetchMixDeps
-, erlang
-}: mixRelease rec {
+{
+  mixRelease,
+  fetchMixDeps,
+  erlang,
+}:
+mixRelease rec {
   pname = "lexical";
   version = "development";
 
