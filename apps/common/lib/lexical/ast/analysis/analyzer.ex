@@ -423,11 +423,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
   # In other cases, attempt to expand the unreified head element
   defp reify_alias(current_module, [unreified | rest]) do
-    env = %Macro.Env{module: current_module}
+    module = Module.concat(current_module)
+    env = %Macro.Env{module: module}
     reified = Macro.expand(unreified, env)
 
     if is_atom(reified) do
-      [reified | rest]
+      reified_segments = reified |> Module.split() |> Enum.map(&String.to_atom/1)
+      reified_segments ++ rest
     else
       rest
     end

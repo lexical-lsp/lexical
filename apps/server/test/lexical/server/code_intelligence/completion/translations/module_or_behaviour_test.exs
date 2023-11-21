@@ -56,6 +56,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
       assert completion.label == "Enumerable"
       assert completion.detail =~ "Enumerable protocol"
     end
+
+    test "regression: modules should emit a completion after a dot in the context of a module",
+         %{project: project} do
+      code = ~q[
+        defmodule MyTest do
+          alias Project.|
+        end
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(code, trigger_character: ".")
+               |> fetch_completion("Foo")
+
+      assert completion.kind == :module
+    end
   end
 
   describe "erlang module completions" do
