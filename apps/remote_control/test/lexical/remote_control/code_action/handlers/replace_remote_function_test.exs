@@ -23,7 +23,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
 
     message =
       """
-      Enum.counts/1 is undefined or private. Did you mean:
+      warning: Enum.counts/1 is undefined or private. Did you mean:
 
             * concat/1
             * concat/2
