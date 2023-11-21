@@ -1,8 +1,8 @@
 {
   mixRelease,
   fetchMixDeps,
-  erlang,
   elixir,
+  writeScript,
 }:
 mixRelease rec {
   pname = "lexical";
@@ -27,13 +27,17 @@ mixRelease rec {
     runHook postInstall
   '';
 
-  preFixup = ''
-    for script in $out/releases/*/elixir; do
-      substituteInPlace "$script" --replace 'ERL_EXEC="erl"' 'ERL_EXEC="${erlang}/bin/erl"'
-    done
-
+  preFixup = let
+    activate_version_manager = writeScript "activate_version_manager.sh" ''
+    true
+    '';
+  in ''
     substituteInPlace "$out/bin/start_lexical.sh" --replace 'elixir_command=' 'elixir_command="${elixir}/bin/"'
+    rm "$out/bin/activate_version_manager.sh"
+    ln -s ${activate_version_manager} "$out/bin/activate_version_manager.sh"
 
-    makeWrapper $out/bin/start_lexical.sh $out/bin/lexical --set RELEASE_COOKIE lexical
+    mv "$out/bin" "$out/binsh"
+
+    makeWrapper "$out/binsh/start_lexical.sh" "$out/bin/lexical" --set RELEASE_COOKIE lexical
   '';
 }

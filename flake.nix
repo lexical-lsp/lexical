@@ -12,6 +12,12 @@
     ...
   } @ inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {
+      flake = {
+        lib = {
+          mkLexical = {erlang}: erlang.callPackage ./nix/lexical.nix {};
+        };
+      };
+
       systems = import systems;
 
       perSystem = {
@@ -19,8 +25,8 @@
         pkgs,
         ...
       }: let
-        erl = pkgs.beam.packages.erlang;
-        lexical = erl.callPackage ./nix/lexical.nix {};
+        erlang = pkgs.beam.packages.erlang;
+        lexical = self.lib.mkLexical {inherit erlang;};
       in {
         formatter = pkgs.alejandra;
 
@@ -36,7 +42,7 @@
         devShells.default = pkgs.mkShell {
           packages =
             [
-              erl.elixir
+              erlang.elixir
             ]
             ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
               pkgs.darwin.apple_sdk.frameworks.CoreFoundation
