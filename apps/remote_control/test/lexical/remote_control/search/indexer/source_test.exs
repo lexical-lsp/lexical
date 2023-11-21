@@ -8,14 +8,26 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
 
   use ExUnit.Case
 
-  def index(source) do
+  def index(source, filter \\ &Function.identity/1) do
     path = "/foo/bar/baz.ex"
     doc = Document.new("file:///#{path}", source, 1)
 
     case Indexer.Source.index("/foo/bar/baz.ex", source) do
-      {:ok, indexed_items} -> {:ok, indexed_items, doc}
-      error -> error
+      {:ok, indexed_items} ->
+        indexed_items = Enum.filter(indexed_items, filter)
+        {:ok, indexed_items, doc}
+
+      error ->
+        error
     end
+  end
+
+  def index_modules(source) do
+    index(source, &(&1.type == :module))
+  end
+
+  def index_functions(source) do
+    index(source, &(&1.type in [:public_function, :private_function]))
   end
 
   describe "indexing modules" do
@@ -26,7 +38,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
             @attr [:Some, :Other, :Module]
           end
         )
-        |> index()
+        |> index_modules()
 
       assert module.type == :module
       assert module.subject == Root
@@ -38,7 +50,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         defmodule Simple do
         end
         ]
-        |> index()
+        |> index_modules()
 
       assert entry.type == :module
       assert entry.parent == :root
@@ -52,7 +64,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         defmodule Simple.Module.Path do
         end
         ]
-        |> index()
+        |> index_modules()
 
       assert entry.subject == Simple.Module.Path
       assert entry.type == :module
@@ -67,7 +79,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         defmodule Else.Other do
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert entry.subject == Something.Else.Other
       assert decorate(doc, entry.range) == "defmodule «Else.Other» do"
@@ -80,7 +92,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           @something :timer
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert erlang_module.type == :module
       assert erlang_module.parent == module_def.ref
@@ -95,7 +107,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           @attr Some.Other.Module
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert attribute.type == :module
       assert attribute.parent == module_def.ref
@@ -112,7 +124,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -129,7 +141,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Other.Thing.Util
@@ -145,7 +157,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -162,7 +174,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Other.Thing.Util
@@ -178,7 +190,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -197,7 +209,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -213,7 +225,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -229,7 +241,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -245,7 +257,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -261,7 +273,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]t
-        |> index()
+        |> index_modules()
 
       assert module_ref.type == :module
       assert module_ref.subject == Some.Module
@@ -279,7 +291,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert ref.type == :module
       assert ref.subject == Ref.To.Something
@@ -298,7 +310,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           defmodule Second do
           end
         ]
-        |> index()
+        |> index_modules()
 
       assert first.parent == :root
       assert first.type == :module
@@ -340,7 +352,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
             end
           end
         ]
-        |> index()
+        |> index_modules()
 
       assert first.subject == A.B.C
       assert second.subject == D.E.F
@@ -358,7 +370,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert parent.parent == :root
       assert parent.type == :module
@@ -380,7 +392,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
           end
         end
       ]
-        |> index()
+        |> index_modules()
 
       assert child_alias.parent == child.ref
       assert child_alias.type == :module
@@ -396,7 +408,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
             end
           end
         ]
-        |> index()
+        |> index_modules()
 
       assert parent.parent == :root
       assert parent.type == :module
@@ -405,6 +417,250 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       assert child.parent == parent.ref
       assert child.type == :module
       assert child.subtype == :definition
+    end
+  end
+
+  describe "indexing public function definitions" do
+    test "finds zero arity public functions (no parens)" do
+      code = ~q[
+        defmodule Public do
+          def zero_arity do
+          end
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :public_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Public.zero_arity/0"
+      assert "def zero_arity do" == extract(code, zero_arity.range)
+    end
+
+    test "finds zero arity one line public functions (no parens)" do
+      code = ~q[
+        defmodule Public do
+          def zero_arity, do: true
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :public_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Public.zero_arity/0"
+      assert "def zero_arity, do: true" == extract(code, zero_arity.range)
+    end
+
+    test "finds zero arity public functions (with parens)" do
+      code = ~q[
+        defmodule Public do
+          def zero_arity() do
+          end
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :public_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Public.zero_arity/0"
+      assert "def zero_arity() do" == extract(code, zero_arity.range)
+    end
+
+    test "finds one arity public function" do
+      code = ~q[
+        defmodule Public do
+          def one_arity(a) do
+            a + 1
+          end
+        end
+        ]
+
+      {:ok, [one_arity], _} = index_functions(code)
+
+      assert one_arity.type == :public_function
+      assert one_arity.subtype == :definition
+      assert one_arity.subject == "Public.one_arity/1"
+      assert "def one_arity(a) do" == extract(code, one_arity.range)
+    end
+
+    test "finds multi arity public function" do
+      code = ~q[
+        defmodule Public do
+          def multi_arity(a, b, c, d) do
+            {a, b, c, d}
+          end
+        end
+        ]
+
+      {:ok, [multi_arity], _} = index_functions(code)
+
+      assert multi_arity.type == :public_function
+      assert multi_arity.subtype == :definition
+      assert multi_arity.subject == "Public.multi_arity/4"
+      assert "def multi_arity(a, b, c, d) do" == extract(code, multi_arity.range)
+    end
+
+    test "skips public functions defined in quote blocks" do
+      code = ~q[
+        defmodule Public do
+          def something(name) do
+            quote do
+              def unquote(name)() do
+              end
+            end
+          end
+        end
+      ]
+
+      {:ok, [something], _} = index_functions(code)
+      assert "def something(name) do" = extract(code, something.range)
+    end
+  end
+
+  describe "indexing private function definitions" do
+    test "finds zero arity one-line private functions (no parens)" do
+      code = ~q[
+        defmodule Private do
+          defp zero_arity, do: true
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :private_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Private.zero_arity/0"
+      assert "defp zero_arity, do: true" == extract(code, zero_arity.range)
+    end
+
+    test "finds zero arity one-line private functions (with parens)" do
+      code = ~q[
+        defmodule Private do
+          defp zero_arity(), do: true
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :private_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Private.zero_arity/0"
+      assert "defp zero_arity(), do: true" == extract(code, zero_arity.range)
+    end
+
+    test "finds zero arity private functions (no parens)" do
+      code = ~q[
+        defmodule Private do
+          defp zero_arity do
+          end
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :private_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Private.zero_arity/0"
+      assert "defp zero_arity do" == extract(code, zero_arity.range)
+    end
+
+    test "finds zero arity private functions (with parens)" do
+      code = ~q[
+        defmodule Private do
+          defp zero_arity() do
+          end
+        end
+        ]
+
+      {:ok, [zero_arity], _} = index_functions(code)
+
+      assert zero_arity.type == :private_function
+      assert zero_arity.subtype == :definition
+      assert zero_arity.subject == "Private.zero_arity/0"
+      assert "defp zero_arity() do" == extract(code, zero_arity.range)
+    end
+
+    test "finds one arity one-line private functions" do
+      code = ~q[
+        defmodule Private do
+          defp one_arity(a), do: a + 1
+        end
+        ]
+
+      {:ok, [one_arity], _} = index_functions(code)
+
+      assert one_arity.type == :private_function
+      assert one_arity.subtype == :definition
+      assert one_arity.subject == "Private.one_arity/1"
+      assert "defp one_arity(a), do: a + 1" == extract(code, one_arity.range)
+    end
+
+    test "finds one arity private functions" do
+      code = ~q[
+        defmodule Private do
+          defp one_arity(a) do
+            a + 1
+          end
+        end
+        ]
+
+      {:ok, [one_arity], _} = index_functions(code)
+
+      assert one_arity.type == :private_function
+      assert one_arity.subtype == :definition
+      assert one_arity.subject == "Private.one_arity/1"
+      assert "defp one_arity(a) do" == extract(code, one_arity.range)
+    end
+
+    test "finds multi-arity one-line private functions" do
+      code = ~q[
+        defmodule Private do
+          defp multi_arity(a, b, c), do: {a, b, c}
+        end
+        ]
+
+      {:ok, [one_arity], _} = index_functions(code)
+
+      assert one_arity.type == :private_function
+      assert one_arity.subtype == :definition
+      assert one_arity.subject == "Private.multi_arity/3"
+      assert "defp multi_arity(a, b, c), do: {a, b, c}" == extract(code, one_arity.range)
+    end
+
+    test "finds multi arity private functions" do
+      code = ~q[
+        defmodule Private do
+          defp multi_arity(a, b, c, d) do
+            {a, b, c, d}
+          end
+        end
+        ]
+
+      {:ok, [multi_arity], _} = index_functions(code)
+
+      assert multi_arity.type == :private_function
+      assert multi_arity.subtype == :definition
+      assert multi_arity.subject == "Private.multi_arity/4"
+      assert "defp multi_arity(a, b, c, d) do" == extract(code, multi_arity.range)
+    end
+
+    test "skips private functions defined in quote blocks" do
+      code = ~q[
+        defmodule Private do
+          defp something(name) do
+            quote do
+              defp unquote(name)() do
+
+              end
+            end
+          end
+        end
+      ]
+
+      {:ok, [something], _} = index_functions(code)
+      assert "defp something(name) do" = extract(code, something.range)
     end
   end
 end

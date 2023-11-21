@@ -88,6 +88,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
+  defp resolve({:local_call, fun_chars}, node_range, analysis, position) do
+    fun = List.to_atom(fun_chars)
+
+    module =
+      analysis
+      |> Analysis.aliases_at(position)
+      |> Map.get(:__MODULE__)
+
+    case Ast.path_at(analysis, position) do
+      {:ok, path} ->
+        arity = arity_at_position(path, position)
+
+        {:ok, {:call, module, fun, arity}, node_range}
+
+      _ ->
+        {:ok, {:call, module, fun, 0}, node_range}
+    end
+  end
+
   defp resolve(context, _node_range, _analysis, _position) do
     {:error, {:unsupported, context}}
   end

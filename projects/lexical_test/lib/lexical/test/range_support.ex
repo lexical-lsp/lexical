@@ -38,6 +38,44 @@ defmodule Lexical.Test.RangeSupport do
     |> decorate(range)
   end
 
+  def extract(%Document{} = document, %Range{} = range) do
+    zero_based_start_character = range.start.character - 1
+    zero_based_end_character = range.end.character - 1
+    start_line = range.start.line
+    end_line = range.end.line
+
+    document.lines
+    |> Enum.filter(fn line(line_number: number) ->
+      number in range.start.line..range.end.line
+    end)
+    |> Enum.map(fn
+      line(line_number: line_number, text: line_text)
+      when line_number == start_line and line_number == end_line ->
+        String.slice(line_text, zero_based_start_character..range.end.character)
+
+      line(line_number: ^start_line, text: line_text) ->
+        line_length = String.length(line_text)
+
+        String.slice(
+          line_text,
+          zero_based_start_character..(line_length - range.start.character)
+        )
+
+      line(line_number: ^end_line, text: line_text) ->
+        String.slice(line_text, 0..zero_based_end_character)
+
+      line(text: line_text, ending: ending) ->
+        line_text <> ending
+    end)
+    |> IO.iodata_to_binary()
+  end
+
+  def extract(text, path \\ "/file.ex", %Range{} = range) when is_binary(text) do
+    "file://#{path}"
+    |> Document.new(text, 1)
+    |> extract(range)
+  end
+
   defp insert_marker(text, marker, character) do
     {leading, trailing} = String.split_at(text, character - 1)
     leading <> marker <> trailing
