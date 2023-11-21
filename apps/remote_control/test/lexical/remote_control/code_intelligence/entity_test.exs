@@ -413,6 +413,81 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     end
   end
 
+  describe "local call" do
+    test "in function definition" do
+      code = ~q[
+        defmodule Parent do
+
+          def my_call|(a, b)
+        end
+      ]
+      assert {:ok, {:call, Parent, :my_call, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[def «my_call»(a, b)]
+    end
+
+    test "in function body with arity 0" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            local_fn|()
+          end
+        end
+      ]
+      assert {:ok, {:call, Parent, :local_fn, 0}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[    «local_fn»()]
+    end
+
+    test "in function body with arity 2" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            local_fn|(a, b)
+          end
+        end
+      ]
+      assert {:ok, {:call, Parent, :local_fn, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[    «local_fn»(a, b)]
+    end
+
+    test "in a function capture with params" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            &local_fn|(&1, 1)
+          end
+        end
+      ]
+      assert {:ok, {:call, Parent, :local_fn, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[    &«local_fn»(&1, 1)]
+    end
+
+    test "in a another call" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            Module.remote(local_call|(3))
+          end
+        end
+      ]
+      assert {:ok, {:call, Parent, :local_call, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[    Module.remote(«local_call»(3))]
+    end
+
+    test "in a pipe" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            something
+            |> Module.a()
+            |> local_call|()
+          end
+        end
+      ]
+      assert {:ok, {:call, Parent, :local_call, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[   |> «local_call»()]
+    end
+  end
+
   describe "type resolve/2" do
     test "qualified types in @type" do
       code = ~q[
