@@ -50,14 +50,16 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   @spec apply_transform(Document.t(), non_neg_integer(), module(), String.t(), atom()) ::
           {:ok, [Edit.t()]} | :error
   defp apply_transform(%Document{} = doc, line_number, module, function, suggestion) do
+    {:ok, doc, analysis} = Document.Store.fetch(doc.uri, :analysis)
     function_atom = String.to_atom(function)
+    position = Document.Position.new(doc, line_number, 0)
 
     doc
     |> Ast.traverse_line(line_number, [], fn
       %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function_atom]}, _, _} = node} =
           zipper,
       patches ->
-        case Lexical.Ast.expand_aliases(module_alias, doc, {line_number, 0}) do
+        case Lexical.Ast.expand_alias(module_alias, analysis, position) do
           {:ok, ^module} ->
             [patch] = Sourceror.Patch.rename_call(node, suggestion)
             {zipper, [patch | patches]}

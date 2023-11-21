@@ -5,6 +5,11 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
 
   use Lexical.Test.CodeMod.Case
 
+  setup do
+    start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
+    :ok
+  end
+
   def apply_code_mod(original_text, _ast, options) do
     line_number = Keyword.get(options, :line, 1)
 
@@ -13,7 +18,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
       |> Keyword.get(:suggestion, :count)
       |> Atom.to_string()
 
-    document = Document.new("file:///file.ex", original_text, 0)
+    :ok = Document.Store.open("file:///file.ex", original_text, 0)
+    {:ok, document} = Document.Store.fetch("file:///file.ex")
 
     message =
       """
