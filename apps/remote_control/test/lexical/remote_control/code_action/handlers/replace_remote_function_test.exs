@@ -22,15 +22,17 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
     {:ok, document} = Document.Store.fetch("file:///file.ex")
 
     message =
-      """
-      warning: Enum.counts/1 is undefined or private. Did you mean:
+      String.trim(
+        Keyword.get(options, :message_prefix, "") <>
+          """
+          Enum.counts/1 is undefined or private. Did you mean:
 
-            * concat/1
-            * concat/2
-            * count/1
-            * count/2
-      """
-      |> String.trim()
+                * concat/1
+                * concat/2
+                * count/1
+                * count/2
+          """
+      )
 
     range =
       Document.Range.new(
@@ -52,179 +54,181 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
     {:ok, changes}
   end
 
-  describe "fixes function call" do
-    test "applied to a standalone call" do
-      {:ok, result} =
-        ~q{
+  for prefix <- ["", "warning: "] do
+    describe "fixes function call with message prefix \"#{prefix}\"" do
+      test "applied to a standalone call" do
+        {:ok, result} =
+          ~q{
           Enum.counts([1, 2, 3])
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "Enum.count([1, 2, 3])"
-    end
+        assert result == "Enum.count([1, 2, 3])"
+      end
 
-    test "applied to a variable match" do
-      {:ok, result} =
-        ~q{
+      test "applied to a variable match" do
+        {:ok, result} =
+          ~q{
           x = Enum.counts([1, 2, 3])
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "x = Enum.count([1, 2, 3])"
-    end
+        assert result == "x = Enum.count([1, 2, 3])"
+      end
 
-    test "applied to a variable match, preserves comments" do
-      {:ok, result} =
-        ~q{
+      test "applied to a variable match, preserves comments" do
+        {:ok, result} =
+          ~q{
           x = Enum.counts([1, 2, 3]) # TODO: Fix this
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "x = Enum.count([1, 2, 3]) # TODO: Fix this"
-    end
+        assert result == "x = Enum.count([1, 2, 3]) # TODO: Fix this"
+      end
 
-    test "not changing variable name" do
-      {:ok, result} =
-        ~q{
+      test "not changing variable name" do
+        {:ok, result} =
+          ~q{
           counts = Enum.counts([1, 2, 3])
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "counts = Enum.count([1, 2, 3])"
-    end
+        assert result == "counts = Enum.count([1, 2, 3])"
+      end
 
-    test "applied to a call after a pipe" do
-      {:ok, result} =
-        ~q{
+      test "applied to a call after a pipe" do
+        {:ok, result} =
+          ~q{
           [1, 2, 3] |> Enum.counts()
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "[1, 2, 3] |> Enum.count()"
-    end
+        assert result == "[1, 2, 3] |> Enum.count()"
+      end
 
-    test "changing only a function from provided possible modules" do
-      {:ok, result} =
-        ~q{
+      test "changing only a function from provided possible modules" do
+        {:ok, result} =
+          ~q{
           Enumerable.counts([1, 2, 3]) + Enum.counts([3, 2, 1])
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "Enumerable.counts([1, 2, 3]) + Enum.count([3, 2, 1])"
-    end
+        assert result == "Enumerable.counts([1, 2, 3]) + Enum.count([3, 2, 1])"
+      end
 
-    test "changing all occurrences of the function in the line" do
-      {:ok, result} =
-        ~q{
+      test "changing all occurrences of the function in the line" do
+        {:ok, result} =
+          ~q{
           Enum.counts([1, 2, 3]) + Enum.counts([3, 2, 1])
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "Enum.count([1, 2, 3]) + Enum.count([3, 2, 1])"
-    end
+        assert result == "Enum.count([1, 2, 3]) + Enum.count([3, 2, 1])"
+      end
 
-    test "applied in a comprehension" do
-      {:ok, result} =
-        ~q{
+      test "applied in a comprehension" do
+        {:ok, result} =
+          ~q{
           for x <- Enum.counts([[1], [2], [3]]), do: x
         }
-        |> modify(suggestion: :concat)
+          |> modify(suggestion: :concat)
 
-      assert result == "for x <- Enum.concat([[1], [2], [3]]), do: x"
-    end
+        assert result == "for x <- Enum.concat([[1], [2], [3]]), do: x"
+      end
 
-    test "applied in a with block" do
-      {:ok, result} =
-        ~q{
+      test "applied in a with block" do
+        {:ok, result} =
+          ~q{
           with x <- Enum.counts([1, 2, 3]), do: x
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "with x <- Enum.count([1, 2, 3]), do: x"
+        assert result == "with x <- Enum.count([1, 2, 3]), do: x"
+      end
+
+      test "preserving the leading indent" do
+        {:ok, result} = modify("     Enum.counts([1, 2, 3])", trim: false)
+
+        assert result == "     Enum.count([1, 2, 3])"
+      end
     end
 
-    test "preserving the leading indent" do
-      {:ok, result} = modify("     Enum.counts([1, 2, 3])", trim: false)
-
-      assert result == "     Enum.count([1, 2, 3])"
-    end
-  end
-
-  describe "fixes captured function" do
-    test "applied to a standalone function" do
-      {:ok, result} =
-        ~q[
+    describe "fixes captured function with message prefix \"#{prefix}\"" do
+      test "applied to a standalone function" do
+        {:ok, result} =
+          ~q[
           &Enum.counts/1
         ]
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "&Enum.count/1"
-    end
+        assert result == "&Enum.count/1"
+      end
 
-    test "applied to a variable match" do
-      {:ok, result} =
-        ~q[
+      test "applied to a variable match" do
+        {:ok, result} =
+          ~q[
           x = &Enum.counts/1
         ]
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "x = &Enum.count/1"
-    end
+        assert result == "x = &Enum.count/1"
+      end
 
-    test "applied to a variable match, preserves comments" do
-      {:ok, result} =
-        ~q[
+      test "applied to a variable match, preserves comments" do
+        {:ok, result} =
+          ~q[
           x = &Enum.counts/1 # TODO: Fix this
         ]
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "x = &Enum.count/1 # TODO: Fix this"
-    end
+        assert result == "x = &Enum.count/1 # TODO: Fix this"
+      end
 
-    test "not changing variable name" do
-      {:ok, result} =
-        ~q{
+      test "not changing variable name" do
+        {:ok, result} =
+          ~q{
           counts = &Enum.counts/1
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "counts = &Enum.count/1"
-    end
+        assert result == "counts = &Enum.count/1"
+      end
 
-    test "applied to an argument" do
-      {:ok, result} =
-        ~q{
+      test "applied to an argument" do
+        {:ok, result} =
+          ~q{
           [[1, 2], [3, 4]] |> Enum.map(&Enum.counts/1)
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "[[1, 2], [3, 4]] |> Enum.map(&Enum.count/1)"
-    end
+        assert result == "[[1, 2], [3, 4]] |> Enum.map(&Enum.count/1)"
+      end
 
-    test "changing only a function from provided possible modules" do
-      {:ok, result} =
-        ~q{
+      test "changing only a function from provided possible modules" do
+        {:ok, result} =
+          ~q{
           [&Enumerable.counts/1, &Enum.counts/1]
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "[&Enumerable.counts/1, &Enum.count/1]"
-    end
+        assert result == "[&Enumerable.counts/1, &Enum.count/1]"
+      end
 
-    test "changing all occurrences of the function in the line" do
-      {:ok, result} =
-        ~q{
+      test "changing all occurrences of the function in the line" do
+        {:ok, result} =
+          ~q{
           [&Enum.counts/1, &Enum.counts/1]
         }
-        |> modify()
+          |> modify(message_prefix: unquote(prefix))
 
-      assert result == "[&Enum.count/1, &Enum.count/1]"
-    end
+        assert result == "[&Enum.count/1, &Enum.count/1]"
+      end
 
-    test "preserving the leading indent" do
-      {:ok, result} = modify("     &Enum.counts/1", trim: false)
+      test "preserving the leading indent" do
+        {:ok, result} = modify("     &Enum.counts/1", trim: false)
 
-      assert result == "     &Enum.count/1"
+        assert result == "     &Enum.count/1"
+      end
     end
   end
 end
