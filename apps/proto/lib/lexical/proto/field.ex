@@ -274,7 +274,7 @@ defmodule Lexical.Proto.Field do
   end
 
   def encode(module, field_value) when is_atom(module) do
-    if Code.ensure_loaded?(module) and function_exported?(module, :encode, 1) do
+    if function_exported?(module, :encode, 1) do
       module.encode(field_value)
     else
       {:ok, field_value}

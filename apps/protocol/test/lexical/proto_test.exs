@@ -1,11 +1,9 @@
 defmodule Lexical.ProtoTest do
-  alias Future.Code, as: Code
   alias Lexical.Document
   alias Lexical.Proto
   alias Lexical.Proto.Convert
   alias Lexical.Proto.LspTypes
   alias Lexical.Protocol.Types
-  alias Lexical.Test.Protocol.Fixtures
   alias Lexical.Test.Protocol.Fixtures.LspProtocol
 
   import LspProtocol
@@ -284,16 +282,6 @@ defmodule Lexical.ProtoTest do
       assert ConstantTest.good() == 1
       assert ConstantTest.bad() == 2
       assert ConstantTest.ugly() == 3
-    end
-
-    test "constants should be encoded even if the module isn't loaded" do
-      proto = Fixtures.UsesConstantsForUnloading.new(name: "Clint", state: :good)
-
-      :code.purge(Fixtures.ConstantsForUnloading)
-      :code.delete(Fixtures.ConstantsForUnloading)
-
-      refute Code.loaded?(Fixtures.ConstantsForUnloading)
-      assert Jason.encode(proto) == {:ok, ~s|{"name":"Clint","state":1}|}
     end
 
     test "constants should parse" do

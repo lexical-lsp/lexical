@@ -22,6 +22,8 @@ defmodule Lexical.Server.Boot do
     load_config()
     Application.ensure_all_started(:logger)
 
+    Enum.each(@dep_apps, &load_app_modules/1)
+
     case detect_errors() do
       [] ->
         :ok
@@ -33,7 +35,6 @@ defmodule Lexical.Server.Boot do
     end
 
     Application.ensure_all_started(:server)
-    Enum.each(@dep_apps, &load_app_modules/1)
   end
 
   @doc false
