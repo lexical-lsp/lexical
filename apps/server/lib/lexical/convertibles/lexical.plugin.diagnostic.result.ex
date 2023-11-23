@@ -56,7 +56,6 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
   end
 
   defp position_to_range(%Document{} = document, {line_number, column}) do
-    line_number = Math.clamp(line_number, 1, Document.size(document))
     column = max(column, 1)
 
     document
