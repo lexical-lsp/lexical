@@ -48,14 +48,14 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
   end
 
   defp position_to_range(%Document{} = document, {start_line, start_column, end_line, end_column}) do
-    with {:ok, start_pos} <- position_to_range(document, {start_line, start_column}),
-         {:ok, end_pos} <- position_to_range(document, {end_line, end_column}) do
-      {:ok, Types.Range.new(start: start_pos, end: end_pos)}
-    end
+    start_pos = Position.new(document, start_line, max(start_column, 1))
+    end_pos = Position.new(document, end_line, max(end_column, 1))
+
+    range = Range.new(start_pos, end_pos)
+    Conversions.to_lsp(range)
   end
 
   defp position_to_range(%Document{} = document, {line_number, column}) do
-    line_number = Math.clamp(line_number, 1, Document.size(document))
     column = max(column, 1)
 
     document

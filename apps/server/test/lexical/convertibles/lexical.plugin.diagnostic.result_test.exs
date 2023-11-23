@@ -43,6 +43,20 @@ defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
       assert converted.range == range(:lsp, position(:lsp, 0, 0), position(:lsp, 1, 0))
     end
 
+    test "it should translate a diagnostic with a four-elements tuple position", %{uri: uri} do
+      assert {:ok, %Types.Diagnostic{} = converted} =
+               to_lsp(plugin_diagnostic(uri, {2, 5, 2, 8}), uri)
+
+      assert converted.message == "Broken!"
+      assert converted.range == range(:lsp, position(:lsp, 1, 4), position(:lsp, 1, 7))
+
+      assert {:ok, %Types.Diagnostic{} = converted} =
+               to_lsp(plugin_diagnostic(uri, {1, 0, 3, 0}), uri)
+
+      assert converted.message == "Broken!"
+      assert converted.range == range(:lsp, position(:lsp, 0, 0), position(:lsp, 2, 0))
+    end
+
     test "it should translate a diagnostic line that is out of bounds (elixir can do this)", %{
       uri: uri
     } do
