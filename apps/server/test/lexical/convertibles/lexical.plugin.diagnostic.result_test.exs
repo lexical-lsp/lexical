@@ -43,7 +43,6 @@ defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
       assert converted.range == range(:lsp, position(:lsp, 0, 0), position(:lsp, 1, 0))
     end
 
-    @tag :current
     test "it should translate a diagnostic with a four-elements tuple position", %{uri: uri} do
       assert {:ok, %Types.Diagnostic{} = converted} =
                to_lsp(plugin_diagnostic(uri, {2, 5, 2, 8}), uri)
