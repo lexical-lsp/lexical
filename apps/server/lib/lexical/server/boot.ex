@@ -78,10 +78,8 @@ defmodule Lexical.Server.Boot do
 
   defp load_app_modules(app_name) do
     Application.ensure_loaded(app_name)
-
-    with {:ok, modules} <- Application.spec(app_name, :modules) do
-      Code.ensure_all_loaded!(modules)
-    end
+    modules = Application.spec(app_name, :modules)
+    Code.ensure_all_loaded!(modules)
   end
 
   @allowed_elixir %{
