@@ -1,6 +1,11 @@
 defmodule Lexical.Test.CodeSigil do
   def sigil_q(text, opts \\ []) do
-    ["", first | rest] = text |> String.split("\n")
+    {first, rest} =
+      case String.split(text, "\n") do
+        ["", first | rest] -> {first, rest}
+        [first | rest] -> {first, rest}
+      end
+
     base_indent = indent(first)
     indent_length = String.length(base_indent)
 
