@@ -4,6 +4,7 @@ defmodule Lexical.Server.Boot do
 
   Packaging will ensure that config.exs and runtime.exs will be visible to the `:code` module
   """
+  alias Future.Code
   alias Lexical.VM.Versions
   require Logger
 
@@ -77,10 +78,8 @@ defmodule Lexical.Server.Boot do
 
   defp load_app_modules(app_name) do
     Application.ensure_loaded(app_name)
-
-    with {:ok, modules} <- :application.get_key(app_name, :modules) do
-      Enum.each(modules, &Code.ensure_loaded!/1)
-    end
+    modules = Application.spec(app_name, :modules)
+    Code.ensure_all_loaded!(modules)
   end
 
   @allowed_elixir %{
