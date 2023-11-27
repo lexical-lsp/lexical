@@ -53,19 +53,22 @@ defmodule Lexical.Test.RangeSupport do
       when line_number == start_line and line_number == end_line ->
         String.slice(line_text, zero_based_start_character..range.end.character)
 
-      line(line_number: ^start_line, text: line_text) ->
+      line(line_number: ^start_line, text: line_text, ending: ending) ->
         line_length = String.length(line_text)
 
-        String.slice(
-          line_text,
-          zero_based_start_character..(line_length - range.start.character)
-        )
+        prefix =
+          String.slice(
+            line_text,
+            zero_based_start_character..line_length
+          )
+
+        [prefix, ending]
 
       line(line_number: ^end_line, text: line_text) ->
         String.slice(line_text, 0..zero_based_end_character)
 
       line(text: line_text, ending: ending) ->
-        line_text <> ending
+        [line_text, ending]
     end)
     |> IO.iodata_to_binary()
   end
