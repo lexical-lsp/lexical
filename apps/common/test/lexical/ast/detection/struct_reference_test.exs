@@ -35,7 +35,7 @@ defmodule Lexical.Ast.Detection.StructReferenceTest do
     refute_detected ~q[def my_fn(%__MOC)]
   end
 
-  test "is not detected if module reference doesn't start with %" do
+  test "is detected if module reference starts with %" do
     assert_detected ~q[def something(my_thing, %S«truct»{})]
   end
 
