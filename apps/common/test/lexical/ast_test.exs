@@ -290,8 +290,7 @@ defmodule Lexical.AstTest do
 
       analysis = Ast.analyze(document)
 
-      assert {:ok, Parent.Child} =
-               Ast.expand_alias([quote(do: __MODULE__), nil], analysis, position)
+      assert {:ok, Parent.Child} = Ast.expand_alias([quote(do: __MODULE__)], analysis, position)
     end
   end
 

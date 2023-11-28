@@ -9,6 +9,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source do
     path
     |> Document.new(source, 1)
     |> Ast.analyze()
-    |> Indexer.Quoted.index()
+    |> Indexer.Extractor.index()
   end
 end

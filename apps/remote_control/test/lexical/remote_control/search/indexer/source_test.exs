@@ -74,7 +74,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     end
 
     test "can detect an erlang module" do
-      {:ok, [module_def, erlang_module], doc} =
+      {:ok, [_module_def, erlang_module], doc} =
         ~q[
         defmodule Root do
           @something :timer
@@ -83,13 +83,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         |> index()
 
       assert erlang_module.type == :module
-      assert erlang_module.parent == module_def.ref
       assert erlang_module.subject == :timer
       assert decorate(doc, erlang_module.range) =~ "  @something «:timer»"
     end
 
     test "can detect a module reference in a module attribute" do
-      {:ok, [module_def, attribute], doc} =
+      {:ok, [_module_def, attribute], doc} =
         ~q[
         defmodule Root do
           @attr Some.Other.Module
@@ -98,7 +97,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
         |> index()
 
       assert attribute.type == :module
-      assert attribute.parent == module_def.ref
       assert attribute.subject == Some.Other.Module
       assert decorate(doc, attribute.range) =~ "  @attr «Some.Other.Module»"
     end
@@ -269,7 +267,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     end
 
     test "can detect a module reference in an anonymous function call" do
-      {:ok, [parent, ref], doc} =
+      {:ok, [parent, reference], doc} =
         ~q[
         defmodule Parent do
           def outer_fn do
@@ -281,10 +279,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       ]
         |> index()
 
-      assert ref.type == :module
-      assert ref.subject == Ref.To.Something
-      refute ref.parent == parent.ref
-      assert decorate(doc, ref.range) =~ "      «Ref.To.Something»"
+      assert reference.type == :module
+      assert reference.subject == Ref.To.Something
+      refute reference.parent == parent.ref
+      assert decorate(doc, reference.range) =~ "      «Ref.To.Something»"
     end
   end
 
@@ -370,7 +368,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
     end
 
     test "Have aliases resolved correctly" do
-      {:ok, [_parent, _parent_alias, child, child_alias], _} =
+      {:ok, [_parent, _parent_alias, _child, child_alias], _} =
         ~q[
         defmodule Parent do
           alias Something.Else
@@ -382,7 +380,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.SourceTest do
       ]
         |> index()
 
-      assert child_alias.parent == child.ref
       assert child_alias.type == :module
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other

@@ -46,7 +46,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     new(path, ref, parent, subject, type, :definition, range, application)
   end
 
-  defp new(path, ref, parent, subject, type, subtype, range, application) do
+  def new(path, ref, parent, subject, type, subtype, range, application)
+      when subtype in [:definition, :reference] do
     versions = Versions.current()
 
     %__MODULE__{

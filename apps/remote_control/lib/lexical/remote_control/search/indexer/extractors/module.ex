@@ -4,136 +4,110 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   """
 
   alias Lexical.Ast
-  alias Lexical.Document.Position
-  alias Lexical.Document.Range
   alias Lexical.ProcessCache
-  alias Lexical.RemoteControl.Search.Indexer.Entry
-  alias Lexical.RemoteControl.Search.Indexer.Metadata
-  alias Lexical.RemoteControl.Search.Indexer.Source.Block
-  alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
+  alias Lexical.RemoteControl.Search.Indexer.Extractor
+  alias Sourceror.Zipper
 
-  # extract a module definition
+  @behaviour Extractor
+
+  @impl Extractor
+  def extract(zipper, extractor)
+
+  # Elixir module definition or reference
   def extract(
-        {:defmodule, defmodule_meta,
-         [{:__aliases__, module_name_meta, module_name}, module_block]},
-        %Reducer{} = reducer
+        %Zipper{node: {:__aliases__, _, segments}} = zipper,
+        %Extractor{} = extractor
       ) do
-    %Block{} = block = Reducer.current_block(reducer)
-    aliased_module = resolve_alias(reducer, module_name)
-    module_position = Metadata.position(module_name_meta)
-    range = to_range(reducer, module_name, module_position)
-
-    entry =
-      Entry.definition(
-        reducer.analysis.document.path,
-        block.ref,
-        block.parent_ref,
-        aliased_module,
-        :module,
-        range,
-        Application.get_application(aliased_module)
-      )
-
-    module_name_meta = Reducer.skip(module_name_meta)
-
-    elem =
-      {:defmodule, defmodule_meta, [{:__aliases__, module_name_meta, module_name}, module_block]}
-
-    {:ok, entry, elem}
-  end
-
-  # This matches an elixir module reference
-  def extract({:__aliases__, metadata, maybe_module}, %Reducer{} = reducer)
-      when is_list(maybe_module) do
-    case module(reducer, maybe_module) do
+    case fetch_module(segments, extractor) do
       {:ok, module} ->
-        start = Metadata.position(metadata)
-        range = to_range(reducer, maybe_module, start)
-        %Block{} = current_block = Reducer.current_block(reducer)
-
-        entry =
-          Entry.reference(
-            reducer.analysis.document.path,
-            make_ref(),
-            current_block.ref,
-            module,
-            :module,
-            range,
-            Application.get_application(module)
-          )
-
-        {:ok, entry}
-
-      _ ->
-        :ignored
-    end
-  end
-
-  # This matches an erlang module, which is just an atom
-  def extract({:__block__, metadata, [atom_literal]}, %Reducer{} = reducer)
-      when is_atom(atom_literal) do
-    case module(reducer, atom_literal) do
-      {:ok, module} ->
-        start = Metadata.position(metadata)
-        %Block{} = current_block = Reducer.current_block(reducer)
-        range = to_range(reducer, module, start)
-
-        entry =
-          Entry.reference(
-            reducer.analysis.document.path,
-            make_ref(),
-            current_block.ref,
-            module,
-            :module,
-            range,
-            Application.get_application(module)
-          )
-
-        {:ok, entry}
+        extract_module(extractor, module, zipper)
 
       :error ->
-        :ignored
+        extractor
     end
   end
 
-  def extract(_, _) do
-    :ignored
+  # Erlang module definition or reference, which are plain atoms
+  def extract(
+        %Zipper{node: {:__block__, _, [atom_literal]}} = zipper,
+        %Extractor{} = extractor
+      )
+      when is_atom(atom_literal) do
+    case fetch_erlang_module(atom_literal) do
+      {:ok, module} ->
+        extract_module(extractor, module, zipper)
+
+      :error ->
+        extractor
+    end
   end
 
-  defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
-    {line, column} = reducer.position
-    position = Position.new(reducer.analysis.document, line, column)
-
-    {:ok, expanded} = Ast.expand_alias(unresolved_alias, reducer.analysis, position)
-
-    expanded
+  def extract(_zipper, %Extractor{} = extractor) do
+    extractor
   end
 
-  defp module(%Reducer{} = reducer, maybe_module) when is_list(maybe_module) do
-    if Enum.all?(maybe_module, &module_part?/1) do
-      resolved = resolve_alias(reducer, maybe_module)
-      {:ok, resolved}
+  defp extract_module(%Extractor{} = extractor, module, %Zipper{} = zipper) do
+    {zipper, subtype, parent_kind} =
+      case Zipper.up(zipper) do
+        %Zipper{node: {:defmodule, _, [_, _]}} = defmodule_zipper ->
+          {defmodule_zipper, :definition, :module}
+
+        _ ->
+          {zipper, :reference, :any}
+      end
+
+    Extractor.record_entry(
+      extractor,
+      zipper,
+      :module,
+      subtype,
+      module,
+      Application.get_application(module),
+      parent_kind: parent_kind
+    )
+  end
+
+  defp fetch_module(maybe_module, %Extractor{current_scope: nil}) when is_list(maybe_module) do
+    with true <- Enum.all?(maybe_module, &is_atom/1),
+         module = Module.concat(maybe_module),
+         true <- well_formed_module?(module) do
+      {:ok, module}
     else
-      :error
+      _ -> :error
     end
   end
 
-  defp module(%Reducer{}, maybe_erlang_module) when is_atom(maybe_erlang_module) do
+  defp fetch_module(maybe_module, %Extractor{} = extractor) when is_list(maybe_module) do
+    %Extractor{analysis: analysis, current_scope: scope} = extractor
+
+    with {:ok, module} <- Ast.expand_alias(maybe_module, analysis, scope.range.start),
+         true <- well_formed_module?(module) do
+      {:ok, module}
+    else
+      _ -> :error
+    end
+  end
+
+  defp well_formed_module?(Elixir), do: false
+
+  defp well_formed_module?(module) do
+    module |> Module.split() |> Enum.all?(&module_part?/1)
+  end
+
+  @starts_with_capital ~r/[A-Z]+/
+  defp module_part?(part) when is_binary(part) do
+    Regex.match?(@starts_with_capital, part)
+  end
+
+  defp module_part?(_), do: false
+
+  defp fetch_erlang_module(maybe_erlang_module) do
     if available_module?(maybe_erlang_module) do
       {:ok, maybe_erlang_module}
     else
       :error
     end
   end
-
-  defp module(_, _), do: :error
-
-  @starts_with_capital ~r/[A-Z]+/
-  defp module_part?(part) when is_atom(part) do
-    Regex.match?(@starts_with_capital, Atom.to_string(part))
-  end
-
-  defp module_part?(_), do: false
 
   defp available_module?(potential_module) do
     MapSet.member?(all_modules(), potential_module)
@@ -145,19 +119,5 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         List.to_atom(module_charlist)
       end)
     end)
-  end
-
-  defp to_range(%Reducer{} = reducer, module_name, {line, column}) do
-    document = reducer.analysis.document
-
-    module_length =
-      module_name
-      |> Ast.Module.name()
-      |> String.length()
-
-    Range.new(
-      Position.new(document, line, column),
-      Position.new(document, line, column + module_length)
-    )
   end
 end

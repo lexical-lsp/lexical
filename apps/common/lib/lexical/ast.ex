@@ -98,8 +98,9 @@ defmodule Lexical.Ast do
   @type patch_column :: {:column, non_neg_integer()}
   @type patch_change :: String.t() | (String.t() -> String.t())
 
-  @type short_alias :: atom()
-  @type alias_segments :: [short_alias]
+  @type alias_segment :: atom()
+  @type complex_alias_segment :: tuple()
+  @type alias_segments :: [alias_segment | complex_alias_segment]
 
   @type position :: Position.t() | {Position.line(), Position.character()}
 
@@ -260,6 +261,17 @@ defmodule Lexical.Ast do
 
   def get_range(quoted, %Analysis{} = analysis) do
     get_range(quoted, analysis.document)
+  end
+
+  @doc """
+  Fetches the range of a quoted element.
+  """
+  @spec fetch_range(Macro.t(), Analysis.t() | Document.t()) :: {:ok, Range.t()} | :error
+  def fetch_range(quoted, analysis_or_document) do
+    case get_range(quoted, analysis_or_document) do
+      %Range{} = range -> {:ok, range}
+      nil -> :error
+    end
   end
 
   @doc """
@@ -500,30 +512,9 @@ defmodule Lexical.Ast do
     :error
   end
 
-  # Expands aliases given the rules in the special form
-  # https://hexdocs.pm/elixir/1.13.4/Kernel.SpecialForms.html#__aliases__/1
-  def reify_alias(current_module, [:"Elixir" | _] = reified) do
-    [current_module | reified]
-  end
-
-  def reify_alias(current_module, [:__MODULE__ | rest]) do
-    [current_module | rest]
-  end
-
-  def reify_alias(current_module, [atom | _rest] = reified) when is_atom(atom) do
-    [current_module | reified]
-  end
-
-  def reify_alias(current_module, [unreified | rest]) do
-    env = %Macro.Env{module: current_module}
-    reified = Macro.expand(unreified, env)
-
-    [reified | rest]
-  end
-
   # private
 
-  defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
+  defp resolve_alias([{:__MODULE__, _, _} | _] = segments, aliases_mapping) do
     with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
       {:ok, reify_alias(current_module, segments)}
     end
@@ -533,6 +524,27 @@ defmodule Lexical.Ast do
     with {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, [resolved | rest]}
     end
+  end
+
+  # Expands aliases given the rules in the special form
+  # https://hexdocs.pm/elixir/1.13.4/Kernel.SpecialForms.html#__aliases__/1
+  defp reify_alias(current_module, [:"Elixir" | _] = reified) do
+    [current_module | reified]
+  end
+
+  defp reify_alias(current_module, [:__MODULE__ | rest]) do
+    [current_module | rest]
+  end
+
+  defp reify_alias(current_module, [atom | _rest] = reified) when is_atom(atom) do
+    [current_module | reified]
+  end
+
+  defp reify_alias(current_module, [unreified | rest]) do
+    env = %Macro.Env{module: current_module}
+    reified = Macro.expand(unreified, env)
+
+    [reified | rest]
   end
 
   defp do_string_to_quoted(string) when is_binary(string) do

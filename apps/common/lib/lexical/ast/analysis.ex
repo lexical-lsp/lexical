@@ -12,19 +12,24 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Sourceror.Zipper
 
-  defstruct [:ast, :document, :parse_error, :tree, valid?: true]
+  defstruct [:ast, :document, :parse_error, :tree, :scope_map, valid?: true]
 
   @type t :: %__MODULE__{
           ast: analyzed_ast | nil,
           document: Document.t(),
           parse_error: Ast.parse_error() | nil,
           tree: scope_tree,
+          scope_map: %{node_id => Scope.t()},
           valid?: boolean()
         }
 
   @typedoc "A `t:Macro.t/0` that has undergone analysis"
   @type analyzed_ast :: Macro.t()
+
+  @typedoc "Unique identifier for a node in an analyzed AST."
+  @type node_id :: any()
 
   @typedoc "A basic tree structure representing nested scopes"
   @type scope_tree :: %{scope: Scope.t(), children: [scope_tree]}
@@ -41,11 +46,13 @@ defmodule Lexical.Ast.Analysis do
   def new(parse_result, document)
 
   def new({:ok, ast}, %Document{} = document) do
-    scopes = Analyzer.extract_scopes(ast, document)
+    {analyzed_ast, scopes} = Analyzer.extract_scopes(ast, document)
+    scope_map = Map.new(scopes, &{&1.id, &1})
 
     %__MODULE__{
-      ast: ast,
+      ast: analyzed_ast,
       document: document,
+      scope_map: scope_map,
       tree: scopes_to_tree(scopes)
     }
   end
@@ -59,22 +66,63 @@ defmodule Lexical.Ast.Analysis do
   end
 
   @doc """
+  Walk a valid analyzed AST as a zipper, accumulating a result.
+  """
+  @spec walk_zipper(t, acc, (Zipper.t(), Scope.t() | nil, acc -> acc)) :: acc when acc: any()
+  def walk_zipper(%__MODULE__{valid?: true} = analysis, acc, fun) when is_function(fun, 3) do
+    analysis.ast
+    |> Zipper.zip()
+    |> Zipper.traverse(acc, fn %Zipper{node: node} = zipper, acc ->
+      case fetch_node_id(node) do
+        {:ok, id} ->
+          maybe_scope = analysis.scope_map[id]
+          fun.(zipper, maybe_scope, acc)
+
+        :error ->
+          {zipper, acc}
+      end
+    end)
+    |> elem(1)
+  end
+
+  @doc """
   Retrieve the id of a node in an analyzed AST.
   """
-  @spec scope_id(analyzed_ast) :: Scope.id() | nil
-  defdelegate scope_id(quoted), to: Analyzer
+  @spec get_node_id(analyzed_ast) :: node_id | nil
+  def get_node_id(quoted), do: Analyzer.node_id(quoted)
+
+  @doc """
+  Fetch the id of a node in an analyzed AST.
+  """
+  @spec fetch_node_id(analyzed_ast) :: {:ok, node_id} | :error
+  def fetch_node_id(quoted) do
+    case get_node_id(quoted) do
+      nil -> :error
+      id -> {:ok, id}
+    end
+  end
 
   @doc """
   Retrieve the id of the nearest scope for the quoted form of the given kind.
   """
-  @spec scope_id_at(analyzed_ast, Scope.kind(), t) :: Scope.id() | nil
-  def scope_id_at(quoted, kind, %__MODULE__{} = analysis) do
+  @spec get_parent_id(analyzed_ast, Scope.kind() | :any, t) :: node_id | nil
+  def get_parent_id(quoted, kind, %__MODULE__{} = analysis) do
+    id = get_node_id(quoted)
+
     with %Position{} = position <- Ast.get_position(quoted, analysis) do
       analysis
       |> scopes_at(position)
       |> Enum.find_value(fn
-        %Scope{kind: ^kind, id: id} -> id
-        _ -> nil
+        # skip the scope for this node
+        %Scope{id: ^id} ->
+          nil
+
+        %Scope{} = scope ->
+          case {kind, scope} do
+            {:any, _} -> scope.id
+            {kind, %Scope{kind: kind}} -> scope.id
+            _ -> nil
+          end
       end)
     end
   end

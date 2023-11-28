@@ -15,7 +15,7 @@ defmodule Lexical.Ast.Analysis.Scope do
   ]
 
   @type t :: %__MODULE__{
-          id: id,
+          id: Analysis.node_id(),
           range: Range.t(),
           kind: kind,
           module: Analysis.module_segments(),
@@ -23,11 +23,15 @@ defmodule Lexical.Ast.Analysis.Scope do
           parent_aliases: Analysis.alias_map()
         }
 
-  @type id :: reference() | atom()
+  @type kind :: :module | :block
 
-  @type kind :: :module | :def | :block
-
-  @spec new(id, Range.t(), kind, Analysis.module_segments(), Analysis.alias_map()) :: t
+  @spec new(
+          Analysis.node_id(),
+          Range.t(),
+          kind,
+          Analysis.module_segments(),
+          Analysis.alias_map()
+        ) :: t
   def new(id, %Range{} = range, kind \\ :block, module \\ [], parent_aliases \\ %{}) do
     %__MODULE__{id: id, range: range, kind: kind, module: module, parent_aliases: parent_aliases}
   end

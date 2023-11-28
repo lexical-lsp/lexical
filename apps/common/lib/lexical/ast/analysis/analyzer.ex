@@ -1,8 +1,8 @@
 defmodule Lexical.Ast.Analysis.Analyzer do
   @moduledoc false
 
-  alias __MODULE__
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
@@ -10,12 +10,14 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   alias Lexical.Document.Range
   alias Sourceror.Zipper
 
-  @scope_id :_scope_id
+  @id :_id
 
   @block_keywords [:do, :else, :rescue, :catch, :after]
   @clauses [:->]
 
   defmodule State do
+    alias Lexical.Ast.Analysis.Analyzer
+
     defstruct [:document, scopes: [], visited: %{}]
 
     def new(%Document{} = document, %Range{} = root_range) do
@@ -41,7 +43,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
     def push_scope_for(%State{} = state, quoted, %Range{} = range, kind, module) do
       module = module || current_module(state)
-      id = Analyzer.scope_id(quoted)
+      id = Analyzer.node_id(quoted)
       push_scope(state, id, range, kind, module)
     end
 
@@ -91,11 +93,12 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   @doc """
   Traverses an AST, returning a list of scopes in their order of appearance.
   """
+  @spec extract_scopes(Macro.t(), Document.t()) :: {Analysis.analyzed_ast(), [Scope.t()]}
   def extract_scopes(quoted, %Document{} = document) do
     quoted = preprocess(quoted)
     root_range = root_range(quoted, document)
 
-    {_, state} =
+    {quoted, state} =
       Macro.traverse(
         quoted,
         State.new(document, root_range),
@@ -103,7 +106,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
           {quoted, analyze_node(quoted, state)}
         end,
         fn quoted, state ->
-          case {scope_id(quoted), State.current_scope(state)} do
+          case {node_id(quoted), State.current_scope(state)} do
             {id, %Scope{id: id}} ->
               {quoted, State.pop_scope(state)}
 
@@ -118,18 +121,20 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             "invariant not met, :scopes should only contain the root scope: #{inspect(state)}"
     end
 
-    state
-    # pop the final, root scope
-    |> State.pop_scope()
-    |> Map.fetch!(:visited)
-    |> Map.reject(fn {_id, scope} -> Scope.empty?(scope) end)
-    |> correct_ranges(quoted, document)
-    |> Map.values()
-    |> sort_scopes()
+    scopes =
+      state
+      # pop the final, root scope
+      |> State.pop_scope()
+      |> Map.fetch!(:visited)
+      |> correct_ranges(quoted, document)
+      |> Map.values()
+      |> sort_scopes()
+
+    {quoted, scopes}
   end
 
   defp preprocess(quoted) do
-    Macro.prewalk(quoted, &with_scope_id/1)
+    Macro.prewalk(quoted, &with_node_id/1)
   end
 
   defp correct_ranges(scopes, quoted, document) do
@@ -137,7 +142,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       quoted
       |> Zipper.zip()
       |> Zipper.traverse(scopes, fn %Zipper{node: node} = zipper, scopes ->
-        id = scope_id(node)
+        id = node_id(node)
 
         if scope = scopes[id] do
           {zipper, Map.put(scopes, id, maybe_correct_range(scope, zipper, document))}
@@ -160,10 +165,14 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       _ ->
         # we go up twice to get to the real parent because ast pairs
         # are always in a list
-        %Zipper{node: parent} = zipper |> Zipper.up() |> Zipper.up()
-        parent_end = Sourceror.get_range(parent).end
-        new_end = Position.new(document, parent_end[:line], parent_end[:column])
-        put_in(scope.range.end, new_end)
+        case zipper |> Zipper.up() |> Zipper.up() |> Zipper.node() |> Sourceror.get_range() do
+          %{end: parent_end} ->
+            new_end = Position.new(document, parent_end[:line], parent_end[:column])
+            put_in(scope.range.end, new_end)
+
+          _ ->
+            scope
+        end
     end
   end
 
@@ -183,28 +192,28 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   end
 
   # add a unique ID to 3-element tuples
-  defp with_scope_id({_, _, _} = quoted) do
-    Macro.update_meta(quoted, &Keyword.put(&1, @scope_id, make_ref()))
+  defp with_node_id({_, _, _} = quoted) do
+    Macro.update_meta(quoted, &Keyword.put(&1, @id, make_ref()))
   end
 
-  defp with_scope_id(quoted) do
+  defp with_node_id(quoted) do
     quoted
   end
 
   @doc false
-  def scope_id({_, meta, _}) when is_list(meta) do
-    Keyword.get(meta, @scope_id)
+  def node_id({_, meta, _}) when is_list(meta) do
+    Keyword.get(meta, @id)
   end
 
-  def scope_id({left, right}) do
-    {scope_id(left), scope_id(right)}
+  def node_id({left, right}) do
+    {node_id(left), node_id(right)}
   end
 
-  def scope_id(list) when is_list(list) do
-    Enum.map(list, &scope_id/1)
+  def node_id(list) when is_list(list) do
+    Enum.map(list, &node_id/1)
   end
 
-  def scope_id(_) do
+  def node_id(_) do
     nil
   end
 
