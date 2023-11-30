@@ -236,10 +236,14 @@ defmodule Lexical.Ast do
   Retrieves the position of a quoted element.
   """
   @spec get_position(Macro.t(), Analysis.t() | Document.t()) :: Position.t() | nil
-  def get_position(quoted, analysis_or_document) do
-    with %Range{} = range <- get_range(quoted, analysis_or_document) do
-      range.start
+  def get_position(quoted, %Document{} = document) do
+    with start_pos when start_pos != [] <- Sourceror.get_start_position(quoted, []) do
+      Position.new(document, start_pos[:line], start_pos[:column])
     end
+  end
+
+  def get_position(quoted, %Analysis{} = analysis) do
+    get_position(quoted, analysis.document)
   end
 
   @doc """
@@ -247,15 +251,11 @@ defmodule Lexical.Ast do
   """
   @spec get_range(Macro.t(), Analysis.t() | Document.t()) :: Range.t() | nil
   def get_range(quoted, %Document{} = document) do
-    case Sourceror.get_range(quoted) do
-      %{start: start_pos, end: end_pos} ->
-        Range.new(
-          Position.new(document, start_pos[:line], start_pos[:column]),
-          Position.new(document, end_pos[:line], end_pos[:column])
-        )
-
-      nil ->
-        nil
+    with %{start: start_pos, end: end_pos} <- Sourceror.get_range(quoted) do
+      Range.new(
+        Position.new(document, start_pos[:line], start_pos[:column]),
+        Position.new(document, end_pos[:line], end_pos[:column])
+      )
     end
   end
 
@@ -390,6 +390,47 @@ defmodule Lexical.Ast do
   def traverse_line(%Document{} = document, line_number, acc, fun) when is_integer(line_number) do
     range = one_line_range(document, line_number)
     traverse_in(document, range, acc, fun)
+  end
+
+  @doc """
+  Traverses the given AST in a depth-first order with an accumulator.
+
+  For every node in the AST, `fun` will receive three arguments:
+
+    * `node` - the current node being visited
+    * `ancestors` - the list of ancestors, with the head being their
+      immediate parent
+    * `acc` - the accumulator
+
+  """
+  @spec traverse_with_ancestors(
+          Analysis.t() | Macro.t(),
+          acc,
+          (node, ancestors, acc -> acc)
+        ) ::
+          acc
+        when acc: any(), node: Macro.t(), ancestors: [node]
+  def traverse_with_ancestors(%Analysis{valid?: true} = analysis, acc, fun)
+      when is_function(fun, 3) do
+    traverse_with_ancestors(analysis.ast, acc, fun)
+  end
+
+  def traverse_with_ancestors(ast, acc, fun) when is_function(fun, 3) do
+    {_ast, {acc, _ancestors}} =
+      Macro.traverse(
+        ast,
+        {acc, []},
+        fn node, {acc, ancestors} ->
+          acc = fun.(node, ancestors, acc)
+          ancestors = [node | ancestors]
+          {node, {acc, ancestors}}
+        end,
+        fn node, {acc, [_ | rest]} ->
+          {node, {acc, rest}}
+        end
+      )
+
+    acc
   end
 
   @doc """

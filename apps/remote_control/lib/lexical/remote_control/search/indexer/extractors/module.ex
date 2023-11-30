@@ -4,23 +4,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   """
 
   alias Lexical.Ast
+  alias Lexical.Document.Position
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl.Search.Indexer.Extractor
-  alias Sourceror.Zipper
 
   @behaviour Extractor
 
   @impl Extractor
-  def extract(zipper, extractor)
+  def extract(node, extractor)
 
   # Elixir module definition or reference
-  def extract(
-        %Zipper{node: {:__aliases__, _, segments}} = zipper,
-        %Extractor{} = extractor
-      ) do
-    case fetch_module(segments, extractor) do
+  def extract({:__aliases__, _, segments} = node, %Extractor{} = extractor) do
+    case fetch_module(segments, node, extractor) do
       {:ok, module} ->
-        extract_module(extractor, module, zipper)
+        extract_module(module, node, extractor)
 
       :error ->
         extractor
@@ -28,37 +25,34 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   end
 
   # Erlang module definition or reference, which are plain atoms
-  def extract(
-        %Zipper{node: {:__block__, _, [atom_literal]}} = zipper,
-        %Extractor{} = extractor
-      )
+  def extract({:__block__, _, [atom_literal]} = node, %Extractor{} = extractor)
       when is_atom(atom_literal) do
     case fetch_erlang_module(atom_literal) do
       {:ok, module} ->
-        extract_module(extractor, module, zipper)
+        extract_module(module, node, extractor)
 
       :error ->
         extractor
     end
   end
 
-  def extract(_zipper, %Extractor{} = extractor) do
+  def extract(_node, %Extractor{} = extractor) do
     extractor
   end
 
-  defp extract_module(%Extractor{} = extractor, module, %Zipper{} = zipper) do
-    {zipper, subtype, parent_kind} =
-      case Zipper.up(zipper) do
-        %Zipper{node: {:defmodule, _, [_, _]}} = defmodule_zipper ->
-          {defmodule_zipper, :definition, :module}
+  defp extract_module(module, node, %Extractor{} = extractor) do
+    {node, subtype, parent_kind} =
+      case extractor.ancestors do
+        [{:defmodule, _, [_, _]} = defmodule_node | _] ->
+          {defmodule_node, :definition, :module}
 
         _ ->
-          {zipper, :reference, :any}
+          {node, :reference, :any}
       end
 
     Extractor.record_entry(
       extractor,
-      zipper,
+      node,
       :module,
       subtype,
       module,
@@ -67,20 +61,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     )
   end
 
-  defp fetch_module(maybe_module, %Extractor{current_scope: nil}) when is_list(maybe_module) do
-    with true <- Enum.all?(maybe_module, &is_atom/1),
-         module = Module.concat(maybe_module),
-         true <- well_formed_module?(module) do
-      {:ok, module}
-    else
-      _ -> :error
-    end
-  end
-
-  defp fetch_module(maybe_module, %Extractor{} = extractor) when is_list(maybe_module) do
-    %Extractor{analysis: analysis, current_scope: scope} = extractor
-
-    with {:ok, module} <- Ast.expand_alias(maybe_module, analysis, scope.range.start),
+  defp fetch_module(maybe_module, node, %Extractor{} = extractor) when is_list(maybe_module) do
+    with %Position{} = position <- Ast.get_position(node, extractor.analysis),
+         {:ok, module} <- Ast.expand_alias(maybe_module, extractor.analysis, position),
          true <- well_formed_module?(module) do
       {:ok, module}
     else

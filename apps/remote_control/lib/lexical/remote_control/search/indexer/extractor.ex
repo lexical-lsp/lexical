@@ -7,15 +7,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
   alias Lexical.Ast.Analysis
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Extractors
-  alias Sourceror.Zipper
 
-  defstruct [:analysis, :current_scope, :current_zipper, entries: []]
+  defstruct [:analysis, :current_node, :ancestors, entries: []]
 
   @type t :: %__MODULE__{
           analysis: Analysis.t(),
           entries: [Entry.t()],
-          current_scope: Analysis.Scope.t(),
-          current_zipper: Zipper.t()
+          current_node: Macro.t(),
+          ancestors: [Macro.t()]
         }
 
   @extractors [Extractors.Module]
@@ -23,7 +22,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
   @doc """
   Extract information from the given element.
   """
-  @callback extract(Zipper.t(), t) :: t
+  @callback extract(Macro.t(), t) :: t
 
   @doc false
   def new(%Analysis{valid?: true} = analysis) do
@@ -35,7 +34,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
   """
   def index(%Analysis{valid?: true} = analysis) do
     extractor = new(analysis)
-    extractor = Analysis.walk_zipper(analysis, extractor, &run_extractors/3)
+    extractor = Ast.traverse_with_ancestors(analysis, extractor, &run_extractors/3)
     {:ok, entries(extractor)}
   end
 
@@ -48,7 +47,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
   """
   def record_entry(
         %__MODULE__{} = extractor,
-        %Zipper{node: node},
+        node,
         type,
         subtype,
         subject,
@@ -66,7 +65,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
         extractor.analysis
       )
 
-    range = Ast.get_range(extractor.current_zipper.node, extractor.analysis)
+    range = Ast.get_range(extractor.current_node, extractor.analysis)
 
     entry =
       Entry.new(
@@ -83,20 +82,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractor do
     %__MODULE__{extractor | entries: [entry | extractor.entries]}
   end
 
-  defp run_extractors(zipper, %Analysis.Scope{} = scope, %__MODULE__{} = extractor) do
-    extractor = %__MODULE__{extractor | current_scope: scope, current_zipper: zipper}
-    run_extractors(zipper, extractor)
+  defp run_extractors(node, ancestors, %__MODULE__{} = extractor) do
+    extractor = %__MODULE__{extractor | current_node: node, ancestors: ancestors}
+    run_extractors(node, extractor)
   end
 
-  defp run_extractors(zipper, nil, %__MODULE__{} = extractor) do
-    extractor = %__MODULE__{extractor | current_zipper: zipper}
-    run_extractors(zipper, extractor)
-  end
-
-  defp run_extractors(zipper, %__MODULE__{} = extractor) do
-    Enum.reduce(@extractors, {zipper, extractor}, fn extractor_module, {zipper, extractor} ->
-      %__MODULE__{} = extractor = extractor_module.extract(zipper, extractor)
-      {zipper, extractor}
+  defp run_extractors(node, %__MODULE__{} = extractor) do
+    Enum.reduce(@extractors, {node, extractor}, fn extractor_module, {node, extractor} ->
+      %__MODULE__{} = extractor_module.extract(node, extractor)
     end)
   end
 
