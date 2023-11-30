@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   """
 
   alias Lexical.Ast.Analysis
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Extractors
   alias Lexical.RemoteControl.Search.Indexer.Metadata
@@ -14,7 +15,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
 
   defstruct [:analysis, :entries, :position, :ends_at, :blocks]
 
-  @extractors [Extractors.Module, Extractors.FunctionDefinition]
+  @extractors [Extractors.Module, Extractors.FunctionDefinition, Extractors.FunctionReference]
 
   def new(%Analysis{} = analysis) do
     %__MODULE__{
@@ -45,6 +46,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     else
       do_reduce(reducer, element)
     end
+  end
+
+  def position(%__MODULE__{} = reducer) do
+    {line, column} = reducer.position
+    Position.new(reducer.analysis.document, line, column)
   end
 
   defp do_reduce(%__MODULE__{} = reducer, element) do

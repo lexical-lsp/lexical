@@ -26,26 +26,211 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     end
   end
 
+  defmodule Import do
+    alias Lexical.Ast.Analysis.Analyzer.Scope
+
+    defstruct module: nil, selector: :all, line: nil
+    @type function_name :: atom()
+    @type function_arity :: {function_name(), arity()}
+    @type selector ::
+            :functions | :macros | [only: [function_arity()]] | [except: [function_arity()]]
+    @type t :: %{
+            module: module(),
+            selector: selector(),
+            line: non_neg_integer()
+          }
+    def new(module, line) do
+      %__MODULE__{module: module, line: line}
+    end
+
+    def new(module, selector, line) do
+      %__MODULE__{module: module, selector: expand_selector(selector), line: line}
+    end
+
+    def apply_to_scope(%__MODULE__{} = import, current_scope, %MapSet{} = current_imports) do
+      import_module = Scope.resolve_alias_at(current_scope, import.module, import.line)
+
+      functions = mfas_for(import_module, :functions)
+      macros = mfas_for(import_module, :macros)
+
+      case import.selector do
+        :all ->
+          current_imports
+          |> remove_module_imports(import_module)
+          |> MapSet.union(functions)
+          |> MapSet.union(macros)
+
+        [only: :functions] ->
+          current_imports
+          |> remove_module_imports(import_module)
+          |> MapSet.union(functions)
+
+        [only: :macros] ->
+          current_imports
+          |> remove_module_imports(import_module)
+          |> MapSet.union(macros)
+
+        [only: fa_list] ->
+          fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
+
+          current_imports
+          |> remove_module_imports(import_module)
+          |> MapSet.union(fa_mapset)
+
+        [except: fa_list] ->
+          # This one is a little tricky. Imports using except have two cases.
+          # In the first case, if the module hasn't been previously imported, we
+          # collect all the functions in the current module and remove the ones in the
+          # except clause.
+          # If the module has been previously imported, we just remove the functions from
+          # the except clause from those that have been previously imported.
+          # See: https://hexdocs.pm/elixir/1.13.0/Kernel.SpecialForms.html#import/2-selector
+
+          fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
+
+          current_imports =
+            if already_imported?(current_imports, import_module) do
+              MapSet.difference(current_imports, fa_mapset)
+            else
+              current_imports
+              |> MapSet.union(functions)
+              |> MapSet.union(macros)
+            end
+
+          MapSet.difference(current_imports, fa_mapset)
+      end
+    end
+
+    defp expand_selector(selectors) do
+      selectors =
+        Enum.reduce(selectors, [], fn
+          {{:__block__, _, [type]}, {:__block__, _, [selector]}}, acc
+          when type in [:only, :except] ->
+            expanded =
+              case selector do
+                :functions ->
+                  :functions
+
+                :macros ->
+                  :macros
+
+                keyword when is_list(keyword) ->
+                  Enum.map(keyword, fn
+                    {{:__block__, _, [function_name]}, {:__block__, _, [arity]}} ->
+                      {function_name, arity}
+                  end)
+              end
+
+            [{type, expanded} | acc]
+
+          _, acc ->
+            acc
+        end)
+
+      if selectors == [] do
+        :all
+      else
+        selectors
+      end
+    end
+
+    defp remove_module_imports(%MapSet{} = current_imports, imported_module) do
+      current_imports
+      |> Enum.reject(&match?({^imported_module, _, _}, &1))
+      |> MapSet.new()
+    end
+
+    defp already_imported?(%MapSet{} = current_imports, imported_module) do
+      Enum.any?(current_imports, &match?({^imported_module, _, _}, &1))
+    end
+
+    defp function_and_arity_to_mfa(current_module, fa_list) when is_list(fa_list) do
+      for {function, arity} <- fa_list do
+        {current_module, function, arity}
+      end
+      |> MapSet.new()
+    end
+
+    defp mfas_for(current_module, type) do
+      if Code.ensure_loaded?(current_module) do
+        fa_list =
+          type
+          |> current_module.__info__()
+          |> Enum.reject(fn {name, _arity} ->
+            name |> Atom.to_string() |> String.starts_with?("__")
+          end)
+
+        function_and_arity_to_mfa(current_module, fa_list)
+      else
+        MapSet.new()
+      end
+    end
+  end
+
   defmodule Scope do
-    defstruct [:id, :range, module: [], parent_aliases: %{}, aliases: []]
+    defstruct [
+      :id,
+      :range,
+      module: [],
+      parent_aliases: %{},
+      aliases: [],
+      parent_imports: MapSet.new(),
+      imports: []
+    ]
 
-    @type t :: %Scope{}
+    @kernel_imports [
+      Import.new([:Kernel], 1),
+      Import.new([:Kernel, :SpecialForms], 1)
+    ]
 
-    def new(id, %Range{} = range, parent_aliases \\ %{}, module \\ []) do
-      %Scope{id: id, range: range, module: module, parent_aliases: parent_aliases}
+    @type import_mfa :: {module(), atom(), non_neg_integer()}
+    @type scope_position :: Position.t() | :end
+    @blank_doc Document.new("file:///", "", 1)
+
+    @type t :: %__MODULE__{
+            id: any(),
+            range: Range.t(),
+            module: [atom()],
+            parent_aliases: %{atom() => atom()},
+            aliases: [any()],
+            parent_imports: [import_mfa()],
+            imports: [import_mfa()]
+          }
+
+    def new(%__MODULE__{} = parent_scope, id, %Range{} = range, module \\ []) do
+      parent_aliases = alias_map(parent_scope)
+      parent_imports = imports(parent_scope)
+
+      %Scope{
+        id: id,
+        range: range,
+        module: module,
+        parent_aliases: parent_aliases,
+        parent_imports: parent_imports
+      }
     end
 
     def global(%Range{} = range) do
       %Scope{id: :global, range: range}
     end
 
-    @spec alias_map(Scope.t(), Position.t() | :end) :: %{module() => Scope.t()}
+    @spec imports(t(), scope_position()) :: [import_mfa()]
+    def imports(%__MODULE__{} = scope, position \\ :end) do
+      end_line = end_line(scope, position)
+
+      (@kernel_imports ++ scope.imports)
+      # sorting by line ensures that imports on later lines
+      # override imports on earlier lines
+      |> Enum.sort_by(& &1.line)
+      |> Enum.take_while(&(&1.line <= end_line))
+      |> Enum.reduce(scope.parent_imports, fn %Import{} = import, current_imports ->
+        Import.apply_to_scope(import, scope, current_imports)
+      end)
+    end
+
+    @spec alias_map(Scope.t(), scope_position()) :: %{module() => Scope.t()}
     def alias_map(%Scope{} = scope, position \\ :end) do
-      end_line =
-        case position do
-          :end -> scope.range.end.line
-          %Position{line: line} -> line
-        end
+      end_line = end_line(scope, position)
 
       scope.aliases
       # sorting by line ensures that aliases on later lines
@@ -56,8 +241,40 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       |> Enum.into(scope.parent_aliases)
     end
 
-    def empty?(%Scope{aliases: []}), do: true
+    def resolve_alias_at(%__MODULE__{} = scope, module, line) do
+      position = Position.new(@blank_doc, line, 1)
+      aliases = alias_map(scope, position)
+
+      case module do
+        [{:__MODULE__, _, _} | suffix] ->
+          current_module =
+            aliases
+            |> Map.get(:__MODULE__)
+            |> Alias.to_module()
+
+          Module.concat([current_module | suffix])
+
+        [prefix | suffix] ->
+          case aliases do
+            %{^prefix => _} ->
+              current_module =
+                aliases
+                |> Map.get(prefix)
+                |> Alias.to_module()
+
+              Module.concat([current_module | suffix])
+
+            _ ->
+              Module.concat(module)
+          end
+      end
+    end
+
+    def empty?(%Scope{aliases: [], imports: []}), do: true
     def empty?(%Scope{}), do: false
+
+    defp end_line(%__MODULE__{} = scope, :end), do: scope.range.end.line
+    defp end_line(_, %Position{} = position), do: position.line
   end
 
   defmodule State do
@@ -85,8 +302,11 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     end
 
     def push_scope(%State{} = state, id, %Range{} = range, module) when is_list(module) do
-      parent_aliases = state |> current_scope() |> Scope.alias_map()
-      scope = Scope.new(id, range, parent_aliases, module)
+      scope =
+        state
+        |> current_scope()
+        |> Scope.new(id, range, module)
+
       push_scope(state, scope)
     end
 
@@ -129,6 +349,12 @@ defmodule Lexical.Ast.Analysis.Analyzer do
           end
 
         Map.update!(scope, :aliases, &[alias | &1])
+      end)
+    end
+
+    def push_import(%State{} = state, %Import{} = import) do
+      update_current_scope(state, fn %Scope{} = scope ->
+        Map.update!(scope, :imports, &[import | &1])
       end)
     end
 
@@ -320,6 +546,19 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       _ ->
         analyze_node({:alias, meta, [aliases]}, state)
     end
+  end
+
+  # import with selector import MyModule, only: :functions
+  defp analyze_node(
+         {:import, meta, [{:__aliases__, _aliases, module}, selector]},
+         state
+       ) do
+    State.push_import(state, Import.new(module, selector, meta[:line]))
+  end
+
+  # wholesale import import MyModule
+  defp analyze_node({:import, meta, [{:__aliases__, _aliases, module}]}, state) do
+    State.push_import(state, Import.new(module, meta[:line]))
   end
 
   # clauses: ->

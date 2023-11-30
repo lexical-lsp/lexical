@@ -50,6 +50,34 @@ defmodule Lexical.Ast.Analysis do
     end
   end
 
+  def resolve_local_call(%__MODULE__{} = analysis, %Position{} = position, function_name, arity) do
+    maybe_imported_mfa =
+      analysis
+      |> imports_at(position)
+      |> Enum.find(fn
+        {_, ^function_name, ^arity} -> true
+        _ -> false
+      end)
+
+    if is_nil(maybe_imported_mfa) do
+      aliases = aliases_at(analysis, position)
+      current_module = aliases[:__MODULE__]
+      {current_module, function_name, arity}
+    else
+      maybe_imported_mfa
+    end
+  end
+
+  def imports_at(%__MODULE__{} = analysis, %Position{} = position) do
+    case scopes_at(analysis, position) do
+      [%Analyzer.Scope{} = scope | _] ->
+        Analyzer.Scope.imports(scope, position)
+
+      _ ->
+        MapSet.new()
+    end
+  end
+
   defp scopes_at(%__MODULE__{scopes: scopes}, %Position{} = position) do
     scopes
     |> Enum.filter(fn %Analyzer.Scope{range: range} = scope ->
