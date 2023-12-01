@@ -5,6 +5,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Module.Loader
   alias Sourceror.Zipper
 
   @scope_id :_scope_id
@@ -152,7 +153,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     end
 
     defp mfas_for(current_module, type) do
-      if Code.ensure_loaded?(current_module) do
+      if Loader.ensure_loaded?(current_module) do
         fa_list =
           type
           |> current_module.__info__()

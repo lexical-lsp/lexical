@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   and the plugin will crash.
   """
 
+  alias Lexical.Module.Loader
   alias Lexical.RemoteControl.Plugin.Runner
   alias Mix.Tasks.Namespace
 
@@ -41,7 +42,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
       Enum.each(modules, fn module ->
         namespace_module(module)
         unload_module(module)
-        Code.ensure_loaded(module)
+        Loader.ensure_loaded?(module)
       end)
     end
 
@@ -67,6 +68,6 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   end
 
   defp namespaced? do
-    Code.ensure_loaded?(@namespaced_document_module)
+    Loader.ensure_loaded?(@namespaced_document_module)
   end
 end
