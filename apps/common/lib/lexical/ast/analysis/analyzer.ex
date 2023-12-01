@@ -29,6 +29,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
   defmodule Import do
     alias Lexical.Ast.Analysis.Analyzer.Scope
+    alias Lexical.ProcessCache
 
     defstruct module: nil, selector: :all, line: nil
     @type function_name :: atom()
@@ -146,25 +147,27 @@ defmodule Lexical.Ast.Analysis.Analyzer do
     end
 
     defp function_and_arity_to_mfa(current_module, fa_list) when is_list(fa_list) do
-      for {function, arity} <- fa_list do
-        {current_module, function, arity}
-      end
-      |> MapSet.new()
+      MapSet.new(fa_list, fn {function, arity} -> {current_module, function, arity} end)
     end
 
     defp mfas_for(current_module, type) do
       if Loader.ensure_loaded?(current_module) do
-        fa_list =
-          type
-          |> current_module.__info__()
-          |> Enum.reject(fn {name, _arity} ->
-            name |> Atom.to_string() |> String.starts_with?("__")
-          end)
+        fa_list = function_and_arities_for_module(current_module, type)
 
         function_and_arity_to_mfa(current_module, fa_list)
       else
         MapSet.new()
       end
+    end
+
+    defp function_and_arities_for_module(module, type) do
+      ProcessCache.trans({module, :info, type}, fn ->
+        type
+        |> module.__info__()
+        |> Enum.reject(fn {name, _arity} ->
+          name |> Atom.to_string() |> String.starts_with?("__")
+        end)
+      end)
     end
   end
 
@@ -194,7 +197,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             module: [atom()],
             parent_aliases: %{atom() => atom()},
             aliases: [any()],
-            parent_imports: [import_mfa()],
+            parent_imports: MapSet.t(import_mfa()),
             imports: [import_mfa()]
           }
 
