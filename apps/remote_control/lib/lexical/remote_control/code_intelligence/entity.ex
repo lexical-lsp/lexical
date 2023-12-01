@@ -91,10 +91,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve({:local_call, fun_chars}, node_range, analysis, position) do
     fun = List.to_atom(fun_chars)
 
-    module =
-      analysis
-      |> Analysis.aliases_at(position)
-      |> Map.get(:__MODULE__)
+    {:ok, module} = Ast.expand_alias([:__MODULE__], analysis, position)
 
     case Ast.path_at(analysis, position) do
       {:ok, path} ->

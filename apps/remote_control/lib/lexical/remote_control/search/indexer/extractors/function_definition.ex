@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
+  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -14,11 +15,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   def extract({definition, metadata, [{fn_name, _, args}, _body]} = ast, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
     range = get_definition_range(reducer.analysis, metadata)
-
-    module =
-      reducer.analysis
-      |> Analysis.aliases_at(range.start)
-      |> Map.get(:__MODULE__)
+    {:ok, module} = Ast.expand_alias([:__MODULE__], reducer.analysis, range.start)
 
     arity =
       case args do
