@@ -49,7 +49,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       %__MODULE__{module: module, selector: expand_selector(selector), line: line}
     end
 
-    def apply_to_scope(%__MODULE__{} = import, current_scope, %MapSet{} = current_imports) do
+    def apply_to_scope(%__MODULE__{} = import, current_scope, %{} = current_imports) do
       import_module = Scope.resolve_alias_at(current_scope, import.module, import.line)
 
       functions = mfas_for(import_module, :functions)
@@ -57,27 +57,17 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
       case import.selector do
         :all ->
-          current_imports
-          |> remove_module_imports(import_module)
-          |> MapSet.union(functions)
-          |> MapSet.union(macros)
+          Map.put(current_imports, import_module, functions ++ macros)
 
         [only: :functions] ->
-          current_imports
-          |> remove_module_imports(import_module)
-          |> MapSet.union(functions)
+          Map.put(current_imports, import_module, functions)
 
         [only: :macros] ->
-          current_imports
-          |> remove_module_imports(import_module)
-          |> MapSet.union(macros)
+          Map.put(current_imports, import_module, macros)
 
         [only: fa_list] ->
           fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
-
-          current_imports
-          |> remove_module_imports(import_module)
-          |> MapSet.union(fa_mapset)
+          Map.put(current_imports, import_module, fa_mapset)
 
         [except: fa_list] ->
           # This one is a little tricky. Imports using except have two cases.
@@ -90,16 +80,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
           fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
 
-          current_imports =
-            if already_imported?(current_imports, import_module) do
-              MapSet.difference(current_imports, fa_mapset)
-            else
-              current_imports
-              |> MapSet.union(functions)
-              |> MapSet.union(macros)
-            end
-
-          MapSet.difference(current_imports, fa_mapset)
+          if already_imported?(current_imports, import_module) do
+            Map.update!(current_imports, import_module, fn old_imports ->
+              old_imports -- fa_mapset
+            end)
+          else
+            Map.put(current_imports, import_module, functions ++ macros)
+          end
       end
     end
 
@@ -136,18 +123,15 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       end
     end
 
-    defp remove_module_imports(%MapSet{} = current_imports, imported_module) do
-      current_imports
-      |> Enum.reject(&match?({^imported_module, _, _}, &1))
-      |> MapSet.new()
-    end
-
-    defp already_imported?(%MapSet{} = current_imports, imported_module) do
-      Enum.any?(current_imports, &match?({^imported_module, _, _}, &1))
+    defp already_imported?(%{} = current_imports, imported_module) do
+      case current_imports do
+        %{^imported_module => [_ | _]} -> true
+        _ -> false
+      end
     end
 
     defp function_and_arity_to_mfa(current_module, fa_list) when is_list(fa_list) do
-      MapSet.new(fa_list, fn {function, arity} -> {current_module, function, arity} end)
+      Enum.map(fa_list, fn {function, arity} -> {current_module, function, arity} end)
     end
 
     defp mfas_for(current_module, type) do
@@ -156,7 +140,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
         function_and_arity_to_mfa(current_module, fa_list)
       else
-        MapSet.new()
+        []
       end
     end
 
@@ -178,7 +162,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       module: [],
       parent_aliases: %{},
       aliases: [],
-      parent_imports: MapSet.new(),
+      parent_imports: %{},
       imports: []
     ]
 
@@ -197,13 +181,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             module: [atom()],
             parent_aliases: %{atom() => atom()},
             aliases: [any()],
-            parent_imports: MapSet.t(import_mfa()),
+            parent_imports: %{module() => [import_mfa()]},
             imports: [import_mfa()]
           }
 
     def new(%__MODULE__{} = parent_scope, id, %Range{} = range, module \\ []) do
       parent_aliases = alias_map(parent_scope)
-      parent_imports = imports(parent_scope)
+      parent_imports = import_map(parent_scope)
 
       %Scope{
         id: id,
@@ -220,6 +204,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
 
     @spec imports(t(), scope_position()) :: [import_mfa()]
     def imports(%__MODULE__{} = scope, position \\ :end) do
+      scope
+      |> import_map(position)
+      |> Map.values()
+      |> List.flatten()
+    end
+
+    def import_map(%__MODULE__{} = scope, position \\ :end) do
       end_line = end_line(scope, position)
 
       (@kernel_imports ++ scope.imports)
