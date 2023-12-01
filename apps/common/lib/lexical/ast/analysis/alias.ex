@@ -3,7 +3,8 @@ defmodule Lexical.Ast.Analysis.Alias do
 
   @type t :: %__MODULE__{}
 
-  def new(module, as, line) when is_list(module) and is_atom(as) and line > 0 do
+  def new(module, as, line)
+      when is_list(module) and is_atom(as) and is_integer(line) and line > 0 do
     %__MODULE__{module: module, as: as, line: line}
   end
 
