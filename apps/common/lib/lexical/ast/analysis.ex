@@ -14,7 +14,11 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Document.Range
   alias Sourceror.Zipper
 
+  import Record
+
   defstruct [:ast, :document, :parse_error, :tree, :scope_map, valid?: true]
+
+  defrecord :scope_tree, [:scope, children: []]
 
   @type t :: %__MODULE__{
           ast: analyzed_ast | nil,
@@ -25,14 +29,14 @@ defmodule Lexical.Ast.Analysis do
           valid?: boolean()
         }
 
+  @typedoc "A basic tree structure representing nested scopes"
+  @type scope_tree :: record(:scope_tree, scope: Scope.t(), children: [scope_tree])
+
   @typedoc "A `t:Macro.t/0` that has undergone analysis"
   @type analyzed_ast :: Macro.t()
 
   @typedoc "Unique identifier for a node in an analyzed AST."
   @type node_id :: any()
-
-  @typedoc "A basic tree structure representing nested scopes"
-  @type scope_tree :: %{scope: Scope.t(), children: [scope_tree]}
 
   @typedoc "An atom that might be used as an alias. For example: `:Foo`"
   @type module_alias :: atom()
@@ -147,9 +151,11 @@ defmodule Lexical.Ast.Analysis do
     tree |> scopes_at(position) |> Enum.reverse()
   end
 
-  defp scopes_at(%{scope: scope, children: children}, %Position{} = position) do
+  defp scopes_at(scope_tree() = tree, %Position{} = position) do
+    scope_tree(scope: scope, children: children) = tree
+
     if Range.contains?(scope.range, position) do
-      child_scopes =
+      descendants =
         Enum.find_value(children, [], fn child ->
           case scopes_at(child, position) do
             [] -> nil
@@ -157,27 +163,41 @@ defmodule Lexical.Ast.Analysis do
           end
         end)
 
-      [scope | child_scopes]
+      [scope | descendants]
     else
       []
     end
   end
 
   defp scopes_to_tree([root | rest]) do
-    {root_tree, []} = scope_to_tree(%{scope: root, children: []}, rest)
+    {root_tree, []} = scopes_to_tree(scope_tree(scope: root), rest)
     root_tree
   end
 
-  defp scope_to_tree(%{scope: parent, children: children}, [maybe_child | rest]) do
+  defp scopes_to_tree(scope_tree() = parent_tree, [maybe_child | rest]) do
+    scope_tree(scope: parent) = parent_tree
+
     if Range.contains?(parent.range, maybe_child.range, true) do
-      {child_tree, rest} = scope_to_tree(%{scope: maybe_child, children: []}, rest)
-      scope_to_tree(%{scope: parent, children: [child_tree | children]}, rest)
+      {child_tree, rest} = scopes_to_tree(scope_tree(scope: maybe_child), rest)
+
+      parent_tree
+      |> with_child_tree(child_tree)
+      |> scopes_to_tree(rest)
     else
-      {%{scope: parent, children: Enum.reverse(children)}, [maybe_child | rest]}
+      {finalize_tree(parent_tree), [maybe_child | rest]}
     end
   end
 
-  defp scope_to_tree(%{scope: scope, children: children}, []) do
-    {%{scope: scope, children: Enum.reverse(children)}, []}
+  defp scopes_to_tree(scope_tree() = tree, []) do
+    {finalize_tree(tree), []}
+  end
+
+  defp with_child_tree(scope_tree(children: children) = tree, scope_tree() = child) do
+    scope_tree(tree, children: [child | children])
+  end
+
+  defp finalize_tree(scope_tree() = tree) do
+    scope_tree(children: children) = tree
+    scope_tree(tree, children: Enum.reverse(children))
   end
 end
