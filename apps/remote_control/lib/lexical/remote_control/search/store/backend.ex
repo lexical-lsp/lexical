@@ -18,6 +18,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
 
   @type wildcard :: :_
   @type subject_query :: Entry.subject() | wildcard()
+  @type prefix_query :: Entry.subject() | wildcard()
   @type type_query :: Entry.entry_type() | wildcard()
   @type subtype_query :: Entry.entry_subtype() | wildcard()
 
@@ -73,6 +74,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   Finds all entries
   """
   @callback find_by_subject(subject_query(), type_query(), subtype_query()) :: [Entry.t()]
+
+  @doc """
+  Finds all entries whose subject starts with the given prefix
+  """
+  @callback find_by_prefix(prefix_query(), type_query(), subtype_query()) :: [Entry.t()]
 
   @doc """
   Finds entries whose ref attribute is in the given list

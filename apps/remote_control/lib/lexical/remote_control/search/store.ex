@@ -60,6 +60,10 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, {:exact, subject, constraints})
   end
 
+  def prefix(prefix, constraints) do
+    GenServer.call(__MODULE__, {:prefix, prefix, constraints})
+  end
+
   def fuzzy(subject, constraints) do
     GenServer.call(__MODULE__, {:fuzzy, subject, constraints})
   end
@@ -170,6 +174,10 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   def handle_call({:exact, subject, constraints}, _from, {ref, %State{} = state}) do
     {:reply, State.exact(state, subject, constraints), {ref, state}}
+  end
+
+  def handle_call({:prefix, prefix, constraints}, _from, {ref, %State{} = state}) do
+    {:reply, State.prefix(state, prefix, constraints), {ref, state}}
   end
 
   def handle_call({:fuzzy, subject, constraints}, _from, {ref, %State{} = state}) do

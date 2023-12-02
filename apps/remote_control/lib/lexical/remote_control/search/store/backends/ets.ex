@@ -69,6 +69,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
+  def find_by_prefix(prefix, type, subtype) do
+    GenServer.call(genserver_name(), {:find_by_prefix, [prefix, type, subtype]})
+  end
+
+  @impl Backend
   def find_by_refs(references, type, subtype) do
     GenServer.call(genserver_name(), {:find_by_references, [references, type, subtype]})
   end

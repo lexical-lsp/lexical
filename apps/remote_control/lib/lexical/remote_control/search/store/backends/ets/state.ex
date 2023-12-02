@@ -20,7 +20,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       query_by_id: 0,
       query_by_id: 1,
       query_by_path: 1,
-      query_by_subject: 1
+      query_by_subject: 1,
+      query_by_prefix: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid]
@@ -57,6 +58,23 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     state.table_name
     |> :ets.match({query_by_id(), :"$1"})
     |> List.flatten()
+  end
+
+  def find_by_prefix(%__MODULE__{} = state, subject, type, subtype) do
+    versions = Versions.current()
+
+    match_pattern =
+      query_by_prefix(
+        prefix: to_prefix(subject),
+        type: type,
+        subtype: subtype,
+        elixir_version: versions.elixir,
+        erlang_version: versions.erlang
+      )
+
+    state.table_name
+    |> :ets.select([{{match_pattern, :_}, [], [:"$_"]}])
+    |> Enum.flat_map(fn {_, match} -> match end)
   end
 
   def find_by_subject(%__MODULE__{} = state, subject, type, subtype) do
@@ -147,6 +165,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   defp to_subject(:_), do: :_
   defp to_subject(atom) when is_atom(atom), do: inspect(atom)
   defp to_subject(other), do: to_string(other)
+
+  defp to_prefix(prefix) when is_binary(prefix) do
+    [last_char | others] = prefix |> String.to_charlist() |> Enum.reverse()
+    others |> Enum.reverse() |> Enum.concat([last_char | :_])
+  end
 
   defp current_schema do
     List.last(@schema_order)

@@ -25,6 +25,14 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
     :path
   ]
 
+  defkey :by_prefix, [
+    :prefix,
+    :type,
+    :subtype,
+    :elixir_version,
+    :erlang_version
+  ]
+
   defkey :by_path, [:path]
 
   def migrate(entries) do
@@ -70,9 +78,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
         erlang_version: entry.erlang_version
       )
 
+    prefix_key =
+      by_prefix(
+        prefix: to_prefix(entry.subject),
+        type: entry.type,
+        subtype: entry.subtype,
+        elixir_version: entry.elixir_version,
+        erlang_version: entry.erlang_version
+      )
+
     path_key = by_path(path: entry.path)
 
-    [{subject_key, entry}, {id_key, entry}, {path_key, id_key}]
+    [{subject_key, entry}, {prefix_key, entry}, {id_key, entry}, {path_key, id_key}]
   end
 
   # This case will handle any namespaced entries
@@ -92,4 +109,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
   defp to_subject(:_), do: :_
   defp to_subject(atom) when is_atom(atom), do: inspect(atom)
   defp to_subject(other), do: to_string(other)
+
+  defp to_prefix(atom) when is_atom(atom), do: atom |> inspect() |> to_charlist()
+  defp to_prefix(other), do: to_charlist(other)
 end
