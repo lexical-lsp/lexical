@@ -227,6 +227,8 @@ end, lvim.lsp.automatic_configuration.skipped_servers)
 
 This is necessary because LunarVim defaults to `elixirls` so we must ignore it first. Otherwise you'll have both `lexical` and `elixirls` running when you open Elixir files.
 
+Remove `elixirls` from the `lvim.lsp.installer.setup.ensure_installed = { ... }` list so it does not get automatically reinstalled.
+
 Optionally run `:LspUninstall elixirls` from within neovim if you don't want to keep `elixirls` around.
 
 Then use the same configuration as the one in the [neovim](#neovim) section.
