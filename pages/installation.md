@@ -81,9 +81,10 @@ INDEXING_ENABLED=true mix package
 2. [Vanilla Emacs with eglot](#vanilla-emacs-with-eglot)
 3. [Visual Studio Code](#visual-studio-code)
 4. [neovim](#neovim)
-5. [Vim + ALE](#vim--ale)
-6. [Vim + Vim-LSP](#vim--vim-lsp)
-7. [Helix](#helix)
+5. [LunarVim](#lunarvim)
+6. [Vim + ALE](#vim--ale)
+7. [Vim + Vim-LSP](#vim--vim-lsp)
+8. [Helix](#helix)
 
 ### Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
@@ -207,6 +208,28 @@ configuration below as a reference:
 ```
 
 If the configuration above doesn't work for you, please try this minimal [neovim configuration](https://github.com/scottming/nvim-mini-for-lexical), It can eliminate other plugin factors.
+
+### LunarVim
+
+[LunarVim](https://www.lunarvim.org) is a neovim configuration package with a lot of goodies built-in, while remaining very configurable.
+
+First, add this to your configuration:
+
+```lua
+-- Add `elixirls` to `skipped_servers` list
+vim.list_extend(lvim.lsp.automatic_configuration.skipped_servers, { "elixirls" })
+
+-- Remove `lexical` from `skipped_servers` list
+lvim.lsp.automatic_configuration.skipped_servers = vim.tbl_filter(function(server)
+  return server ~= "lexical"
+end, lvim.lsp.automatic_configuration.skipped_servers)
+```
+
+This is necessary because LunarVim defaults to `elixirls` so we must ignore it first. Otherwise you'll have both `lexical` and `elixirls` running when you open Elixir files.
+
+Optionally run `:LspUninstall elixirls` from within neovim if you don't want to keep `elixirls` around.
+
+Then use the same configuration as the one in the [neovim](#neovim) section.
 
 ### Vim + ALE
 
