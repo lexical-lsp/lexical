@@ -1,4 +1,4 @@
-defmodule Lexical.Module.Loader do
+defmodule Lexical.RemoteControl.Module.Loader do
   @moduledoc """
   Apparently, Code.ensure_loaded?/1 is pretty slow. I'm guessing because it has to do a
   round trip to the code server for each check. This in turn slows down indexing, so the thought

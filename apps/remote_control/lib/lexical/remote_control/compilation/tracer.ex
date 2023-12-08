@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.Compilation.Tracer do
-  alias Lexical.Module.Loader
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Dispatch
+  alias Lexical.RemoteControl.Module.Loader
 
   import RemoteControl.Api.Messages
 

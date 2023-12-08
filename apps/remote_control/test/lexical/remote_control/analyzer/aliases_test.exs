@@ -1,5 +1,6 @@
-defmodule Lexical.Ast.Analysis.AliasesTest do
+defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
   alias Lexical.Ast
+  alias Lexical.RemoteControl.Analyzer
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
@@ -11,7 +12,7 @@ defmodule Lexical.Ast.Analysis.AliasesTest do
 
     document
     |> Ast.analyze()
-    |> Ast.Analysis.aliases_at(position)
+    |> Analyzer.aliases_at(position)
   end
 
   describe "top level aliases" do

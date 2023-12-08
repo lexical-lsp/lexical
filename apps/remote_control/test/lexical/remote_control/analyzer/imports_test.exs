@@ -31,6 +31,7 @@ end
 
 defmodule Lexical.Ast.Analysis.ImportsTest do
   alias Lexical.Ast
+  alias Lexical.RemoteControl.Analyzer
   alias Parent.Child.ImportedModule
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
@@ -42,7 +43,7 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
 
     document
     |> Ast.analyze()
-    |> Ast.Analysis.imports_at(position)
+    |> Analyzer.imports_at(position)
   end
 
   def assert_imported(imports, module) do

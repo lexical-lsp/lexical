@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.Completion do
-  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
 
   def elixir_sense_expand(doc_string, %Position{} = position) do
@@ -26,7 +26,8 @@ defmodule Lexical.RemoteControl.Completion do
       |> Lexical.Ast.cursor_path(position)
       |> container_struct_module()
 
-    with {:ok, struct_module} <- Ast.expand_alias(container_struct_module, analysis, position),
+    with {:ok, struct_module} <-
+           RemoteControl.Analyzer.expand_alias(container_struct_module, analysis, position),
          true <- function_exported?(struct_module, :__struct__, 0) do
       struct_module
       |> struct()

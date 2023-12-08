@@ -1,6 +1,5 @@
-alias Lexical.Module.Loader
-alias Lexical.Document
 alias Lexical.Ast
+alias Lexical.Document
 
 path =
   [__DIR__, "**", "enum.ex"]

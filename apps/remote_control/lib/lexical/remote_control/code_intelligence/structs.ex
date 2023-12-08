@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
-  alias Lexical.Module.Loader
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Dispatch
+  alias Lexical.RemoteControl.Module.Loader
 
   import Messages
 

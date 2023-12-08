@@ -1,9 +1,8 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
-  alias Lexical.Ast
-  alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
@@ -82,7 +81,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
         %Reducer{} = reducer
       ) do
     position = Reducer.position(reducer)
-    {module, _, _} = Analysis.resolve_local_call(reducer.analysis, position, fn_name, arity)
+
+    {module, _, _} =
+      RemoteControl.Analyzer.resolve_local_call(reducer.analysis, position, fn_name, arity)
+
     entry = entry(reducer, end_metadata, arity_meta, module, fn_name, arity)
     {:ok, entry, nil}
   end
@@ -118,7 +120,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     arity = call_arity(args)
     position = Reducer.position(reducer)
 
-    {module, _, _} = Analysis.resolve_local_call(reducer.analysis, position, fn_name, arity)
+    {module, _, _} =
+      RemoteControl.Analyzer.resolve_local_call(reducer.analysis, position, fn_name, arity)
 
     entry = entry(reducer, meta, meta, [module], fn_name, args)
 
@@ -140,7 +143,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     arity = call_arity(args_arity)
     block = Reducer.current_block(reducer)
     range = get_reference_range(reducer.analysis.document, start_metadata, end_metadata)
-    {:ok, module} = Ast.expand_alias(module, reducer.analysis, range.start)
+    {:ok, module} = RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start)
     mfa = "#{Formats.module(module)}.#{function_name}/#{arity}"
 
     Entry.reference(

@@ -49,7 +49,7 @@ defmodule Lexical.RemoteControl.Modules do
   """
 
   alias Future.Code.Typespec
-  alias Lexical.Module.Loader
+  alias Lexical.RemoteControl.Module.Loader
 
   @typedoc "Module documentation record as defined by EEP-48"
   @type docs_v1 :: tuple()

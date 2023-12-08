@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.RemoteControl
 
   require Logger
   require Sourceror.Identifier
@@ -91,7 +92,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve({:local_call, fun_chars}, node_range, analysis, position) do
     fun = List.to_atom(fun_chars)
 
-    {:ok, module} = Ast.expand_alias([:__MODULE__], analysis, position)
+    {:ok, module} = RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position)
 
     case Ast.path_at(analysis, position) do
       {:ok, path} ->
@@ -207,7 +208,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp expand_alias(module, analysis, %Position{} = position) when is_binary(module) do
     [module]
     |> Module.concat()
-    |> Ast.expand_alias(analysis, position)
+    |> RemoteControl.Analyzer.expand_alias(analysis, position)
   end
 
   defp expand_alias(_, _analysis, _position), do: :error

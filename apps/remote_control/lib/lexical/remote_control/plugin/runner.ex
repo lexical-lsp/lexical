@@ -2,8 +2,8 @@ defmodule Lexical.RemoteControl.Plugin.Runner do
   @moduledoc false
 
   alias Lexical.Document
-  alias Lexical.Module.Loader
   alias Lexical.Project
+  alias Lexical.RemoteControl.Module.Loader
   alias Lexical.RemoteControl.Plugin.Runner
 
   require Logger

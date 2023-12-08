@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.Plugin.Discovery do
   and the plugin will crash.
   """
 
-  alias Lexical.Module.Loader
+  alias Lexical.RemoteControl.Module.Loader
   alias Lexical.RemoteControl.Plugin.Runner
   alias Mix.Tasks.Namespace
 
