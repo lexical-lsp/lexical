@@ -1,4 +1,7 @@
 defmodule Parent.Child.ImportedModule do
+  def _underscore do
+  end
+
   def function do
   end
 
@@ -46,13 +49,17 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
     functions = module.__info__(:functions)
     macros = module.__info__(:macros)
 
-    for {function, arity} <- functions ++ macros do
+    for {function, arity} <- functions ++ macros,
+        function_name = Atom.to_string(function),
+        not String.starts_with?(function_name, "_") do
       assert_imported(imports, module, function, arity)
     end
   end
 
   def assert_imported(imports, module, function, arity) do
-    assert Enum.member?(imports, {module, function, arity})
+    module_imports = Enum.filter(imports, &match?({^module, _, _}, &1))
+
+    assert {module, function, arity} in module_imports
   end
 
   def refute_imported(imports, module) do
@@ -80,6 +87,16 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
         |> imports_at_cursor()
 
       assert_imported(imports, ImportedModule)
+    end
+
+    test "single underscore functions aren't imported by defualt" do
+      imports =
+        ~q[
+          import Parent.Child.ImportedModule
+        ]
+        |> imports_at_cursor()
+
+      refute_imported(imports, ImportedModule, :_underscore, 0)
     end
 
     test "double underscore functions aren't selected by default" do

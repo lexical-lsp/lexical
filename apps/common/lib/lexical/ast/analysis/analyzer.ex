@@ -150,7 +150,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         type
         |> module.__info__()
         |> Enum.reject(fn {name, _arity} ->
-          name |> Atom.to_string() |> String.starts_with?("__")
+          name |> Atom.to_string() |> String.starts_with?("_")
         end)
       end)
     end
