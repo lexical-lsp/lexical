@@ -163,7 +163,6 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       module: [],
       parent_aliases: %{},
       aliases: [],
-      parent_imports: %{},
       imports: []
     ]
 
@@ -182,20 +181,18 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             module: [atom()],
             parent_aliases: %{atom() => atom()},
             aliases: [any()],
-            parent_imports: %{module() => [import_mfa()]},
             imports: [import_mfa()]
           }
 
     def new(%__MODULE__{} = parent_scope, id, %Range{} = range, module \\ []) do
       parent_aliases = alias_map(parent_scope)
-      parent_imports = import_map(parent_scope)
 
       %Scope{
         id: id,
         range: range,
         module: module,
         parent_aliases: parent_aliases,
-        parent_imports: parent_imports
+        imports: parent_scope.imports
       }
     end
 
@@ -219,7 +216,7 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       # override imports on earlier lines
       |> Enum.sort_by(& &1.line)
       |> Enum.take_while(&(&1.line <= end_line))
-      |> Enum.reduce(scope.parent_imports, fn %Import{} = import, current_imports ->
+      |> Enum.reduce(%{}, fn %Import{} = import, current_imports ->
         Import.apply_to_scope(import, scope, current_imports)
       end)
     end
