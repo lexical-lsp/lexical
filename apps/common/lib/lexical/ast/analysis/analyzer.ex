@@ -161,7 +161,6 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       :id,
       :range,
       module: [],
-      parent_aliases: %{},
       aliases: [],
       imports: []
     ]
@@ -179,20 +178,17 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             id: any(),
             range: Range.t(),
             module: [atom()],
-            parent_aliases: %{atom() => atom()},
-            aliases: [any()],
+            aliases: [Alias.t()],
             imports: [import_mfa()]
           }
 
     def new(%__MODULE__{} = parent_scope, id, %Range{} = range, module \\ []) do
-      parent_aliases = alias_map(parent_scope)
-
       %Scope{
         id: id,
-        range: range,
+        aliases: parent_scope.aliases,
+        imports: parent_scope.imports,
         module: module,
-        parent_aliases: parent_aliases,
-        imports: parent_scope.imports
+        range: range
       }
     end
 
@@ -231,7 +227,6 @@ defmodule Lexical.Ast.Analysis.Analyzer do
       |> Enum.sort_by(& &1.line)
       |> Enum.take_while(&(&1.line <= end_line))
       |> Map.new(&{&1.as, &1})
-      |> Enum.into(scope.parent_aliases)
     end
 
     def resolve_alias_at(%__MODULE__{} = scope, module, line) do
@@ -260,6 +255,13 @@ defmodule Lexical.Ast.Analysis.Analyzer do
             _ ->
               Module.concat(module)
           end
+      end
+    end
+
+    def fetch_alias_with_prefix(%__MODULE__{} = scope, prefix) do
+      case Enum.find(scope.aliases, fn %Alias{} = alias -> alias.as == prefix end) do
+        %Alias{} = existing -> {:ok, existing}
+        _ -> :error
       end
     end
 
@@ -333,11 +335,11 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         [prefix | rest] = alias.module
 
         alias =
-          case scope.parent_aliases do
-            %{^prefix => %Alias{} = existing_alias} ->
+          case Scope.fetch_alias_with_prefix(scope, prefix) do
+            {:ok, %Alias{} = existing_alias} ->
               %Alias{alias | module: existing_alias.module ++ rest}
 
-            _ ->
+            :error ->
               alias
           end
 
