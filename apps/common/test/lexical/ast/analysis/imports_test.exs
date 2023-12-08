@@ -26,7 +26,7 @@ defmodule WithStruct do
   defstruct [:field]
 end
 
-defmodule Lexical.Ast.Analysis.AliasesTest do
+defmodule Lexical.Ast.Analysis.ImportsTest do
   alias Lexical.Ast
   alias Parent.Child.ImportedModule
   import Lexical.Test.CursorSupport
@@ -52,7 +52,7 @@ defmodule Lexical.Ast.Analysis.AliasesTest do
   end
 
   def assert_imported(imports, module, function, arity) do
-    assert MapSet.member?(imports, {module, function, arity})
+    assert Enum.member?(imports, {module, function, arity})
   end
 
   def refute_imported(imports, module) do
@@ -65,7 +65,9 @@ defmodule Lexical.Ast.Analysis.AliasesTest do
   end
 
   def refute_imported(imports, module, function, arity) do
-    refute MapSet.member?(imports, {module, function, arity})
+    module_imports = Enum.filter(imports, &match?({^module, _, _}, &1))
+
+    refute {module, function, arity} in module_imports
   end
 
   describe "top level imports" do

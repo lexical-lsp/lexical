@@ -32,7 +32,7 @@ defmodule Lexical.Protocol.MixProject do
     [
       {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
-      {:common, in_umbrella: true},
+      {:common, in_umbrella: true, application: false},
       {:jason, "~> 1.4", optional: true},
       {:patch, "~> 0.12", only: [:test]},
       {:proto, in_umbrella: true}

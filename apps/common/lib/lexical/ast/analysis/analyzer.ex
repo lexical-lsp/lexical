@@ -65,11 +65,11 @@ defmodule Lexical.Ast.Analysis.Analyzer do
         [only: :macros] ->
           Map.put(current_imports, import_module, macros)
 
-        [only: fa_list] ->
-          fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
-          Map.put(current_imports, import_module, fa_mapset)
+        [only: functions_to_import] ->
+          functions_to_import = function_and_arity_to_mfa(import_module, functions_to_import)
+          Map.put(current_imports, import_module, functions_to_import)
 
-        [except: fa_list] ->
+        [except: functions_to_except] ->
           # This one is a little tricky. Imports using except have two cases.
           # In the first case, if the module hasn't been previously imported, we
           # collect all the functions in the current module and remove the ones in the
@@ -78,14 +78,15 @@ defmodule Lexical.Ast.Analysis.Analyzer do
           # the except clause from those that have been previously imported.
           # See: https://hexdocs.pm/elixir/1.13.0/Kernel.SpecialForms.html#import/2-selector
 
-          fa_mapset = function_and_arity_to_mfa(import_module, fa_list)
+          functions_to_except = function_and_arity_to_mfa(import_module, functions_to_except)
 
           if already_imported?(current_imports, import_module) do
             Map.update!(current_imports, import_module, fn old_imports ->
-              old_imports -- fa_mapset
+              old_imports -- functions_to_except
             end)
           else
-            Map.put(current_imports, import_module, functions ++ macros)
+            to_import = (functions ++ macros) -- functions_to_except
+            Map.put(current_imports, import_module, to_import)
           end
       end
     end

@@ -42,7 +42,7 @@ defmodule Lexical.Server.MixProject do
     [
       {:lexical_shared, path: "../../projects/lexical_shared", override: true},
       {:lexical_test, path: "../../projects/lexical_test", only: [:dev, :test]},
-      {:common, in_umbrella: true},
+      {:common, in_umbrella: true, application: false},
       {:elixir_sense, github: "elixir-lsp/elixir_sense"},
       {:jason, "~> 1.4"},
       {:logger_file_backend, "~> 0.0.13", only: [:dev, :prod]},
