@@ -1,8 +1,7 @@
 defmodule Lexical.RemoteControl.Analyzer.Imports do
   alias Lexical.Ast.Analysis
-  alias Lexical.Ast.Analysis.Analyzer
-  alias Lexical.Ast.Analysis.Analyzer.Import
-  alias Lexical.Ast.Analysis.Analyzer.Scope
+  alias Lexical.Ast.Analysis.Import
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document.Position
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl.Analyzer.Aliases
@@ -15,9 +14,9 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
   ]
 
   @spec at(Analysis.t(), Position.t()) :: [Import.t()]
-  def(at(%Analysis{} = analysis, %Position{} = position)) do
+  def at(%Analysis{} = analysis, %Position{} = position) do
     case Scopes.at(analysis, position) do
-      [%Analyzer.Scope{} = scope | _] ->
+      [%Scope{} = scope | _] ->
         imports(scope, position)
 
       _ ->
@@ -26,14 +25,14 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
   end
 
   @spec imports(Scope.t(), Scope.scope_position()) :: [Scope.import_mfa()]
-  def imports(%Analyzer.Scope{} = scope, position \\ :end) do
+  def imports(%Scope{} = scope, position \\ :end) do
     scope
     |> import_map(position)
     |> Map.values()
     |> List.flatten()
   end
 
-  defp import_map(%Analyzer.Scope{} = scope, position) do
+  defp import_map(%Scope{} = scope, position) do
     end_line = Scope.end_line(scope, position)
 
     (@kernel_imports ++ scope.imports)
@@ -41,7 +40,7 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
     # override imports on earlier lines
     |> Enum.sort_by(& &1.line)
     |> Enum.take_while(&(&1.line <= end_line))
-    |> Enum.reduce(%{}, fn %Analyzer.Import{} = import, current_imports ->
+    |> Enum.reduce(%{}, fn %Import{} = import, current_imports ->
       apply_to_scope(import, scope, current_imports)
     end)
   end

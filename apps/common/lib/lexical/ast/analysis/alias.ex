@@ -1,4 +1,4 @@
-defmodule Lexical.Ast.Analysis.Analyzer.Alias do
+defmodule Lexical.Ast.Analysis.Alias do
   defstruct [:module, :as, :line]
 
   @type t :: %__MODULE__{

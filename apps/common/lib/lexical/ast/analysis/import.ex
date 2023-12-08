@@ -1,4 +1,4 @@
-defmodule Lexical.Ast.Analysis.Analyzer.Import do
+defmodule Lexical.Ast.Analysis.Import do
   defstruct module: nil, selector: :all, line: nil
   @type function_name :: atom()
   @type function_arity :: {function_name(), arity()}

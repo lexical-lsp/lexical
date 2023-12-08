@@ -1,5 +1,5 @@
-defmodule Lexical.Ast.Analysis.Analyzer.Scope do
-  alias Lexical.Ast.Analysis.Analyzer.Alias
+defmodule Lexical.Ast.Analysis.Scope do
+  alias Lexical.Ast.Analysis.Alias
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 

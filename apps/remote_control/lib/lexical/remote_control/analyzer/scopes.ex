@@ -1,6 +1,6 @@
 defmodule Lexical.RemoteControl.Analyzer.Scopes do
   alias Lexical.Ast.Analysis
-  alias Lexical.Ast.Analysis.Analyzer.Scope
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 

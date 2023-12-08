@@ -1,8 +1,8 @@
-defmodule Lexical.Ast.Analysis.Analyzer.State do
-  alias Lexical.Ast.Analysis.Analyzer
-  alias Lexical.Ast.Analysis.Analyzer.Alias
-  alias Lexical.Ast.Analysis.Analyzer.Import
-  alias Lexical.Ast.Analysis.Analyzer.Scope
+defmodule Lexical.Ast.Analysis.State do
+  alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Analysis.Alias
+  alias Lexical.Ast.Analysis.Import
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -42,7 +42,7 @@ defmodule Lexical.Ast.Analysis.Analyzer.State do
   def push_scope_for(%__MODULE__{} = state, quoted, %Range{} = range, module) do
     module = module || current_module(state)
 
-    id = Analyzer.scope_id(quoted)
+    id = Analysis.scope_id(quoted)
     push_scope(state, id, range, module)
   end
 
