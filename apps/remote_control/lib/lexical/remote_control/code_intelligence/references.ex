@@ -34,21 +34,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp module_references(module, include_definitions?) do
-    with {:ok, references} <- Store.exact(module, type: :module, subtype: :reference) do
-      entities = maybe_fetch_module_definitions(module, include_definitions?) ++ references
-      locations = Enum.map(entities, &to_location/1)
-      {:ok, locations}
-    end
+    references = Store.exact(module, type: :module, subtype: :reference)
+    entities = maybe_fetch_module_definitions(module, include_definitions?) ++ references
+    locations = Enum.map(entities, &to_location/1)
+    {:ok, locations}
   end
 
   defp function_references(module, function_name, arity, include_definitions) do
     subject = Formats.mfa(module, function_name, arity)
-
-    with {:ok, references} <- Store.exact(subject, type: :function, subtype: :reference) do
-      entities = maybe_fetch_function_definitions(subject, include_definitions) ++ references
-      locations = Enum.map(entities, &to_location/1)
-      {:ok, locations}
-    end
+    references = Store.exact(subject, type: :function, subtype: :reference)
+    entities = maybe_fetch_function_definitions(subject, include_definitions) ++ references
+    locations = Enum.map(entities, &to_location/1)
+    {:ok, locations}
   end
 
   defp to_location(%Entry{} = entry) do
@@ -57,19 +54,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp maybe_fetch_function_definitions(subject, true) do
-    case Store.exact(subject, type: :function, subtype: :definition) do
-      {:ok, definitions} -> definitions
-      _ -> []
-    end
+    Store.exact(subject, type: :function, subtype: :definition)
   end
 
   defp maybe_fetch_function_definitions(_, false), do: []
 
   defp maybe_fetch_module_definitions(module, true) do
-    case Store.exact(module, type: :module, subtype: :definition) do
-      {:ok, definitions} -> definitions
-      _ -> []
-    end
+    Store.exact(module, type: :module, subtype: :definition)
   end
 
   defp maybe_fetch_module_definitions(_module, false) do

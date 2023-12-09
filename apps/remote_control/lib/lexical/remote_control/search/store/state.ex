@@ -78,26 +78,24 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def exact(%__MODULE__{} = state, subject, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    results = state.backend.find_by_subject(subject, type, subtype)
-    {:ok, results}
+    state.backend.find_by_subject(subject, type, subtype)
   end
 
   def prefix(%__MODULE__{} = state, prefix, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    results = state.backend.find_by_prefix(prefix, type, subtype)
-    {:ok, results}
+    state.backend.find_by_prefix(prefix, type, subtype)
   end
 
   def fuzzy(%__MODULE__{} = state, subject, constraints) do
     case Fuzzy.match(state.fuzzy, subject) do
       [] ->
-        {:ok, []}
+        []
 
       refs ->
         type = Keyword.get(constraints, :type, :_)
         subtype = Keyword.get(constraints, :subtype, :_)
-        {:ok, state.backend.find_by_refs(refs, type, subtype)}
+        state.backend.find_by_refs(refs, type, subtype)
     end
   end
 
