@@ -28,6 +28,9 @@ defmodule Lexical.Server.Provider.Handlers do
       %Requests.ExecuteCommand{} ->
         {:ok, Handlers.Commands}
 
+      %Requests.PrepareRename{} ->
+        {:ok, Handlers.PrepareRename}
+
       %Requests.Rename{} ->
         {:ok, Handlers.Rename}
 

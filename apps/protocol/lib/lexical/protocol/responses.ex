@@ -75,6 +75,12 @@ defmodule Lexical.Protocol.Responses do
     defresponse optional(Types.Message.ActionItem)
   end
 
+  defmodule PrepareRename do
+    use Proto
+
+    defresponse Types.PrepareRenameResult
+  end
+
   defmodule Rename do
     use Proto
 

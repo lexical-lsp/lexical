@@ -24,6 +24,17 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     end
   end
 
+  @spec supported?(Analysis.t(), Position.t()) :: boolean()
+  def supported?(%Analysis{} = analysis, %Position{} = position) do
+    case resolve_module(analysis, position) do
+      {:ok, _, _} ->
+        true
+
+      {:error, _} ->
+        false
+    end
+  end
+
   defp resolve_module(analysis, position) do
     case Entity.resolve(analysis, position) do
       {:ok, {module_or_struct, module}, range} when module_or_struct in [:struct, :module] ->

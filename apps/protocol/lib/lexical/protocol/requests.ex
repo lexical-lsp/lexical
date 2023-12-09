@@ -76,6 +76,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "workspace/executeCommand", Types.ExecuteCommand.Params
   end
 
+  defmodule PrepareRename do
+    use Proto
+
+    defrequest "textDocument/prepareRename", Types.PrepareRename.Params
+  end
+
   defmodule Rename do
     use Proto
 
