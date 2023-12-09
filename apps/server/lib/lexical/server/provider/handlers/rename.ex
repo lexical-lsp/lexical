@@ -10,7 +10,7 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
 
   def handle(%Rename{} = request, %Env{} = env) do
     case Document.Store.fetch(request.document.uri, :analysis) do
-      {:ok, _document, %Ast.Analysis{} = analysis} ->
+      {:ok, _document, %Ast.Analysis{valid?: true} = analysis} ->
         rename(env.project, analysis, request.position, request.new_name, request.id)
 
       _ ->

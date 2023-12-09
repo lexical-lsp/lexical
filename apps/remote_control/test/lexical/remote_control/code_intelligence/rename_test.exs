@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
   setup_all do
     project = project()
     RemoteControl.set_project(project)
-    start_supervised!(Document.Store)
+    start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
 
     start_supervised!(
       {Search.Store,

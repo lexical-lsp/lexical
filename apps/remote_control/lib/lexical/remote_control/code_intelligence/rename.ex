@@ -110,8 +110,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   end
 
   defp resolve_entity_range(uri, position, entity) do
-    with {:ok, document} <- Document.Store.open_temporary(uri),
-         analysis = Ast.analyze(document),
+    with {:ok, _} <- Document.Store.open_temporary(uri),
+         {:ok, document, analysis} <- Document.Store.fetch(uri, :analysis),
          {:ok, result, range} <- resolve_module(analysis, position) do
       if result == entity do
         {:ok, range}
