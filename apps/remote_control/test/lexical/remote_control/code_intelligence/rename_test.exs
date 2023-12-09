@@ -205,13 +205,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
     test "in the middle of reference" do
       {:ok, result} =
         ~q[
-          defmodule TopLevel.Middle.Module do
-            alias TopLevel.|Middle.Module
+          defmodule TopLevel.Second.Middle.Module do
+            alias TopLevel.Second.|Middle.Module
           end
         ] |> rename("Renamed")
 
-      assert result =~ ~S[defmodule TopLevel.Renamed.Module]
-      assert result =~ ~S[alias TopLevel.Renamed.Module]
+      assert result =~ ~S[defmodule TopLevel.Second.Renamed.Module]
+      assert result =~ ~S[alias TopLevel.Second.Renamed.Module]
     end
 
     test "succeeds when there are same module name in the cursor neighborhood" do

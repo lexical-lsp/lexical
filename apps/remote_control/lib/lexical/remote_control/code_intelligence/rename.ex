@@ -18,7 +18,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
       edits =
         analysis.document
         |> search_related_candidates(position, entity, range)
-        |> to_uri_with_changes(new_name)
+        |> to_edits_by_uri(new_name)
 
       {:ok, edits}
     end
@@ -82,80 +82,62 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     entity_string = inspect(entity)
     prefix = "#{entity_string}."
 
-    case Store.prefix(prefix, subject: [:definition, :reference]) do
-      {:ok, results} ->
-        filtered =
-          results
-          |> Enum.filter(fn result ->
-            range_text = range_text(result.range)
-            String.contains?(range_text, cursor_entity_string)
-          end)
-          |> adjust_range(entity)
-
-        filtered
-
-      _ ->
-        []
-    end
+    prefix
+    |> Store.prefix(subject: [:definition, :reference])
+    |> Enum.filter(&entry_matching?(&1, cursor_entity_string))
+    |> adjust_range(entity)
   end
 
   defp exacts(entity, cursor_entity_string) do
     entity_string = inspect(entity)
 
-    case Store.exact(entity_string, subject: [:definition, :reference]) do
-      {:ok, results} ->
-        filtered =
-          Enum.filter(results, fn result ->
-            range_text = range_text(result.range)
-            String.contains?(range_text, cursor_entity_string)
-          end)
+    entity_string
+    |> Store.exact(subject: [:definition, :reference])
+    |> Enum.filter(&entry_matching?(&1, cursor_entity_string))
+  end
 
-        filtered
-
-      _ ->
-        []
-    end
+  defp entry_matching?(entry, cursor_entity_string) do
+    range_text = range_text(entry.range)
+    String.contains?(range_text, cursor_entity_string)
   end
 
   defp adjust_range(entries, entity) do
-    for entry <- entries do
-      location = {entry.range.start.line, entry.range.start.character}
-      uri = Document.Path.ensure_uri(entry.path)
-
-      case resolve_entity_range(uri, location, entity) do
-        {:ok, range} ->
-          %{entry | range: range}
-
-        :error ->
-          :error
-      end
+    for entry <- entries,
+        uri = Document.Path.ensure_uri(entry.path),
+        {:ok, range} = resolve_entity_range(uri, entry.range.start, entity) do
+      %{entry | range: range}
     end
-    |> Enum.reject(&(&1 == :error))
   end
 
-  defp resolve_entity_range(uri, location, entity) do
-    {line, character} = location
-
+  defp resolve_entity_range(uri, position, entity) do
     with {:ok, document} <- Document.Store.open_temporary(uri),
-         position = Position.new(document, line, character),
          analysis = Ast.analyze(document),
          {:ok, result, range} <- resolve_module(analysis, position) do
       if result == entity do
         {:ok, range}
       else
-        result_length = result |> inspect() |> String.length()
-        # Move the cursor the next part:
+        last_part_length = result |> last_part() |> String.length()
+        # Move the cursor to the next part:
         # `|Parent.Next.Target.Child` -> 'Parent.|Next.Target.Child' -> 'Parent.Next.|Target.Child'
-        resolve_entity_range(uri, {line, character + result_length + 1}, entity)
+        character = position.character + last_part_length + 1
+        position = Position.new(document, position.line, character)
+        resolve_entity_range(uri, position, entity)
       end
     else
       _ ->
-        Logger.error("Failed to find entity range for #{inspect(uri)} at #{inspect(location)}")
+        Logger.error("Failed to find entity range for #{inspect(uri)} at #{inspect(position)}")
         :error
     end
   end
 
-  defp to_uri_with_changes(results, new_name) do
+  defp last_part(entity) when is_atom(entity) do
+    entity
+    |> inspect()
+    |> String.split(".")
+    |> List.last()
+  end
+
+  defp to_edits_by_uri(results, new_name) do
     Enum.group_by(
       results,
       fn result -> Document.Path.ensure_uri(result.path) end,
