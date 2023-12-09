@@ -52,8 +52,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   defp search_related_candidates(document, position, entity, range) do
     cursor_entity_string = cursor_entity_string(range)
 
-    entities =
-      exacts(entity, cursor_entity_string)
+    entities = exacts(entity, cursor_entity_string)
 
     # Users won't always want to rename descendants of a module.
     # For instance, when there are no more submodules after the cursor.
@@ -96,7 +95,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
 
     prefix
     |> Store.prefix(subject: [:definition, :reference])
-    |> Enum.filter(&entry_matching?(&1, cursor_entity_string))
+    |> Enum.filter(&(entry_matching?(&1, cursor_entity_string) and has_dots_in_range?(&1)))
     |> adjust_range(entity)
   end
 
@@ -109,14 +108,19 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   end
 
   defp entry_matching?(entry, cursor_entity_string) do
-    range_text = range_text(entry.range)
-    String.contains?(range_text, cursor_entity_string)
+    entry.range |> range_text() |> String.contains?(cursor_entity_string)
+  end
+
+  defp has_dots_in_range?(entry) do
+    entry.range |> range_text() |> String.contains?(".")
   end
 
   defp adjust_range(entries, entity) do
     for entry <- entries,
         uri = Document.Path.ensure_uri(entry.path),
-        {:ok, range} = resolve_entity_range(uri, entry.range.start, entity) do
+        range_result = resolve_entity_range(uri, entry.range.start, entity),
+        match?({:ok, _}, range_result) do
+      {_, range} = range_result
       %{entry | range: range}
     end
   end

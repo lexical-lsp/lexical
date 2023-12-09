@@ -232,6 +232,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[defmodule TopLevel.Foo.Renamed do]
       assert result =~ ~S[alias TopLevel.Foo.Renamed]
     end
+
+    test "succeeds even if there are descendants with the same name" do
+      {:ok, result} =
+        ~q[
+        defmodule TopLevel.Foo do
+          defmodule Foo do # skip this
+          end
+        end
+
+        defmodule TopLevel.Bar do
+          alias TopLevel.|Foo.Foo
+        end
+      ]
+        |> rename("Renamed")
+
+      assert result =~ ~S[defmodule TopLevel.Renamed do]
+      assert result =~ ~S[defmodule Foo do # skip this]
+      assert result =~ ~S[alias TopLevel.Renamed.Foo]
+    end
   end
 
   describe "rename struct" do
