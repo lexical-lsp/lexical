@@ -47,12 +47,12 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, CodeAction, :for_range, [document, range, diagnostics, kinds])
   end
 
-  def rename_supported?(
+  def prepare_rename(
         %Project{} = project,
         %Analysis{} = analysis,
         %Position{} = position
       ) do
-    RemoteControl.call(project, CodeIntelligence.Rename, :supported?, [analysis, position])
+    RemoteControl.call(project, CodeIntelligence.Rename, :prepare, [analysis, position])
   end
 
   def rename(%Project{} = project, %Analysis{} = analysis, %Position{} = position, new_name) do

@@ -24,14 +24,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     end
   end
 
-  @spec supported?(Analysis.t(), Position.t()) :: boolean()
-  def supported?(%Analysis{} = analysis, %Position{} = position) do
+  @spec prepare(Analysis.t(), Position.t()) :: {:ok, String.t(), Range.t()} | {:error, term()}
+  def prepare(%Analysis{} = analysis, %Position{} = position) do
     case resolve_module(analysis, position) do
-      {:ok, _, _} ->
-        true
+      {:ok, _, range} ->
+        cursor_entity = cursor_entity_string(range)
+        {:ok, cursor_entity, range}
 
       {:error, _} ->
-        false
+        {:error, :unsupported_entity}
     end
   end
 

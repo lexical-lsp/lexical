@@ -23,14 +23,17 @@ defmodule Lexical.Server.Provider.Handlers.PrepareRename do
   end
 
   defp prepare_rename(project, analysis, position, id) do
-    case Api.rename_supported?(project, analysis, position) do
-      true ->
-        default_behavior =
-          Types.PrepareRenameResult.PrepareRenameResult1.new(default_behavior: true)
+    case Api.prepare_rename(project, analysis, position) do
+      {:ok, cursor_entity, range} ->
+        result =
+          Types.PrepareRenameResult.PrepareRenameResult.new(
+            placeholder: cursor_entity,
+            range: range
+          )
 
-        {:reply, Responses.PrepareRename.new(id, default_behavior)}
+        {:reply, Responses.PrepareRename.new(id, result)}
 
-      false ->
+      _ ->
         {:reply, Responses.PrepareRename.new(id, nil)}
     end
   end
