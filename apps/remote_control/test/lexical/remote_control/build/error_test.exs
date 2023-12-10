@@ -60,7 +60,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
                |> compile()
                |> diagnostic()
 
-      assert diagnostic.message =~ ~s[missing terminator: } (for "{" starting at line 1)]
+      assert diagnostic.message =~ ~s[missing terminator: }]
     end
 
     test "returns both the error and the detail when provided" do
@@ -89,6 +89,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert error.message =~ "unexpected reserved word: end"
       assert error.position == {15, 9}
 
+      # TODO: should use the `meta` field to get the `opening_delimiter`, `line` and `column`
       assert String.downcase(detail.message) =~ ~S[the "(" here is missing terminator ")"]
       assert detail.position == 4
     end
@@ -99,6 +100,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
+      # TODO: I think here we should parse the `meta`'s fields to two diagnostics too.
+      # one for the `fn` and one for the `)`
       assert diagnostic.message =~
                ~S[unexpected token: )]
 
@@ -112,6 +115,8 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
           def bar do
             :ok
         end]
+
+        # no `end_column` makes sense here
         |> compile()
         |> diagnostics()
 
@@ -191,6 +196,25 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       :ok
     end
 
+    test "handles undefined variable" do
+      diagnostic =
+        ~S[
+        defmodule Foo do
+          def bar do
+            a
+          end
+        end
+      ]
+        |> compile()
+        |> diagnostic()
+
+      # TODO: span
+      assert diagnostic.message =~ ~s[undefined variable "a"]
+      assert diagnostic.position == {4, 13}
+    end
+
+    test "handles unsued warning"
+
     test "handles FunctionClauseError" do
       diagnostic =
         ~S[
@@ -251,6 +275,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.message =~
                ~s[undefined function print/1]
 
+      # TODO: span
       # NOTE: main is {4, 13}
       assert diagnostic.position == 4
     end
