@@ -15,6 +15,19 @@ defmodule Lexical.RemoteControl.Api do
   defdelegate schedule_compile(project, force?), to: Build
   defdelegate compile_document(project, document), to: Build
 
+  def expand_alias(
+        %Project{} = project,
+        segments_or_module,
+        %Analysis{} = analysis,
+        %Position{} = position
+      ) do
+    RemoteControl.call(project, RemoteControl.Analyzer, :expand_alias, [
+      segments_or_module,
+      analysis,
+      position
+    ])
+  end
+
   def list_modules(%Project{} = project) do
     RemoteControl.call(project, :code, :all_available)
   end

@@ -1,6 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
-  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Env
   alias Lexical.Completion.Translatable
@@ -239,7 +238,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp typespec_or_type_candidate?(%Candidate.Function{} = function, %Env{} = env) do
-    case Ast.expand_alias([:__MODULE__], env.analysis, env.position) do
+    case RemoteControl.Api.expand_alias(env.project, [:__MODULE__], env.analysis, env.position) do
       {:ok, expanded} ->
         expanded == function.origin
 

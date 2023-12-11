@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.ProcessCache
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
@@ -104,7 +105,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     {line, column} = reducer.position
     position = Position.new(reducer.analysis.document, line, column)
 
-    {:ok, expanded} = Ast.expand_alias(unresolved_alias, reducer.analysis, position)
+    {:ok, expanded} =
+      RemoteControl.Analyzer.expand_alias(unresolved_alias, reducer.analysis, position)
 
     expanded
   end

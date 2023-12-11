@@ -276,25 +276,6 @@ defmodule Lexical.AstTest do
     end
   end
 
-  describe "expand_alias/4" do
-    test "works with __MODULE__ aliases" do
-      {position, document} =
-        ~q[
-          defmodule Parent do
-            defmodule __MODULE__.Child do
-              |
-            end
-          end
-        ]
-        |> pop_cursor(as: :document)
-
-      analysis = Ast.analyze(document)
-
-      assert {:ok, Parent.Child} =
-               Ast.expand_alias([quote(do: __MODULE__), nil], analysis, position)
-    end
-  end
-
   describe "analyze/1" do
     test "creates an analysis from a document with valid ast" do
       code = ~q[
@@ -314,34 +295,6 @@ defmodule Lexical.AstTest do
       assert %Analysis{} = analysis = analyze(code)
       refute analysis.ast
       assert {:error, _} = analysis.parse_error
-    end
-  end
-
-  describe "reanalyze_to/2" do
-    test "is a no-op if the analysis is already valid" do
-      {position, document} =
-        ~q[
-          defmodule Valid do
-            |
-          end
-        ]
-        |> pop_cursor(as: :document)
-
-      assert %Analysis{valid?: true} = analysis = Ast.analyze(document)
-      assert analysis == Ast.reanalyze_to(analysis, position)
-    end
-
-    test "returns a valid analysis if fragment can be parsed" do
-      {position, document} =
-        ~q[
-          defmodule Invalid do
-            |
-        ]
-        |> pop_cursor(as: :document)
-
-      assert %Analysis{valid?: false} = analysis = Ast.analyze(document)
-      assert %Analysis{valid?: true} = analysis = Ast.reanalyze_to(analysis, position)
-      assert {:ok, Invalid} = Ast.expand_alias([:__MODULE__], analysis, position)
     end
   end
 

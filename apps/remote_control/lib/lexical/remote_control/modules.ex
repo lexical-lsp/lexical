@@ -49,6 +49,7 @@ defmodule Lexical.RemoteControl.Modules do
   """
 
   alias Future.Code.Typespec
+  alias Lexical.RemoteControl.Module.Loader
 
   @typedoc "Module documentation record as defined by EEP-48"
   @type docs_v1 :: tuple()
@@ -229,7 +230,7 @@ defmodule Lexical.RemoteControl.Modules do
   end
 
   defp ensure_loaded?(_, true), do: true
-  defp ensure_loaded?(module, _), do: Code.ensure_loaded?(module)
+  defp ensure_loaded?(module, _), do: Loader.ensure_loaded?(module)
 
   defp mark_loaded(modules) when is_list(modules) do
     newly_loaded = Map.new(modules, &{&1, true})

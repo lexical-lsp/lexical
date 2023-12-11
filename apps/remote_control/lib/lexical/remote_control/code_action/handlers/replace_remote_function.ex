@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   alias Lexical.Document.Changes
   alias Lexical.Document.Edit
   alias Lexical.Document.Range
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeAction.Diagnostic
   alias Sourceror.Zipper
@@ -59,7 +60,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
       %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function_atom]}, _, _} = node} =
           zipper,
       patches ->
-        case Lexical.Ast.expand_alias(module_alias, analysis, position) do
+        case RemoteControl.Analyzer.expand_alias(module_alias, analysis, position) do
           {:ok, ^module} ->
             [patch] = Sourceror.Patch.rename_call(node, suggestion)
             {zipper, [patch | patches]}

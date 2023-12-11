@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Dispatch
+  alias Lexical.RemoteControl.Module.Loader
 
   import Messages
 
@@ -32,7 +33,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
         module_name <- dep_modules(dep_app),
         elixir_module?(module_name),
         was_loaded? = :code.is_loaded(module_name),
-        Code.ensure_loaded?(module_name) do
+        Loader.ensure_loaded?(module_name) do
       case module_name.__info__(:struct) do
         struct_fields when is_list(struct_fields) ->
           message = struct_discovered(module: module_name, fields: struct_fields)

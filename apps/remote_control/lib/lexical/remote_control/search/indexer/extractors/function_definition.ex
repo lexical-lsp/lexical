@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
@@ -13,12 +14,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   def extract({definition, metadata, [{fn_name, _, args}, _body]} = ast, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
-    range = get_extent(reducer.analysis, metadata)
+    range = get_definition_range(reducer.analysis, metadata)
 
-    module =
-      reducer.analysis
-      |> Analysis.aliases_at(range.start)
-      |> Map.get(:__MODULE__)
+    {:ok, module} =
+      RemoteControl.Analyzer.expand_alias([:__MODULE__], reducer.analysis, range.start)
 
     arity =
       case args do
@@ -56,15 +55,21 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     :ignored
   end
 
-  defp get_extent(%Analysis{} = analysis, metadata) do
+  defp get_definition_range(%Analysis{} = analysis, metadata) do
     {line, column} = Metadata.position(metadata)
 
-    {end_line, end_column} =
-      with nil <- Metadata.position(metadata, :do),
-           nil <- Metadata.position(metadata, :end_of_expression),
+    result =
+      with {:do, nil} <- {:do, Metadata.position(metadata, :do)},
+           {:expr, nil} <- {:expr, Metadata.position(metadata, :end_of_expression)},
            {:ok, line_text} <- Document.fetch_text_at(analysis.document, line) do
         end_column = String.length(line_text)
-        {line, end_column}
+        {:line, {line, end_column}}
+      end
+
+    {end_line, end_column} =
+      case result do
+        {:do, {line, column}} -> {line, column + 2}
+        {_, position} -> position
       end
 
     start_pos = Position.new(analysis.document, line, column)

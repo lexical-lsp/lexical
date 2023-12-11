@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Compilation.Tracer do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Dispatch
+  alias Lexical.RemoteControl.Module.Loader
 
   import RemoteControl.Api.Messages
 
@@ -17,7 +18,7 @@ defmodule Lexical.RemoteControl.Compilation.Tracer do
   end
 
   def extract_module_updated(module, module_binary, filename) do
-    unless Code.ensure_loaded?(module) do
+    unless Loader.ensure_loaded?(module) do
       erlang_filename =
         filename
         |> ensure_filename()
