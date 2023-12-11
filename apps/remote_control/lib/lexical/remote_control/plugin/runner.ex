@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.Plugin.Runner do
 
   alias Lexical.Document
   alias Lexical.Project
+  alias Lexical.RemoteControl.Module.Loader
   alias Lexical.RemoteControl.Plugin.Runner
 
   require Logger
@@ -51,7 +52,7 @@ defmodule Lexical.RemoteControl.Plugin.Runner do
   @doc false
   def register_all(modules) when is_list(modules) do
     for module <- modules,
-        Code.ensure_loaded?(module),
+        Loader.ensure_loaded?(module),
         plugin_module?(module) do
       register(module)
     end
