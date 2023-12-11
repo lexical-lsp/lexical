@@ -5,6 +5,9 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   require Logger
 
+  import Lexical.RemoteControl.Build.ErrorSupport,
+    only: [context_to_position: 1, position: 1, position: 2]
+
   @elixir_source "Elixir"
 
   @doc """
@@ -25,6 +28,33 @@ defmodule Lexical.RemoteControl.Build.Error do
       |> format()
     end)
     |> uniq()
+  end
+
+  defp uniq(diagnostics) do
+    extract_line = fn
+      %Result{position: {line, _column}} -> line
+      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
+      %Result{position: line} -> line
+    end
+
+    # Note: Sometimes error and warning appear on one line at the same time
+    # So we need to uniq by line and severity,
+    # and :error is always more important than :warning
+    extract_line_and_severity = &{extract_line.(&1), &1.severity}
+
+    diagnostics
+    |> Enum.sort_by(extract_line_and_severity)
+    |> Enum.uniq_by(extract_line)
+    |> reject_zeroth_line()
+  end
+
+  defp reject_zeroth_line(diagnostics) do
+    # Since 1.15, Elixir has some nonsensical error on line 0,
+    # e.g.: Can't compile this file
+    # We can simply ignore it, as there is a more accurate one
+    Enum.reject(diagnostics, fn diagnostic ->
+      diagnostic.position == 0
+    end)
   end
 
   defp normalize(%Compiler.Diagnostic{} = diagnostic) do
@@ -64,109 +94,6 @@ defmodule Lexical.RemoteControl.Build.Error do
 
       _ ->
         message
-    end
-  end
-
-  defp reject_zeroth_line(diagnostics) do
-    # Since 1.15, Elixir has some nonsensical error on line 0,
-    # e.g.: Can't compile this file
-    # We can simply ignore it, as there is a more accurate one
-    Enum.reject(diagnostics, fn diagnostic ->
-      diagnostic.position == 0
-    end)
-  end
-
-  defp uniq(diagnostics) do
-    # We need to uniq by position because the same position can be reported
-    # and the `end_line_diagnostic` is always the precise one
-    extract_line = fn
-      %Result{position: {line, _column}} -> line
-      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
-      %Result{position: line} -> line
-    end
-
-    # Note: Sometimes error and warning appear on one line at the same time
-    # So we need to uniq by line and severity,
-    # and :error is always more important than :warning
-    extract_line_and_severity = &{extract_line.(&1), &1.severity}
-
-    diagnostics
-    |> Enum.sort_by(extract_line_and_severity)
-    |> Enum.uniq_by(extract_line)
-    |> reject_zeroth_line()
-  end
-
-  # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
-  def parse_error_to_diagnostics(
-        %Document{} = source,
-        context,
-        {_error, detail} = message_info,
-        token
-      )
-      when is_binary(detail) do
-    detail_diagnostics = detail_diagnostics(source, detail)
-    error = message_info_to_binary(message_info, token)
-    error_diagnostics = parse_error_to_diagnostics(source, context, error, token)
-    uniq(error_diagnostics ++ detail_diagnostics)
-  end
-
-  def parse_error_to_diagnostics(%Document{} = source, context, message_info, token)
-      when is_exception(message_info) do
-    parse_error_to_diagnostics(source, context, Exception.message(message_info), token)
-  end
-
-  def parse_error_to_diagnostics(%Document{} = source, context, message_info, token) do
-    parse_error_diagnostic_functions = [
-      &build_end_line_diagnostics/4,
-      &build_start_line_diagnostics/4,
-      &build_hint_diagnostics/4
-    ]
-
-    Enum.flat_map(
-      parse_error_diagnostic_functions,
-      & &1.(source, context, message_info, token)
-    )
-  end
-
-  defp build_end_line_diagnostics(%Document{} = source, context, message_info, token) do
-    [end_line_message | _] = String.split(message_info, "\n")
-
-    message =
-      if String.ends_with?(end_line_message, token) do
-        end_line_message
-      else
-        end_line_message <> token
-      end
-
-    diagnostic = Result.new(source.uri, context_to_position(context), message, :error, "Elixir")
-    [diagnostic]
-  end
-
-  @start_line_regex ~r/(\w+) \(for (.*) starting at line (\d+)\)/
-  defp build_start_line_diagnostics(%Document{} = source, _context, message_info, _token) do
-    case Regex.run(@start_line_regex, message_info) do
-      [_, missing, token, start_line] ->
-        message = "The #{token} here is missing a terminator: #{inspect(missing)}"
-        position = String.to_integer(start_line)
-        result = Result.new(source.uri, position, message, :error, @elixir_source)
-        [result]
-
-      _ ->
-        []
-    end
-  end
-
-  @hint_regex ~r/HINT: .*on line (\d+).*/m
-  defp build_hint_diagnostics(%Document{} = source, _context, message_info, _token) do
-    case Regex.run(@hint_regex, message_info) do
-      [message, hint_line] ->
-        message = String.replace(message, ~r/on line \d+/, "here")
-        position = String.to_integer(hint_line)
-        result = Result.new(source.uri, position, message, :error, @elixir_source)
-        [result]
-
-      _ ->
-        []
     end
   end
 
@@ -391,19 +318,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     nil
   end
 
-  defp context_to_position(context) do
-    cond do
-      Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
-        position(context[:line], context[:column])
-
-      Keyword.has_key?(context, :line) ->
-        position(context[:line])
-
-      true ->
-        nil
-    end
-  end
-
   defp do_message_to_diagnostic(_, "") do
     nil
   end
@@ -468,32 +382,6 @@ defmodule Lexical.RemoteControl.Build.Error do
     |> case do
       line when is_binary(line) -> {:ok, line}
       nil -> :error
-    end
-  end
-
-  defp position(line) do
-    line
-  end
-
-  defp position(line, column) do
-    {line, column}
-  end
-
-  defp message_info_to_binary({header, footer}, token) do
-    header <> token <> footer
-  end
-
-  @detail_location_re ~r/at line (\d+)/
-  defp detail_diagnostics(%Document{} = source, detail) do
-    case Regex.scan(@detail_location_re, detail) do
-      [[matched, line_number]] ->
-        line_number = String.to_integer(line_number)
-        message = String.replace(detail, matched, "here")
-        result = Result.new(source.uri, line_number, message, :error, @elixir_source)
-        [result]
-
-      _ ->
-        []
     end
   end
 
