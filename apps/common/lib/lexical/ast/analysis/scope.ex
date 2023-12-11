@@ -12,7 +12,7 @@ defmodule Lexical.Ast.Analysis.Scope do
   ]
 
   @type import_mfa :: {module(), atom(), non_neg_integer()}
-  @type scope_position :: Position.t() | :end
+  @type scope_position :: Position.t() | Position.line() | :end
 
   @type t :: %__MODULE__{
           id: any(),
@@ -60,4 +60,5 @@ defmodule Lexical.Ast.Analysis.Scope do
 
   def end_line(%__MODULE__{} = scope, :end), do: scope.range.end.line
   def end_line(_, %Position{} = position), do: position.line
+  def end_line(_, line) when is_integer(line), do: line
 end

@@ -22,7 +22,8 @@ defmodule Lexical.RemoteControl.Module.Loader do
         {result, state}
 
       state ->
-        try_to_load(state, module_name)
+        result = Code.ensure_loaded(module_name)
+        {result, Map.put(state, module_name, result)}
     end)
   end
 
@@ -38,10 +39,5 @@ defmodule Lexical.RemoteControl.Module.Loader do
       _ ->
         false
     end)
-  end
-
-  defp try_to_load(state, module_name) do
-    result = Code.ensure_loaded(module_name)
-    {result, Map.put(state, module_name, result)}
   end
 end

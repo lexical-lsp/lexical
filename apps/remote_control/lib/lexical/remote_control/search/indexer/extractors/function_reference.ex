@@ -7,30 +7,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
-  @excluded_kernel_macros :macros
-                          |> Kernel.__info__()
-                          |> Enum.reduce([], fn {name, _arity}, acc ->
-                            string_name = Atom.to_string(name)
-
-                            if String.starts_with?(string_name, "def") do
-                              [name | acc]
-                            else
-                              acc
-                            end
-                          end)
-
-  # syntax specific functions to exclude from our matches
-  @excluded_operators ~w[-> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
-  @excluded_keywords ~w[and if import in not or raise require try use]a
-  @excluded_special_forms :macros
-                          |> Kernel.SpecialForms.__info__()
-                          |> Keyword.keys()
-
-  @excluded_functions @excluded_kernel_macros
-                      |> Enum.concat(@excluded_operators)
-                      |> Enum.concat(@excluded_special_forms)
-                      |> Enum.concat(@excluded_keywords)
-
+  @excluded_functions_key {__MODULE__, :excluded_functions}
   # Dynamic calls using apply apply(Module, :function, [1, 2])
   def extract(
         {:apply, apply_meta,
@@ -110,22 +87,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     {:ok, entry, nil}
   end
 
-  def extract({exclude, _meta, _args}, %Reducer{}) when exclude in @excluded_functions do
-    :ignored
-  end
-
   # local function call foo() foo(arg)
   def extract({fn_name, meta, args}, %Reducer{} = reducer)
       when is_atom(fn_name) and is_list(args) do
-    arity = call_arity(args)
-    position = Reducer.position(reducer)
+    if fn_name in excluded_functions() do
+      :ignored
+    else
+      arity = call_arity(args)
+      position = Reducer.position(reducer)
 
-    {module, _, _} =
-      RemoteControl.Analyzer.resolve_local_call(reducer.analysis, position, fn_name, arity)
+      {module, _, _} =
+        RemoteControl.Analyzer.resolve_local_call(reducer.analysis, position, fn_name, arity)
 
-    entry = entry(reducer, meta, meta, [module], fn_name, args)
+      entry = entry(reducer, meta, meta, [module], fn_name, args)
 
-    {:ok, entry}
+      {:ok, entry}
+    end
   end
 
   def extract(_ast, _reducer) do
@@ -186,4 +163,41 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   defp call_arity(args) when is_list(args), do: length(args)
   defp call_arity(arity) when is_integer(arity), do: arity
   defp call_arity(_), do: 0
+
+  defp excluded_functions do
+    case :persistent_term.get(@excluded_functions_key, :not_found) do
+      :not_found ->
+        excluded_functions = build_excluded_functions()
+        :persistent_term.put(@excluded_functions_key, excluded_functions)
+        excluded_functions
+
+      excluded_functions ->
+        excluded_functions
+    end
+  end
+
+  defp build_excluded_functions do
+    excluded_kernel_macros =
+      for {macro_name, _arity} <- Kernel.__info__(:macros),
+          string_name = Atom.to_string(macro_name),
+          String.starts_with?(string_name, "def") do
+        macro_name
+      end
+
+    # syntax specific functions to exclude from our matches
+    excluded_operators =
+      ~w[-> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
+
+    excluded_keywords = ~w[and if import in not or raise require try use]a
+
+    excluded_special_forms =
+      :macros
+      |> Kernel.SpecialForms.__info__()
+      |> Keyword.keys()
+
+    excluded_kernel_macros
+    |> Enum.concat(excluded_operators)
+    |> Enum.concat(excluded_special_forms)
+    |> Enum.concat(excluded_keywords)
+  end
 end

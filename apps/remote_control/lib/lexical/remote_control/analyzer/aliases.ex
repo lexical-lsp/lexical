@@ -2,11 +2,8 @@ defmodule Lexical.RemoteControl.Analyzer.Aliases do
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Scope
-  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.RemoteControl.Analyzer.Scopes
-
-  @blank_doc Document.new("file:///", "", 1)
 
   @spec at(Analysis.t(), Position.t()) :: %{atom() => module()}
   def at(%Analysis{} = analysis, %Position{} = position) do
@@ -28,8 +25,7 @@ defmodule Lexical.RemoteControl.Analyzer.Aliases do
   (used internally when calculating imports)
   """
   def resolve_at(%Scope{} = scope, module, line) do
-    position = Position.new(@blank_doc, line, 1)
-    aliases = Scope.alias_map(scope, position)
+    aliases = Scope.alias_map(scope, line)
 
     case module do
       [{:__MODULE__, _, _} | suffix] ->
