@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Build.Project do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.Build.Isolation
   alias Lexical.RemoteControl.Plugin
   alias Mix.Task.Compiler.Diagnostic
 
@@ -18,7 +19,7 @@ defmodule Lexical.RemoteControl.Build.Project do
         Mix.Task.clear()
 
         with_progress building_label(project), fn ->
-          result = compile_in_monitor(force?)
+          result = compile_in_isolation(force?)
           Mix.Task.run(:loadpaths)
           result
         end
@@ -45,21 +46,14 @@ defmodule Lexical.RemoteControl.Build.Project do
     end)
   end
 
-  defp compile_in_monitor(force?) do
-    me = self()
+  defp compile_in_isolation(force?) do
+    compile_fun = fn -> Mix.Task.run(:compile, mix_compile_opts(force?)) end
 
-    {pid, ref} =
-      spawn_monitor(fn ->
-        result = Mix.Task.run(:compile, mix_compile_opts(force?))
-        send(me, {:result, result})
-      end)
-
-    receive do
-      {:result, result} ->
-        flush_normal_down(ref, pid)
+    case Isolation.invoke(compile_fun) do
+      {:ok, result} ->
         result
 
-      {:DOWN, ^ref, _, ^pid, {exception, [{_module, _function, _arity, meta} | _]}} ->
+      {:error, {exception, [{_mod, _fun, _arity, meta} | _]}} ->
         diagnostic = %Diagnostic{
           file: Keyword.get(meta, :file),
           severity: :error,
@@ -69,13 +63,6 @@ defmodule Lexical.RemoteControl.Build.Project do
         }
 
         {:error, [diagnostic]}
-    end
-  end
-
-  defp flush_normal_down(ref, pid) do
-    receive do
-      {:DOWN, ^ref, _, ^pid, :normal} ->
-        :ok
     end
   end
 
