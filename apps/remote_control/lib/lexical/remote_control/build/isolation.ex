@@ -14,21 +14,12 @@ defmodule Lexical.RemoteControl.Build.Isolation do
 
     receive do
       {:result, result} ->
-        flush_normal_down(ref, pid)
+        # clean up the DOWN message from the above process in the mailbox.
+        Process.demonitor(ref, [:flush])
         {:ok, result}
 
       {:DOWN, ^ref, :process, ^pid, reason} ->
         {:error, reason}
-    end
-  end
-
-  defp flush_normal_down(ref, pid) do
-    receive do
-      {:DOWN, ^ref, :process, ^pid, :normal} ->
-        :ok
-    after
-      50 ->
-        :ok
     end
   end
 end

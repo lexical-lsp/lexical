@@ -618,26 +618,27 @@ defmodule Lexical.BuildTest do
     end
   end
 
-  describe "exceptions during compilation" do
-    test "compiling a project with callback errors" do
-      {:ok, project} = with_project(:compilation_callback_errors)
-      Build.schedule_compile(project)
-      assert_receive project_compiled(status: :error)
-      assert_receive project_diagnostics(diagnostics: [diagnostic])
+  if Features.after_verify?() do
+    describe "exceptions during compilation" do
+      test "compiling a project with callback errors" do
+        {:ok, project} = with_project(:compilation_callback_errors)
+        Build.schedule_compile(project)
+        assert_receive project_compiled(status: :error)
+        assert_receive project_diagnostics(diagnostics: [diagnostic])
 
-      file_name =
-        diagnostic.uri
-        |> Document.Path.ensure_path()
-        |> Path.basename()
+        file_name =
+          diagnostic.uri
+          |> Document.Path.ensure_path()
+          |> Path.basename()
 
-      assert file_name == "compile_callback_error.ex"
-      assert diagnostic.position == 4
-      assert diagnostic.severity == :error
-      assert diagnostic.message == "boom"
-    end
+        assert file_name == "compile_callback_error.ex"
+        assert diagnostic.position == 4
+        assert diagnostic.severity == :error
+        assert diagnostic.message == "boom"
+      end
 
-    test "compiling a file with callback errors" do
-      document = ~S[
+      test "compiling a file with callback errors" do
+        document = ~S[
       defmodule WithCallbackErrors do
         @after_verify __MODULE__
         def __after_verify__(_) do
@@ -645,12 +646,13 @@ defmodule Lexical.BuildTest do
         end
       end
       ]
-      {:ok, project} = with_project(:project)
-      compile_document(project, document)
-      assert_receive file_compiled(status: :error)
-      assert_receive file_diagnostics(diagnostics: [diagnostic])
-      assert diagnostic.message == "boom"
-      assert diagnostic.position == 1
+        {:ok, project} = with_project(:project)
+        compile_document(project, document)
+        assert_receive file_compiled(status: :error)
+        assert_receive file_diagnostics(diagnostics: [diagnostic])
+        assert diagnostic.message == "boom"
+        assert diagnostic.position == 1
+      end
     end
   end
 end
