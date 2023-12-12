@@ -2,7 +2,9 @@ defmodule Lexical.RemoteControl.Build.Project do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.Build.Isolation
   alias Lexical.RemoteControl.Plugin
+  alias Mix.Task.Compiler.Diagnostic
 
   use Build.Progress
   require Logger
@@ -17,7 +19,7 @@ defmodule Lexical.RemoteControl.Build.Project do
         Mix.Task.clear()
 
         with_progress building_label(project), fn ->
-          result = Mix.Task.run(:compile, mix_compile_opts(force?))
+          result = compile_in_isolation(force?)
           Mix.Task.run(:loadpaths)
           result
         end
@@ -42,6 +44,26 @@ defmodule Lexical.RemoteControl.Build.Project do
           Build.Error.refine_diagnostics(diagnostics)
       end
     end)
+  end
+
+  defp compile_in_isolation(force?) do
+    compile_fun = fn -> Mix.Task.run(:compile, mix_compile_opts(force?)) end
+
+    case Isolation.invoke(compile_fun) do
+      {:ok, result} ->
+        result
+
+      {:error, {exception, [{_mod, _fun, _arity, meta} | _]}} ->
+        diagnostic = %Diagnostic{
+          file: Keyword.get(meta, :file),
+          severity: :error,
+          message: Exception.message(exception),
+          compiler_name: "Elixir",
+          position: Keyword.get(meta, :line, 1)
+        }
+
+        {:error, [diagnostic]}
+    end
   end
 
   defp prepare_for_project_build(false = _force?) do
