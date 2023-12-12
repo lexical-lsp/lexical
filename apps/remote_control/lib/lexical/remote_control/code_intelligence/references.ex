@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
+  alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
@@ -23,6 +24,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
     module_references(struct_module, include_definitions?)
   end
 
+  defp find_references({:call, module, function_name, arity}, include_definitions?) do
+    function_references(module, function_name, arity, include_definitions?)
+  end
+
   defp find_references(resolved, _include_definitions?) do
     Logger.info("Not attempting to find references for unhandled type: #{inspect(resolved)}")
     []
@@ -36,10 +41,29 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
     end
   end
 
+  defp function_references(module, function_name, arity, include_definitions) do
+    subject = Formats.mfa(module, function_name, arity)
+
+    with {:ok, references} <- Store.exact(subject, type: :function, subtype: :reference) do
+      entities = maybe_fetch_function_definitions(subject, include_definitions) ++ references
+      locations = Enum.map(entities, &to_location/1)
+      {:ok, locations}
+    end
+  end
+
   defp to_location(%Entry{} = entry) do
     uri = Document.Path.ensure_uri(entry.path)
     Location.new(entry.range, uri)
   end
+
+  defp maybe_fetch_function_definitions(subject, true) do
+    case Store.exact(subject, type: :function, subtype: :definition) do
+      {:ok, definitions} -> definitions
+      _ -> []
+    end
+  end
+
+  defp maybe_fetch_function_definitions(_, false), do: []
 
   defp maybe_fetch_module_definitions(module, true) do
     case Store.exact(module, type: :module, subtype: :definition) do

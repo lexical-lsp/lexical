@@ -97,6 +97,10 @@ defmodule Lexical.Formats do
     end
   end
 
+  def mfa(module, function, arity) do
+    "#{module(module)}.#{function}/#{arity}"
+  end
+
   defp templatize(count, template) do
     count_string = Integer.to_string(count)
     String.replace(template, "${count}", count_string)

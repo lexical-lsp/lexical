@@ -43,7 +43,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
   @spec entries_to_rows(Enumerable.t(Entry.t())) :: [tuple()]
   def entries_to_rows(entries) do
     entries
-    |> Stream.uniq_by(& &1.ref)
     |> Stream.flat_map(&to_rows(&1))
     |> Enum.reduce(%{}, fn {key, value}, acc ->
       Map.update(acc, key, [value], fn old_values -> [value | old_values] end)

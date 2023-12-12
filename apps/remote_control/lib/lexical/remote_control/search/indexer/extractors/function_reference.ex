@@ -121,7 +121,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     block = Reducer.current_block(reducer)
     range = get_reference_range(reducer.analysis.document, start_metadata, end_metadata)
     {:ok, module} = RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start)
-    mfa = "#{Formats.module(module)}.#{function_name}/#{arity}"
+    mfa = Formats.mfa(module, function_name, arity)
 
     Entry.reference(
       reducer.analysis.document.path,
