@@ -26,6 +26,9 @@ defmodule Lexical.RemoteControl.Build.Isolation do
     receive do
       {:DOWN, ^ref, :process, ^pid, :normal} ->
         :ok
+    after
+      50 ->
+        :ok
     end
   end
 end
