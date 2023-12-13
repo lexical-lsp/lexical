@@ -36,7 +36,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert zero_arity.type == :public_function
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
-      assert "def zero_arity, do: true" == extract(code, zero_arity.range)
+      assert "def zero_arity, do" == extract(code, zero_arity.range)
     end
 
     test "finds zero arity public functions (with parens)" do
@@ -144,7 +144,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert zero_arity.type == :private_function
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
-      assert "defp zero_arity, do: true" == extract(code, zero_arity.range)
+      assert "defp zero_arity, do" == extract(code, zero_arity.range)
     end
 
     test "finds zero arity one-line private functions (with parens)" do
@@ -159,7 +159,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert zero_arity.type == :private_function
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
-      assert "defp zero_arity(), do: true" == extract(code, zero_arity.range)
+      assert "defp zero_arity(), do" == extract(code, zero_arity.range)
     end
 
     test "finds zero arity private functions (no parens)" do
@@ -206,7 +206,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert one_arity.type == :private_function
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.one_arity/1"
-      assert "defp one_arity(a), do: a + 1" == extract(code, one_arity.range)
+      assert "defp one_arity(a), do" == extract(code, one_arity.range)
     end
 
     test "finds one arity private functions" do
@@ -238,7 +238,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert one_arity.type == :private_function
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.multi_arity/3"
-      assert "defp multi_arity(a, b, c), do: {a, b, c}" == extract(code, one_arity.range)
+      assert "defp multi_arity(a, b, c), do" == extract(code, one_arity.range)
     end
 
     test "finds multi arity private functions" do

@@ -119,7 +119,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
        ) do
     arity = call_arity(args_arity)
     block = Reducer.current_block(reducer)
-    range = get_reference_range(reducer.analysis.document, start_metadata, end_metadata)
+
+    range =
+      get_reference_range(reducer.analysis.document, start_metadata, end_metadata, function_name)
+
     {:ok, module} = RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start)
     mfa = Formats.mfa(module, function_name, arity)
 
@@ -134,22 +137,32 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     )
   end
 
-  defp get_reference_range(document, start_metadata, end_metadata) do
+  defp get_reference_range(document, start_metadata, end_metadata, function_name) do
     {start_line, start_column} = start_position(start_metadata)
     start_position = Position.new(document, start_line, start_column)
     has_parens? = not Keyword.get(end_metadata, :no_parens, false)
 
     {end_line, end_column} =
-      with nil <- Metadata.position(end_metadata, :closing) do
-        position = Metadata.position(end_metadata)
+      case Metadata.position(end_metadata, :closing) do
+        {line, column} ->
+          if has_parens? do
+            {line, column + 1}
+          else
+            {line, column}
+          end
 
-        if has_parens? do
-          position
-        else
-          {line, column} = position
-          # add two for the parens
-          {line, column + 2}
-        end
+        nil ->
+          {line, column} = Metadata.position(end_metadata)
+
+          if has_parens? do
+            {line, column + 1}
+          else
+            name_length = function_name |> Atom.to_string() |> String.length()
+            # without parens, the metadata points to the beginning of the call, so
+            # we need to add the length of the function name to be sure we have it
+            # all
+            {line, column + name_length}
+          end
       end
 
     end_position = Position.new(document, end_line, end_column)
@@ -186,7 +199,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
 
     # syntax specific functions to exclude from our matches
     excluded_operators =
-      ~w[-> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
+      ~w[<- -> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
 
     excluded_keywords = ~w[and if import in not or raise require try use]a
 

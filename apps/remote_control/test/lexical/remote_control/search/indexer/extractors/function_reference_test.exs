@@ -237,12 +237,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
         map(l, fn i -> downcase(i) end)
       }
+
       assert {:ok, [r1, r2], _} = index(code)
       assert r1.subject == "Enum.map/2"
       assert "map(l, fn i -> downcase(i) end)" = extract(code, r1.range)
-
       assert r2.subject == "String.downcase/1"
-      assert "downcase(i) " = extract(code, r2.range)
+      assert "downcase(i)" = extract(code, r2.range)
     end
   end
 

@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   alias Lexical.Ast.Analysis
-  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
@@ -12,9 +11,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   @function_definitions [:def, :defp]
 
-  def extract({definition, metadata, [{fn_name, _, args}, _body]} = ast, %Reducer{} = reducer)
+  def extract({definition, metadata, [{fn_name, _, args}, body]} = ast, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
-    range = get_definition_range(reducer.analysis, metadata)
+    range = get_definition_range(reducer.analysis, metadata, body)
 
     {:ok, module} =
       RemoteControl.Analyzer.expand_alias([:__MODULE__], reducer.analysis, range.start)
@@ -55,25 +54,24 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     :ignored
   end
 
-  defp get_definition_range(%Analysis{} = analysis, metadata) do
-    {line, column} = Metadata.position(metadata)
+  defp get_definition_range(%Analysis{} = analysis, def_metadata, block) do
+    {line, column} = Metadata.position(def_metadata)
 
-    result =
-      with {:do, nil} <- {:do, Metadata.position(metadata, :do)},
-           {:expr, nil} <- {:expr, Metadata.position(metadata, :end_of_expression)},
-           {:ok, line_text} <- Document.fetch_text_at(analysis.document, line) do
-        end_column = String.length(line_text)
-        {:line, {line, end_column}}
-      end
+    {do_line, do_column} =
+      case Sourceror.get_range(block) do
+        %{start: do_meta} ->
+          do_line = do_meta[:line]
+          do_column = do_meta[:column]
+          {do_line, do_column + 2}
 
-    {end_line, end_column} =
-      case result do
-        {:do, {line, column}} -> {line, column + 2}
-        {_, position} -> position
+        nil ->
+          {line, column} = Metadata.position(def_metadata, :do)
+          # add two for the do
+          {line, column + 2}
       end
 
     start_pos = Position.new(analysis.document, line, column)
-    end_pos = Position.new(analysis.document, end_line, end_column)
-    Range.new(start_pos, end_pos)
+    do_pos = Position.new(analysis.document, do_line, do_column)
+    Range.new(start_pos, do_pos)
   end
 end
