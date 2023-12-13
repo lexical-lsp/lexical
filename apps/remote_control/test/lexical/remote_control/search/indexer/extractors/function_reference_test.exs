@@ -266,6 +266,40 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
     end
   end
 
+  describe "pipelines" do
+    test "finds references in a pipeline" do
+      code = "3 |> Module.do_something()"
+      assert {:ok, [reference], _} = index(code)
+      assert reference.subject == "Module.do_something/1"
+      assert "Module.do_something()" = extract(code, reference.range)
+    end
+
+    test "finds references in a multi-call pipeline" do
+      code = in_a_module_function("3 |> Module.first() |> second()")
+      assert {:ok, [first, second], _} = index(code)
+      assert first.subject == "Module.first/1"
+      assert "Module.first()" == extract(code, first.range)
+
+      assert second.subject == "Parent.second/1"
+      assert "second()" == extract(code, second.range)
+    end
+  end
+
+  describe "multiple references" do
+    test "finds multiple references in an if" do
+      code =
+        ~q[
+      if String.length(s) > 3 or String.length(t) < 7 do
+      end
+      ]
+        |> in_a_module_function()
+
+      assert {:ok, [first, second], _} = index(code)
+      assert "String.length(s)" == extract(code, first.range)
+      assert "String.length(t)" == extract(code, second.range)
+    end
+  end
+
   describe "exclusions" do
     @defs [
       def: 2,

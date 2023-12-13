@@ -87,13 +87,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     {:ok, entry, nil}
   end
 
+  def extract({:|>, pipe_meta, [pipe_start, {fn_name, meta, args}]}, %Reducer{}) do
+    # we're in a pipeline. Skip this node by returning nil, but add a marker to the metadata
+    # that will be picked up by call_arity.
+    updated_meta = Keyword.put(meta, :pipeline?, true)
+    new_pipe = {:|>, pipe_meta, [pipe_start, {fn_name, updated_meta, args}]}
+
+    {:ok, nil, new_pipe}
+  end
+
   # local function call foo() foo(arg)
   def extract({fn_name, meta, args}, %Reducer{} = reducer)
       when is_atom(fn_name) and is_list(args) do
     if fn_name in excluded_functions() do
       :ignored
     else
-      arity = call_arity(args)
+      arity = call_arity(args, meta)
       position = Reducer.position(reducer)
 
       {module, _, _} =
@@ -117,7 +126,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
          function_name,
          args_arity
        ) do
-    arity = call_arity(args_arity)
+    arity = call_arity(args_arity, end_metadata)
     block = Reducer.current_block(reducer)
 
     range =
@@ -173,9 +182,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     Metadata.position(metadata)
   end
 
-  defp call_arity(args) when is_list(args), do: length(args)
-  defp call_arity(arity) when is_integer(arity), do: arity
-  defp call_arity(_), do: 0
+  defp call_arity(args, metadata) when is_list(args) do
+    length(args) + pipeline_arity(metadata)
+  end
+
+  defp call_arity(arity, metadata) when is_integer(arity) do
+    arity + pipeline_arity(metadata)
+  end
+
+  defp call_arity(_, metadata), do: pipeline_arity(metadata)
+
+  defp pipeline_arity(metadata) do
+    if Keyword.get(metadata, :pipeline?, false) do
+      1
+    else
+      0
+    end
+  end
 
   defp excluded_functions do
     case :persistent_term.get(@excluded_functions_key, :not_found) do

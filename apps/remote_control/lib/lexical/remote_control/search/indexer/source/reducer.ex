@@ -141,6 +141,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     %__MODULE__{reducer | entries: [entry | reducer.entries]}
   end
 
+  defp push_entry(%__MODULE__{} = reducer, _), do: reducer
+
   defp maybe_pop_block(%__MODULE__{} = reducer) do
     if block_ended?(reducer) do
       pop_block(reducer)
