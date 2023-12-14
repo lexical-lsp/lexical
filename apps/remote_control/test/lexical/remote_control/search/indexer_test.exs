@@ -8,6 +8,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
   setup do
     project = project()
+    start_supervised(Lexical.RemoteControl.Dispatch)
     {:ok, project: project}
   end
 

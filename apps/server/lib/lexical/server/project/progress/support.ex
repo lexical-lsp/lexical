@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Project.Progress.Support do
+  alias Lexical.Project
   alias Lexical.Server.Project.Progress
 
   import Lexical.RemoteControl.Api.Messages
@@ -17,6 +18,25 @@ defmodule Lexical.Server.Project.Progress.Support do
       func.()
     after
       send(dest, project_progress(label: label, stage: :complete))
+    end
+  end
+
+  def with_percentage_progress(%Project{} = project, label, max, func)
+      when is_function(func, 1) do
+    dest = Progress.name(project)
+
+    report_progress = fn delta, message ->
+      message =
+        percent_progress(label: label, max: max, message: message, delta: delta, stage: :report)
+
+      send(dest, message)
+    end
+
+    try do
+      send(dest, percent_progress(label: label, max: max, stage: :begin))
+      func.(report_progress)
+    after
+      send(dest, percent_progress(label: label, stage: :complete))
     end
   end
 end

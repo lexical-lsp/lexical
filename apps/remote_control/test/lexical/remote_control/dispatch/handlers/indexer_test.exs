@@ -20,6 +20,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
     update_index = &Search.Indexer.update_index/2
 
     start_supervised!({Search.Store, [project, create_index, update_index]})
+    start_supervised!(RemoteControl.Dispatch)
     start_supervised!(Lexical.Server.Application.document_store_child_spec())
 
     assert_eventually(Search.Store.loaded?(), 1500)

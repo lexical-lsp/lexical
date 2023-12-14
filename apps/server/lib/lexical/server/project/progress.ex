@@ -30,6 +30,12 @@ defmodule Lexical.Server.Project.Progress do
     {:noreply, new_state}
   end
 
+  def handle_info(percent_progress(stage: stage) = message, %State{} = state) do
+    new_state = apply(State, stage, [state, message])
+
+    {:noreply, new_state}
+  end
+
   def name(%Project{} = project) do
     :"#{Project.name(project)}::progress"
   end

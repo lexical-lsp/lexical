@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer
 
+  import Lexical.RemoteControl.Progress
   @indexable_extensions "*.{ex,exs}"
 
   def create_index(%Project{} = project) do
@@ -90,14 +91,31 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
     # Shuffling the results helps speed in some projects, as larger files tend to clump
     # together, like when there are auto-generated elixir modules.
-    file_paths
-    |> path_to_sizes()
-    |> Enum.shuffle()
-    |> Stream.chunk_while(initial_state, chunk_fn, after_fn)
-    |> Task.async_stream(&Enum.map(&1, processor), timeout: timeout)
-    |> Enum.flat_map(fn
-      {:ok, entry_chunks} -> entry_chunks
-      _ -> []
+    paths_to_sizes =
+      file_paths
+      |> path_to_sizes()
+      |> Enum.shuffle()
+
+    path_to_size_map = Map.new(paths_to_sizes)
+
+    total_bytes = paths_to_sizes |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+
+    with_percent_progress("Indexing source code", total_bytes, fn update_progress ->
+      paths_to_sizes
+      |> Stream.chunk_while(initial_state, chunk_fn, after_fn)
+      |> Task.async_stream(
+        fn chunk ->
+          block_bytes = chunk |> Enum.map(&Map.get(path_to_size_map, &1)) |> Enum.sum()
+          result = Enum.map(chunk, processor)
+          update_progress.(block_bytes, nil)
+          result
+        end,
+        timeout: timeout
+      )
+      |> Enum.flat_map(fn
+        {:ok, entry_chunks} -> entry_chunks
+        _ -> []
+      end)
     end)
   end
 
