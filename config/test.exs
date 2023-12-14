@@ -11,10 +11,3 @@ config :remote_control,
 
 config :server, transport: NoOp
 config :stream_data, initial_size: 50
-
-if Version.match?(System.version(), ">= 1.15.0") do
-  Logger.configure(level: :none)
-else
-  Logger.remove_backend(:console)
-  Logger.remove_backend(JsonRpc.Backend)
-end
