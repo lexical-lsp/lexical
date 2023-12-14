@@ -87,13 +87,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     {:ok, entry, nil}
   end
 
+  def extract({:|>, pipe_meta, [pipe_start, {fn_name, meta, args}]}, %Reducer{}) do
+    # we're in a pipeline. Skip this node by returning nil, but add a marker to the metadata
+    # that will be picked up by call_arity.
+    updated_meta = Keyword.put(meta, :pipeline?, true)
+    new_pipe = {:|>, pipe_meta, [pipe_start, {fn_name, updated_meta, args}]}
+
+    {:ok, nil, new_pipe}
+  end
+
   # local function call foo() foo(arg)
   def extract({fn_name, meta, args}, %Reducer{} = reducer)
       when is_atom(fn_name) and is_list(args) do
     if fn_name in excluded_functions() do
       :ignored
     else
-      arity = call_arity(args)
+      arity = call_arity(args, meta)
       position = Reducer.position(reducer)
 
       {module, _, _} =
@@ -117,11 +126,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
          function_name,
          args_arity
        ) do
-    arity = call_arity(args_arity)
+    arity = call_arity(args_arity, end_metadata)
     block = Reducer.current_block(reducer)
-    range = get_reference_range(reducer.analysis.document, start_metadata, end_metadata)
+
+    range =
+      get_reference_range(reducer.analysis.document, start_metadata, end_metadata, function_name)
+
     {:ok, module} = RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start)
-    mfa = "#{Formats.module(module)}.#{function_name}/#{arity}"
+    mfa = Formats.mfa(module, function_name, arity)
 
     Entry.reference(
       reducer.analysis.document.path,
@@ -134,22 +146,32 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     )
   end
 
-  defp get_reference_range(document, start_metadata, end_metadata) do
+  defp get_reference_range(document, start_metadata, end_metadata, function_name) do
     {start_line, start_column} = start_position(start_metadata)
     start_position = Position.new(document, start_line, start_column)
     has_parens? = not Keyword.get(end_metadata, :no_parens, false)
 
     {end_line, end_column} =
-      with nil <- Metadata.position(end_metadata, :closing) do
-        position = Metadata.position(end_metadata)
+      case Metadata.position(end_metadata, :closing) do
+        {line, column} ->
+          if has_parens? do
+            {line, column + 1}
+          else
+            {line, column}
+          end
 
-        if has_parens? do
-          position
-        else
-          {line, column} = position
-          # add two for the parens
-          {line, column + 2}
-        end
+        nil ->
+          {line, column} = Metadata.position(end_metadata)
+
+          if has_parens? do
+            {line, column + 1}
+          else
+            name_length = function_name |> Atom.to_string() |> String.length()
+            # without parens, the metadata points to the beginning of the call, so
+            # we need to add the length of the function name to be sure we have it
+            # all
+            {line, column + name_length}
+          end
       end
 
     end_position = Position.new(document, end_line, end_column)
@@ -160,9 +182,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     Metadata.position(metadata)
   end
 
-  defp call_arity(args) when is_list(args), do: length(args)
-  defp call_arity(arity) when is_integer(arity), do: arity
-  defp call_arity(_), do: 0
+  defp call_arity(args, metadata) when is_list(args) do
+    length(args) + pipeline_arity(metadata)
+  end
+
+  defp call_arity(arity, metadata) when is_integer(arity) do
+    arity + pipeline_arity(metadata)
+  end
+
+  defp call_arity(_, metadata), do: pipeline_arity(metadata)
+
+  defp pipeline_arity(metadata) do
+    if Keyword.get(metadata, :pipeline?, false) do
+      1
+    else
+      0
+    end
+  end
 
   defp excluded_functions do
     case :persistent_term.get(@excluded_functions_key, :not_found) do
@@ -186,7 +222,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
 
     # syntax specific functions to exclude from our matches
     excluded_operators =
-      ~w[-> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
+      ~w[<- -> && ** ++ -- .. "..//" ! <> =~ @ |> | || * + - / != !== < <= == === > >=]a
 
     excluded_keywords = ~w[and if import in not or raise require try use]a
 

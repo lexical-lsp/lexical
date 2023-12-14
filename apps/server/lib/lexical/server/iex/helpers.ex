@@ -5,6 +5,7 @@ defmodule Lexical.Server.IEx.Helpers do
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Search
   alias Lexical.Server.CodeIntelligence
 
   defmacro __using__(_) do
@@ -12,7 +13,10 @@ defmodule Lexical.Server.IEx.Helpers do
       alias Lexical.Document
       alias Lexical.Document.Position
       alias Lexical.RemoteControl
+      alias Lexical.RemoteControl.Search
       import unquote(__MODULE__)
+
+      RemoteControl.Module.Loader.start_link(nil)
     end
   end
 
@@ -47,6 +51,27 @@ defmodule Lexical.Server.IEx.Helpers do
     |> Path.join()
     |> Document.Path.to_uri()
     |> Document.new(text, 0)
+  end
+
+  def search_store(project) do
+    project = ensure_project(project)
+    RemoteControl.set_project(project)
+
+    Search.Store.start_link(
+      project,
+      &Search.Indexer.create_index/1,
+      &Search.Indexer.update_index/2,
+      Search.Store.Backends.Ets
+    )
+  end
+
+  def search_entries(project) do
+    {:ok, entries} =
+      project
+      |> ensure_project()
+      |> Search.Indexer.create_index()
+
+    entries
   end
 
   def pos(doc, line, character) do

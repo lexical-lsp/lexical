@@ -43,8 +43,8 @@ defmodule Lexical.Test.RangeSupport do
   end
 
   def extract(%Document{} = document, %Range{} = range) do
-    zero_based_start_character = range.start.character - 1
-    zero_based_end_character = range.end.character - 1
+    zero_based_start_character = max(range.start.character - 1, 0)
+    zero_based_end_character = max(range.end.character - 1, 0)
     start_line = range.start.line
     end_line = range.end.line
 
@@ -55,21 +55,19 @@ defmodule Lexical.Test.RangeSupport do
     |> Enum.map(fn
       line(line_number: line_number, text: line_text)
       when line_number == start_line and line_number == end_line ->
-        String.slice(line_text, zero_based_start_character..range.end.character)
+        length = zero_based_end_character - zero_based_start_character
+        String.slice(line_text, zero_based_start_character, length)
 
       line(line_number: ^start_line, text: line_text, ending: ending) ->
         line_length = String.length(line_text)
-
-        prefix =
-          String.slice(
-            line_text,
-            zero_based_start_character..line_length
-          )
+        length = line_length - zero_based_start_character
+        prefix = String.slice(line_text, zero_based_start_character, length)
 
         [prefix, ending]
 
       line(line_number: ^end_line, text: line_text) ->
-        String.slice(line_text, 0..zero_based_end_character)
+        length = zero_based_end_character
+        String.slice(line_text, 0, length)
 
       line(text: line_text, ending: ending) ->
         [line_text, ending]
