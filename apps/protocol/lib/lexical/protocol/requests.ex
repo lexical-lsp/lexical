@@ -52,6 +52,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "textDocument/codeAction", Types.CodeAction.Params
   end
 
+  defmodule CodeLens do
+    use Proto
+
+    defrequest "textDocument/codeLens", Types.CodeLens.Params
+  end
+
   defmodule Completion do
     use Proto
 
@@ -62,6 +68,12 @@ defmodule Lexical.Protocol.Requests do
     use Proto
 
     defrequest "textDocument/hover", Types.Hover.Params
+  end
+
+  defmodule ExecuteCommand do
+    use Proto
+
+    defrequest "workspace/executeCommand", Types.ExecuteCommand.Params
   end
 
   # Server -> Client requests

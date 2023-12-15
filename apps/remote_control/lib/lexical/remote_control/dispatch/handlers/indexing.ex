@@ -1,10 +1,9 @@
 defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
-  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Commands
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search
-  alias Lexical.RemoteControl.Search.Indexer
 
   require Logger
   import Messages
@@ -26,11 +25,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   end
 
   defp reindex(uri) do
-    with {:ok, %Document{} = document, %Analysis{} = analysis} <-
-           Document.Store.fetch(uri, :analysis),
-         {:ok, entries} <- Indexer.Quoted.index(analysis) do
-      Search.Store.update(document.path, entries)
-    end
+    Commands.Reindex.uri(uri)
   end
 
   def delete_path(uri) do

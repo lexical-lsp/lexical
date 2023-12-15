@@ -9,6 +9,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.CodeMod
+  alias Lexical.RemoteControl.Commands
 
   require Logger
 
@@ -112,5 +113,9 @@ defmodule Lexical.RemoteControl.Api do
 
   def broadcast(%Project{} = project, message) do
     RemoteControl.call(project, RemoteControl.Dispatch, :broadcast, [message])
+  end
+
+  def reindex(%Project{} = project) do
+    RemoteControl.call(project, Commands.Reindex, :perform, [project])
   end
 end

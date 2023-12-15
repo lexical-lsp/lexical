@@ -39,6 +39,11 @@ defmodule Lexical.Protocol.Responses do
     defresponse optional(list_of(Types.CodeAction))
   end
 
+  defmodule CodeLens do
+    use Proto
+    defresponse optional(list_of(Types.CodeLens))
+  end
+
   defmodule Completion do
     use Proto
 
@@ -55,6 +60,12 @@ defmodule Lexical.Protocol.Responses do
     use Proto
 
     defresponse optional(Types.Hover)
+  end
+
+  defmodule ExecuteCommand do
+    use Proto
+
+    defresponse optional(any())
   end
 
   # Client -> Server responses
