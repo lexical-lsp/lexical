@@ -47,7 +47,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
   end
 
   describe "rename exact module" do
-    test "succeeds when the cursor on the definition" do
+    test "succeeds when the cursor is at the definition" do
       {:ok, result} =
         ~q[
         defmodule |Foo do
@@ -57,7 +57,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[defmodule Renamed do]
     end
 
-    test "succeeds when the cursor on the alias" do
+    test "succeeds when the cursor is at the alias" do
       {:ok, result} =
         ~q[
         defmodule Baz do
@@ -68,7 +68,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[alias Renamed]
     end
 
-    test "succeeds when the definition in a nested module" do
+    test "succeeds when the definition is in a nested module" do
       {:ok, result} =
         ~q[
         defmodule TopLevel do
@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       ]
     end
 
-    test "succeeds when the cursor in the multiple aliases off of single alias" do
+    test "succeeds when the cursor is in the multiple aliases off of single alias" do
       {:ok, result} =
         ~q[
         defmodule TopLevel do
@@ -108,7 +108,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[  First, Renamed,]
     end
 
-    test "only rename the aliased when the cursor at the aliased" do
+    test "only rename the aliased when the cursor is at the aliased" do
       {:ok, result} =
         ~q[
         defmodule TopLevel do
@@ -122,7 +122,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[  Renamed]
     end
 
-    test "succeeds when the cursor at the alias_ased child" do
+    test "succeeds when the cursor is at the aliased child" do
       {:ok, result} =
         ~q[
           defmodule TopLevel.Foo.Bar do
@@ -140,7 +140,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[  Parent.Renamed]
     end
 
-    test "only rename aliased when the cursor at the alias_ased" do
+    test "only rename aliased when the cursor is at the aliased" do
       {:ok, result} =
         ~q[
           defmodule TopLevel.Foo.Bar do
@@ -172,7 +172,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[defmodule FooTest do]
     end
 
-    test "shouldn't rename the descendants when the cursor at the end of the module" do
+    test "shouldn't rename the descendants when the cursor is at the end of the module" do
       {:ok, result} = ~q[
         defmodule TopLevel.Module do # ✓
         end
@@ -190,7 +190,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
   end
 
   describe "rename descendants" do
-    test "in the middle of definition" do
+    test "succeeds when the cursor is in the middle of definition" do
       {:ok, result} =
         ~q[
           defmodule TopLevel.|Middle.Module do
@@ -202,7 +202,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[alias TopLevel.Renamed.Module]
     end
 
-    test "in the middle of reference" do
+    test "succeeds when the cursor is in the middle of reference" do
       {:ok, result} =
         ~q[
           defmodule TopLevel.Second.Middle.Module do
@@ -214,7 +214,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[alias TopLevel.Second.Renamed.Module]
     end
 
-    test "succeeds when there are same module name in the cursor neighborhood" do
+    test "succeeds when there are same module name is in the cursor neighborhood" do
       {:ok, result} =
         ~q[
           defmodule TopLevel.Foo do
@@ -254,7 +254,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
   end
 
   describe "rename struct" do
-    test "succeeds when the cursor on the definition" do
+    test "succeeds when the cursor is at the definition" do
       {:ok, result} =
         ~q[
         defmodule |Foo do
@@ -272,7 +272,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
       assert result =~ ~S[%Renamed{}]
     end
 
-    test "succeeds when the cursor on the reference" do
+    test "succeeds when the cursor is at the reference" do
       {:ok, result} =
         ~q[
         defmodule Foo do

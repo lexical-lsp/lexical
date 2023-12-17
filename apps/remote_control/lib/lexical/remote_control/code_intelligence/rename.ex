@@ -94,7 +94,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     prefix = "#{entity_string}."
 
     prefix
-    |> Store.prefix(subject: [:definition, :reference])
+    |> Store.prefix([])
     |> Enum.filter(&(entry_matching?(&1, cursor_entity_string) and has_dots_in_range?(&1)))
     |> adjust_range(entity)
   end
@@ -103,7 +103,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     entity_string = inspect(entity)
 
     entity_string
-    |> Store.exact(subject: [:definition, :reference])
+    |> Store.exact([])
     |> Enum.filter(&entry_matching?(&1, cursor_entity_string))
   end
 
@@ -156,7 +156,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   defp to_edits_by_uri(results, new_name) do
     Enum.group_by(
       results,
-      fn result -> Document.Path.ensure_uri(result.path) end,
+      &Document.Path.ensure_uri(&1.path),
       fn result ->
         cursor_entity_length = result.range |> cursor_entity_string() |> String.length()
         # e.g: `Parent.|ToBeRenameModule`, we need the start position of `ToBeRenameModule`
