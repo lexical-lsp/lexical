@@ -12,16 +12,20 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
   @schema_order [
     Schemas.LegacyV0,
-    Schemas.V1
+    Schemas.V1,
+    Schemas.V2
   ]
 
   import Schemas.V1,
     only: [
       query_by_id: 0,
       query_by_id: 1,
-      query_by_path: 1,
-      query_by_subject: 1,
-      query_by_prefix: 1
+      query_by_path: 1
+    ]
+
+  import Schemas.V2,
+    only: [
+      query_by_subject_prefix: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid]
@@ -64,8 +68,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     versions = Versions.current()
 
     match_pattern =
-      query_by_prefix(
-        prefix: to_prefix(subject),
+      query_by_subject_prefix(
+        subject: to_prefix(subject),
         type: type,
         subtype: subtype,
         elixir_version: versions.elixir,
@@ -81,7 +85,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     versions = Versions.current()
 
     match_pattern =
-      query_by_subject(
+      query_by_subject_prefix(
         subject: to_subject(subject),
         type: type,
         subtype: subtype,
@@ -121,7 +125,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       |> :ets.match({query_by_path(path: path), :"$0"})
       |> List.flatten()
 
-    :ets.match_delete(state.table_name, {query_by_subject(path: path), :_})
+    :ets.match_delete(state.table_name, {query_by_subject_prefix(path: path), :_})
     :ets.match_delete(state.table_name, {query_by_path(path: path), :_})
     Enum.each(ids_to_delete, &:ets.delete(state.table_name, &1))
     {:ok, ids_to_delete}
@@ -161,10 +165,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
      ), :_}
   end
 
-  defp to_subject(binary) when is_binary(binary), do: binary
   defp to_subject(:_), do: :_
-  defp to_subject(atom) when is_atom(atom), do: inspect(atom)
-  defp to_subject(other), do: to_string(other)
+  defp to_subject(other), do: Schemas.V2.subject_to_charlist(other)
 
   @dialyzer {:nowarn_function, to_prefix: 1}
 
