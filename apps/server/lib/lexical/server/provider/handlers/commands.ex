@@ -53,7 +53,7 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
         Window.error("Indexing #{Project.name(project)} failed")
         Logger.error("Indexing command failed due to #{inspect(error)}")
 
-        internal_error(request_id, "Indexing Failed")
+        internal_error(request_id, "Could not reindex: #{error}")
     end
   end
 

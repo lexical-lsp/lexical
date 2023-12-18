@@ -1,5 +1,6 @@
 defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   alias Lexical.Document
+  alias Lexical.Project
   alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.CodeLens
   alias Lexical.Protocol.Types
@@ -14,10 +15,11 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   import Lexical.Test.RangeSupport
 
   use ExUnit.Case, async: false
+  use Patch
 
   setup_all do
     start_supervised(Document.Store)
-    project = project(:navigations)
+    project = project(:umbrella)
 
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
 
@@ -31,8 +33,13 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
     {:ok, project: project}
   end
 
+  defp with_indexing_enabled(_) do
+    patch(Lexical.Features, :indexing_enabled?, true)
+    :ok
+  end
+
   defp with_mix_exs(%{project: project}) do
-    path = file_path(project, "mix.exs")
+    path = Project.mix_exs_path(project)
     %{uri: Document.Path.ensure_uri(path)}
   end
 
@@ -54,7 +61,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   end
 
   describe "code lens for mix.exs" do
-    setup [:with_mix_exs]
+    setup [:with_mix_exs, :with_indexing_enabled]
 
     test "emits a code lens at the project definition", %{project: project, uri: referenced_uri} do
       mix_exs_path = Document.Path.ensure_path(referenced_uri)
@@ -67,6 +74,26 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
 
       assert extract(mix_exs, code_lens.range) =~ "def project"
       assert code_lens.command == Handlers.Commands.reindex_command(project)
+    end
+
+    test "does not emit a code lens for a project file", %{project: project} do
+      {:ok, request} =
+        project
+        |> Project.project_path()
+        |> Path.join("apps/first/lib/umbrella/first.ex")
+        |> build_request()
+
+      assert {:reply, %{result: []}} = handle(request, project)
+    end
+
+    test "does not emite a code lens for an umbrella app's mix.exs", %{project: project} do
+      {:ok, request} =
+        project
+        |> Project.project_path()
+        |> Path.join("apps/first/mix.exs")
+        |> build_request()
+
+      assert {:reply, %{result: []}} = handle(request, project)
     end
   end
 end
