@@ -35,9 +35,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
     def reindex_uri(%__MODULE__{} = state, uri) do
       case entries_for_uri(uri) do
         {:ok, path, entries} ->
-          new_pending_updates = Map.put(state.pending_updates, path, entries)
-
-          %__MODULE__{state | pending_updates: new_pending_updates}
+          put_in(state.pending_updates[path], entries)
 
         _ ->
           state

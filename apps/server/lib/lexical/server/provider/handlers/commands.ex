@@ -12,8 +12,10 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
   require ErrorCodes
   require Logger
 
+  @reindex_name "Reindex"
+
   def names do
-    [reindex_name()]
+    [@reindex_name]
   end
 
   def reindex_command(%Project{} = project) do
@@ -21,14 +23,14 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
 
     Types.Command.new(
       title: "Rebuild #{project_name}'s code search index",
-      command: reindex_name()
+      command: @reindex_name
     )
   end
 
   def handle(%Requests.ExecuteCommand{} = request, %Env{} = env) do
     response =
       case request.command do
-        "Reindex" ->
+        @reindex_name ->
           Logger.info("Reindex #{Project.name(env.project)}")
           reindex(env.project, request.id)
 
@@ -57,9 +59,5 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
 
   defp internal_error(request_id, message) do
     Responses.ExecuteCommand.error(request_id, :internal_error, message)
-  end
-
-  defp reindex_name do
-    "Reindex"
   end
 end

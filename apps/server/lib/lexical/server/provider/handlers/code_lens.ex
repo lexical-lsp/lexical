@@ -2,6 +2,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Features
   alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
@@ -24,7 +25,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   end
 
   defp reindex_lens(%Project{} = project, %Document{} = document) do
-    if Path.basename(document.path) == "mix.exs" do
+    if show_reindex_lens?(project, document) do
       range = def_project_range(document)
       command = Handlers.Commands.reindex_command(project)
 
@@ -46,5 +47,10 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
           {:cont, nil}
         end
     end)
+  end
+
+  defp show_reindex_lens?(%Project{} = project, %Document{} = document) do
+    document_path = Path.expand(document.path)
+    Features.indexing_enabled?() and document_path == Project.mix_exs_path(project)
   end
 end
