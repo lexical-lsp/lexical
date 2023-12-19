@@ -28,6 +28,19 @@ defmodule Lexical.Server do
     GenServer.call(__MODULE__, {:response_complete, request, response})
   end
 
+  @spec server_request(
+          Requests.request(),
+          (Requests.request(), {:ok, any()} | {:error, term()} -> term())
+        ) :: :ok
+  def server_request(request, on_response) when is_function(on_response, 2) do
+    GenServer.call(__MODULE__, {:server_request, request, on_response})
+  end
+
+  @spec server_request(Requests.request()) :: :ok
+  def server_request(request) do
+    server_request(request, fn _, _ -> :ok end)
+  end
+
   def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -42,6 +55,11 @@ defmodule Lexical.Server do
 
   def handle_call({:response_complete, _request, _response}, _from, %State{} = state) do
     {:reply, :ok, state}
+  end
+
+  def handle_call({:server_request, request, on_response}, _from, %State{} = state) do
+    new_state = State.add_request(state, request, on_response)
+    {:reply, :okk, new_state}
   end
 
   def handle_cast({:protocol_message, message}, %State{} = state) do
@@ -119,10 +137,16 @@ defmodule Lexical.Server do
     {:ok, state}
   end
 
-  def handle_message(request, %State{} = state) do
+  def handle_message(%_{} = request, %State{} = state) do
     Provider.Queue.add(request, state.configuration)
 
     {:ok, state}
+  end
+
+  def handle_message(%{} = request, %State{} = state) do
+    new_state = State.finish_request(state, request)
+
+    {:ok, new_state}
   end
 
   defp apply_to_state(%State{} = state, %{} = request_or_notification) do

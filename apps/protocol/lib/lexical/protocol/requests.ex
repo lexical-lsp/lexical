@@ -1,5 +1,6 @@
 defmodule Lexical.Protocol.Requests do
   alias Lexical.Proto
+  alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
 
   # Client -> Server request
@@ -68,7 +69,15 @@ defmodule Lexical.Protocol.Requests do
   defmodule RegisterCapability do
     use Proto
 
-    defrequest "client/registerCapability", Types.Registration.Params
+    server_request "client/registerCapability", Types.Registration.Params, Responses.Empty
+  end
+
+  defmodule ShowMessageRequest do
+    use Proto
+
+    server_request "window/showMessageRequest",
+                   Types.ShowMessageRequest.Params,
+                   Responses.ShowMessage
   end
 
   use Proto, decoders: :requests
