@@ -6,7 +6,7 @@ defmodule Lexical.RemoteControl.Build.Project do
   alias Lexical.RemoteControl.Plugin
   alias Mix.Task.Compiler.Diagnostic
 
-  use Build.Progress
+  use RemoteControl.Progress
   require Logger
 
   def compile(%Project{} = project, force?) do

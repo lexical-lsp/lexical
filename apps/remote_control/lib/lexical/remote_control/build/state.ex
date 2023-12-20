@@ -14,7 +14,7 @@ defmodule Lexical.RemoteControl.Build.State do
 
   import Messages
 
-  use Build.Progress
+  use RemoteControl.Progress
 
   defstruct project: nil, build_number: 0, uri_to_source_and_edit_time: %{}
 

@@ -3,6 +3,7 @@ defmodule Lexical.Server.Project.Progress.State do
   alias Lexical.Protocol.Id
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Configuration
+  alias Lexical.Server.Project.Progress.Percentage
   alias Lexical.Server.Project.Progress.Value
   alias Lexical.Server.Transport
 
@@ -21,7 +22,16 @@ defmodule Lexical.Server.Project.Progress.State do
     write_work_done(progress.token)
     write(progress)
 
-    %{state | progress_by_label: progress_by_label}
+    %__MODULE__{state | progress_by_label: progress_by_label}
+  end
+
+  def begin(%__MODULE__{} = state, percent_progress(label: label, max: max)) do
+    progress = Percentage.begin(label, max)
+    progress_by_label = Map.put(state.progress_by_label, label, progress)
+    write_work_done(progress.token)
+    write(progress)
+
+    %__MODULE__{state | progress_by_label: progress_by_label}
   end
 
   def report(%__MODULE__{} = state, project_progress(label: label, message: message)) do
@@ -32,7 +42,21 @@ defmodule Lexical.Server.Project.Progress.State do
       end)
 
     write(progress)
-    %{state | progress_by_label: progress_by_label}
+    %__MODULE__{state | progress_by_label: progress_by_label}
+  end
+
+  def report(
+        %__MODULE__{} = state,
+        percent_progress(label: label, message: message, delta: delta)
+      ) do
+    {progress, progress_by_label} =
+      Map.get_and_update(state.progress_by_label, label, fn old_percentage ->
+        new_percentage = Percentage.report(old_percentage, delta, message)
+        {new_percentage, new_percentage}
+      end)
+
+    write(progress)
+    %__MODULE__{state | progress_by_label: progress_by_label}
   end
 
   def complete(%__MODULE__{} = state, project_progress(label: label, message: message)) do
@@ -40,7 +64,16 @@ defmodule Lexical.Server.Project.Progress.State do
       Map.get_and_update(state.progress_by_label, label, fn _ -> :pop end)
 
     progress |> Value.complete(message) |> write()
-    %{state | progress_by_label: progress_by_label}
+    %__MODULE__{state | progress_by_label: progress_by_label}
+  end
+
+  def complete(%__MODULE__{} = state, percent_progress(label: label, message: message)) do
+    {progress, progress_by_label} =
+      Map.get_and_update(state.progress_by_label, label, fn _ -> :pop end)
+
+    progress |> Percentage.complete(message) |> write()
+
+    %__MODULE__{state | progress_by_label: progress_by_label}
   end
 
   defp write_work_done(token) do
@@ -50,9 +83,9 @@ defmodule Lexical.Server.Project.Progress.State do
     end
   end
 
-  defp write(%{token: token} = progress) when not is_nil(token) do
+  defp write(%progress_module{token: token} = progress) when not is_nil(token) do
     if Configuration.client_supports?(:work_done_progress) do
-      progress |> Value.to_protocol() |> Transport.write()
+      progress |> progress_module.to_protocol() |> Transport.write()
     end
   end
 

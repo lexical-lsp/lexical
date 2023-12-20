@@ -73,7 +73,7 @@ defmodule Lexical.RemoteControl.Dispatch do
   end
 
   defp register_progress_listener do
-    register_listener(progress_pid(), [project_progress()])
+    register_listener(progress_pid(), [project_progress(), percent_progress()])
   end
 
   defp progress_pid do

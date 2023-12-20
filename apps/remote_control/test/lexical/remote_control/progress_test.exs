@@ -1,6 +1,6 @@
-defmodule Lexical.RemoteControl.Build.ProgressTest do
+defmodule Lexical.RemoteControl.ProgressTest do
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Build.Progress
+  alias Lexical.RemoteControl.Progress
 
   import Lexical.RemoteControl.Api.Messages
 

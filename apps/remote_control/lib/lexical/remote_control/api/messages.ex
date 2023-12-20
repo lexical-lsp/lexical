@@ -30,9 +30,12 @@ defmodule Lexical.RemoteControl.Api.Messages do
   defrecord :module_updated, file: nil, name: nil, functions: [], macros: [], struct: nil
 
   defrecord :project_diagnostics, project: nil, build_number: 0, diagnostics: []
+
   defrecord :file_diagnostics, project: nil, build_number: 0, uri: nil, diagnostics: []
 
   defrecord :project_progress, label: nil, message: nil, stage: :report
+
+  defrecord :percent_progress, label: nil, message: nil, stage: :report, max: 0, delta: 0
 
   defrecord :struct_discovered, module: nil, fields: []
 
