@@ -17,7 +17,7 @@ defmodule Lexical.Ast.Analysis.Import do
     %__MODULE__{module: module, selector: expand_selector(selector), line: line}
   end
 
-  defp expand_selector(selectors) do
+  defp expand_selector(selectors) when is_list(selectors) do
     selectors =
       Enum.reduce(selectors, [], fn
         {{:__block__, _, [type]}, {:__block__, _, [selector]}}, acc
@@ -48,5 +48,10 @@ defmodule Lexical.Ast.Analysis.Import do
     else
       selectors
     end
+  end
+
+  # If the selectors is not valid, like: `import SomeModule, o `,  we default to :all
+  defp expand_selector(_) do
+    :all
   end
 end
