@@ -20,8 +20,8 @@ defmodule Lexical.Proto.Request do
     quote do
       unquote(do_defrequest(method, types, __CALLER__))
 
-      def response_type do
-        unquote(response_module_ast)
+      def parse_response(response) do
+        unquote(response_module_ast).parse(response)
       end
     end
   end

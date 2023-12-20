@@ -92,14 +92,12 @@ defmodule Lexical.Server.State do
 
     case Map.pop(state.in_flight_requests, to_string(response_id)) do
       {{%request_module{} = request, callback}, in_flight_requests} ->
-        response_type = request_module.response_type()
-
-        case response_type.parse(response) do
+        case request_module.parse_response(response) do
           {:ok, response} ->
             callback.(request, {:ok, response.result})
 
           error ->
-            Logger.info("failed to parse #{response_type}, #{inspect(error)}")
+            Logger.info("failed to parse response for #{request_module}, #{inspect(error)}")
             callback.(request, error)
         end
 

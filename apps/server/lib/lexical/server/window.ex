@@ -10,6 +10,9 @@ defmodule Lexical.Server.Window do
 
   @levels [:error, :warning, :info, :log]
 
+  @type message_result :: {:errory, term()} | {:ok, nil} | {:ok, Types.Message.ActionItem.t()}
+  @type on_response_callback :: (message_result() -> any())
+
   @spec log(level, String.t()) :: :ok
   def log(level, message) when level in @levels and is_binary(message) do
     log_message = apply(LogMessage, level, [message])
@@ -43,9 +46,13 @@ defmodule Lexical.Server.Window do
   The result type handed to the callback function is a
   `Lexical.Protocol.Types.Message.ActionItem` or nil if there was no response
   from the user.
+
+  The strings passed in as the `actions` command are displayed to the user, and when
+  they select one, the `Types.Message.ActionItem` is passed to the callback function.
   """
-  @spec show_message(String.t(), level(), [String.t()], (any() -> any())) :: :ok
-  def show_message(message, message_type, actions, on_response) do
+  @spec show_message(String.t(), level(), [String.t()], on_response_callback) :: :ok
+  def show_message(message, message_type, actions, on_response)
+      when is_function(on_response, 1) do
     action_items =
       Enum.map(actions, fn action_string ->
         Types.Message.ActionItem.new(title: action_string)
