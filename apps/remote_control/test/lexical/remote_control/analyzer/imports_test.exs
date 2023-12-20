@@ -310,6 +310,20 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
       refute_imported(imports, ImportedModule, :function, 1)
       refute_imported(imports, ImportedModule, :macro, 1)
     end
+
+    test "import all by default when a syntax error occurs in the latter part" do
+      imports = ~q[
+        import Parent.Child.ImportedModule, o
+        |
+      ] |> imports_at_cursor()
+
+      assert_imported(imports, ImportedModule, :macro, 1)
+
+      assert_imported(imports, ImportedModule, :function, 0)
+      assert_imported(imports, ImportedModule, :function, 0)
+      assert_imported(imports, ImportedModule, :function, 1)
+      assert_imported(imports, ImportedModule, :function, 2)
+    end
   end
 
   describe "import scopes" do
