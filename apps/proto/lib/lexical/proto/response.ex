@@ -4,6 +4,7 @@ defmodule Lexical.Proto.Response do
   alias Lexical.Proto.Macros.{
     Access,
     Meta,
+    Parse,
     Struct,
     Typespec
   }
@@ -23,8 +24,8 @@ defmodule Lexical.Proto.Response do
       unquote(Struct.build(jsonrpc_types, __CALLER__))
       @type t :: unquote(Typespec.typespec())
       unquote(Meta.build(jsonrpc_types))
-
       unquote(constructors())
+      unquote(Parse.build(result: response_type))
 
       defimpl Jason.Encoder, for: unquote(__CALLER__.module) do
         def encode(%_{error: nil} = response, opts) do

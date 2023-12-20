@@ -38,6 +38,13 @@ defmodule Lexical.Protocol.JsonRpc do
     Requests.decode(method, request)
   end
 
+  defp do_decode(%{"id" => _id, "result" => _result} = response) do
+    # this is due to a client -> server message, but we can't decode it properly yet.
+    # since we can't match up the response type to the message.
+
+    {:ok, response}
+  end
+
   defp do_decode(%{"method" => method} = notification) do
     Notifications.decode(method, notification)
   end

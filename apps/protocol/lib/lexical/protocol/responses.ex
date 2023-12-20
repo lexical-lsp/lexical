@@ -3,6 +3,12 @@ defmodule Lexical.Protocol.Responses do
   alias Lexical.Proto.Typespecs
   alias Lexical.Protocol.Types
 
+  defmodule Empty do
+    use Proto
+
+    defresponse optional(Types.LSPObject)
+  end
+
   defmodule InitializeResult do
     use Proto
 
@@ -49,6 +55,13 @@ defmodule Lexical.Protocol.Responses do
     use Proto
 
     defresponse optional(Types.Hover)
+  end
+
+  # Client -> Server responses
+
+  defmodule ShowMessage do
+    use Proto
+    defresponse optional(Types.Message.ActionItem)
   end
 
   use Typespecs, for: :responses

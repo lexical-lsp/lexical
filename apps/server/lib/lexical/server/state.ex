@@ -33,7 +33,11 @@ defmodule Lexical.Server.State do
   require Logger
 
   import Api.Messages
-  defstruct configuration: nil, initialized?: false, shutdown_received?: false
+
+  defstruct configuration: nil,
+            initialized?: false,
+            shutdown_received?: false,
+            in_flight_requests: %{}
 
   @supported_code_actions [
     :quick_fix
@@ -68,6 +72,40 @@ defmodule Lexical.Server.State do
 
   def initialize(%__MODULE__{initialized?: true}, %Initialize{}) do
     {:error, :already_initialized}
+  end
+
+  def in_flight?(%__MODULE__{} = state, request_id) do
+    Map.has_key?(state.in_flight_requests, to_string(request_id))
+  end
+
+  def add_request(%__MODULE__{} = state, request, callback) do
+    Transport.write(request)
+
+    in_flight_requests =
+      Map.put(state.in_flight_requests, to_string(request.id), {request, callback})
+
+    %__MODULE__{state | in_flight_requests: in_flight_requests}
+  end
+
+  def finish_request(%__MODULE__{} = state, response) do
+    %{"id" => response_id} = response
+
+    case Map.pop(state.in_flight_requests, to_string(response_id)) do
+      {{%request_module{} = request, callback}, in_flight_requests} ->
+        case request_module.parse_response(response) do
+          {:ok, response} ->
+            callback.(request, {:ok, response.result})
+
+          error ->
+            Logger.info("failed to parse response for #{request_module}, #{inspect(error)}")
+            callback.(request, error)
+        end
+
+        %__MODULE__{state | in_flight_requests: in_flight_requests}
+
+      _ ->
+        state
+    end
   end
 
   def default_configuration(%__MODULE__{configuration: config}) do

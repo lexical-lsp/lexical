@@ -10,13 +10,29 @@ defmodule Lexical.Proto.Request do
   end
 
   defmacro defrequest(method, params_module_ast) do
+    types = fetch_types(params_module_ast, __CALLER__)
+    do_defrequest(method, types, __CALLER__)
+  end
+
+  defmacro server_request(method, params_module_ast, response_module_ast) do
+    types = fetch_types(params_module_ast, __CALLER__)
+
+    quote do
+      unquote(do_defrequest(method, types, __CALLER__))
+
+      def parse_response(response) do
+        unquote(response_module_ast).parse(response)
+      end
+    end
+  end
+
+  defp fetch_types(params_module_ast, env) do
     params_module =
       params_module_ast
-      |> Macro.expand(__CALLER__)
+      |> Macro.expand(env)
       |> Code.ensure_compiled!()
 
-    types = params_module.__meta__(:raw_types)
-    do_defrequest(method, types, __CALLER__)
+    params_module.__meta__(:raw_types)
   end
 
   defp do_defrequest(method, types, caller) do
