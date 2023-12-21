@@ -39,6 +39,10 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :struct_discovered, module: nil, fields: []
 
+  defrecord :project_reindex_requested, project: nil
+
+  defrecord :project_reindexed, project: nil, elapsed_ms: 0, status: :success
+
   @type compile_status :: :successful | :error
   @type name_and_arity :: {atom, non_neg_integer}
   @type field_list :: Keyword.t() | [atom]
@@ -118,4 +122,14 @@ defmodule Lexical.RemoteControl.Api.Messages do
           )
 
   @type struct_discovered :: record(:struct_discovered, module: module(), fields: field_list())
+
+  @type project_reindex_requested ::
+          record(:project_reindex_requested, project: Lexical.Project.t())
+
+  @type project_reindexed ::
+          record(:project_reindexed,
+            project: Lexical.Project.t(),
+            elapsed_ms: non_neg_integer(),
+            status: :success | {:error, term()}
+          )
 end

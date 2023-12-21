@@ -118,4 +118,8 @@ defmodule Lexical.RemoteControl.Api do
   def reindex(%Project{} = project) do
     RemoteControl.call(project, Commands.Reindex, :perform, [project])
   end
+
+  def index_running?(%Project{} = project) do
+    RemoteControl.call(project, Commands.Reindex, :running?, [])
+  end
 end

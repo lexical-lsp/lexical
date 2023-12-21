@@ -1,5 +1,4 @@
 defmodule Lexical.Server.Provider.Handlers.Commands do
-  alias Lexical.Formats
   alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
@@ -43,14 +42,12 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
   end
 
   defp reindex(%Project{} = project, request_id) do
-    case :timer.tc(RemoteControl.Api, :reindex, [project]) do
-      {elapsed, :ok} ->
-        message = "Reindexed #{Project.name(project)} in #{Formats.time(elapsed)}"
-        Window.show(:info, message)
+    case RemoteControl.Api.reindex(project) do
+      :ok ->
         Responses.ExecuteCommand.new(request_id, "ok")
 
-      {_elapsed, error} ->
-        Window.error("Indexing #{Project.name(project)} failed")
+      error ->
+        Window.show_error_message("Indexing #{Project.name(project)} failed")
         Logger.error("Indexing command failed due to #{inspect(error)}")
 
         internal_error(request_id, "Could not reindex: #{error}")

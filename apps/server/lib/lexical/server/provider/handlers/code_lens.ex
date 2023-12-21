@@ -7,6 +7,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.CodeLens
+  alias Lexical.RemoteControl
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
@@ -51,6 +52,8 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
 
   defp show_reindex_lens?(%Project{} = project, %Document{} = document) do
     document_path = Path.expand(document.path)
-    Features.indexing_enabled?() and document_path == Project.mix_exs_path(project)
+
+    Features.indexing_enabled?() and document_path == Project.mix_exs_path(project) and
+      not RemoteControl.Api.index_running?(project)
   end
 end

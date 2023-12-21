@@ -66,11 +66,15 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   @moduledoc """
   A simple genserver that prevents more than one reindexing job from running at the same time
   """
+
   alias Lexical.Document
   alias Lexical.Project
+  alias Lexical.RemoteControl.Api
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search
 
   use GenServer
+  import Api.Messages
 
   def start_link(reindex_fun) when is_function(reindex_fun, 1) do
     GenServer.start_link(__MODULE__, reindex_fun, name: __MODULE__)
@@ -127,8 +131,19 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   end
 
   defp do_reindex(%Project{} = project) do
-    with {:ok, entries} <- Search.Indexer.create_index(project) do
-      Search.Store.replace(entries)
-    end
+    Dispatch.broadcast(project_reindex_requested(project: project))
+
+    {elapsed_us, result} =
+      :timer.tc(fn ->
+        with {:ok, entries} <- Search.Indexer.create_index(project) do
+          Search.Store.replace(entries)
+        end
+      end)
+
+    Dispatch.broadcast(
+      project_reindexed(project: project, elapsed_ms: round(elapsed_us / 1000), status: :success)
+    )
+
+    result
   end
 end
