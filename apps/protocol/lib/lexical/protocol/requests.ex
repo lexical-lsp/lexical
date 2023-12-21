@@ -92,5 +92,11 @@ defmodule Lexical.Protocol.Requests do
                    Responses.ShowMessage
   end
 
+  defmodule CodeLensRefresh do
+    use Proto
+
+    server_request "workspace/codeLens/refresh", Responses.Empty
+  end
+
   use Proto, decoders: :requests
 end

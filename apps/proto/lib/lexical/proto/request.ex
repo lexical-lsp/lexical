@@ -26,6 +26,16 @@ defmodule Lexical.Proto.Request do
     end
   end
 
+  defmacro server_request(method, response_module_ast) do
+    quote do
+      unquote(do_defrequest(method, [], __CALLER__))
+
+      def parse_response(response) do
+        unquote(response_module_ast).parse(response)
+      end
+    end
+  end
+
   defp fetch_types(params_module_ast, env) do
     params_module =
       params_module_ast
@@ -94,11 +104,17 @@ defmodule Lexical.Proto.Request do
 
       defimpl Jason.Encoder, for: unquote(lsp_module_name) do
         def encode(request, opts) do
+          params =
+            case Map.take(request, unquote(param_names)) do
+              empty when map_size(empty) == 0 -> nil
+              params -> params
+            end
+
           %{
             id: request.id,
             jsonrpc: "2.0",
             method: unquote(method),
-            params: Map.take(request, unquote(param_names))
+            params: params
           }
           |> Jason.Encode.map(opts)
         end
