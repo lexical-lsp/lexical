@@ -4,6 +4,8 @@ defmodule Lexical.RemoteControl.Search.Store do
   """
 
   alias Lexical.Project
+  alias Lexical.RemoteControl.Api
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
@@ -34,11 +36,11 @@ defmodule Lexical.RemoteControl.Search.Store do
                        2500
                      )
 
+  import Api.Messages
   use GenServer
   require Logger
 
   def stop do
-    #    GenServer.call(__MODULE__, :on_stop)
     GenServer.stop(__MODULE__)
   end
 
@@ -74,6 +76,10 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, :destroy)
   end
 
+  def enable do
+    GenServer.call(__MODULE__, :enable)
+  end
+
   @spec start_link(Project.t(), create_index, refresh_index, module()) :: GenServer.on_start()
   def start_link(%Project{} = project, create_index, refresh_index, backend) do
     GenServer.start_link(__MODULE__, [project, create_index, refresh_index, backend],
@@ -103,15 +109,28 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   @impl GenServer
   def init([%Project{} = project, create_index, update_index, backend]) do
-    state =
-      project
-      |> State.new(create_index, update_index, backend)
-      |> State.async_load()
+    # I've found that if indexing happens before the first compile, for some reason
+    # the compilation is 4x slower than if indexing happens after it. I was
+    # unable to figure out why this is the case, and I looked extensively, so instead
+    # we have this bandaid. We wait for the first compilation to complete, and then
+    # the search store enables itself, at which point we index the code.
 
-    {:ok, {nil, state}}
+    Dispatch.register_listener(self(), project_compiled())
+    state = State.new(project, create_index, update_index, backend)
+    {:ok, state}
   end
 
   @impl GenServer
+  # enable ourselves when the project is force compiled
+  def handle_info(project_compiled(), %State{} = state) do
+    {:noreply, enable(state)}
+  end
+
+  def handle_info(project_compiled(), {_, _} = state) do
+    # we're already enabled, no need to do anything
+    {:noreply, state}
+  end
+
   # handle the result from `State.async_load/1`
   def handle_info({ref, result}, {update_ref, %State{async_load_ref: ref} = state}) do
     {:noreply, {update_ref, State.async_load_complete(state, result)}}
@@ -128,6 +147,14 @@ defmodule Lexical.RemoteControl.Search.Store do
   end
 
   @impl GenServer
+  def handle_call(:enable, _from, %State{} = state) do
+    {:reply, :ok, enable(state)}
+  end
+
+  def handle_call(:enable, _from, state) do
+    {:reply, :ok, state}
+  end
+
   def handle_call({:replace, entities}, _from, {ref, %State{} = state}) do
     {reply, new_state} =
       case State.replace(state, entities) do
@@ -175,6 +202,11 @@ defmodule Lexical.RemoteControl.Search.Store do
     {:reply, :ok, {ref, new_state}}
   end
 
+  def handle_call(message, _from, %State{} = state) do
+    Logger.warning("Received #{inspect(message)}, but the search store isn't enabled yet.")
+    {:reply, {:error, {:not_enabled, message}}, state}
+  end
+
   @impl GenServer
   def terminate(_reason, {_, state}) do
     {:ok, state} = State.flush_buffered_updates(state)
@@ -201,5 +233,10 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   defp schedule_flush do
     Process.send_after(self(), :flush_updates, @flush_interval_ms)
+  end
+
+  defp enable(%State{} = state) do
+    state = State.async_load(state)
+    {nil, state}
   end
 end

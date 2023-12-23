@@ -17,6 +17,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
     project = project()
     RemoteControl.set_project(project)
     start_supervised!(Document.Store)
+    start_supervised!(RemoteControl.Dispatch)
 
     start_supervised!(
       {Search.Store,
@@ -28,6 +29,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
        ]}
     )
 
+    Search.Store.enable()
     assert_eventually Search.Store.loaded?()
     {:ok, project: project}
   end
