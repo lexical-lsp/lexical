@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.Backends.Ets
   alias Lexical.Test.Entry
@@ -228,8 +229,9 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   defp with_a_started_store(project, backend) do
+    start_supervised!(Dispatch)
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
-
+    Store.enable()
     assert_eventually ready?(), 1500
 
     on_exit(fn ->

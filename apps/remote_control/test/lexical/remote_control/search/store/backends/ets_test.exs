@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.Project
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.Backends
   alias Lexical.Test.Entry
@@ -40,8 +41,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   end
 
   defp start_supervised_store(%Project{} = project, create_fn, update_fn, backend) do
+    start_supervised!(Dispatch)
     start_supervised!({Store, [project, create_fn, update_fn, backend]})
-    assert_eventually(ready?(project))
+    Store.enable()
+    assert_eventually ready?(project)
   end
 
   def with_a_started_store(%{project: project, backend: backend}) do
@@ -71,9 +74,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
         {:ok, [], []}
       end
 
-      start_supervised!({Store, [project, create_fn, update_fn, backend]})
-
-      assert_eventually(ready?(project))
+      start_supervised_store(project, create_fn, update_fn, backend)
 
       assert_receive :create
       refute_receive :update
@@ -133,7 +134,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       create = fn _ -> {:error, :broken} end
       start_supervised_store(project, create, &default_update/2, backend)
 
-      assert_eventually(ready?(project))
+      assert_eventually ready?(project)
 
       assert Store.all() == []
     end
@@ -213,8 +214,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       Store.stop()
 
-      refute_eventually(ready?(project))
-      assert_eventually(ready?(project))
+      ensure_restarted(project)
 
       assert_eventually entries == Store.all()
     end
@@ -233,11 +233,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       Store.stop()
 
-      refute_eventually(ready?(project))
-      assert_eventually(ready?(project))
+      ensure_restarted(project)
 
       assert_eventually [%{ref: 2}] = Store.all()
     end
+  end
+
+  defp ensure_restarted(%Project{} = project) do
+    refute_eventually ready?(project)
+    assert_eventually Store |> Process.whereis() |> is_pid()
+    Store.enable()
+    assert_eventually ready?(project)
   end
 
   def restart_store(%Project{} = project) do
@@ -248,11 +254,13 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     |> Process.monitor()
 
     Store.stop()
-    refute_eventually(ready?(project))
+    refute_eventually ready?(project)
 
     receive do
       {:DOWN, _, _, _, _} ->
-        assert_eventually(ready?(project))
+        assert_eventually Store |> Process.whereis() |> is_pid()
+        Store.enable()
+        assert_eventually ready?(project)
     after
       1000 ->
         raise "Could not stop store"
