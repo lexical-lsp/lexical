@@ -13,6 +13,9 @@ defmodule Lexical.Server.Provider.Handlers do
       %Requests.CodeAction{} ->
         {:ok, Handlers.CodeAction}
 
+      %Requests.CodeLens{} ->
+        {:ok, Handlers.CodeLens}
+
       %Requests.Completion{} ->
         {:ok, Handlers.Completion}
 
@@ -21,6 +24,9 @@ defmodule Lexical.Server.Provider.Handlers do
 
       %Requests.Hover{} ->
         {:ok, Handlers.Hover}
+
+      %Requests.ExecuteCommand{} ->
+        {:ok, Handlers.Commands}
 
       %request_module{} ->
         {:error, {:unhandled, request_module}}

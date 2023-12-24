@@ -18,6 +18,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Types.CodeAction
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.DidChangeWatchedFiles
+  alias Lexical.Protocol.Types.ExecuteCommand
   alias Lexical.Protocol.Types.FileEvent
   alias Lexical.Protocol.Types.FileSystemWatcher
   alias Lexical.Protocol.Types.Registration
@@ -27,6 +28,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Server.CodeIntelligence
   alias Lexical.Server.Configuration
   alias Lexical.Server.Project
+  alias Lexical.Server.Provider.Handlers
   alias Lexical.Server.Transport
 
   require CodeAction.Kind
@@ -269,15 +271,19 @@ defmodule Lexical.Server.State do
     code_action_options =
       CodeAction.Options.new(code_action_kinds: @supported_code_actions, resolve_provider: false)
 
+    command_options = ExecuteCommand.Registration.Options.new(commands: Handlers.Commands.names())
+
     completion_options =
       Completion.Options.new(trigger_characters: CodeIntelligence.Completion.trigger_characters())
 
     server_capabilities =
       Types.ServerCapabilities.new(
         code_action_provider: code_action_options,
+        code_lens_provider: true,
         completion_provider: completion_options,
         definition_provider: true,
         document_formatting_provider: true,
+        execute_command_provider: command_options,
         hover_provider: true,
         references_provider: Features.indexing_enabled?(),
         text_document_sync: sync_options

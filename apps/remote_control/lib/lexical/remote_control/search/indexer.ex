@@ -107,7 +107,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
         fn chunk ->
           block_bytes = chunk |> Enum.map(&Map.get(path_to_size_map, &1)) |> Enum.sum()
           result = Enum.map(chunk, processor)
-          update_progress.(block_bytes, nil)
+          update_progress.(block_bytes, "Indexing")
           result
         end,
         timeout: timeout

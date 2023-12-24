@@ -5,6 +5,7 @@ defmodule Lexical.Server.Project.Supervisor do
   alias Lexical.Server.Project.Intelligence
   alias Lexical.Server.Project.Node
   alias Lexical.Server.Project.Progress
+  alias Lexical.Server.Project.SearchListener
 
   use Supervisor
 
@@ -26,7 +27,8 @@ defmodule Lexical.Server.Project.Supervisor do
       {ProjectNodeSupervisor, project},
       {Node, project},
       {Diagnostics, project},
-      {Intelligence, project}
+      {Intelligence, project},
+      {SearchListener, project}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -16,6 +16,7 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
+          {RemoteControl.Commands.Reindex, nil},
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,

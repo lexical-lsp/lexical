@@ -8,6 +8,7 @@ proto_dsl = [
   defrequest: 2,
   defresponse: 1,
   deftype: 1,
+  server_request: 2,
   server_request: 3
 ]
 
