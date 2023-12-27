@@ -333,7 +333,7 @@ defmodule Lexical.Ast.Analysis do
     end
   end
 
-  defp fetch_alias_as(options) do
+  defp fetch_alias_as(options) when is_list(options) do
     alias_as =
       Enum.find_value(options, fn
         {{:__block__, _, [:as]}, {:__aliases__, _, [alias_as]}} -> alias_as
@@ -344,5 +344,10 @@ defmodule Lexical.Ast.Analysis do
       nil -> :error
       _ -> {:ok, alias_as}
     end
+  end
+
+  # When the `as` section is incomplete, like: `alias Foo, a`
+  defp fetch_alias_as(_) do
+    :error
   end
 end
