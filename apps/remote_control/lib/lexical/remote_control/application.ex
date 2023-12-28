@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
-          {RemoteControl.Commands.Reindex, nil},
+          maybe_reindex(),
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,
@@ -44,8 +44,12 @@ defmodule Lexical.RemoteControl.Application do
          &RemoteControl.Search.Indexer.create_index/1,
          &RemoteControl.Search.Indexer.update_index/2
        ]}
-    else
-      nil
+    end
+  end
+
+  defp maybe_reindex do
+    if Features.indexing_enabled? do
+      {RemoteControl.Commands.Reindex, nil}
     end
   end
 end

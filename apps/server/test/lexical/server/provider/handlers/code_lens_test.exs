@@ -21,9 +21,8 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
     start_supervised(Document.Store)
     project = project(:umbrella)
 
-    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
-
-    {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+    start_supervised!({DynamicSupervisor, Server.Project.Supervisor.options()})
+    start_supervised!({Server.Project.Supervisor, project})
 
     RemoteControl.Api.register_listener(project, self(), [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
@@ -35,6 +34,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
 
   defp with_indexing_enabled(_) do
     patch(Lexical.Features, :indexing_enabled?, true)
+    patch(Lexical.RemoteControl.Api, :index_running?, false)
     :ok
   end
 
