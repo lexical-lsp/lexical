@@ -387,22 +387,24 @@ defmodule Lexical.Ast do
   # Expands aliases given the rules in the special form
   # https://hexdocs.pm/elixir/1.13.4/Kernel.SpecialForms.html#__aliases__/1
   def reify_alias(current_module, [:"Elixir" | _] = reified) do
-    [current_module | reified]
+    {:ok, [current_module | reified]}
   end
 
   def reify_alias(current_module, [:__MODULE__ | rest]) do
-    [current_module | rest]
+    {:ok, [current_module | rest]}
   end
 
   def reify_alias(current_module, [atom | _rest] = reified) when is_atom(atom) do
-    [current_module | reified]
+    {:ok, [current_module | reified]}
   end
 
   def reify_alias(current_module, [unreified | rest]) do
     env = %Macro.Env{module: current_module}
-    reified = Macro.expand(unreified, env)
 
-    [reified | rest]
+    case Macro.expand(unreified, env) do
+      module when is_atom(module) -> {:ok, [module | rest]}
+      _ -> :error
+    end
   end
 
   # private
