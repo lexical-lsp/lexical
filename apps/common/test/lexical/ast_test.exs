@@ -296,6 +296,17 @@ defmodule Lexical.AstTest do
       refute analysis.ast
       assert {:error, _} = analysis.parse_error
     end
+
+    test "creates an analysis from a document with incomplete `as` section" do
+      code = ~q[
+        defmodule Invalid do
+          alias Foo, a
+        end
+      ]
+
+      assert %Analysis{} = analysis = analyze(code)
+      assert {:defmodule, _, _} = analysis.ast
+    end
   end
 
   defp ast(s) do
