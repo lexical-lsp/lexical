@@ -58,6 +58,12 @@ defmodule Lexical.ProcessCache do
     end
   end
 
+  def clear_keys do
+    keys()
+    |> MapSet.put(all_keys_key())
+    |> Enum.each(&Process.delete/1)
+  end
+
   @doc """
   Retrieves and optionally sets a value in the cache.
 
@@ -76,9 +82,35 @@ defmodule Lexical.ProcessCache do
     end
   end
 
+  defmacro with_cleanup(do: block) do
+    quote do
+      try do
+        unquote(block)
+      after
+        unquote(__MODULE__).clear_keys()
+      end
+    end
+  end
+
   defp set(key, timeout_ms, compute_fn) do
     value = compute_fn.()
+
+    add_key(key)
     Process.put(key, Entry.new(value, timeout_ms))
+
     value
+  end
+
+  defp add_key(key) do
+    updated_keys = MapSet.put(keys(), key)
+    Process.put(all_keys_key(), updated_keys)
+  end
+
+  defp all_keys_key do
+    {__MODULE__, :all_keys}
+  end
+
+  defp keys do
+    Process.get(all_keys_key(), MapSet.new())
   end
 end

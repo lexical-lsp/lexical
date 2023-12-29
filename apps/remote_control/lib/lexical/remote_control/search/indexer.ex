@@ -1,21 +1,32 @@
 defmodule Lexical.RemoteControl.Search.Indexer do
+  alias Lexical.ProcessCache
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer
 
   import Lexical.RemoteControl.Progress
+  require ProcessCache
+
   @indexable_extensions "*.{ex,exs}"
 
   def create_index(%Project{} = project) do
-    entries =
-      project
-      |> indexable_files()
-      |> async_chunks(&index_path/1)
-      |> List.flatten()
+    ProcessCache.with_cleanup do
+      entries =
+        project
+        |> indexable_files()
+        |> async_chunks(&index_path/1)
+        |> List.flatten()
 
-    {:ok, entries}
+      {:ok, entries}
+    end
   end
 
   def update_index(%Project{} = project, existing_entries) do
+    ProcessCache.with_cleanup do
+      do_update_index(project, existing_entries)
+    end
+  end
+
+  defp do_update_index(%Project{} = project, existing_entries) do
     path_to_last_index_at =
       existing_entries
       |> Enum.group_by(& &1.path, & &1.updated_at)

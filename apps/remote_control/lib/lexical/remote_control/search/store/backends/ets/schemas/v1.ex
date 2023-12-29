@@ -14,14 +14,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
 
   use Schema, version: 1
 
-  defkey :by_id, [:id, :type, :subtype, :elixir_version, :erlang_version]
+  defkey :by_id, [:id, :type, :subtype]
 
   defkey :by_subject, [
     :subject,
     :type,
     :subtype,
-    :elixir_version,
-    :erlang_version,
     :path
   ]
 
@@ -31,7 +29,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
     migrated =
       entries
       |> Stream.filter(fn
-        {_, %_{elixir_version: _, erlang_version: _, type: _, subtype: _, ref: _}} -> true
+        {_, %_{type: _, subtype: _, ref: _}} -> true
         _ -> false
       end)
       |> Stream.map(fn {_, entry} -> entry end)
@@ -53,8 +51,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
   def to_rows(%Entry{} = entry) do
     subject_key =
       by_subject(
-        elixir_version: entry.elixir_version,
-        erlang_version: entry.erlang_version,
         subject: to_subject(entry.subject),
         type: entry.type,
         subtype: entry.subtype,
@@ -65,18 +61,16 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
       by_id(
         id: entry.ref,
         type: entry.type,
-        subtype: entry.subtype,
-        elixir_version: entry.elixir_version,
-        erlang_version: entry.erlang_version
+        subtype: entry.subtype
       )
 
     path_key = by_path(path: entry.path)
 
-    [{subject_key, entry}, {id_key, entry}, {path_key, id_key}]
+    [{subject_key, id_key}, {id_key, entry}, {path_key, id_key}]
   end
 
   # This case will handle any namespaced entries
-  def to_rows(%{elixir_version: _, erlang_version: _, type: _, subtype: _, ref: _} = entry) do
+  def to_rows(%{type: _, subtype: _, ref: _} = entry) do
     map = Map.delete(entry, :__struct__)
 
     Entry

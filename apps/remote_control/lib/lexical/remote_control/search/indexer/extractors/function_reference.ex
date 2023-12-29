@@ -140,7 +140,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
 
         Entry.reference(
           reducer.analysis.document.path,
-          block.ref,
+          make_ref(),
           block.parent_ref,
           mfa,
           :function,

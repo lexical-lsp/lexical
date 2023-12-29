@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     entry =
       Entry.definition(
         reducer.analysis.document.path,
-        block.ref,
+        make_ref(),
         block.parent_ref,
         mfa,
         type,

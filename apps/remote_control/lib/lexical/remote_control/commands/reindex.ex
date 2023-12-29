@@ -2,10 +2,13 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   defmodule State do
     alias Lexical.Ast.Analysis
     alias Lexical.Document
+    alias Lexical.ProcessCache
     alias Lexical.RemoteControl.Search
     alias Lexical.RemoteControl.Search.Indexer
 
     require Logger
+    require ProcessCache
+
     defstruct reindex_fun: nil, index_task: nil, pending_updates: %{}
 
     def new(reindex_fun) do
@@ -53,7 +56,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
     defp entries_for_uri(uri) do
       with {:ok, %Document{} = document, %Analysis{} = analysis} <-
              Document.Store.fetch(uri, :analysis),
-           {:ok, entries} <- Indexer.Quoted.index(analysis) do
+           {:ok, entries} <- Indexer.Quoted.index_with_cleanup(analysis) do
         {:ok, document.path, entries}
       else
         error ->

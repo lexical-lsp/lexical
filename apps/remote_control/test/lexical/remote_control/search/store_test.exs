@@ -62,29 +62,6 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         assert ref.subtype == :reference
       end
 
-      test "matching can exclude on elixir version" do
-        Store.replace([
-          reference(subject: Enum, elixir_version: "1.0.0"),
-          reference(subject: Enum)
-        ])
-
-        assert {:ok, [ref]} = Store.exact("Enum", subtype: :reference)
-        assert ref.subject == Enum
-        refute ref.elixir_version == "1.0.0"
-      end
-
-      test "matching can exclude on erlang version" do
-        Store.replace([
-          reference(subject: Enum, erlang_version: "1.0.0"),
-          reference(subject: Enum)
-        ])
-
-        assert {:ok, [ref]} = Store.exact("Enum", subtype: :reference)
-
-        assert ref.subject == Enum
-        refute ref.erlang_version == "1.0.0"
-      end
-
       test "matching with queries can exclude on type" do
         Store.replace([
           reference(subject: Foo.Bar.Baz),
@@ -123,26 +100,6 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
         assert entry_1.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
         assert entry_2.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
-      end
-
-      test "matching only returns entries specific to our elixir version" do
-        Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz, elixir_version: "1.1"),
-          definition(ref: 2, subject: Foo.Bar.Baz)
-        ])
-
-        assert {:ok, [entry]} = Store.fuzzy("Foo.Bar.", type: :module, subtype: :definition)
-        assert entry.ref == 2
-      end
-
-      test "matching only returns entries specific to our erlang version" do
-        Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz, erlang_version: "14.3.2.8"),
-          definition(ref: 2, subject: Foo.Bar.Baz)
-        ])
-
-        assert {:ok, [entry]} = Store.fuzzy("Foo.Bar.", type: :module, subtype: :definition)
-        assert entry.ref == 2
       end
     end
 

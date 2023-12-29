@@ -7,8 +7,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
 
   defstruct [
     :application,
-    :elixir_version,
-    :erlang_version,
     :parent,
     :path,
     :range,
@@ -21,8 +19,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
 
   @type t :: %__MODULE__{
           application: module(),
-          elixir_version: version(),
-          erlang_version: version(),
           subject: subject(),
           parent: entry_reference(),
           path: Path.t(),
@@ -34,7 +30,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
         }
 
   alias Lexical.StructAccess
-  alias Lexical.VM.Versions
 
   use StructAccess
 
@@ -47,12 +42,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   end
 
   defp new(path, ref, parent, subject, type, subtype, range, application) do
-    versions = Versions.current()
-
     %__MODULE__{
       application: application,
-      elixir_version: versions.elixir,
-      erlang_version: versions.erlang,
       subject: subject,
       parent: parent,
       path: path,
