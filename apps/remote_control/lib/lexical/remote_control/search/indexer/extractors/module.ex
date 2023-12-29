@@ -13,6 +13,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
+  require Logger
+
   # extract a module definition
   def extract(
         {:defmodule, defmodule_meta,
@@ -20,27 +22,34 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         %Reducer{} = reducer
       ) do
     %Block{} = block = Reducer.current_block(reducer)
-    aliased_module = resolve_alias(reducer, module_name)
-    module_position = Metadata.position(module_name_meta)
-    range = to_range(reducer, module_name, module_position)
 
-    entry =
-      Entry.definition(
-        reducer.analysis.document.path,
-        block.ref,
-        block.parent_ref,
-        aliased_module,
-        :module,
-        range,
-        Application.get_application(aliased_module)
-      )
+    case resolve_alias(reducer, module_name) do
+      {:ok, aliased_module} ->
+        module_position = Metadata.position(module_name_meta)
+        range = to_range(reducer, module_name, module_position)
 
-    module_name_meta = Reducer.skip(module_name_meta)
+        entry =
+          Entry.definition(
+            reducer.analysis.document.path,
+            block.ref,
+            block.parent_ref,
+            aliased_module,
+            :module,
+            range,
+            Application.get_application(aliased_module)
+          )
 
-    elem =
-      {:defmodule, defmodule_meta, [{:__aliases__, module_name_meta, module_name}, module_block]}
+        module_name_meta = Reducer.skip(module_name_meta)
 
-    {:ok, entry, elem}
+        elem =
+          {:defmodule, defmodule_meta,
+           [{:__aliases__, module_name_meta, module_name}, module_block]}
+
+        {:ok, entry, elem}
+
+      _ ->
+        :ignored
+    end
   end
 
   # This matches an elixir module reference
@@ -105,18 +114,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     {line, column} = reducer.position
     position = Position.new(reducer.analysis.document, line, column)
 
-    {:ok, expanded} =
-      RemoteControl.Analyzer.expand_alias(unresolved_alias, reducer.analysis, position)
-
-    expanded
+    RemoteControl.Analyzer.expand_alias(unresolved_alias, reducer.analysis, position)
   end
 
   defp module(%Reducer{} = reducer, maybe_module) when is_list(maybe_module) do
-    if Enum.all?(maybe_module, &module_part?/1) do
-      resolved = resolve_alias(reducer, maybe_module)
+    with true <- Enum.all?(maybe_module, &module_part?/1),
+         {:ok, resolved} <- resolve_alias(reducer, maybe_module) do
       {:ok, resolved}
     else
-      :error
+      _ ->
+        human_location = Reducer.human_location(reducer)
+
+        Logger.warning(
+          "Could not expand module #{inspect(maybe_module)}. Please report this (at #{human_location})"
+        )
+
+        :error
     end
   end
 

@@ -95,6 +95,14 @@ defmodule Lexical.RemoteControl.Analyzer do
         if Enum.all?(segments, &is_atom/1) do
           {:ok, Module.concat(segments)}
         else
+          path = analysis.document.path
+          line = position.line
+          character = position.character
+
+          Logger.warning(
+            "Could not expand alias #{inspect(segments)}. Please report this! (at #{path} #{line}:#{character})"
+          )
+
           :error
         end
     end
@@ -115,13 +123,15 @@ defmodule Lexical.RemoteControl.Analyzer do
 
   defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
     with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
-      {:ok, Ast.reify_alias(current_module, segments)}
+      Ast.reify_alias(current_module, segments)
     end
   end
 
-  defp resolve_alias([first | rest], aliases_mapping) do
+  defp resolve_alias([first | rest], aliases_mapping) when is_atom(first) do
     with {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, [resolved | rest]}
     end
   end
+
+  defp resolve_alias(_, _), do: :error
 end

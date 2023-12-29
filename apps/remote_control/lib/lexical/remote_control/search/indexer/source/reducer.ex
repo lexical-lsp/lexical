@@ -26,6 +26,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     }
   end
 
+  def human_location(%__MODULE__{} = reducer) do
+    {line, column} = reducer.position
+    path = reducer.analysis.document.path
+    "#{path} #{line}:#{column}"
+  end
+
   def entries(%__MODULE__{} = reducer) do
     Enum.reverse(reducer.entries)
   end

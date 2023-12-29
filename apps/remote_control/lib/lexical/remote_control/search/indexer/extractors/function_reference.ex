@@ -7,6 +7,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
+  require Logger
+
   @excluded_functions_key {__MODULE__, :excluded_functions}
   # Dynamic calls using apply apply(Module, :function, [1, 2])
   def extract(
@@ -132,18 +134,29 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     range =
       get_reference_range(reducer.analysis.document, start_metadata, end_metadata, function_name)
 
-    {:ok, module} = RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start)
-    mfa = Formats.mfa(module, function_name, arity)
+    case RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start) do
+      {:ok, module} ->
+        mfa = Formats.mfa(module, function_name, arity)
 
-    Entry.reference(
-      reducer.analysis.document.path,
-      block.ref,
-      block.parent_ref,
-      mfa,
-      :function,
-      range,
-      Application.get_application(module)
-    )
+        Entry.reference(
+          reducer.analysis.document.path,
+          block.ref,
+          block.parent_ref,
+          mfa,
+          :function,
+          range,
+          Application.get_application(module)
+        )
+
+      _ ->
+        human_location = Reducer.human_location(reducer)
+
+        Logger.warning(
+          "Could not expand #{inspect(module)} into an alias. Please report this. (at #{human_location})"
+        )
+
+        nil
+    end
   end
 
   defp get_reference_range(document, start_metadata, end_metadata, function_name) do
