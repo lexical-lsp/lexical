@@ -52,11 +52,11 @@ defmodule Lexical.RemoteControl.Api do
         %Analysis{} = analysis,
         %Position{} = position
       ) do
-    RemoteControl.call(project, CodeIntelligence.Rename, :prepare, [analysis, position])
+    RemoteControl.call(project, CodeIntelligence.Rename.Module, :prepare, [analysis, position])
   end
 
   def rename(%Project{} = project, %Analysis{} = analysis, %Position{} = position, new_name) do
-    RemoteControl.call(project, CodeIntelligence.Rename, :rename, [
+    RemoteControl.call(project, CodeIntelligence.Rename.Module, :rename, [
       analysis,
       position,
       new_name

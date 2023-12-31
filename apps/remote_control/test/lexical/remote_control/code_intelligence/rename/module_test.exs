@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
+defmodule Lexical.RemoteControl.CodeIntelligence.Rename.ModuleTest do
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
@@ -314,7 +314,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
-         {:ok, uri_with_changes} <- Rename.rename(analysis, position, new_name) do
+         {:ok, uri_with_changes} <- Rename.Module.rename(analysis, position, new_name) do
       changes = uri_with_changes |> Map.values() |> List.flatten()
       {:ok, apply_edits(document, changes)}
     end
