@@ -20,6 +20,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
     project = project()
     RemoteControl.set_project(project)
     start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
+    start_supervised!(RemoteControl.Dispatch)
 
     start_supervised!(
       {Search.Store,
@@ -31,6 +32,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.RenameTest do
        ]}
     )
 
+    Search.Store.enable()
     assert_eventually Search.Store.loaded?()
 
     {:ok, project: project}

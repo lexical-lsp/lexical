@@ -53,7 +53,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def insert(%__MODULE__{leader?: true} = state, entries) do
-    rows = Schemas.V1.entries_to_rows(entries)
+    rows = Schemas.V2.entries_to_rows(entries)
     true = :ets.insert(state.table_name, rows)
     :ok
   end
@@ -111,7 +111,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def replace_all(%__MODULE__{leader?: true} = state, entries) do
-    rows = Schemas.V1.entries_to_rows(entries)
+    rows = Schemas.V2.entries_to_rows(entries)
 
     with true <- :ets.delete_all_objects(state.table_name),
          true <- :ets.insert(state.table_name, rows) do
