@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   alias Lexical.Document.Edit
   alias Lexical.Document.Line
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Store
   require Logger
@@ -28,8 +29,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   def prepare(%Analysis{} = analysis, %Position{} = position) do
     case resolve_module(analysis, position) do
       {:ok, _, range} ->
-        cursor_entity = cursor_entity_string(range)
-        {:ok, cursor_entity, range}
+        {:ok, local_module_name(range), range}
 
       {:error, _} ->
         {:error, :unsupported_entity}
@@ -50,9 +50,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   end
 
   defp search_related_candidates(document, position, entity, range) do
-    cursor_entity_string = cursor_entity_string(range)
-
-    entities = exacts(entity, cursor_entity_string)
+    local_module_name = local_module_name(range)
+    entities = exacts(entity, local_module_name)
 
     # Users won't always want to rename descendants of a module.
     # For instance, when there are no more submodules after the cursor.
@@ -63,7 +62,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     # such as `Top.Mo|dule.ChildModule`. If we rename it to `Top.Renamed.Child`,
     # it would be natural to also rename `Module.ChildModule` to `Renamed.Child`.
     if at_the_middle_of_module?(document, position, range) do
-      entities ++ descendants(entity, cursor_entity_string)
+      entities ++ descendants(entity, local_module_name)
     else
       entities
     end
@@ -81,34 +80,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     end
   end
 
-  defp cursor_entity_string(range) do
-    # Parent.|Module -> Module
-    range
-    |> range_text()
-    |> String.split(".")
-    |> List.last()
-  end
-
-  defp descendants(entity, cursor_entity_string) do
+  defp descendants(entity, local_module_name) do
     entity_string = inspect(entity)
     prefix = "#{entity_string}."
 
     prefix
     |> Store.prefix([])
-    |> Enum.filter(&(entry_matching?(&1, cursor_entity_string) and has_dots_in_range?(&1)))
+    |> Enum.filter(&(entry_matching?(&1, local_module_name) and has_dots_in_range?(&1)))
     |> adjust_range(entity)
   end
 
-  defp exacts(entity, cursor_entity_string) do
+  defp exacts(entity, local_module_name) do
     entity_string = inspect(entity)
 
     entity_string
     |> Store.exact([])
-    |> Enum.filter(&entry_matching?(&1, cursor_entity_string))
+    |> Enum.filter(&entry_matching?(&1, local_module_name))
   end
 
-  defp entry_matching?(entry, cursor_entity_string) do
-    entry.range |> range_text() |> String.contains?(cursor_entity_string)
+  defp entry_matching?(entry, local_module_name) do
+    entry.range |> range_text() |> String.contains?(local_module_name)
   end
 
   defp has_dots_in_range?(entry) do
@@ -118,26 +109,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   defp adjust_range(entries, entity) do
     for entry <- entries,
         uri = Document.Path.ensure_uri(entry.path),
-        range_result = resolve_entity_range(uri, entry.range.start, entity),
+        range_result = resolve_local_module_range(uri, entry.range.start, entity),
         match?({:ok, _}, range_result) do
       {_, range} = range_result
       %{entry | range: range}
     end
   end
 
-  defp resolve_entity_range(uri, position, entity) do
+  defp resolve_local_module_range(uri, position, entity) do
     with {:ok, _} <- Document.Store.open_temporary(uri),
          {:ok, document, analysis} <- Document.Store.fetch(uri, :analysis),
          {:ok, result, range} <- resolve_module(analysis, position) do
       if result == entity do
         {:ok, range}
       else
-        last_part_length = result |> last_part() |> String.length()
+        last_part_length = result |> Ast.Module.local_module_name() |> String.length()
         # Move the cursor to the next part:
         # `|Parent.Next.Target.Child` -> 'Parent.|Next.Target.Child' -> 'Parent.Next.|Target.Child'
         character = position.character + last_part_length + 1
         position = Position.new(document, position.line, character)
-        resolve_entity_range(uri, position, entity)
+        resolve_local_module_range(uri, position, entity)
       end
     else
       _ ->
@@ -146,21 +137,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
     end
   end
 
-  defp last_part(entity) when is_atom(entity) do
-    entity
-    |> inspect()
-    |> String.split(".")
-    |> List.last()
-  end
-
   defp to_edits_by_uri(results, new_name) do
     Enum.group_by(
       results,
       &Document.Path.ensure_uri(&1.path),
       fn result ->
-        cursor_entity_length = result.range |> cursor_entity_string() |> String.length()
+        local_module_name_length = result.range |> local_module_name() |> String.length()
         # e.g: `Parent.|ToBeRenameModule`, we need the start position of `ToBeRenameModule`
-        start_character = result.range.end.character - cursor_entity_length
+        start_character = result.range.end.character - local_module_name_length
         start_position = %{result.range.start | character: start_character}
 
         new_range = %{result.range | start: start_position}
@@ -172,5 +156,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename do
   defp range_text(range) do
     line(text: text) = range.end.context_line
     String.slice(text, range.start.character - 1, range.end.character - range.start.character)
+  end
+
+  defp local_module_name(%Range{} = range) do
+    range |> range_text() |> Ast.Module.local_module_name()
   end
 end

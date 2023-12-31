@@ -3,9 +3,12 @@ defmodule Lexical.Ast.Module do
   Module utilities
   """
 
+  # alias Lexical.Document.Range
+
   @doc """
   Formats a module name as a string.
   """
+
   @spec name(module() | Macro.t() | String.t()) :: String.t()
   def name([{:__MODULE__, _, _} | rest]) do
     [__MODULE__ | rest]
@@ -27,5 +30,17 @@ defmodule Lexical.Ast.Module do
     module_name
     |> inspect()
     |> name()
+  end
+
+  def local_module_name(entity) when is_atom(entity) do
+    entity
+    |> inspect()
+    |> local_module_name()
+  end
+
+  def local_module_name(entity) when is_binary(entity) do
+    entity
+    |> String.split(".")
+    |> List.last()
   end
 end
