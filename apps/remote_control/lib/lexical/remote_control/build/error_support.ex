@@ -19,4 +19,8 @@ defmodule Lexical.RemoteControl.Build.ErrorSupport do
   def position(line, column) do
     {line, column}
   end
+
+  def position(line, column, end_line, end_column) do
+    {line, column, end_line, end_column}
+  end
 end

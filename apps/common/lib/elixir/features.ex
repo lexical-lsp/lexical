@@ -14,4 +14,12 @@ defmodule Elixir.Features do
   def after_verify? do
     Version.match?(System.version(), ">= 1.14.0")
   end
+
+  def details_in_context? do
+    Version.match?(System.version(), ">= 1.16.0")
+  end
+
+  def span_in_diagnostic? do
+    Version.match?(System.version(), ">= 1.16.0")
+  end
 end
