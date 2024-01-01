@@ -31,9 +31,11 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   defp uniq(diagnostics) do
+    exacts =
+      Enum.filter(diagnostics, fn diagnostic -> match?({_, _, _, _}, diagnostic.position) end)
+
     extract_line = fn
       %Result{position: {line, _column}} -> line
-      %Result{position: {start_line, _start_col, _end_line, _end_col}} -> start_line
       %Result{position: line} -> line
     end
 
@@ -42,10 +44,14 @@ defmodule Lexical.RemoteControl.Build.Error do
     # and :error is always more important than :warning
     extract_line_and_severity = &{extract_line.(&1), &1.severity}
 
-    diagnostics
-    |> Enum.sort_by(extract_line_and_severity)
-    |> Enum.uniq_by(extract_line)
-    |> reject_zeroth_line()
+    filtered =
+      diagnostics
+      |> Enum.filter(fn diagnostic -> not match?({_, _, _, _}, diagnostic.position) end)
+      |> Enum.sort_by(extract_line_and_severity)
+      |> Enum.uniq_by(extract_line)
+      |> reject_zeroth_line()
+
+    exacts ++ filtered
   end
 
   defp reject_zeroth_line(diagnostics) do
@@ -100,13 +106,21 @@ defmodule Lexical.RemoteControl.Build.Error do
   @doc """
   The `diagnostics_from_mix/2` is only for Elixir version > 1.15
 
-  From 1.15 onwards with_diagnostics can return some compile-time errors,
+  From 1.15 onwards `with_diagnostics` can return some compile-time errors,
   more details: https://github.com/elixir-lang/elixir/pull/12742
   """
   def diagnostics_from_mix(%Document{} = doc, all_errors_and_warnings)
       when is_list(all_errors_and_warnings) do
     for error_or_wanning <- all_errors_and_warnings do
-      %{position: position, message: message, severity: severity} = error_or_wanning
+      %{position: pos, message: message, severity: severity} = error_or_wanning
+
+      position =
+        if span = error_or_wanning[:span] do
+          position(pos, span)
+        else
+          pos
+        end
+
       Result.new(doc.uri, position, message, severity, @elixir_source)
     end
   end

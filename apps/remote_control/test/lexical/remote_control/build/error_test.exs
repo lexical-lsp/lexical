@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.Build.ErrorTest do
   alias Lexical.Document
-  alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Build.CaptureServer
   alias Lexical.RemoteControl.ModuleMappings
@@ -25,6 +24,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
   end
 
   def diagnostic({:error, [diagnostic]}) do
+    diagnostic
+  end
+
+  def diagnostic({:ok, [diagnostic]}) do
     diagnostic
   end
 
@@ -71,12 +74,25 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      # TODO: span
       assert diagnostic.message =~ ~s[undefined variable "a"]
-      assert diagnostic.position == {4, 13}
+      assert diagnostic.position in [{4, 13}, {4, 13, 4, 14}]
     end
 
-    test "handles unsued warning"
+    test "handles unsued warning" do
+      diagnostic =
+        ~S[
+        defmodule Foo do
+          def bar do
+            a = 1
+          end
+        end
+      ]
+        |> compile()
+        |> diagnostic()
+
+      assert diagnostic.message =~ ~s[variable "a" is unused]
+      assert diagnostic.position in [{4, 13}, {4, 13, 4, 14}]
+    end
 
     test "handles FunctionClauseError" do
       diagnostic =
@@ -138,9 +154,36 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert diagnostic.message =~
                ~s[undefined function print/1]
 
-      # TODO: span
-      # NOTE: main is {4, 13}
-      assert diagnostic.position == 4
+      assert diagnostic.position in [4, {4, 13, 4, 18}]
+    end
+
+    test "handles multiple UndefinedError in one line" do
+      diagnostics =
+        ~S/
+        defmodule Foo do
+          def bar do
+            [print(:bar), a, b]
+          end
+        end
+      /
+        |> compile()
+        |> diagnostics()
+
+      if Features.span_in_diagnostic?() do
+        [func_diagnotic, b, a] = diagnostics
+        assert a.message =~ ~s[undefined variable "a"]
+        assert a.position == {4, 27, 4, 28}
+
+        assert b.message =~ ~s[undefined variable "b"]
+        assert b.position == {4, 30, 4, 31}
+
+        assert func_diagnotic.message =~ ~s[undefined function print/1]
+        assert func_diagnotic.position == {4, 14, 4, 19}
+      else
+        [diagnostic] = diagnostics
+        assert diagnostic.message =~ ~s[undefined function print/1]
+        assert diagnostic.position == 4
+      end
     end
 
     test "handles UndefinedError without moudle" do
@@ -328,7 +371,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
     end
 
     test "handles struct `CompileError` when is in a function params" do
-      diagnostic =
+      diagnostics =
         ~s/
         defmodule Foo do
           defstruct [:a, :b]
@@ -340,14 +383,24 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
         /
         |> compile()
-        |> diagnostic()
+        |> diagnostics()
 
-      assert diagnostic.message =~ "unknown key :c for struct Foo"
+      if Features.span_in_diagnostic?() do
+        [undefined, unknown] = diagnostics
+        assert unknown.message == "unknown key :c for struct Foo"
+        assert unknown.position == {7, 19}
 
-      if Features.with_diagnostics?() do
-        assert diagnostic.position == {7, 19}
+        assert undefined.message == "variable \"c\" is unused"
+        assert undefined.position == {7, 27, 7, 28}
       else
-        assert diagnostic.position == 7
+        [diagnostic] = diagnostics
+        assert diagnostic.message =~ "unknown key :c for struct Foo"
+
+        if Features.with_diagnostics?() do
+          assert diagnostic.position == {7, 19}
+        else
+          assert diagnostic.position == 7
+        end
       end
     end
 
