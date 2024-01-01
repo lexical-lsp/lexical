@@ -41,7 +41,7 @@ defmodule Lexical.Ast.Env do
     case Document.fetch_text_at(analysis.document, cursor_position.line) do
       {:ok, line} ->
         prefix = String.slice(line, 0, zero_based_character)
-        suffix = String.slice(line, zero_based_character..-1)
+        suffix = String.slice(line, zero_based_character..-1//1)
 
         env = %__MODULE__{
           analysis: Ast.reanalyze_to(analysis, cursor_position),

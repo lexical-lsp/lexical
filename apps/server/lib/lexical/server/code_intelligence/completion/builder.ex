@@ -177,7 +177,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
       percent_position = column - (completion_length + 1)
 
       new_line_start = String.slice(env.line, 0, percent_position - 1)
-      new_line_end = String.slice(env.line, percent_position..-1)
+      new_line_end = String.slice(env.line, percent_position..-1//1)
       new_line = [new_line_start, new_line_end]
       new_position = Position.new(env.document, env.position.line, env.position.character - 1)
       line_to_replace = env.position.line
