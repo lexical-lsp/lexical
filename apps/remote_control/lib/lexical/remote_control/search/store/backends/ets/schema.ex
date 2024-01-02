@@ -55,6 +55,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
   end
 
   alias Lexical.Project
+  alias Lexical.VM.Versions
 
   def load(%Project{} = project, schema_order) do
     ensure_unique_versions(schema_order)
@@ -89,7 +90,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
   end
 
   def index_root(%Project{} = project) do
-    Project.workspace_path(project, "indexes")
+    versions = Versions.current()
+    index_path = ["indexes", versions.erlang, versions.elixir]
+    Project.workspace_path(project, index_path)
   end
 
   def index_file_path(%Project{} = project, schema) do
