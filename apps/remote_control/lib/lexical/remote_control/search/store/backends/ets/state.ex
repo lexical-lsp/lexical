@@ -6,20 +6,26 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
   """
   alias Lexical.Project
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schema
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas
 
   @schema_order [
     Schemas.LegacyV0,
-    Schemas.V1
+    Schemas.V1,
+    Schemas.V2
   ]
 
-  import Schemas.V1,
+  import Entry, only: :macros
+
+  import Schemas.V2,
     only: [
+      by_block_id: 1,
       query_by_id: 0,
       query_by_id: 1,
       query_by_path: 1,
-      query_by_subject: 1
+      query_by_subject: 1,
+      structure: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid]
@@ -75,6 +81,49 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
   end
 
+  def siblings(%__MODULE__{} = state, %Entry{} = entry) do
+    key = by_block_id(block_id: entry.block_id, path: entry.path)
+
+    siblings =
+      state.table_name
+      |> :ets.lookup_element(key, 2)
+      |> Enum.map(&:ets.lookup_element(state.table_name, &1, 2))
+      |> List.flatten()
+      |> Enum.filter(fn sibling ->
+        case {is_block(entry), is_block(sibling)} do
+          {same, same} -> true
+          _ -> false
+        end
+      end)
+      |> Enum.sort_by(& &1.id)
+      |> Enum.uniq()
+
+    {:ok, siblings}
+  rescue
+    ArgumentError ->
+      :error
+  end
+
+  def parent(%__MODULE__{} = state, %Entry{} = entry) do
+    with {:ok, structure} <- structure_for(state, entry.path),
+         {:ok, child_path} <- child_path(structure, entry.block_id) do
+      child_path =
+        if is_block(entry) do
+          # if we're a block, finding the first block will find us, so pop
+          # our id off the path.
+          tl(child_path)
+        else
+          child_path
+        end
+
+      find_first_by_block_id(state, child_path)
+    end
+  end
+
+  def parent(%__MODULE__{}, :root) do
+    :error
+  end
+
   def find_by_ids(%__MODULE__{} = state, ids, type, subtype)
       when is_list(ids) do
     for id <- ids,
@@ -128,6 +177,59 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
   def sync(%__MODULE__{leader?: false} = state) do
     state
+  end
+
+  defp child_path(structure, child_id) do
+    path =
+      Enum.reduce_while(structure, [], fn
+        {^child_id, _children}, children ->
+          {:halt, [child_id | children]}
+
+        {_, children}, path when map_size(children) == 0 ->
+          {:cont, path}
+
+        {current_id, children}, path ->
+          case child_path(children, child_id) do
+            {:ok, child_path} -> {:halt, [current_id | path] ++ Enum.reverse(child_path)}
+            :error -> {:cont, path}
+          end
+      end)
+
+    case path do
+      [] -> :error
+      path -> {:ok, Enum.reverse(path)}
+    end
+  end
+
+  defp find_first_by_block_id(%__MODULE__{} = state, block_ids) do
+    Enum.reduce_while(block_ids, :error, fn block_id, failure ->
+      case find_entry_by_id(state, block_id) do
+        {:ok, _} = success ->
+          {:halt, success}
+
+        _ ->
+          {:cont, failure}
+      end
+    end)
+  end
+
+  def find_entry_by_id(%__MODULE__{} = state, id) do
+    case find_by_ids(state, [id], :_, :_) do
+      [entry] -> {:ok, entry}
+      _ -> :error
+    end
+  end
+
+  defp structure_for(%__MODULE__{} = state, path) do
+    key = structure(path: path)
+
+    case :ets.lookup_element(state.table_name, key, 2) do
+      [structure] -> {:ok, structure}
+      _ -> :error
+    end
+  rescue
+    ArgumentError ->
+      :error
   end
 
   defp match_id_key(id, type, subtype) do

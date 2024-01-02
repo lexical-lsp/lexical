@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backend
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.State
 
@@ -71,6 +72,21 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   @impl Backend
   def find_by_ids(ids, type, subtype) do
     GenServer.call(genserver_name(), {:find_by_ids, [ids, type, subtype]})
+  end
+
+  @impl Backend
+  def structure_for_path(path) do
+    GenServer.call(genserver_name(), {:structures_for_path, [path]})
+  end
+
+  @impl Backend
+  def siblings(%Entry{} = entry) do
+    GenServer.call(genserver_name(), {:siblings, [entry]})
+  end
+
+  @impl Backend
+  def parent(%Entry{} = entry) do
+    GenServer.call(genserver_name(), {:parent, [entry]})
   end
 
   def start_link(%Project{} = project) do

@@ -60,6 +60,14 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, {:exact, subject, constraints})
   end
 
+  def parent(%Entry{} = entry) do
+    GenServer.call(__MODULE__, {:parent, entry})
+  end
+
+  def siblings(%Entry{} = entry) do
+    GenServer.call(__MODULE__, {:siblings, entry})
+  end
+
   def fuzzy(subject, constraints) do
     GenServer.call(__MODULE__, {:fuzzy, subject, constraints})
   end
@@ -184,6 +192,16 @@ defmodule Lexical.RemoteControl.Search.Store do
     {reply, new_ref, new_state} = do_update(state, ref, path, entries)
 
     {:reply, reply, {new_ref, new_state}}
+  end
+
+  def handle_call({:parent, entry}, _from, {_, %State{} = state} = orig_state) do
+    parent = State.parent(state, entry)
+    {:reply, parent, orig_state}
+  end
+
+  def handle_call({:siblings, entry}, _from, {_, %State{} = state} = orig_state) do
+    siblings = State.siblings(state, entry)
+    {:reply, siblings, orig_state}
   end
 
   def handle_call(:on_stop, _, {ref, %State{} = state}) do

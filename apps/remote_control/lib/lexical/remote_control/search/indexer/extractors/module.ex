@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   alias Lexical.Ast
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Identifier
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
@@ -30,10 +29,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         range = to_range(reducer, module_name, module_position)
 
         entry =
-          Entry.definition(
+          Entry.block_definition(
             reducer.analysis.document.path,
-            block.id,
-            block.parent_id,
+            block,
             aliased_module,
             :module,
             range,
@@ -65,8 +63,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         entry =
           Entry.reference(
             reducer.analysis.document.path,
-            Identifier.next_global!(),
-            current_block.id,
+            current_block,
             module,
             :module,
             range,
@@ -92,8 +89,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         entry =
           Entry.reference(
             reducer.analysis.document.path,
-            Identifier.next_global!(),
-            current_block.id,
+            current_block,
             module,
             :module,
             range,

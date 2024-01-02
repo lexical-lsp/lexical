@@ -4,11 +4,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type entry_subtype :: :reference | :definition
   @type version :: String.t()
   @type entry_id :: pos_integer() | nil
+  @type block_id :: pos_integer() | :root
 
   defstruct [
     :application,
     :id,
-    :parent,
+    :block_id,
     :path,
     :range,
     :subject,
@@ -20,7 +21,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type t :: %__MODULE__{
           application: module(),
           subject: subject(),
-          parent: entry_id(),
+          block_id: block_id(),
           path: Path.t(),
           range: Lexical.Document.Range.t(),
           subtype: entry_subtype(),
@@ -28,30 +29,61 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           updated_at: :calendar.datetime()
         }
 
+  alias Lexical.Identifier
+  alias Lexical.RemoteControl.Search.Indexer.Source.Block
   alias Lexical.StructAccess
 
   use StructAccess
 
-  def reference(path, id, parent, subject, type, range, application) do
-    new(path, id, parent, subject, type, :reference, range, application)
+  defguard is_structure(entry) when entry.type == :metadata and entry.subtype == :block_structure
+  defguard is_block(entry) when entry.id == entry.block_id
+
+  def block_structure(path, structure) do
+    %__MODULE__{
+      path: path,
+      subject: structure,
+      type: :metadata,
+      subtype: :block_structure,
+      updated_at: timestamp()
+    }
   end
 
-  def definition(path, id, parent, subject, type, range, application) do
-    new(path, id, parent, subject, type, :definition, range, application)
+  def reference(path, %Block{} = block, subject, type, range, application) do
+    new(path, Identifier.next_global!(), block.id, subject, type, :reference, range, application)
   end
 
-  defp new(path, id, parent, subject, type, subtype, range, application) do
+  def block_definition(path, %Block{} = block, subject, type, range, application) do
+    definition(
+      path,
+      block.id,
+      block.parent_id,
+      subject,
+      type,
+      range,
+      application
+    )
+  end
+
+  defp definition(path, id, block_id, subject, type, range, application) do
+    new(path, id, block_id, subject, type, :definition, range, application)
+  end
+
+  defp new(path, id, block_id, subject, type, subtype, range, application) do
     %__MODULE__{
       application: application,
-      subject: subject,
+      block_id: block_id,
       id: id,
-      parent: parent,
       path: path,
       range: range,
+      subject: subject,
       subtype: subtype,
       type: type,
       updated_at: timestamp()
     }
+  end
+
+  def block?(%__MODULE__{} = entry) do
+    is_block(entry)
   end
 
   defp timestamp do

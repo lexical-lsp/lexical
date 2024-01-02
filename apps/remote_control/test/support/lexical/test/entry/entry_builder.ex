@@ -7,6 +7,7 @@ defmodule Lexical.Test.Entry.Builder do
 
   def entry(fields \\ []) do
     defaults = [
+      block_id: Identifier.next_global!(),
       id: Identifier.next_global!(),
       path: "/foo/bar/baz.ex",
       range: range(1, 1, 1, 5),
