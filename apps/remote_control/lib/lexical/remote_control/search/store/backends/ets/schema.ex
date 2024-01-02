@@ -14,6 +14,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
     version = Keyword.fetch!(opts, :version)
 
     quote do
+      @behaviour unquote(__MODULE__)
       @version unquote(version)
       alias Lexical.Project
       import unquote(__MODULE__), only: [defkey: 2]
@@ -42,6 +43,27 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
     end
   end
 
+  alias Lexical.Project
+  alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.VM.Versions
+
+  @type write_concurrency_alternative :: boolean() | :auto
+  @type table_tweak ::
+          :compressed
+          | {:write_concurrency, write_concurrency_alternative()}
+          | {:read_concurrency, boolean()}
+          | {:decentralized_counters, boolean()}
+
+  @type table_option :: :ets.table_type() | table_tweak()
+
+  @type key :: tuple()
+  @type row :: {key, tuple()}
+
+  @callback index_file_name() :: String.t()
+  @callback table_options() :: [table_option()]
+  @callback to_rows(Entry.t()) :: [row()]
+  @callback migrate([Entry.t()]) :: {:ok, [row()]} | {:error, term()}
+
   defmacro defkey(name, fields) do
     query_keys = Enum.map(fields, fn name -> {name, :_} end)
     query_record_name = :"query_#{name}"
@@ -54,8 +76,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
     end
   end
 
-  alias Lexical.Project
-  alias Lexical.VM.Versions
+  @spec entries_to_rows(Enumerable.t(Entry.t()), module()) :: [tuple()]
+  def entries_to_rows(entries, schema_module) do
+    entries
+    |> Stream.flat_map(&schema_module.to_rows(&1))
+    |> Enum.reduce(%{}, fn {key, value}, acc ->
+      Map.update(acc, key, [value], fn old_values -> [value | old_values] end)
+    end)
+    |> Enum.to_list()
+  end
 
   def load(%Project{} = project, schema_order) do
     ensure_unique_versions(schema_order)
