@@ -12,7 +12,8 @@ defmodule Common.MixProject do
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      compilers: [:yecc] ++ Mix.compilers()
     ]
   end
 
