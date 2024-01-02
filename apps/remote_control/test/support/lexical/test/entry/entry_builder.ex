@@ -1,15 +1,16 @@
 defmodule Lexical.Test.Entry.Builder do
   alias Lexical.Document.Range
+  alias Lexical.Identifier
   alias Lexical.RemoteControl.Search.Indexer.Entry
 
   import Lexical.Test.PositionSupport
 
   def entry(fields \\ []) do
     defaults = [
-      subject: Module,
-      ref: make_ref(),
+      id: Identifier.next_global!(),
       path: "/foo/bar/baz.ex",
       range: range(1, 1, 1, 5),
+      subject: Module,
       type: :module
     ]
 

@@ -54,8 +54,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
       test "matching can exclude on type" do
         Store.replace([
-          definition(ref: 1),
-          reference(ref: 3)
+          definition(id: 1),
+          reference(id: 3)
         ])
 
         assert {:ok, [ref]} = Store.exact(subtype: :reference)
@@ -78,21 +78,21 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
       test "matching exact tokens should work" do
         Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz),
-          definition(ref: 2, subject: Foo.Bar.Bak)
+          definition(id: 1, subject: Foo.Bar.Baz),
+          definition(id: 2, subject: Foo.Bar.Bak)
         ])
 
         assert {:ok, [entry]} = Store.exact("Foo.Bar.Baz", type: :module, subtype: :definition)
 
         assert entry.subject == Foo.Bar.Baz
-        assert entry.ref == 1
+        assert entry.id == 1
       end
 
       test "matching fuzzy tokens works" do
         Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz),
-          definition(ref: 2, subject: Foo.Bar.Bak),
-          definition(ref: 3, subject: Bad.Times.Now)
+          definition(id: 1, subject: Foo.Bar.Baz),
+          definition(id: 2, subject: Foo.Bar.Bak),
+          definition(id: 3, subject: Bad.Times.Now)
         ])
 
         assert {:ok, [entry_1, entry_2]} =
@@ -112,54 +112,54 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         path = "/path/to/file.ex"
 
         Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz, path: path),
-          definition(ref: 2, subject: Foo.Baz.Quux, path: path)
+          definition(id: 1, subject: Foo.Bar.Baz, path: path),
+          definition(id: 2, subject: Foo.Baz.Quux, path: path)
         ])
 
         updated = [
-          definition(ref: 3, subject: Other.Thing.Entirely, path: path)
+          definition(id: 3, subject: Other.Thing.Entirely, path: path)
         ]
 
         Store.update(path, updated)
 
         assert_eventually [remaining] = Store.all()
-        refute remaining.ref in [1, 2]
+        refute remaining.id in [1, 2]
       end
 
       test "old entries with another path are kept" do
         updated_path = "/path/to/file.ex"
 
         Store.replace([
-          definition(ref: 1, subject: Foo.Bar.Baz, path: updated_path),
-          definition(ref: 2, subject: Foo.Bar.Baz.Quus, path: updated_path),
-          definition(ref: 3, subject: Foo.Bar.Baz, path: "/path/to/another.ex")
+          definition(id: 1, subject: Foo.Bar.Baz, path: updated_path),
+          definition(id: 2, subject: Foo.Bar.Baz.Quus, path: updated_path),
+          definition(id: 3, subject: Foo.Bar.Baz, path: "/path/to/another.ex")
         ])
 
         updated = [
-          definition(ref: 4, subject: Other.Thing.Entirely, path: updated_path)
+          definition(id: 4, subject: Other.Thing.Entirely, path: updated_path)
         ]
 
         Store.update(updated_path, updated)
 
         assert_eventually [first, second] = Store.all()
 
-        assert first.ref in [3, 4]
-        assert second.ref in [3, 4]
+        assert first.id in [3, 4]
+        assert second.id in [3, 4]
       end
 
       test "updated entries are not searchable" do
         path = "/path/to/ex.ex"
 
         Store.replace([
-          reference(ref: 1, subject: Should.Be.Replaced, path: path)
+          reference(id: 1, subject: Should.Be.Replaced, path: path)
         ])
 
         Store.update(path, [
-          reference(ref: 2, subject: Present, path: path)
+          reference(id: 2, subject: Present, path: path)
         ])
 
         assert_eventually {:ok, [found]} = Store.fuzzy("Pres", type: :module, subtype: :reference)
-        assert found.ref == 2
+        assert found.id == 2
         assert found.subject == Present
       end
     end

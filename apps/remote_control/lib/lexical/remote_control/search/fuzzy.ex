@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   @spec from_entries([Entry.t()]) :: t
   def from_entries(entries) do
     mapper = fn %Entry{} = entry ->
-      {entry.subject, entry.path, entry.ref}
+      {entry.subject, entry.path, entry.id}
     end
 
     new(entries, mapper, &stringify/1)
@@ -85,13 +85,13 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   in descending order of the match relevance. Items at the beginning of the list
   will have a higher score than items at the end.
   """
-  @spec match(t(), String.t()) :: [reference()]
+  @spec match(t(), String.t()) :: [Entry.entry_id()]
   def match(%__MODULE__{} = fuzzy, pattern) do
     fuzzy.subject_to_values
-    |> Stream.map(fn {subject, references} ->
+    |> Stream.map(fn {subject, ids} ->
       case score(fuzzy, subject, pattern) do
         {:ok, score} ->
-          {score, references}
+          {score, ids}
 
         :error ->
           nil
@@ -117,13 +117,13 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     subject = fuzzy.subject_converter.(extracted_subject)
 
     updated_grouping_key_to_values =
-      Map.update(fuzzy.grouping_key_to_values, grouping_key, [value], fn old_refs ->
-        [value | old_refs]
+      Map.update(fuzzy.grouping_key_to_values, grouping_key, [value], fn old_ids ->
+        [value | old_ids]
       end)
 
     updated_subject_to_values =
-      Map.update(fuzzy.subject_to_values, subject, [value], fn old_refs ->
-        [value | old_refs]
+      Map.update(fuzzy.subject_to_values, subject, [value], fn old_ids ->
+        [value | old_ids]
       end)
 
     updated_preprocessed_subjects =

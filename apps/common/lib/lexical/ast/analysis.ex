@@ -12,6 +12,7 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Document
   alias Lexical.Document
   alias Lexical.Document.Position
+  alias Lexical.Identifier
   alias Sourceror.Zipper
 
   defstruct [:ast, :document, :parse_error, scopes: [], valid?: true]
@@ -146,7 +147,8 @@ defmodule Lexical.Ast.Analysis do
 
   # add a unique ID to 3-element tuples
   defp with_scope_id({_, _, _} = quoted) do
-    Macro.update_meta(quoted, &Keyword.put(&1, @scope_id, make_ref()))
+    id = Identifier.next_global!()
+    Macro.update_meta(quoted, &Keyword.put(&1, @scope_id, id))
   end
 
   defp with_scope_id(quoted) do

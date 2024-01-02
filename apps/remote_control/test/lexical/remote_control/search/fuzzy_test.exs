@@ -14,8 +14,8 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
     {:ok, fuzzy: fuzzy, entries: entries}
   end
 
-  def lookup(entities, ref) do
-    Enum.find(entities, &(&1.ref == ref))
+  def lookup(entities, id) do
+    Enum.find(entities, &(&1.id == id))
   end
 
   describe "housekeeping" do
@@ -44,7 +44,7 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
     test "a value can be removed", %{fuzzy: fuzzy, entries: [to_remove | _]} do
       assert Fuzzy.has_subject?(fuzzy, to_remove.subject)
-      fuzzy = Fuzzy.drop_values(fuzzy, [to_remove.ref])
+      fuzzy = Fuzzy.drop_values(fuzzy, [to_remove.id])
 
       refute Fuzzy.has_subject?(fuzzy, to_remove.subject)
     end
@@ -74,8 +74,8 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
   describe "match/2" do
     test "fuzzy searching can find prefixes", %{fuzzy: fuzzy, entries: entries} do
-      assert [ref] = Fuzzy.match(fuzzy, "Enum")
-      entry = lookup(entries, ref)
+      assert [id] = Fuzzy.match(fuzzy, "Enum")
+      entry = lookup(entries, id)
       assert entry.subject == Enum
     end
 
@@ -85,10 +85,10 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
     test "ordering" do
       entries = [
-        reference(ref: 1, subject: ZZZZZZZZZZZZZZZZZZZZZZZZ.ABCD),
-        reference(ref: 2, subject: ZZZZA.ZZZZZb.ZZZZc.ZZZZd),
-        reference(ref: 3, subject: A.B.C.D),
-        reference(ref: 4, subject: Abcd)
+        reference(id: 1, subject: ZZZZZZZZZZZZZZZZZZZZZZZZ.ABCD),
+        reference(id: 2, subject: ZZZZA.ZZZZZb.ZZZZc.ZZZZd),
+        reference(id: 3, subject: A.B.C.D),
+        reference(id: 4, subject: Abcd)
       ]
 
       fuzzy = Fuzzy.from_entries(entries)

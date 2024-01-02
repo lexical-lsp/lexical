@@ -75,10 +75,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
   end
 
-  def find_by_references(%__MODULE__{} = state, references, type, subtype)
-      when is_list(references) do
-    for reference <- references,
-        match_pattern = match_id_key(reference, type, subtype),
+  def find_by_ids(%__MODULE__{} = state, ids, type, subtype)
+      when is_list(ids) do
+    for id <- ids,
+        match_pattern = match_id_key(id, type, subtype),
         {_key, entry} <- :ets.match_object(state.table_name, match_pattern) do
       entry
     end
@@ -130,12 +130,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     state
   end
 
-  defp match_id_key(reference, type, subtype) do
-    {query_by_id(
-       id: reference,
-       type: type,
-       subtype: subtype
-     ), :_}
+  defp match_id_key(id, type, subtype) do
+    {query_by_id(id: id, type: type, subtype: subtype), :_}
   end
 
   defp to_subject(binary) when is_binary(binary), do: binary

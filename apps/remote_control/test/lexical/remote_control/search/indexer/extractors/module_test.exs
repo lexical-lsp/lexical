@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         |> index()
 
       assert erlang_module.type == :module
-      assert erlang_module.parent == module_def.ref
+      assert erlang_module.parent == module_def.id
       assert erlang_module.subject == :timer
       assert decorate(doc, erlang_module.range) =~ "  @something «:timer»"
     end
@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         |> index()
 
       assert attribute.type == :module
-      assert attribute.parent == module_def.ref
+      assert attribute.parent == module_def.id
       assert attribute.subject == Some.Other.Module
       assert decorate(doc, attribute.range) =~ "  @attr «Some.Other.Module»"
     end
@@ -270,7 +270,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
 
       assert ref.type == :module
       assert ref.subject == Ref.To.Something
-      refute ref.parent == parent.ref
+      refute ref.parent == parent.id
       assert decorate(doc, ref.range) =~ "      «Ref.To.Something»"
     end
   end
@@ -297,7 +297,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert second.subtype == :definition
       assert second.subject == Second
 
-      assert second.ref != first.ref
+      assert second.id != first.id
     end
 
     test "aren't nested" do
@@ -351,7 +351,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert parent.type == :module
       assert parent.subtype == :definition
 
-      assert child.parent == parent.ref
+      assert child.parent == parent.id
       assert child.type == :module
       assert child.subtype == :definition
     end
@@ -369,7 +369,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       ]
         |> index()
 
-      assert child_alias.parent == child.ref
+      assert child_alias.parent == child.id
       assert child_alias.type == :module
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other
@@ -389,7 +389,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert parent.type == :module
       assert parent.subtype == :definition
 
-      assert child.parent == parent.ref
+      assert child.parent == parent.id
       assert child.type == :module
       assert child.subtype == :definition
     end

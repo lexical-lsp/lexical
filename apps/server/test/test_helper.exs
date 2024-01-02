@@ -1,3 +1,4 @@
+Application.ensure_all_started(:snowflake)
 ExUnit.configure(timeout: :infinity)
 ExUnit.start()
 
