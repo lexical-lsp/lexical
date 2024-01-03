@@ -109,12 +109,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
 
   defp push_block(%__MODULE__{} = reducer, %Block{} = block) do
     parent = List.first(reducer.blocks)
-    block = %Block{block | parent_ref: parent.ref}
+    block = %Block{block | parent_id: parent.id}
     %__MODULE__{reducer | blocks: [block | reducer.blocks]}
   end
 
   # you never pop the root block in a document
-  defp pop_block(%__MODULE__{blocks: [%Block{ref: :root}]} = reducer), do: reducer
+  defp pop_block(%__MODULE__{blocks: [%Block{id: :root}]} = reducer), do: reducer
 
   defp pop_block(%__MODULE__{} = reducer) do
     [_ | rest] = reducer.blocks
@@ -122,7 +122,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   end
 
   # The root block in the document goes on forever
-  defp block_ended?(%__MODULE__{blocks: [%Block{ref: :root}]}), do: false
+  defp block_ended?(%__MODULE__{blocks: [%Block{id: :root}]}), do: false
 
   defp block_ended?(%__MODULE__{} = reducer) do
     %Block{} = block = current_block(reducer)

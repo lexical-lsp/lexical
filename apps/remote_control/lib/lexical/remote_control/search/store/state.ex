@@ -87,10 +87,10 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       [] ->
         {:ok, []}
 
-      refs ->
+      ids ->
         type = Keyword.get(constraints, :type, :_)
         subtype = Keyword.get(constraints, :subtype, :_)
-        {:ok, state.backend.find_by_refs(refs, type, subtype)}
+        {:ok, state.backend.find_by_ids(ids, type, subtype)}
     end
   end
 
@@ -131,11 +131,11 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def update_nosync(%__MODULE__{} = state, path, entries) do
-    with {:ok, deleted_refs} <- state.backend.delete_by_path(path),
+    with {:ok, deleted_ids} <- state.backend.delete_by_path(path),
          :ok <- state.backend.insert(entries) do
       fuzzy =
         state.fuzzy
-        |> Fuzzy.drop_values(deleted_refs)
+        |> Fuzzy.drop_values(deleted_ids)
         |> Fuzzy.add(entries)
 
       {:ok, %__MODULE__{state | fuzzy: fuzzy}}

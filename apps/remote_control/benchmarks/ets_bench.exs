@@ -3,6 +3,7 @@ alias Lexical.RemoteControl
 alias Lexical.RemoteControl.Search.Store.Backends.Ets
 alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schema
 alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas
+alias Lexical.VM.Versions
 
 defmodule BenchHelper do
   def wait_for_registration do
@@ -20,14 +21,14 @@ defmodule BenchHelper do
     Enum.random(entries).path
   end
 
-  def random_ref(entries) do
-    Enum.random(entries).ref
+  def random_id(entries) do
+    Enum.random(entries).id
   end
 
-  def random_refs(entries, count) do
+  def random_ids(entries, count) do
     entries
     |> Enum.take_random(count)
-    |> Enum.map(& &1.ref)
+    |> Enum.map(& &1.id)
   end
 end
 
@@ -37,7 +38,8 @@ project = Project.new("file://#{cwd}")
 RemoteControl.set_project(project)
 Project.ensure_workspace(project)
 
-indexes_path = Project.workspace_path(project, "indexes")
+versions = Versions.current()
+indexes_path = Project.workspace_path(project, ["indexes", versions.erlang, versions.elixir])
 data_dir = Path.join(cwd, "data")
 
 File.mkdir_p!(indexes_path)
@@ -64,17 +66,17 @@ Benchee.run(
     "find_by_subject, two wildcards" => fn _ ->
       Ets.find_by_subject(Enum, :_, :_)
     end,
-    "find_by_references" => fn %{refs: refs} ->
-      Ets.find_by_refs(refs, :module, :_)
+    "find_by_references" => fn %{ids: ids} ->
+      Ets.find_by_ids(ids, :module, :_)
     end,
     "delete_by_path" => fn %{path: path} ->
       Ets.delete_by_path(path)
     end
   },
   before_each: fn _ ->
-    refs = BenchHelper.random_refs(entries, 50)
+    ids = BenchHelper.random_ids(entries, 50)
     path = BenchHelper.random_path(entries)
-    %{path: path, refs: refs}
+    %{path: path, ids: ids}
   end
 )
 

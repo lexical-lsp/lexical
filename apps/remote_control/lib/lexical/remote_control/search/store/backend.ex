@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @doc """
   Deletes all entries whose path is equal to the one passed in.
   """
-  @callback delete_by_path(Path.t()) :: {:ok, [reference()]} | {:error, any()}
+  @callback delete_by_path(Path.t()) :: {:ok, [Entry.entry_id()]} | {:error, any()}
 
   @doc """
   Finds all entries
@@ -77,7 +77,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @doc """
   Finds entries whose ref attribute is in the given list
   """
-  @callback find_by_refs([reference()], type_query(), subtype_query()) :: [Entry.t()]
+  @callback find_by_ids([Entry.entry_id()], type_query(), subtype_query()) :: [Entry.t()]
 
   @optional_callbacks sync: 1
 end

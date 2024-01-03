@@ -3,14 +3,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type subject :: String.t()
   @type entry_subtype :: :reference | :definition
   @type version :: String.t()
-  @type entry_reference :: reference() | nil
+  @type entry_id :: pos_integer() | nil
 
   defstruct [
     :application,
+    :id,
     :parent,
     :path,
     :range,
-    :ref,
     :subject,
     :subtype,
     :type,
@@ -20,10 +20,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   @type t :: %__MODULE__{
           application: module(),
           subject: subject(),
-          parent: entry_reference(),
+          parent: entry_id(),
           path: Path.t(),
           range: Lexical.Document.Range.t(),
-          ref: entry_reference(),
           subtype: entry_subtype(),
           type: entry_type(),
           updated_at: :calendar.datetime()
@@ -33,22 +32,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
 
   use StructAccess
 
-  def reference(path, ref, parent, subject, type, range, application) do
-    new(path, ref, parent, subject, type, :reference, range, application)
+  def reference(path, id, parent, subject, type, range, application) do
+    new(path, id, parent, subject, type, :reference, range, application)
   end
 
-  def definition(path, ref, parent, subject, type, range, application) do
-    new(path, ref, parent, subject, type, :definition, range, application)
+  def definition(path, id, parent, subject, type, range, application) do
+    new(path, id, parent, subject, type, :definition, range, application)
   end
 
-  defp new(path, ref, parent, subject, type, subtype, range, application) do
+  defp new(path, id, parent, subject, type, subtype, range, application) do
     %__MODULE__{
       application: application,
       subject: subject,
+      id: id,
       parent: parent,
       path: path,
       range: range,
-      ref: ref,
       subtype: subtype,
       type: type,
       updated_at: timestamp()

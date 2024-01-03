@@ -144,15 +144,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
         _ ->
           {:ok,
            [
-             reference(ref: 1, path: "/foo/bar/baz.ex"),
-             reference(ref: 2, path: "/foo/bar/quux.ex")
+             reference(id: 1, path: "/foo/bar/baz.ex"),
+             reference(id: 2, path: "/foo/bar/quux.ex")
            ]}
       end
 
       update = fn _, _ ->
         entries = [
-          reference(ref: 3, path: "/foo/bar/baz.ex"),
-          reference(ref: 4, path: "/foo/bar/other.ex")
+          reference(id: 3, path: "/foo/bar/baz.ex"),
+          reference(id: 4, path: "/foo/bar/other.ex")
         ]
 
         {:ok, entries, []}
@@ -162,7 +162,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       restart_store(project)
 
-      entries = Enum.map(Store.all(), &{&1.ref, &1.path})
+      entries = Enum.map(Store.all(), &{&1.id, &1.path})
       assert {2, "/foo/bar/quux.ex"} in entries
       assert {3, "/foo/bar/baz.ex"} in entries
       assert {4, "/foo/bar/other.ex"} in entries
@@ -225,17 +225,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
     test "updates survive a restart", %{project: project} do
       path = "/path/to/something.ex"
-      Store.replace([definition(ref: 1, subject: My.Module, path: path)])
+      Store.replace([definition(id: 1, subject: My.Module, path: path)])
 
       Store.update(path, [
-        reference(ref: 2, subject: Present, path: path)
+        reference(id: 2, subject: Present, path: path)
       ])
 
       Store.stop()
 
       ensure_restarted(project)
 
-      assert_eventually [%{ref: 2}] = Store.all()
+      assert_eventually [%{id: 2}] = Store.all()
     end
   end
 

@@ -69,8 +69,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def find_by_refs(references, type, subtype) do
-    GenServer.call(genserver_name(), {:find_by_references, [references, type, subtype]})
+  def find_by_ids(ids, type, subtype) do
+    GenServer.call(genserver_name(), {:find_by_ids, [ids, type, subtype]})
   end
 
   def start_link(%Project{} = project) do

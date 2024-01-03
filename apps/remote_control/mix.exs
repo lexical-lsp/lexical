@@ -50,8 +50,8 @@ defmodule Lexical.RemoteControl.MixProject do
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false},
       {:path_glob, "~> 0.2", optional: true},
-      {:sourceror, "~> 0.14.1"},
-      {:phoenix_live_view, "~> 0.19.5", only: [:test], optional: true, runtime: false}
+      {:phoenix_live_view, "~> 0.19.5", only: [:test], optional: true, runtime: false},
+      {:sourceror, "~> 0.14.1"}
     ]
   end
 

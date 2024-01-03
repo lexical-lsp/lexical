@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
+  alias Lexical.Identifier
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
@@ -140,8 +141,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
 
         Entry.reference(
           reducer.analysis.document.path,
-          make_ref(),
-          block.parent_ref,
+          Identifier.next_global!(),
+          block.parent_id,
           mfa,
           :function,
           range,

@@ -5,7 +5,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
   It does this by storing data under three different key types. The first type groups references to ids by
   path, and is accessible via the `by_path` utility macros. The second, stores data by subject, type, subtype,
   path and the elixir and erlang versions. This is what powers exact matching.
-  Finally, entries are stored by their reference, which powers direct lookups, which are used in fuzzy matching.
+  Finally, entries are stored by their id, which powers direct lookups, which are used in fuzzy matching.
 
   """
 
@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
     migrated =
       entries
       |> Stream.filter(fn
-        {_, %_{type: _, subtype: _, ref: _}} -> true
+        {_, %_{type: _, subtype: _, id: _}} -> true
         _ -> false
       end)
       |> Stream.map(fn {_, entry} -> entry end)
@@ -59,7 +59,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
 
     id_key =
       by_id(
-        id: entry.ref,
+        id: entry.id,
         type: entry.type,
         subtype: entry.subtype
       )
@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
   end
 
   # This case will handle any namespaced entries
-  def to_rows(%{type: _, subtype: _, ref: _} = entry) do
+  def to_rows(%{type: _, subtype: _, id: _} = entry) do
     map = Map.delete(entry, :__struct__)
 
     Entry
