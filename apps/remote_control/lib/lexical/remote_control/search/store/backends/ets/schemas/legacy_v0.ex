@@ -12,4 +12,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.LegacyV0 do
   def index_file_name do
     "source.index.ets"
   end
+
+  def to_rows(_) do
+    []
+  end
 end

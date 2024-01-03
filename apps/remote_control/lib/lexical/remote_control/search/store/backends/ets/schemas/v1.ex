@@ -33,19 +33,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V1 do
         _ -> false
       end)
       |> Stream.map(fn {_, entry} -> entry end)
-      |> entries_to_rows()
+      |> Schema.entries_to_rows(__MODULE__)
 
     {:ok, migrated}
-  end
-
-  @spec entries_to_rows(Enumerable.t(Entry.t())) :: [tuple()]
-  def entries_to_rows(entries) do
-    entries
-    |> Stream.flat_map(&to_rows(&1))
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      Map.update(acc, key, [value], fn old_values -> [value | old_values] end)
-    end)
-    |> Enum.to_list()
   end
 
   def to_rows(%Entry{} = entry) do

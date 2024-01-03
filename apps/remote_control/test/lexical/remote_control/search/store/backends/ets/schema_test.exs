@@ -20,6 +20,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
 
   defmodule First do
     use Schema, version: 1
+    def to_rows(_), do: []
   end
 
   defmodule IncrementValue do
@@ -29,6 +30,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
       entries = Enum.map(entries, fn {k, v} -> {k, v + 1} end)
       {:ok, entries}
     end
+
+    def to_rows(_), do: []
   end
 
   defmodule IncrementKey do
@@ -37,11 +40,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     def migrate(entries) do
       {:ok, Enum.map(entries, fn {k, v} -> {k + 1, v} end)}
     end
+
+    def to_rows(_), do: []
   end
 
   test "it ensures the uniqueness of versions in the schema order", %{project: project} do
     defmodule SameVersion do
       use Schema, version: 1
+
+      def to_rows(_), do: []
     end
 
     assert_raise ArgumentError, fn -> Schema.load(project, [First, SameVersion]) end
@@ -122,6 +129,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
       def migrate(_) do
         {:ok, []}
       end
+
+      def to_rows(_), do: []
     end
 
     entries = [{1, 1}, {2, 2}, {3, 3}]
@@ -139,6 +148,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
       def migrate(_) do
         {:error, :migration_failed}
       end
+
+      def to_rows(_), do: []
     end
 
     entries = [{1, 1}]
@@ -155,6 +166,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
       def index_file_name do
         First.index_file_name()
       end
+
+      def to_rows(_), do: []
     end
 
     entries = [{1, 1}, {2, 2}]
