@@ -1,12 +1,10 @@
 defmodule Lexical.RemoteControl.Build.Error do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
+  alias Lexical.RemoteControl.Build.Location
   alias Mix.Task.Compiler
 
   require Logger
-
-  import Lexical.RemoteControl.Build.ErrorSupport,
-    only: [context_to_position: 1, position: 1, position: 2]
 
   @elixir_source "Elixir"
 
@@ -27,40 +25,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       |> normalize()
       |> format()
     end)
-    |> uniq()
-  end
-
-  defp uniq(diagnostics) do
-    exacts =
-      Enum.filter(diagnostics, fn diagnostic -> match?({_, _, _, _}, diagnostic.position) end)
-
-    extract_line = fn
-      %Result{position: {line, _column}} -> line
-      %Result{position: line} -> line
-    end
-
-    # Note: Sometimes error and warning appear on one line at the same time
-    # So we need to uniq by line and severity,
-    # and :error is always more important than :warning
-    extract_line_and_severity = &{extract_line.(&1), &1.severity}
-
-    filtered =
-      diagnostics
-      |> Enum.filter(fn diagnostic -> not match?({_, _, _, _}, diagnostic.position) end)
-      |> Enum.sort_by(extract_line_and_severity)
-      |> Enum.uniq_by(extract_line)
-      |> reject_zeroth_line()
-
-    exacts ++ filtered
-  end
-
-  defp reject_zeroth_line(diagnostics) do
-    # Since 1.15, Elixir has some nonsensical error on line 0,
-    # e.g.: Can't compile this file
-    # We can simply ignore it, as there is a more accurate one
-    Enum.reject(diagnostics, fn diagnostic ->
-      diagnostic.position == 0
-    end)
+    |> Location.uniq()
   end
 
   defp normalize(%Compiler.Diagnostic{} = diagnostic) do
@@ -116,7 +81,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
       position =
         if span = error_or_wanning[:span] do
-          position(pos, span)
+          Location.position(pos, span)
         else
           pos
         end
@@ -135,7 +100,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
     Result.new(
       path,
-      position(compile_error.line),
+      Location.position(compile_error.line),
       compile_error.description,
       :error,
       @elixir_source
@@ -150,7 +115,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       ) do
     [{_module, _function, _arity, context} | _] = stack
     message = Exception.message(function_clause)
-    position = context_to_position(context)
+    position = Location.context_to_position(context)
     Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
@@ -161,7 +126,7 @@ defmodule Lexical.RemoteControl.Build.Error do
         _quoted_ast
       ) do
     message = Exception.message(error)
-    position = position(1)
+    position = Location.position(1)
     Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
@@ -214,7 +179,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
     position =
       if pipe_or_struct? or expanding? do
-        context_to_position(context)
+        Location.context_to_position(context)
       else
         stack_to_position(stack)
       end
@@ -295,13 +260,13 @@ defmodule Lexical.RemoteControl.Build.Error do
 
     cond do
       is_nil(context) ->
-        position(0)
+        Location.position(0)
 
       Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
-        position(context[:line], context[:column])
+        Location.position(context[:line], context[:column])
 
       Keyword.has_key?(context, :line) ->
-        position(context[:line])
+        Location.position(context[:line])
 
       true ->
         nil
@@ -325,7 +290,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   defp stack_to_position([{_, target, _, context} | _rest])
        when target in [:__FILE__, :__MODULE__] do
-    context_to_position(context)
+    Location.context_to_position(context)
   end
 
   defp stack_to_position([]) do

@@ -2,9 +2,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
 
-  import Lexical.RemoteControl.Build.ErrorSupport,
-    only: [context_to_position: 1, position: 2, position: 4]
-
+  alias Lexical.RemoteControl.Build.Location
   @elixir_source "Elixir"
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
@@ -20,7 +18,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
     detail_diagnostics = detail_diagnostics(source, detail)
     error = message_info_to_binary(message_info, token)
     error_diagnostics = to_diagnostics(source, context, error, token)
-    error_diagnostics ++ detail_diagnostics
+    Location.uniq(detail_diagnostics ++ error_diagnostics)
   end
 
   def to_diagnostics(%Document{} = source, context, message_info, token)
@@ -49,9 +47,12 @@ defmodule Lexical.RemoteControl.Build.ParseError do
       &build_hint_diagnostics/4
     ]
 
-    Enum.flat_map(parse_error_diagnostic_functions, & &1.(source, context, message_info, token))
+    parse_error_diagnostic_functions
+    |> Enum.flat_map(& &1.(source, context, message_info, token))
+    |> Location.uniq()
   end
 
+  @missing_terminator_pattern ~r/missing terminator: \w+/
   defp build_end_line_diagnostics_from_context(
          %Document{} = source,
          context,
@@ -59,14 +60,20 @@ defmodule Lexical.RemoteControl.Build.ParseError do
          token
        ) do
     message =
-      if String.starts_with?(message_info, "unexpected") do
-        ~s/#{message_info}#{token}, expected "#{context[:expected_delimiter]}"/
-      else
-        "#{message_info}#{token}"
+      cond do
+        String.starts_with?(message_info, "unexpected") ->
+          ~s/#{message_info}#{token}, expected "#{context[:expected_delimiter]}"/
+
+        Regex.match?(@missing_terminator_pattern, message_info) ->
+          [message] = Regex.run(@missing_terminator_pattern, message_info)
+          message
+
+        true ->
+          "#{message_info}#{token}"
       end
 
     if context[:end_line] do
-      pos = position(context[:end_line], context[:end_column])
+      pos = Location.position(context[:end_line], context[:end_column])
       result = Result.new(source.uri, pos, message, :error, @elixir_source)
       [result]
     else
@@ -84,7 +91,9 @@ defmodule Lexical.RemoteControl.Build.ParseError do
         end_line_message <> token
       end
 
-    diagnostic = Result.new(source.uri, context_to_position(context), message, :error, "Elixir")
+    diagnostic =
+      Result.new(source.uri, Location.context_to_position(context), message, :error, "Elixir")
+
     [diagnostic]
   end
 
@@ -110,7 +119,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
     opening_delimiter_length = opening_delimiter |> Atom.to_string() |> String.length()
 
     pos =
-      position(
+      Location.position(
         context[:line],
         context[:column],
         context[:line],
@@ -123,7 +132,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
 
   defp build_syntax_error_diagnostic(%Document{} = source, context, message_info, token) do
     message = "#{message_info}#{token}"
-    pos = position(context[:line], context[:column])
+    pos = Location.position(context[:line], context[:column])
     result = Result.new(source.uri, pos, message, :error, @elixir_source)
     [result]
   end

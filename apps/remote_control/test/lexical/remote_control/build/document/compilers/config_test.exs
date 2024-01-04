@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.ConfigTest do
                |> compile()
 
       assert result.message =~ "missing terminator"
-      assert result.position == {1, 12}
+      assert result.position in [{1, 12}, {1, 1}]
       assert result.severity == :error
       assert result.source == "Elixir"
     end
