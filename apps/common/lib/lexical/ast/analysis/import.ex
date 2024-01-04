@@ -35,6 +35,11 @@ defmodule Lexical.Ast.Analysis.Import do
                   {{:__block__, _, [function_name]}, {:__block__, _, [arity]}} ->
                     {function_name, arity}
                 end)
+
+              _ ->
+                # they're likely in the middle of typing in something, and have produced an
+                # invalid import
+                []
             end
 
           [{type, expanded} | acc]
