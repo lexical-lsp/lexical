@@ -32,6 +32,12 @@ defmodule Lexical.Test.Entry.Builder do
     |> entry()
   end
 
+  def structure(fields \\ []) do
+    path = Keyword.get(fields, :path, "/path/to/file.ex")
+    structure = Keyword.get(fields, :structure, %{root: %{}})
+    Entry.block_structure(path, structure)
+  end
+
   defp range(start_line, start_column, end_line, end_column) do
     Range.new(position(start_line, start_column), position(end_line, end_column))
   end

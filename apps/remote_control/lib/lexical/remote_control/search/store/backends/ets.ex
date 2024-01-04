@@ -76,7 +76,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
   @impl Backend
   def structure_for_path(path) do
-    GenServer.call(genserver_name(), {:structures_for_path, [path]})
+    GenServer.call(genserver_name(), {:structure_for_path, [path]})
   end
 
   @impl Backend

@@ -24,6 +24,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       query_by_id: 0,
       query_by_id: 1,
       query_by_path: 1,
+      query_structure: 1,
       query_by_subject: 1,
       structure: 1
     ]
@@ -105,7 +106,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def parent(%__MODULE__{} = state, %Entry{} = entry) do
-    with {:ok, structure} <- structure_for(state, entry.path),
+    with {:ok, structure} <- structure_for_path(state, entry.path),
          {:ok, child_path} <- child_path(structure, entry.block_id) do
       child_path =
         if is_block(entry) do
@@ -151,6 +152,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
     :ets.match_delete(state.table_name, {query_by_subject(path: path), :_})
     :ets.match_delete(state.table_name, {query_by_path(path: path), :_})
+    :ets.match_delete(state.table_name, {query_structure(path: path), :_})
+
     Enum.each(ids_to_delete, &:ets.delete(state.table_name, &1))
     {:ok, ids_to_delete}
   end
@@ -220,7 +223,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     end
   end
 
-  defp structure_for(%__MODULE__{} = state, path) do
+  def structure_for_path(%__MODULE__{} = state, path) do
     key = structure(path: path)
 
     case :ets.lookup_element(state.table_name, key, 2) do
