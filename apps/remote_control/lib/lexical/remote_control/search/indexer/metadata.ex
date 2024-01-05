@@ -56,10 +56,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Metadata do
       %{start: start_pos, end: end_pos} ->
         position = position(metadata)
         [line: line, column: column] = Keyword.take(end_pos, [:line, :column])
-        # There is a bug in sourceror that doesn't handle anonymous functions ranges
-        # correctly, placing the end position at the 'n' in the 'end'. This works
-        # around it.
-        end_position = {line, column - 1}
+
+        # Sourceror puts block ends after the ending token (usually `end`),
+        # but the rest of our code places it right before the end token.
+        # We should investigate just doing what sourceror does, it makes sense.
+        end_position = {line, column - 3}
 
         {:block, position, keyword_to_position(start_pos), end_position}
 
@@ -71,8 +72,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Metadata do
   defp maybe_handle_terse_function({_, metadata, _}) do
     {:expression, position(metadata)}
   end
-
-  defp keyword_to_position(nil), do: nil
 
   defp keyword_to_position(keyword) do
     case Keyword.take(keyword, [:line, :column]) do
