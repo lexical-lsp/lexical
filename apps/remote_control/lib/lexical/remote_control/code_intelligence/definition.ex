@@ -42,12 +42,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       {:ok, zipper} ->
         zipper = %{node: {entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
 
-        if entity_name == :when do
-          %{node: {_entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
-          {meta[:line], meta[:column]}
-        else
-          {meta[:line], meta[:column]}
-        end
+        meta =
+          if entity_name == :when do
+            %{node: {_entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
+            meta
+          else
+            meta
+          end
+
+        {meta[:line], meta[:column]}
 
       _ ->
         {line, column}

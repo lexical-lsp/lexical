@@ -1,8 +1,8 @@
 defmodule Lexical.RemoteControl.Build.ParseError do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
-
   alias Lexical.RemoteControl.Build.Error.Location
+
   @elixir_source "Elixir"
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
@@ -27,18 +27,11 @@ defmodule Lexical.RemoteControl.Build.ParseError do
   end
 
   def to_diagnostics(%Document{} = source, context, message_info, token) do
-    end_line_fn =
+    {start_line_fn, end_line_fn} =
       if Features.details_in_context?() do
-        &build_end_line_diagnostics_from_context/4
+        {&build_end_line_diagnostics_from_context/4, &build_start_line_diagnostics_from_context/4}
       else
-        &build_end_line_diagnostics/4
-      end
-
-    start_line_fn =
-      if Features.details_in_context?() do
-        &build_start_line_diagnostics_from_context/4
-      else
-        &build_start_line_diagnostics/4
+        {&build_start_line_diagnostics/4, &build_end_line_diagnostics/4}
       end
 
     parse_error_diagnostic_functions = [
