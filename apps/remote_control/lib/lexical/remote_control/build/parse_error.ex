@@ -152,7 +152,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
     end
   end
 
-  @hint_regex ~r/(HINT:|hint:\e\[0m)( .*on line (\d+).*)/m
+  @hint_regex ~r/(HINT:|hint:\e\[0m|hint:)( .*on line (\d+).*)/m
   defp build_hint_diagnostics(%Document{} = source, _context, message_info, _token) do
     case Regex.run(@hint_regex, message_info) do
       [_whole_message, _hint, message, hint_line] ->
