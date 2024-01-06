@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message in [~s[undefined variable "a"], ~s[undefined function a/0]]
+      assert diagnostic.message in [~s[undefined variable `a`], ~s[undefined function a/0]]
       assert diagnostic.position in [4, {4, 13}]
     end
 
@@ -99,7 +99,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message == ~s[undefined variable "a"]
+      assert diagnostic.message == ~s[undefined variable `a`]
       assert decorate(document_text, diagnostic.position) =~ "«a»"
     end
 
@@ -117,7 +117,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message =~ ~s[variable "a" is unused]
+      assert diagnostic.message =~ ~s[variable `a` is unused]
       assert diagnostic.position in [4, {4, 13}]
     end
 
@@ -138,7 +138,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message == ~s[variable "a" is unused]
+      assert diagnostic.message == ~s[variable `a` is unused]
       assert decorate(document_text, diagnostic.position) =~ "«a»"
     end
 
@@ -303,10 +303,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostics()
 
-      assert a.message == ~s[undefined variable "a"]
+      assert a.message == ~s[undefined variable `a`]
       assert decorate(document_text, a.position) =~ "«a»"
 
-      assert b.message == ~s[undefined variable "b"]
+      assert b.message == ~s[undefined variable `b`]
       assert decorate(document_text, b.position) =~ "«b»"
 
       assert func_diagnotic.message == ~s[undefined function print/1]
@@ -563,7 +563,7 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert unknown.message == "unknown key :c for struct Foo"
       assert unknown.position == {7, 19}
 
-      assert undefined.message == "variable \"c\" is unused"
+      assert undefined.message == "variable `c` is unused"
       assert decorate(document_text, undefined.position) =~ "def bar(%Foo{c: «c»}) do"
     end
 

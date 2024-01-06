@@ -54,7 +54,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
                |> diagnostics()
 
       assert start_diagnostic.message ==
-               ~s[The "{" here is missing terminator "}"]
+               ~s[The `{` here is missing terminator `}`]
 
       assert decorate(document_text, start_diagnostic.position) == ~S[%«{»foo: 3]
 
@@ -123,7 +123,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
 
       assert [start_diagnostic, end_diagnostic] = errors
 
-      assert start_diagnostic.message == ~S[The "(" here is missing terminator ")"]
+      assert start_diagnostic.message == ~S[The `(` here is missing terminator `)`]
 
       assert decorate(document_text, start_diagnostic.position) =~
                ~S[Enum.reduce«(»diagnostics, state, fn diagnostic, state ->]
@@ -166,10 +166,10 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
         |> compile()
         |> diagnostics()
 
-      assert end_diagnostic.message == ~S[unexpected token: ), expected "end"]
+      assert end_diagnostic.message == ~S[unexpected token: ), expected `end`]
       assert end_diagnostic.position == {1, 24}
 
-      assert start_diagnostic.message == ~S[The "fn" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `fn` here is missing terminator `end`]
       assert decorate(document_text, start_diagnostic.position) =~ ~S/Keywor.get([], «fn» x -> )/
     end
 
@@ -192,7 +192,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
       assert end_diagnostic.position == {5, 12}
 
       assert %Diagnostic.Result{} = start_diagnostic
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert start_diagnostic.position == 2
     end
 
@@ -217,7 +217,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
       assert end_diagnostic.position == {5, 12}
 
       assert %Diagnostic.Result{} = start_diagnostic
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert decorate(document_text, start_diagnostic.position) =~ ~S/defmodule Foo «do»/
     end
 
@@ -241,7 +241,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
         end] |> compile() |> diagnostics()
 
       [start_diagnostic, hint_diagnostic, end_diagnostic] = diagnostics
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert start_diagnostic.position == 2
       assert end_diagnostic.message == ~S[missing terminator: end (for "do" starting at line 2)]
       assert end_diagnostic.position == {9, 12}
@@ -269,7 +269,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
 
       [start_diagnostic, hint_diagnostic, end_diagnostic] = diagnostics
 
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert decorate(document_text, start_diagnostic.position) =~ ~S/defmodule Foo «do»/
 
       assert hint_diagnostic.message ==
@@ -298,7 +298,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
 
       [start_diagnostic, hint_diagnostic, end_diagnostic] = diagnostics
 
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert start_diagnostic.position == 3
 
       assert hint_diagnostic.message ==
@@ -328,7 +328,7 @@ defmodule Lexical.RemoteControl.Build.ParseErrorTest do
       [start_diagnostic, hint_diagnostic, end_diagnostic] =
         document_text |> compile() |> diagnostics()
 
-      assert start_diagnostic.message == ~S[The "do" here is missing terminator "end"]
+      assert start_diagnostic.message == ~S[The `do` here is missing terminator `end`]
       assert decorate(document_text, start_diagnostic.position) =~ "def bar_missing_end «do»"
 
       assert hint_diagnostic.message ==

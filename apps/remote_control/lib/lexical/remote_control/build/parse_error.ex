@@ -55,7 +55,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
     message =
       cond do
         String.starts_with?(message_info, "unexpected") ->
-          ~s/#{message_info}#{token}, expected "#{context[:expected_delimiter]}"/
+          ~s/#{message_info}#{token}, expected `#{context[:expected_delimiter]}`/
 
         Regex.match?(@missing_terminator_pattern, message_info) ->
           [message] = Regex.run(@missing_terminator_pattern, message_info)
@@ -107,7 +107,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
 
   defp build_opening_delimiter_diagnostics(%Document{} = source, context, opening_delimiter) do
     message =
-      ~s/The "#{opening_delimiter}" here is missing terminator "#{context[:expected_delimiter]}"/
+      ~s/The `#{opening_delimiter}` here is missing terminator `#{context[:expected_delimiter]}`/
 
     opening_delimiter_length = opening_delimiter |> Atom.to_string() |> String.length()
 
@@ -135,7 +135,9 @@ defmodule Lexical.RemoteControl.Build.ParseError do
   defp build_start_line_diagnostics(%Document{} = source, _context, message_info, _token) do
     case Regex.run(@start_line_regex, message_info) do
       [_, missing, token, start_line] ->
-        message = ~s[The #{token} here is missing terminator #{inspect(missing)}]
+        message =
+          ~s[The #{format_token(token)} here is missing terminator #{format_token(missing)}]
+
         position = String.to_integer(start_line)
         result = Result.new(source.uri, position, message, :error, @elixir_source)
         [result]
@@ -174,6 +176,14 @@ defmodule Lexical.RemoteControl.Build.ParseError do
 
       _ ->
         []
+    end
+  end
+
+  defp format_token(token) when is_binary(token) do
+    if String.contains?(token, "\"") do
+      String.replace(token, "\"", "`")
+    else
+      "`#{token}`"
     end
   end
 end
