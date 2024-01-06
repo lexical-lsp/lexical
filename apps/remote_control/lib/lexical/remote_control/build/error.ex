@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.Build.Error do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
-  alias Lexical.RemoteControl.Build.Location
+  alias Lexical.RemoteControl.Build.Error.Location
   alias Mix.Task.Compiler
 
   require Logger
@@ -81,7 +81,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
       position =
         if span = error_or_wanning[:span] do
-          Location.position(pos, span)
+          Location.position(doc, pos, span)
         else
           pos
         end

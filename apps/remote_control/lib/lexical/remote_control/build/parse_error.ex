@@ -2,7 +2,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
 
-  alias Lexical.RemoteControl.Build.Location
+  alias Lexical.RemoteControl.Build.Error.Location
   @elixir_source "Elixir"
 
   # Parse errors happen during Code.string_to_quoted and are raised as SyntaxErrors, and TokenMissingErrors.
@@ -120,6 +120,7 @@ defmodule Lexical.RemoteControl.Build.ParseError do
 
     pos =
       Location.position(
+        source,
         context[:line],
         context[:column],
         context[:line],

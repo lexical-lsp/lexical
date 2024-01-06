@@ -1,4 +1,7 @@
-defmodule Lexical.RemoteControl.Build.Location do
+defmodule Lexical.RemoteControl.Build.Error.Location do
+  alias Lexical.Document
+  alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.Plugin.V1.Diagnostic.Result
 
   def context_to_position(context) do
@@ -18,21 +21,24 @@ defmodule Lexical.RemoteControl.Build.Location do
     line
   end
 
-  def position({line, column}, {end_line, end_column}) do
-    {line, column, end_line, end_column}
+  def position(%Document{} = document, {line, column}, {end_line, end_column}) do
+    start_position = Position.new(document, line, column)
+    end_position = Position.new(document, end_line, end_column)
+    Range.new(start_position, end_position)
   end
 
   def position(line, column) do
     {line, column}
   end
 
-  def position(line, column, end_line, end_column) do
-    {line, column, end_line, end_column}
+  def position(%Document{} = document, line, column, end_line, end_column) do
+    start_position = Position.new(document, line, column)
+    end_position = Position.new(document, end_line, end_column)
+    Range.new(start_position, end_position)
   end
 
   def uniq(diagnostics) do
-    exacts =
-      Enum.filter(diagnostics, fn diagnostic -> match?({_, _, _, _}, diagnostic.position) end)
+    exacts = Enum.filter(diagnostics, fn diagnostic -> match?(%Range{}, diagnostic.position) end)
 
     extract_line = fn
       %Result{position: {line, _column}} -> line
@@ -46,7 +52,7 @@ defmodule Lexical.RemoteControl.Build.Location do
 
     filtered =
       diagnostics
-      |> Enum.filter(fn diagnostic -> not match?({_, _, _, _}, diagnostic.position) end)
+      |> Enum.filter(fn diagnostic -> not match?(%Range{}, diagnostic.position) end)
       |> Enum.sort_by(extract_line_and_severity)
       |> Enum.uniq_by(extract_line)
       |> reject_zeroth_line()

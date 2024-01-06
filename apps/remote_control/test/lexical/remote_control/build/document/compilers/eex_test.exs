@@ -13,6 +13,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   import Lexical.Test.Quiet
   import Lexical.Test.CodeSigil
   import Lexical.Test.DiagnosticSupport
+  import Lexical.Test.RangeSupport
 
   def with_capture_server(_) do
     start_supervised!(CaptureServer)
@@ -106,15 +107,16 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
     @feature_condition span_in_diagnostic?: true
     @tag execute_if(@feature_condition)
     test "handles unused variables when #{inspect(@feature_condition)}" do
-      assert {:ok, [%Result{} = result]} =
-               ~q[
+      document =
+        ~q[
                <%= something = 6 %>
                ]
-               |> document_with_content()
-               |> compile()
+        |> document_with_content()
+
+      assert {:ok, [%Result{} = result]} = compile(document)
 
       assert result.message == ~s[variable "something" is unused]
-      assert result.position == {1, 5, 1, 14}
+      assert decorate(document, result.position) == "<%= «something» = 6 %>"
       assert result.severity == :warning
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
@@ -166,7 +168,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert {:error, [%Result{} = result]} = compile(document)
 
       assert result.message == "undefined variable \"thing\""
-      assert result.position == {1, 5, 1, 10}
+      assert decorate(document, result.position) == "<%= «thing» %>"
       assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
