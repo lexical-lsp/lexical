@@ -32,7 +32,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   This receives the result of `new/1`, and sets up the store for use. When this function
   returns, the backend is considered ready for use.
   """
-  @callback prepare(priv_state()) :: {:ok, load_state()}
+  @callback prepare(Project.t(), priv_state()) :: {:ok, load_state()}
 
   @doc """
   Synchronizes the backend to the file system (optional)
@@ -42,12 +42,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @doc """
   Inserts all entries into the backend
   """
-  @callback insert([Entry.t()]) :: :ok
+  @callback insert(Project.t(), [Entry.t()]) :: :ok
 
   @doc """
   Drops all data from the backend, but keeps the underlying structure
   """
-  @callback drop() :: boolean()
+  @callback drop(Project.t()) :: boolean()
 
   @doc """
   Drops all data from the backend, and disposes of any underlying structure
@@ -57,27 +57,31 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @doc """
   Returns all entries currently residing in the backend
   """
-  @callback select_all :: [Entry.t()]
+  @callback select_all(Project.t()) :: [Entry.t()]
 
   @doc """
   Replaces all the entries in the store with those passed in
   """
-  @callback replace_all([Entry.t()]) :: :ok
+  @callback replace_all(Project.t(), [Entry.t()]) :: :ok
 
   @doc """
   Deletes all entries whose path is equal to the one passed in.
   """
-  @callback delete_by_path(Path.t()) :: {:ok, [Entry.entry_id()]} | {:error, any()}
+  @callback delete_by_path(Project.t(), Path.t()) :: {:ok, [Entry.entry_id()]} | {:error, any()}
 
   @doc """
   Finds all entries
   """
-  @callback find_by_subject(subject_query(), type_query(), subtype_query()) :: [Entry.t()]
+  @callback find_by_subject(Project.t(), subject_query(), type_query(), subtype_query()) :: [
+              Entry.t()
+            ]
 
   @doc """
   Finds entries whose ref attribute is in the given list
   """
-  @callback find_by_ids([Entry.entry_id()], type_query(), subtype_query()) :: [Entry.t()]
+  @callback find_by_ids(Project.t(), [Entry.entry_id()], type_query(), subtype_query()) :: [
+              Entry.t()
+            ]
 
   @optional_callbacks sync: 1
 end

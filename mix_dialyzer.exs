@@ -8,7 +8,7 @@ defmodule Mix.Dialyzer do
       plt_core_path: absolute_path("priv/plts"),
       plt_file: {:no_warn, absolute_path("priv/plts/#{name}.plt")},
       plt_add_deps: :apps_direct,
-      plt_add_apps: [:wx, :mix, :ex_unit, :compiler],
+      plt_add_apps: [:wx, :mix, :ex_unit, :compiler, :khepri],
       ignore_warnings: absolute_path("dialyzer.ignore-warnings")
     ]
   end

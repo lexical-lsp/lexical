@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Store
-  alias Lexical.RemoteControl.Search.Store.Backends.Ets
+  alias Lexical.RemoteControl.Search.Store.Backends
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   import EventualAssertions
   import Fixtures
 
-  @backends [Ets]
+  @backends [Backends.Ets, Backends.Khepri]
 
   setup_all do
     project = project()
@@ -173,8 +173,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     Enum.each(@backends, &destroy_backend(&1, project))
   end
 
-  defp destroy_backend(Ets, project) do
-    Ets.destroy(project)
+  defp destroy_backend(backend, project) do
+    backend.destroy(project)
   end
 
   defp default_create(_project) do

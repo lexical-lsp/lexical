@@ -28,11 +28,11 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def drop(%__MODULE__{} = state) do
-    state.backend.drop()
+    state.backend.drop(state.project)
   end
 
   def destroy(%__MODULE__{} = state) do
-    state.backend.destroy(state)
+    state.backend.destroy(state.project)
   end
 
   @doc """
@@ -69,7 +69,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def replace(%__MODULE__{} = state, entries) do
-    with :ok <- state.backend.replace_all(entries),
+    with :ok <- state.backend.replace_all(state.project, entries),
          :ok <- maybe_sync(state) do
       {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
     end
@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def exact(%__MODULE__{} = state, subject, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    results = state.backend.find_by_subject(subject, type, subtype)
+    results = state.backend.find_by_subject(state.project, subject, type, subtype)
     {:ok, results}
   end
 
@@ -90,12 +90,12 @@ defmodule Lexical.RemoteControl.Search.Store.State do
       ids ->
         type = Keyword.get(constraints, :type, :_)
         subtype = Keyword.get(constraints, :subtype, :_)
-        {:ok, state.backend.find_by_ids(ids, type, subtype)}
+        {:ok, state.backend.find_by_ids(state.project, ids, type, subtype)}
     end
   end
 
   def all(%__MODULE__{} = state) do
-    state.backend.select_all()
+    state.backend.select_all(state.project)
   end
 
   def buffer_updates(%__MODULE__{} = state, path, entries) do
@@ -131,8 +131,8 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   def update_nosync(%__MODULE__{} = state, path, entries) do
-    with {:ok, deleted_ids} <- state.backend.delete_by_path(path),
-         :ok <- state.backend.insert(entries) do
+    with {:ok, deleted_ids} <- state.backend.delete_by_path(state.project, path),
+         :ok <- state.backend.insert(state.project, entries) do
       fuzzy =
         state.fuzzy
         |> Fuzzy.drop_values(deleted_ids)
@@ -147,7 +147,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   defp prepare_backend_async(%__MODULE__{async_load_ref: nil} = state, backend_result) do
     task =
       Task.async(fn ->
-        case state.backend.prepare(backend_result) do
+        case state.backend.prepare(state.project, backend_result) do
           {:ok, :empty} ->
             Logger.info("backend reports empty")
             {:create_index, state.create_index.(state.project)}

@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControl.Search.Store do
           (project :: Project.t(), entries :: existing_entries ->
              {:ok, new_entries, paths_to_delete} | {:error, term()})
 
-  @backend Application.compile_env(:remote_control, :search_store_backend, Store.Backends.Ets)
+  @backend Application.compile_env(:remote_control, :search_store_backend, Store.Backends.Khepri)
   @flush_interval_ms Application.compile_env(
                        :remote_control,
                        :search_store_quiescent_period_ms,

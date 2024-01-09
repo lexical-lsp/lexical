@@ -14,7 +14,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def prepare(pid) do
+  def prepare(_project, pid) do
     GenServer.call(pid, :prepare, :infinity)
   end
 
@@ -24,12 +24,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def insert(entries) do
+  def insert(_project, entries) do
     GenServer.call(genserver_name(), {:insert, [entries]}, :infinity)
   end
 
   @impl Backend
-  def drop do
+  def drop(_project) do
     GenServer.call(genserver_name(), {:drop, []})
   end
 
@@ -49,27 +49,27 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def select_all do
+  def select_all(_project) do
     GenServer.call(genserver_name(), {:select_all, []})
   end
 
   @impl Backend
-  def replace_all(entries) do
+  def replace_all(_project, entries) do
     GenServer.call(genserver_name(), {:replace_all, [entries]}, :infinity)
   end
 
   @impl Backend
-  def delete_by_path(path) do
+  def delete_by_path(_project, path) do
     GenServer.call(genserver_name(), {:delete_by_path, [path]})
   end
 
   @impl Backend
-  def find_by_subject(subject, type, subtype) do
+  def find_by_subject(_project, subject, type, subtype) do
     GenServer.call(genserver_name(), {:find_by_subject, [subject, type, subtype]})
   end
 
   @impl Backend
-  def find_by_ids(ids, type, subtype) do
+  def find_by_ids(_project, ids, type, subtype) do
     GenServer.call(genserver_name(), {:find_by_ids, [ids, type, subtype]})
   end
 

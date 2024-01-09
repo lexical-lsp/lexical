@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Namespace do
   alias Mix.Tasks.Namespace.Transform
   use Mix.Task
 
-  @dev_deps [:patch]
+  @dev_deps [:patch, :khepri]
 
   # These app names and root modules are strings to avoid them being namespaced
   # by this task. Plugin discovery uses this task, which happens after
