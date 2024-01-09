@@ -13,24 +13,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Khepri do
 
   @impl Backend
   def new(%Project{} = project) do
-    result =
-      project
-      |> data_directory()
-      |> :khepri.start(khepri_store_id(project))
-
-    case result do
-      {:ok, _} = success ->
-        success
-
-      {:error, {:khepri, {{:already_started, pid}, _}}} ->
-        {:ok, pid}
-
-      {:error, {:khepri, {{:already_started, pid}, _, _, _}}} ->
-        {:ok, pid}
-
-      error ->
-        error
-    end
+    project
+    |> data_directory()
+    |> :khepri.start(khepri_store_id(project))
   end
 
   @impl Backend
