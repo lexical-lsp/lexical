@@ -61,6 +61,10 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
       [only: :macros] ->
         Map.put(current_imports, import_module, macros)
 
+      [only: :sigils] ->
+        sigils = mfas_for(import_module, :sigils)
+        Map.put(current_imports, import_module, sigils)
+
       [only: functions_to_import] ->
         functions_to_import = function_and_arity_to_mfa(import_module, functions_to_import)
         Map.put(current_imports, import_module, functions_to_import)
@@ -108,13 +112,28 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
     end
   end
 
+  defp function_and_arities_for_module(module, :sigils) do
+    ProcessCache.trans({module, :info, :sigils}, fn ->
+      for {name, arity} <- module.__info__(:functions),
+          string_name = Atom.to_string(name),
+          sigil?(string_name, arity) do
+        {name, arity}
+      end
+    end)
+  end
+
   defp function_and_arities_for_module(module, type) do
     ProcessCache.trans({module, :info, type}, fn ->
       type
       |> module.__info__()
-      |> Enum.reject(fn {name, _arity} ->
-        name |> Atom.to_string() |> String.starts_with?("_")
+      |> Enum.reject(fn {name, arity} ->
+        string_name = Atom.to_string(name)
+        String.starts_with?(string_name, "_") or sigil?(string_name, arity)
       end)
     end)
+  end
+
+  defp sigil?(string_name, arity) do
+    String.starts_with?(string_name, "sigil_") and arity in [1, 2]
   end
 end

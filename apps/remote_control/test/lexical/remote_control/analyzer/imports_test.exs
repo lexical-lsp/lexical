@@ -29,6 +29,14 @@ defmodule WithStruct do
   defstruct [:field]
 end
 
+defmodule WithSigils do
+  def sigil_m(_) do
+  end
+
+  def sigil_n(_, _) do
+  end
+end
+
 defmodule Lexical.Ast.Analysis.ImportsTest do
   alias Lexical.Ast
   alias Lexical.RemoteControl.Analyzer
@@ -262,6 +270,18 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
       refute_imported(imports, ImportedModule, :function, 0)
       refute_imported(imports, ImportedModule, :function, 1)
       refute_imported(imports, ImportedModule, :function, 2)
+    end
+
+    test "it is possible to select all sigils" do
+      imports =
+        ~q[
+          import WithSigils, only: :sigils
+          |
+      ]
+        |> imports_at_cursor()
+
+      assert_imported(imports, WithSigils, :sigil_m, 1)
+      assert_imported(imports, WithSigils, :sigil_n, 2)
     end
 
     test "it is possible to limit imports by name and arity with only" do
