@@ -307,6 +307,15 @@ defmodule Lexical.AstTest do
       assert %Analysis{} = analysis = analyze(code)
       assert {:defmodule, _, _} = analysis.ast
     end
+
+    test "handles incomplete imports" do
+      code = ~q[
+        defmodule Invalid do
+          import Other, only: :m
+        end
+      ]
+      assert %Analysis{} = analyze(code)
+    end
   end
 
   defp ast(s) do
