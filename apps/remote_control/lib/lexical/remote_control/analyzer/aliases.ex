@@ -28,21 +28,17 @@ defmodule Lexical.RemoteControl.Analyzer.Aliases do
     aliases = Scope.alias_map(scope, line)
 
     case module do
-      [{:__MODULE__, _, _} | suffix] ->
-        current_module =
-          aliases
-          |> Map.get(:__MODULE__)
-          |> Alias.to_module()
+      # unquote(__MODULE__).SubModule
+      [{:unquote, _, [{:__MODULE__, _, _}]} | suffix] ->
+        resolve_current_module(aliases, suffix)
 
-        Module.concat([current_module | suffix])
+      [{:__MODULE__, _, _} | suffix] ->
+        resolve_current_module(aliases, suffix)
 
       [prefix | suffix] ->
         case aliases do
           %{^prefix => _} ->
-            current_module =
-              aliases
-              |> Map.get(prefix)
-              |> Alias.to_module()
+            current_module = resolve_alias(aliases, prefix, suffix)
 
             Module.concat([current_module | suffix])
 
@@ -50,5 +46,18 @@ defmodule Lexical.RemoteControl.Analyzer.Aliases do
             Module.concat(module)
         end
     end
+  end
+
+  defp resolve_current_module(aliases, suffix) do
+    resolve_alias(aliases, :__MODULE__, suffix)
+  end
+
+  defp resolve_alias(aliases, prefix, suffix) do
+    current_module =
+      aliases
+      |> Map.get(prefix)
+      |> Alias.to_module()
+
+    Module.concat([current_module | suffix])
   end
 end

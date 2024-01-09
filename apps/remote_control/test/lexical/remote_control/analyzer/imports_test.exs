@@ -443,5 +443,22 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
 
       refute_imported(imports, Enum)
     end
+
+    test "imports to the current module work in a quote block" do
+      imports =
+        ~q[
+        defmodule Parent do
+          defmacro __using__(_) do
+            quote do
+              import unquote(__MODULE__).Child.ImportedModule
+              |
+            end
+          end
+        end
+        ]
+        |> imports_at_cursor()
+
+      assert_imported(imports, Parent.Child.ImportedModule)
+    end
   end
 end
