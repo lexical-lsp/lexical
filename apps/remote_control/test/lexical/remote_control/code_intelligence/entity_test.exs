@@ -178,6 +178,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:module, Example.Nested}, resolved_range} = resolve(code)
       assert resolved_range =~ ~S[  «__MODULE__.Nested»]
     end
+
+    test "works for erlang modules" do
+      code = ~q[:code|]
+
+      assert {:ok, {:module, :code}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[:code]
+    end
+
+    test "fails for plain old atoms" do
+      code = ~q[:not_a_module|]
+      assert {:error, {:unsupported, {:unquoted_atom, 'not_a_module'}}} = resolve(code)
+    end
   end
 
   describe "struct resolve/2" do
@@ -410,6 +422,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
       assert {:ok, {:call, MyModule, :my_fun, 0}, resolved_range} = resolve(code)
       assert resolved_range =~ ~S[  «MyModule.my_fun»() :: MyModule.t()]
+    end
+
+    test "qualified call for an erlang function" do
+      code = ~q[
+        :code.which|()
+      ]
+      assert {:ok, {:call, :code, :which, 0}, resolved_range} = resolve(code)
+      assert resolved_range =~ "«:code.which»()"
     end
   end
 
