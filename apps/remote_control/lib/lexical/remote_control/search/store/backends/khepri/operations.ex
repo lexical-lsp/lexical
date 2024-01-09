@@ -81,7 +81,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Khepri.Operations do
   end
 
   defp sanitize_file_system_path(fs_path) do
-    :erlang.term_to_binary(fs_path)
+    fs_path
+    |> :erlang.phash2()
+    |> int_to_string()
   end
 
   defp identity(i), do: i
