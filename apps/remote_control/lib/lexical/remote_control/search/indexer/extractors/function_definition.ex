@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
-  alias Lexical.Identifier
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
@@ -36,17 +35,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
     mfa = "#{Formats.module(module)}.#{fn_name}/#{arity}"
     %Block{} = block = Reducer.current_block(reducer)
+    path = reducer.analysis.document.path
 
     entry =
-      Entry.definition(
-        reducer.analysis.document.path,
-        Identifier.next_global!(),
-        block.parent_id,
-        mfa,
-        type,
-        range,
-        Application.get_application(module)
-      )
+      Entry.block_definition(path, block, mfa, type, range, Application.get_application(module))
 
     {:ok, entry, ast}
   end

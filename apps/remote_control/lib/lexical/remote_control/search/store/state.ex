@@ -98,6 +98,14 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     state.backend.select_all()
   end
 
+  def siblings(%__MODULE__{} = state, entry) do
+    state.backend.siblings(entry)
+  end
+
+  def parent(%__MODULE__{} = state, entry) do
+    state.backend.parent(entry)
+  end
+
   def buffer_updates(%__MODULE__{} = state, path, entries) do
     %__MODULE__{state | update_buffer: Map.put(state.update_buffer, path, entries)}
   end

@@ -28,7 +28,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         |> index()
 
       assert entry.type == :module
-      assert entry.parent == :root
+      assert entry.block_id == :root
       assert entry.subject == Simple
       assert decorate(doc, entry.range) =~ "defmodule «Simple» do"
     end
@@ -43,7 +43,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
 
       assert entry.subject == Simple.Module.Path
       assert entry.type == :module
-      assert entry.parent == :root
+      assert entry.block_id == :root
       assert decorate(doc, entry.range) =~ "defmodule «Simple.Module.Path» do"
     end
 
@@ -70,7 +70,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         |> index()
 
       assert erlang_module.type == :module
-      assert erlang_module.parent == module_def.id
+      assert erlang_module.block_id == module_def.id
       assert erlang_module.subject == :timer
       assert decorate(doc, erlang_module.range) =~ "  @something «:timer»"
     end
@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         |> index()
 
       assert attribute.type == :module
-      assert attribute.parent == module_def.id
+      assert attribute.block_id == module_def.id
       assert attribute.subject == Some.Other.Module
       assert decorate(doc, attribute.range) =~ "  @attr «Some.Other.Module»"
     end
@@ -270,7 +270,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
 
       assert ref.type == :module
       assert ref.subject == Ref.To.Something
-      refute ref.parent == parent.id
+      refute ref.block_id == parent.id
       assert decorate(doc, ref.range) =~ "      «Ref.To.Something»"
     end
   end
@@ -287,12 +287,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         ]
         |> index()
 
-      assert first.parent == :root
+      assert first.block_id == :root
       assert first.type == :module
       assert first.subtype == :definition
       assert first.subject == First
 
-      assert second.parent == :root
+      assert second.block_id == :root
       assert second.type == :module
       assert second.subtype == :definition
       assert second.subject == Second
@@ -347,11 +347,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       ]
         |> index()
 
-      assert parent.parent == :root
+      assert parent.block_id == :root
       assert parent.type == :module
       assert parent.subtype == :definition
 
-      assert child.parent == parent.id
+      assert child.block_id == parent.id
       assert child.type == :module
       assert child.subtype == :definition
     end
@@ -369,7 +369,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       ]
         |> index()
 
-      assert child_alias.parent == child.id
+      assert child_alias.block_id == child.id
       assert child_alias.type == :module
       assert child_alias.subtype == :reference
       assert child_alias.subject == Something.Else.Other
@@ -385,11 +385,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
         ]
         |> index()
 
-      assert parent.parent == :root
+      assert parent.block_id == :root
       assert parent.type == :module
       assert parent.subtype == :definition
 
-      assert child.parent == parent.id
+      assert child.block_id == parent.id
       assert child.type == :module
       assert child.subtype == :definition
     end

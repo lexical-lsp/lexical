@@ -20,6 +20,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @type subject_query :: Entry.subject() | wildcard()
   @type type_query :: Entry.entry_type() | wildcard()
   @type subtype_query :: Entry.entry_subtype() | wildcard()
+  @type block_structure :: %{Entry.block_id() => block_structure()} | %{}
+  @type path_structures :: %{Path.t() => block_structure()}
 
   @doc """
   Create a new backend.
@@ -57,7 +59,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @doc """
   Returns all entries currently residing in the backend
   """
-  @callback select_all :: [Entry.t()]
+  @callback select_all() :: [Entry.t()]
 
   @doc """
   Replaces all the entries in the store with those passed in
@@ -70,6 +72,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @callback delete_by_path(Path.t()) :: {:ok, [Entry.entry_id()]} | {:error, any()}
 
   @doc """
+  Returns the block structure for the given path
+  """
+  @callback structure_for_path(Path.t()) :: {:ok, block_structure()} | :error
+
+  @doc """
   Finds all entries
   """
   @callback find_by_subject(subject_query(), type_query(), subtype_query()) :: [Entry.t()]
@@ -78,6 +85,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   Finds entries whose ref attribute is in the given list
   """
   @callback find_by_ids([Entry.entry_id()], type_query(), subtype_query()) :: [Entry.t()]
+
+  @doc """
+  Returns all the sibling elements of the given element.
+
+  Elements are returned in the order they appear in the source
+  """
+  @callback siblings(Entry.t()) :: [Entry.t()]
+
+  @doc """
+  Returns the parent block of the given entry, or :error if there is no parent
+  """
+  @callback parent(Entry.t()) :: {:ok, Entry.t()} | :error
 
   @optional_callbacks sync: 1
 end

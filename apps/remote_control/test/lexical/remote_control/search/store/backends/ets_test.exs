@@ -179,11 +179,16 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     end
 
     test "the updater allows you to delete paths", %{project: project, backend: backend} do
+      kept_structure = %{root: %{3 => %{4 => %{}}}}
+
       create = fn _ ->
         entries = [
+          structure(path: "/path/to/keep.ex", structure: kept_structure),
           definition(path: "/path/to/keep.ex"),
+          structure(path: "/path/to/delete.ex"),
           definition(path: "/path/to/delete.ex"),
           definition(path: "/path/to/delete.ex"),
+          structure(path: "/another/path/to/delete.ex"),
           definition(path: "/another/path/to/delete.ex")
         ]
 
@@ -200,6 +205,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       assert [entry] = Store.all()
       assert entry.path == "/path/to/keep.ex"
+
+      assert :error = Backends.Ets.structure_for_path("/path/to/delete.ex")
+      assert :error = Backends.Ets.structure_for_path("/another/path/to/delete.ex")
+      assert {:ok, ^kept_structure} = Backends.Ets.structure_for_path("/path/to/keep.ex")
     end
   end
 

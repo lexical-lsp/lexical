@@ -1,5 +1,7 @@
 defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.RemoteControl.Dispatch
+  alias Lexical.RemoteControl.Search.Indexer
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.Backends.Ets
   alias Lexical.Test.Entry
@@ -11,6 +13,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   import Entry.Builder
   import EventualAssertions
   import Fixtures
+  import Lexical.Test.CodeSigil
 
   @backends [Ets]
 
@@ -163,6 +166,154 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         assert found.subject == Present
       end
     end
+
+    describe "#{backend_name} :: structure queries " do
+      setup %{project: project} do
+        with_a_started_store(project, unquote(backend))
+      end
+
+      test "finding siblings" do
+        entries =
+          ~q[
+            defmodule Parent do
+              def function do
+                First.Module
+                Second.Module
+                Third.Module
+              end
+            end
+          ]
+          |> entries()
+
+        subject_entry = Enum.find(entries, &(&1.subject == Third.Module))
+        assert {:ok, [first_ref, second_ref, ^subject_entry]} = Store.siblings(subject_entry)
+        assert first_ref.subject == First.Module
+        assert second_ref.subject == Second.Module
+      end
+
+      test "finding siblings of a function" do
+        entries =
+          ~q[
+          defmodule Parent do
+            def fun do
+             :ok
+            end
+
+            def fun2(arg) do
+              arg + 1
+            end
+
+            def fun3(arg, arg2) do
+              arg + arg2
+            end
+          end
+          ]
+          |> entries()
+
+        subject_entry = Enum.find(entries, &(&1.subject == "Parent.fun3/2"))
+
+        assert {:ok, siblings} = Store.siblings(subject_entry)
+        siblings = Enum.filter(siblings, &(&1.subtype == :definition))
+
+        assert [first_fun, second_fun, ^subject_entry] = siblings
+        assert first_fun.subject == "Parent.fun/0"
+        assert second_fun.subject == "Parent.fun2/1"
+      end
+
+      test "findidng siblings of a non-existent entry" do
+        assert :error = Store.siblings(%Indexer.Entry{})
+      end
+
+      test "finding a parent in a function" do
+        entries =
+          ~q[
+            defmodule Parent do
+              def function do
+                Module.Ref
+              end
+            end
+          ]
+          |> entries()
+
+        subject_entry = Enum.find(entries, &(&1.subject == Module.Ref))
+        {:ok, parent} = Store.parent(subject_entry)
+
+        assert parent.subject == "Parent.function/0"
+        assert parent.type == :public_function
+        assert parent.subtype == :definition
+
+        assert {:ok, parent} = Store.parent(parent)
+        assert parent.subject == Parent
+
+        assert :error = Store.parent(parent)
+      end
+
+      test "finding a parent in a comprehension" do
+        entries =
+          ~q[
+          defmodule Parent do
+            def fun do
+              for n <- 1..10 do
+                Module.Ref
+              end
+            end
+          end
+          ]
+          |> entries()
+
+        subject_entry = Enum.find(entries, &(&1.subject == Module.Ref))
+        assert {:ok, parent} = Store.parent(subject_entry)
+        assert parent.subject == "Parent.fun/0"
+      end
+
+      test "finding parents in a file with multiple nested modules" do
+        entries =
+          ~q[
+          defmodule Parent do
+            defmodule Child do
+              def fun do
+              end
+            end
+          end
+
+          defmodule Parent2 do
+            defmodule Child2 do
+              def fun2 do
+                Module.Ref
+              end
+            end
+          end
+          ]
+          |> entries()
+
+        subject_entry = Enum.find(entries, &(&1.subject == Module.Ref))
+
+        assert {:ok, parent} = Store.parent(subject_entry)
+
+        assert parent.subject == "Parent2.Child2.fun2/0"
+        assert {:ok, parent} = Store.parent(parent)
+        assert parent.subject == Parent2.Child2
+
+        assert {:ok, parent} = Store.parent(parent)
+        assert parent.subject == Parent2
+      end
+
+      test "finding a non-existent entry" do
+        assert Store.parent(%Indexer.Entry{}) == :error
+      end
+    end
+  end
+
+  defp entries(source) do
+    document = Lexical.Document.new("file:///file.ex", source, 1)
+
+    {:ok, entries} =
+      document
+      |> Lexical.Ast.analyze()
+      |> Indexer.Quoted.index_with_cleanup()
+
+    Store.replace(entries)
+    entries
   end
 
   defp after_each_test(_, _) do

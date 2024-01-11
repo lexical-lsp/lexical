@@ -60,7 +60,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
       project: project,
       entries: entries
     } do
-      {:ok, [updated_entry], []} = Indexer.update_index(project, entries)
+      {:ok, [_structure, updated_entry], []} = Indexer.update_index(project, entries)
       assert Path.basename(updated_entry.path) == @ephemeral_file_name
       assert updated_entry.subject == Ephemeral
     end
@@ -113,7 +113,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
       File.write!(file_path, new_contents)
 
-      assert {:ok, [entry], []} = Indexer.update_index(project, entries)
+      assert {:ok, [_structure, entry], []} = Indexer.update_index(project, entries)
       assert entry.path == file_path
       assert entry.subject == Brand.Spanking.New
     end

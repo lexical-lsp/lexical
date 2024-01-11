@@ -7,6 +7,7 @@ defmodule Lexical.Test.Entry.Builder do
 
   def entry(fields \\ []) do
     defaults = [
+      block_id: Identifier.next_global!(),
       id: Identifier.next_global!(),
       path: "/foo/bar/baz.ex",
       range: range(1, 1, 1, 5),
@@ -29,6 +30,12 @@ defmodule Lexical.Test.Entry.Builder do
     fields
     |> Keyword.put(:subtype, :reference)
     |> entry()
+  end
+
+  def structure(fields \\ []) do
+    path = Keyword.get(fields, :path, "/path/to/file.ex")
+    structure = Keyword.get(fields, :structure, %{root: %{}})
+    Entry.block_structure(path, structure)
   end
 
   defp range(start_line, start_column, end_line, end_column) do

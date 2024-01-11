@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:analysis, :entries, :position, :ends_at, :blocks]
+  defstruct [:analysis, :entries, :position, :ends_at, :blocks, :block_hierarchy]
 
   @extractors [Extractors.Module, Extractors.FunctionDefinition, Extractors.FunctionReference]
 
@@ -22,7 +22,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
       analysis: analysis,
       entries: [],
       position: {0, 0},
-      blocks: [Block.root()]
+      blocks: [Block.root()],
+      block_hierarchy: %{root: %{}}
     }
   end
 
@@ -33,7 +34,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   end
 
   def entries(%__MODULE__{} = reducer) do
-    Enum.reverse(reducer.entries)
+    [hierarchy(reducer) | Enum.reverse(reducer.entries)]
   end
 
   def skip(meta) do
@@ -57,6 +58,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   def position(%__MODULE__{} = reducer) do
     {line, column} = reducer.position
     Position.new(reducer.analysis.document, line, column)
+  end
+
+  defp hierarchy(%__MODULE__{} = reducer) do
+    Entry.block_structure(reducer.analysis.document.path, reducer.block_hierarchy)
   end
 
   defp do_reduce(%__MODULE__{} = reducer, element) do
@@ -108,9 +113,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   end
 
   defp push_block(%__MODULE__{} = reducer, %Block{} = block) do
-    parent = List.first(reducer.blocks)
+    parent = current_block(reducer)
     block = %Block{block | parent_id: parent.id}
-    %__MODULE__{reducer | blocks: [block | reducer.blocks]}
+    id_path = Enum.reduce(reducer.blocks, [], fn block, acc -> [block.id | acc] end)
+
+    hierarchy =
+      update_in(reducer.block_hierarchy, id_path, fn current ->
+        Map.put(current, block.id, %{})
+      end)
+
+    %__MODULE__{reducer | blocks: [block | reducer.blocks], block_hierarchy: hierarchy}
   end
 
   # you never pop the root block in a document
