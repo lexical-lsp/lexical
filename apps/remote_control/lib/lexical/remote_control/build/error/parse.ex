@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Build.ParseError do
+defmodule Lexical.RemoteControl.Build.Error.Parse do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.RemoteControl.Build.Error.Location
