@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Build.Error.Parse do
   alias Lexical.Document
+  alias Lexical.Document.Range
   alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.RemoteControl.Build.Error.Location
 
@@ -65,12 +66,20 @@ defmodule Lexical.RemoteControl.Build.Error.Parse do
           "#{message_info}#{token}"
       end
 
-    if context[:end_line] do
-      pos = Location.position(context[:end_line], context[:end_column])
-      result = Result.new(source.uri, pos, message, :error, @elixir_source)
-      [result]
-    else
-      []
+    case Location.fetch_range(source, context) do
+      {:ok, %Range{end: end_pos}} ->
+        [
+          Result.new(
+            source.uri,
+            {end_pos.line, end_pos.character},
+            message,
+            :error,
+            @elixir_source
+          )
+        ]
+
+      :error ->
+        []
     end
   end
 

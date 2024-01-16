@@ -28,6 +28,17 @@ defmodule Lexical.RemoteControl.Build.Error.Location do
     {line, column}
   end
 
+  def fetch_range(%Document{} = document, context) do
+    case {context[:end_line], context[:end_column]} do
+      {nil, _} ->
+        :error
+
+      {end_line, end_column} ->
+        {line, column} = {context[:line], context[:column]}
+        {:ok, range(document, line, column, end_line, end_column)}
+    end
+  end
+
   def range(%Document{} = document, {line, column}, {end_line, end_column}) do
     range(document, line, column, end_line, end_column)
   end
