@@ -21,7 +21,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
     with {:ok, document} <- Document.Store.open_temporary(uri),
          {:ok, text} <- Document.fetch_text_at(document, line) do
-      {line, column} = maybe_move_cursor_to_next(type, document, line, column)
+      {line, column} = maybe_move_cursor_to_next_token(type, document, line, column)
       range = to_precise_range(document, text, line, column)
       {:ok, Location.new(range, document)}
     else
@@ -34,7 +34,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     {:ok, nil}
   end
 
-  defp maybe_move_cursor_to_next(type, document, line, column)
+  defp maybe_move_cursor_to_next_token(type, document, line, column)
        when type in [:function, :module, :macro] do
     position = Position.new(document, line, column)
 
@@ -57,7 +57,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp maybe_move_cursor_to_next(_, _, line, column), do: {line, column}
+  defp maybe_move_cursor_to_next_token(_, _, line, column), do: {line, column}
 
   defp to_precise_range(%Document{} = document, text, line, column) do
     case Code.Fragment.surround_context(text, {line, column}) do
