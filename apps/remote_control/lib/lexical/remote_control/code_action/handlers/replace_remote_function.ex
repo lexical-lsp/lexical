@@ -57,17 +57,23 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
 
     doc
     |> Ast.traverse_line(line_number, [], fn
-      %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function_atom]}, _, _} = node} =
-          zipper,
+      %Zipper{node: {{:., _, [{:__aliases__, _, module_alias}, ^function_atom]}, _, _}} = zipper,
       patches ->
         case RemoteControl.Analyzer.expand_alias(module_alias, analysis, position) do
           {:ok, ^module} ->
-            [patch] = Sourceror.Patch.rename_call(node, suggestion)
+            [patch] = Sourceror.Patch.rename_call(zipper.node, suggestion)
             {zipper, [patch | patches]}
 
           _ ->
             {zipper, patches}
         end
+
+      %Zipper{node: {{:., _, [{:__block__, _, [^module]}, ^function_atom]}, _, _}} = zipper,
+      patches ->
+        # this is an erlang call :ets.insert(...)
+        [patch] = Sourceror.Patch.rename_call(zipper.node, suggestion)
+
+        {zipper, [patch | patches]}
 
       zipper, patches ->
         {zipper, patches}
@@ -104,18 +110,26 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     |> List.pop_at(-1)
     |> case do
       {function_name, [_ | _] = module_alias} ->
-        {:ok, Module.concat(module_alias), function_name}
+        {:ok, alias_to_module(module_alias), function_name}
 
       _ ->
         :error
     end
   end
 
+  defp alias_to_module([":" <> erlang_alias]) do
+    String.to_atom(erlang_alias)
+  end
+
+  defp alias_to_module(module_alias) do
+    Module.concat(module_alias)
+  end
+
   @function_threshold 0.77
   @max_suggestions 5
   defp prepare_suggestions(module, function, arity) do
     suggestions =
-      for {module_function, ^arity} <- module.__info__(:functions),
+      for {module_function, ^arity} <- module_functions(module),
           distance = module_function |> Atom.to_string() |> String.jaro_distance(function),
           distance >= @function_threshold do
         {distance, module_function}
@@ -125,5 +139,13 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
       |> Enum.map(fn {_distance, module_function} -> module_function end)
 
     {:ok, suggestions}
+  end
+
+  defp module_functions(module) do
+    if function_exported?(module, :module_info, 1) do
+      module.module_info(:functions)
+    else
+      module.__info__(:functions)
+    end
   end
 end
