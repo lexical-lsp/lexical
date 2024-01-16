@@ -112,7 +112,7 @@ defmodule Lexical.RemoteControl.Build.Error.Parse do
     opening_delimiter_length = opening_delimiter |> Atom.to_string() |> String.length()
 
     pos =
-      Location.position(
+      Location.range(
         source,
         context[:line],
         context[:column],

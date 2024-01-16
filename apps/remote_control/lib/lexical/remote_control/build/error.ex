@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
       position =
         if span = error_or_wanning[:span] do
-          Location.position(doc, pos, span)
+          Location.range(doc, pos, span)
         else
           pos
         end

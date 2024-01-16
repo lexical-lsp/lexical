@@ -4,16 +4,19 @@ defmodule Lexical.RemoteControl.Build.Error.Location do
   alias Lexical.Document.Range
   alias Lexical.Plugin.V1.Diagnostic.Result
 
+  require Logger
+
   def context_to_position(context) do
-    cond do
-      Keyword.has_key?(context, :line) and Keyword.has_key?(context, :column) ->
-        position(context[:line], context[:column])
-
-      Keyword.has_key?(context, :line) ->
-        position(context[:line])
-
-      true ->
+    case {context[:line], context[:column]} do
+      {nil, nil} ->
+        Logger.error("Invalid context: #{inspect(context)}")
         nil
+
+      {line, nil} ->
+        line
+
+      {line, column} ->
+        position(line, column)
     end
   end
 
@@ -21,17 +24,15 @@ defmodule Lexical.RemoteControl.Build.Error.Location do
     line
   end
 
-  def position(%Document{} = document, {line, column}, {end_line, end_column}) do
-    start_position = Position.new(document, line, column)
-    end_position = Position.new(document, end_line, end_column)
-    Range.new(start_position, end_position)
-  end
-
   def position(line, column) do
     {line, column}
   end
 
-  def position(%Document{} = document, line, column, end_line, end_column) do
+  def range(%Document{} = document, {line, column}, {end_line, end_column}) do
+    range(document, line, column, end_line, end_column)
+  end
+
+  def range(%Document{} = document, line, column, end_line, end_column) do
     start_position = Position.new(document, line, column)
     end_position = Position.new(document, end_line, end_column)
     Range.new(start_position, end_position)
