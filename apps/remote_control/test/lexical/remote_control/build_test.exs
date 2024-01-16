@@ -10,6 +10,7 @@ defmodule Lexical.BuildTest do
 
   import Messages
   import Lexical.Test.Fixtures
+  import Lexical.Test.DiagnosticSupport
   use ExUnit.Case
   use Patch
 
@@ -124,6 +125,8 @@ defmodule Lexical.BuildTest do
   describe "compilng a project with parse errors" do
     setup :with_parse_errors_project
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "stuff", %{project: project} do
       Build.schedule_compile(project, true)
 
@@ -132,6 +135,21 @@ defmodule Lexical.BuildTest do
 
       assert diagnostic.uri
       assert diagnostic.message =~ "SyntaxError"
+    end
+
+    @feature_condition span_in_diagnostic?: true
+    @tag execute_if(@feature_condition)
+    test "stuff when #{inspect(@feature_condition)}", %{project: project} do
+      Build.schedule_compile(project, true)
+
+      assert_receive project_compiled(status: :error)
+      assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic])
+
+      assert diagnostic.uri
+      assert diagnostic.position == {4, 24}
+
+      assert diagnostic.message =~
+               "** (MismatchedDelimiterError) mismatched delimiter found on lib/parse_errors.ex:15"
     end
   end
 
@@ -180,6 +198,8 @@ defmodule Lexical.BuildTest do
       assert diagnostic.position == {4, 15}
     end
 
+    @feature_condition details_in_context?: false
+    @tag execute_if(@feature_condition)
     test "handles missing token errors", %{project: project} do
       source = ~S[%{foo: 3]
       compile_document(project, source)
@@ -247,6 +267,8 @@ defmodule Lexical.BuildTest do
       assert diagnostic.position == {3, 12}
     end
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "reports unused variables", %{project: project} do
       source = ~S[
         defmodule WithWarnings do
@@ -262,7 +284,7 @@ defmodule Lexical.BuildTest do
 
       assert diagnostic.uri
       assert diagnostic.severity == :warning
-      assert diagnostic.message =~ ~S[variable "unused" is unused]
+      assert diagnostic.message =~ ~S[variable `unused` is unused]
 
       if Features.with_diagnostics?() do
         assert diagnostic.position == {4, 13}
@@ -272,6 +294,8 @@ defmodule Lexical.BuildTest do
       end
     end
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "reports missing parens", %{project: project} do
       source = ~S[
         defmodule WithWarnings do
@@ -293,7 +317,7 @@ defmodule Lexical.BuildTest do
         assert diagnostic.severity == :error
 
         assert diagnostic.message =~
-                 ~s[undefined variable "calc"]
+                 ~s[undefined variable `calc`]
 
         assert diagnostic.position == {4, 13}
       else
@@ -307,6 +331,8 @@ defmodule Lexical.BuildTest do
       end
     end
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "reports unused defp functions", %{project: project} do
       source = ~S[
         defmodule UnusedDefp do
@@ -326,6 +352,8 @@ defmodule Lexical.BuildTest do
       assert diagnostic.details == nil
     end
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "handles undefined usages", %{project: project} do
       source = ~S[
         defmodule WithUndefinedFunction do
@@ -346,6 +374,8 @@ defmodule Lexical.BuildTest do
       assert diagnostic.details == nil
     end
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "reports multiple errors", %{project: project} do
       source = ~S[
         defmodule WithFiveErrors do
@@ -360,13 +390,8 @@ defmodule Lexical.BuildTest do
 
       assert_receive file_compiled(status: :error)
 
-      if Features.with_diagnostics?() do
-        assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics)
-        assert length(diagnostics) == 3
-      else
-        assert_receive file_diagnostics(diagnostics: [_, _, _, _, _] = diagnostics)
-        assert length(diagnostics) == 5
-      end
+      assert_receive file_diagnostics(diagnostics: [_, _, _] = diagnostics)
+      assert length(diagnostics) == 3
     end
 
     test "adding a new module notifies the listener", %{project: project} do

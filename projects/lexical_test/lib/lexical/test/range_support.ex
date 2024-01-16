@@ -1,5 +1,8 @@
 defmodule Lexical.Test.RangeSupport do
+  alias Lexical.Math
+  alias Lexical.Text
   alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Test.CursorSupport
 
@@ -35,11 +38,37 @@ defmodule Lexical.Test.RangeSupport do
     |> String.trim_trailing()
   end
 
-  def decorate(document_text, path \\ "/file.ex", %Range{} = range)
-      when is_binary(document_text) do
+  def decorate(document_text, path \\ "/file.ex", range)
+
+  def decorate(document_text, path, %Range{} = range) when is_binary(document_text) do
     "file://#{path}"
     |> Document.new(document_text, 1)
     |> decorate(range)
+  end
+
+  def decorate(document_text, path, position) when is_binary(document_text) do
+    document = Document.new("file://#{path}", document_text, 1)
+    range = position_to_range(document, position)
+    decorate(document, range)
+  end
+
+  defp position_to_range(document, {line, column}) do
+    start_pos = Position.new(document, line, column)
+    end_pos = Position.new(document, line + 1, 1)
+
+    Range.new(
+      start_pos,
+      end_pos
+    )
+  end
+
+  defp position_to_range(document, line_number) when is_integer(line_number) do
+    line_number = Math.clamp(line_number, 1, Document.size(document))
+
+    with {:ok, line_text} <- Document.fetch_text_at(document, line_number) do
+      column = Text.count_leading_spaces(line_text) + 1
+      position_to_range(document, {line_number, column})
+    end
   end
 
   def extract(%Document{} = document, %Range{} = range) do

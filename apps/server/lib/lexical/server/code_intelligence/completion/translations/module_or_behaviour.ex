@@ -124,7 +124,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     local_name =
       child_module
-      |> String.slice(local_module_length..-1)
+      |> String.slice(local_module_length..-1//1)
       |> strip_leading_period()
 
     if String.starts_with?(local_name, aliased_module) do

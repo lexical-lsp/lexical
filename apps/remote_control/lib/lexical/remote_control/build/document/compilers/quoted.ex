@@ -66,8 +66,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Quoted do
       {captured_messages, {:exception, exception, stack, quoted_ast}} ->
         error = Build.Error.error_to_diagnostic(document, exception, stack, quoted_ast)
         diagnostics = Build.Error.message_to_diagnostic(document, captured_messages)
+        refined = Build.Error.refine_diagnostics([error | diagnostics])
 
-        {:error, [error | diagnostics]}
+        {:error, refined}
 
       {"", {:ok, modules}} ->
         purge_removed_modules(old_modules, modules)
@@ -75,7 +76,12 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Quoted do
 
       {captured_warnings, {:ok, modules}} ->
         purge_removed_modules(old_modules, modules)
-        diagnostics = Build.Error.message_to_diagnostic(document, captured_warnings)
+
+        diagnostics =
+          document
+          |> Build.Error.message_to_diagnostic(captured_warnings)
+          |> Build.Error.refine_diagnostics()
+
         {:ok, diagnostics}
     end
   end

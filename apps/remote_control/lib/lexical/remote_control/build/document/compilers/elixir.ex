@@ -25,7 +25,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Elixir do
         Compilers.Quoted.compile(document, quoted, "Elixir")
 
       {:error, {meta, message_info, token}} ->
-        diagnostics = Build.Error.parse_error_to_diagnostics(document, meta, message_info, token)
+        diagnostics = Build.Error.Parse.to_diagnostics(document, meta, message_info, token)
         {:error, diagnostics}
     end
   end

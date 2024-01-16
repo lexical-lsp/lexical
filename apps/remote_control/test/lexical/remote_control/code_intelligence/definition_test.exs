@@ -69,7 +69,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           alias MyDefinition
 
           def uses_greet() do
-            MyDefinition.greet|("World")
+            MyDefinition.gree|t("World")
           end
         end
       ]
@@ -84,7 +84,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           alias MyDefinition
 
           def uses_greet() do
-            MyDefinition|.greet("World")
+            MyDefinitio|n.greet("World")
           end
         end
       ]
@@ -96,10 +96,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the macro definition", %{project: project, uri: referenced_uri} do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
-          alias MyDefinition
+          require MyDefinition
 
           def uses_macro() do
-            MyDefinition.print_hello|()
+            MyDefinition.print_hel|lo()
           end
         end
       ]
@@ -108,34 +108,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       assert definition_line == ~S[  defmacro «print_hello» do]
     end
 
-    @doc """
-    This is a limitation of the ElixirSense.
-    It doesn't support finding the multiple arity definition when making remote call
-    currently, it will always return the first definition.
-
-    ## Example
-
-      iex> defmodule MultiArity do
-      ...>   def sum(a, b) do
-      ...>     a + b
-      ...>   end
-      ...>
-      ...>   def sum(a, b, c) do
-      ...>     a + b + c
-      ...>   end
-      ...> end
-
-    When we want to jump to the definition of `MultiArity.sum/3`,
-    we will always go to the `MultiArity.sum/2`
-    """
-    @tag :skip
     test "find the right arity function definition", %{project: project} do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
           alias MultiArity
 
           def uses_multiple_arity_fun() do
-            MultiArity.sum|(1, 2, 3)
+            MultiArity.su|m(1, 2, 3)
           end
         end
       ]
@@ -156,7 +135,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           import MyDefinition
 
           def uses_greet() do
-            greet|("World")
+            gree|t("World")
           end
         end
       ]
@@ -172,7 +151,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           import MyDefinition
 
           def uses_macro() do
-            print_hello|()
+            print_hell|o()
           end
         end
       ]
@@ -191,7 +170,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           use MyDefinition
 
           def uses_greet() do
-            greet|("World")
+            gree|t("World")
           end
         end
       ]
@@ -216,7 +195,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           use MyDefinition
 
           def uses_hello_defined_in_using_quote() do
-            hello_func_in_using|()
+            hello_func_in_usin|g()
           end
         end
       ]
@@ -234,7 +213,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
           end
 
           def uses_greet do
-            greet|()
+            gree|t()
           end
         end
       ]
@@ -242,6 +221,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       {:ok, referenced_uri, definition_line} = definition(project, subject_module)
 
       assert definition_line == ~S[  def «greet» do]
+      assert referenced_uri =~ "navigations/lib/my_module.ex"
+    end
+
+    test "find the function definition when the function has `when` clause", %{
+      project: project
+    } do
+      subject_module = ~q[
+        defmodule UsesOwnFunction do
+          def greet(name) when is_binary(name) do
+          end
+
+          def uses_greet do
+            gree|t("World")
+          end
+        end
+      ]
+
+      {:ok, referenced_uri, definition_line} = definition(project, subject_module)
+
+      assert definition_line == ~S[  def «greet»(name) when is_binary(name) do]
       assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
@@ -269,7 +268,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
             a = 1
 
             if true do
-              a|
+              |a
             end
           end
         end
@@ -290,7 +289,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     test "find the definition when calling a Elixir std module function",
          %{project: project} do
       subject_module = ~q[
-        String.to_integer|("1")
+        String.to_intege|r("1")
       ]
 
       {:ok, uri, definition_line} = definition(project, subject_module)
@@ -301,7 +300,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
     test "find the definition when calling a erlang module", %{project: project} do
       subject_module = ~q[
-        :erlang.binary_to_atom|("1")
+        :erlang.binary_to_ato|m("1")
       ]
 
       {:ok, uri, definition_line} = definition(project, subject_module)

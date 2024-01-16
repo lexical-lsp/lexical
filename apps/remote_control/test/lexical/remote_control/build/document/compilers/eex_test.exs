@@ -12,6 +12,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   import Compilers.EEx, only: [recognizes?: 1]
   import Lexical.Test.Quiet
   import Lexical.Test.CodeSigil
+  import Lexical.Test.DiagnosticSupport
+  import Lexical.Test.RangeSupport
 
   def with_capture_server(_) do
     start_supervised!(CaptureServer)
@@ -85,6 +87,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
   describe "compile_quoted/2" do
     setup [:with_capture_server]
 
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "handles unused variables" do
       assert {:ok, [%Result{} = result]} =
                ~q[
@@ -93,8 +97,26 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
                |> document_with_content()
                |> compile()
 
-      assert result.message =~ ~s["something" is unused]
+      assert result.message =~ ~s[`something` is unused]
       assert result.position in [1, {1, 5}]
+      assert result.severity == :warning
+      assert result.source == "EEx"
+      assert result.uri =~ "file:///file.eex"
+    end
+
+    @feature_condition span_in_diagnostic?: true
+    @tag execute_if(@feature_condition)
+    test "handles unused variables when #{inspect(@feature_condition)}" do
+      document =
+        ~q[
+               <%= something = 6 %>
+               ]
+        |> document_with_content()
+
+      assert {:ok, [%Result{} = result]} = compile(document)
+
+      assert result.message == ~s[variable `something` is unused]
+      assert decorate(document, result.position) == "<%= «something» = 6 %>"
       assert result.severity == :warning
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
@@ -115,7 +137,8 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert result.uri =~ "file:///file.eex"
     end
 
-    @tag :with_diagnostics
+    @feature_condition span_in_diagnostic?: false
+    @tag execute_if(@feature_condition)
     test "handles undefinied variable" do
       document = document_with_content(~q[
         <%= thing %>
@@ -124,12 +147,28 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert {:error, [%Result{} = result]} = compile(document)
 
       if Features.with_diagnostics?() do
-        assert result.message =~ "undefined variable \"thing\""
+        assert result.message =~ "undefined variable `thing`"
       else
         assert result.message =~ "undefined function thing/0"
       end
 
       assert result.position in [1, {1, 5}]
+      assert result.severity == :error
+      assert result.source == "EEx"
+      assert result.uri =~ "file:///file.eex"
+    end
+
+    @feature_condition span_in_diagnostic?: true
+    @tag execute_if(@feature_condition)
+    test "handles undefinied variable when #{inspect(@feature_condition)}" do
+      document = document_with_content(~q[
+        <%= thing %>
+      ])
+
+      assert {:error, [%Result{} = result]} = compile(document)
+
+      assert result.message == "undefined variable `thing`"
+      assert decorate(document, result.position) == "<%= «thing» %>"
       assert result.severity == :error
       assert result.source == "EEx"
       assert result.uri =~ "file:///file.eex"
