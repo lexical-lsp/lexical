@@ -228,9 +228,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
     :"#{Project.name(project)}::node_process"
   end
 
+  @deps_apps Mix.Project.deps_apps()
   defp all_app_configs do
-    Application.started_applications()
-    |> Enum.map(fn {app_name, _, _} ->
+    Enum.map(@deps_apps, fn app_name ->
       {app_name, Application.get_all_env(app_name)}
     end)
   end
