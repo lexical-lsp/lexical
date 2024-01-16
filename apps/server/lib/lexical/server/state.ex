@@ -16,6 +16,7 @@ defmodule Lexical.Server.State do
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.CodeAction
+  alias Lexical.Protocol.Types.CodeLens
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.DidChangeWatchedFiles
   alias Lexical.Protocol.Types.ExecuteCommand
@@ -271,6 +272,8 @@ defmodule Lexical.Server.State do
     code_action_options =
       CodeAction.Options.new(code_action_kinds: @supported_code_actions, resolve_provider: false)
 
+    code_lens_options = CodeLens.Options.new(resolve_provider: false)
+
     command_options = ExecuteCommand.Registration.Options.new(commands: Handlers.Commands.names())
 
     completion_options =
@@ -279,7 +282,7 @@ defmodule Lexical.Server.State do
     server_capabilities =
       Types.ServerCapabilities.new(
         code_action_provider: code_action_options,
-        code_lens_provider: true,
+        code_lens_provider: code_lens_options,
         completion_provider: completion_options,
         definition_provider: true,
         document_formatting_provider: true,
