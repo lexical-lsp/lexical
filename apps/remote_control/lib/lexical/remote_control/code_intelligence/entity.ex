@@ -105,6 +105,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
+  defp resolve({:unquoted_atom, _} = context, node_range, analysis, position) do
+    case expand_alias(context, analysis, position) do
+      {:ok, module} -> {:ok, {:module, module}, node_range}
+      _ -> {:error, {:unsupported, context}}
+    end
+  end
+
   defp resolve(context, _node_range, _analysis, _position) do
     {:error, {:unsupported, context}}
   end
@@ -197,6 +204,19 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   defp expand_alias({:alias, charlist}, analysis, %Position{} = position) do
     expand_alias(charlist, analysis, position)
+  end
+
+  defp expand_alias({:unquoted_atom, maybe_module_charlist}, _analysis, _position) do
+    maybe_module = List.to_existing_atom(maybe_module_charlist)
+
+    if function_exported?(maybe_module, :module_info, 1) do
+      {:ok, maybe_module}
+    else
+      :error
+    end
+  rescue
+    ArgumentError ->
+      :error
   end
 
   defp expand_alias(charlist, analysis, %Position{} = position) when is_list(charlist) do
