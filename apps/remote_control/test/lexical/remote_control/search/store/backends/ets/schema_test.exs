@@ -1,10 +1,12 @@
 defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schema
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
 
   import Lexical.Test.Fixtures
 
   use ExUnit.Case
+  use Wal
 
   setup do
     project = project()
@@ -55,7 +57,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
   end
 
   test "it loads an empty index", %{project: project} do
-    assert {:ok, _, :empty} = Schema.load(project, [First])
+    assert {:ok, _table_name, _wal, :empty} = Schema.load(project, [First])
   end
 
   test "it loads existing entries", %{project: project} do
@@ -65,7 +67,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     ]
 
     write_entries(project, First, entries)
-    assert {:ok, table_name, :stale} = Schema.load(project(), [First])
+    assert {:ok, _wal, table_name, :stale} = Schema.load(project(), [First])
     assert table_contents(table_name) == entries
   end
 
@@ -73,18 +75,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     entries = [{1, 1}, {2, 2}, {3, 3}]
 
     write_entries(project, First, entries)
-    assert {:ok, table_name, :stale} = Schema.load(project, [First, IncrementValue])
+    assert {:ok, _wal, table_name, :stale} = Schema.load(project, [First, IncrementValue])
 
     assert table_contents(table_name) == [{1, 2}, {2, 3}, {3, 4}]
   end
 
-  test "removes old index files after migration", %{project: project} do
+  test "removes old wal after migration", %{project: project} do
     write_entries(project, First, [])
-    assert File.exists?(Schema.index_file_path(project, First))
+    assert Wal.exists?(project, First.version())
 
-    assert {:ok, _table_name, :empty} = Schema.load(project, [First, IncrementValue])
+    assert {:ok, _table_name, _wal, :empty} = Schema.load(project, [First, IncrementValue])
 
-    refute File.exists?(Schema.index_file_path(project, First))
+    refute Wal.exists?(project, First.version())
   end
 
   test "migrations that already exist on disk will be reapplied", %{project: project} do
@@ -92,7 +94,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     write_entries(project, First, entries)
     write_entries(project, IncrementValue, entries)
 
-    assert {:ok, table_name, :stale} = Schema.load(project, [First, IncrementValue])
+    assert {:ok, _wal, table_name, :stale} = Schema.load(project, [First, IncrementValue])
 
     new_contents = table_contents(table_name)
 
@@ -101,8 +103,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     assert {3, 4} in new_contents
     assert length(new_contents) == 3
 
-    refute File.exists?(Schema.index_file_path(project, First))
-    assert File.exists?(Schema.index_file_path(project, IncrementValue))
+    refute Wal.exists?(project, First.version())
+    assert Wal.exists?(project, IncrementValue.version())
   end
 
   test "migrations will be reapplied", %{project: project} do
@@ -110,7 +112,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     write_entries(project, First, entries)
     write_entries(project, IncrementValue, entries)
 
-    assert {:ok, table_name, :stale} = Schema.load(project, [First, IncrementValue, IncrementKey])
+    assert {:ok, wal, table_name, :stale} =
+             Schema.load(project, [First, IncrementValue, IncrementKey])
+
     new_contents = table_contents(table_name)
 
     assert {2, 2} in new_contents
@@ -118,8 +122,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     assert {4, 4} in new_contents
     assert length(new_contents) == 3
 
-    refute File.exists?(Schema.index_file_path(project, First))
-    refute File.exists?(Schema.index_file_path(project, IncrementValue))
+    assert Wal.exists?(wal)
+    refute Wal.exists?(project, First.version())
+    refute Wal.exists?(project, IncrementValue.version())
   end
 
   test "migrations can delete all entries", %{project: project} do
@@ -136,8 +141,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     entries = [{1, 1}, {2, 2}, {3, 3}]
     write_entries(project, First, entries)
 
-    assert {:ok, table_name, :empty} = Schema.load(project, [First, Blank])
-
+    assert {:ok, _wal, table_name, :empty} = Schema.load(project, [First, Blank])
     assert table_contents(table_name) == []
   end
 
@@ -157,47 +161,22 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
     assert {:error, :migration_failed} = Schema.load(project, [First, FailedMigration])
   end
 
-  test "loading from a table with a different name that shares the filename", %{project: project} do
-    defmodule StrangeName do
-      def table_name do
-        :strange
-      end
-
-      def index_file_name do
-        First.index_file_name()
-      end
-
-      def to_rows(_), do: []
-    end
-
-    entries = [{1, 1}, {2, 2}]
-    write_entries(project, StrangeName, entries)
-    {:ok, table_name, :stale} = Schema.load(project, [First])
-    assert table_name == First.table_name()
-    assert table_contents(table_name) == entries
-    refute table_exists?(StrangeName.table_name())
-  end
-
-  defp table_exists?(table_name) do
-    :ets.whereis(table_name) != :undefined
-  end
-
   def destroy_index_path(%Project{} = project) do
-    File.rm_rf(Schema.index_root(project))
+    project |> Wal.root_path() |> File.rm_rf()
   end
 
   def write_entries(project, schema_module, entries) do
-    File.mkdir_p(Schema.index_root(project))
     table_name = schema_module.table_name()
+    :ets.new(table_name, schema_module.table_options())
+    wal = Wal.new(project, schema_module.version(), table_name)
+    {:ok, wal} = Wal.load(wal)
 
-    path_charlist =
-      project
-      |> Schema.index_file_path(schema_module)
-      |> String.to_charlist()
+    with_wal wal do
+      :ets.insert(table_name, entries)
+    end
 
-    :ets.new(table_name, [:named_table, :set])
-    :ets.insert(table_name, entries)
-    :ok = :ets.tab2file(table_name, path_charlist)
+    Wal.checkpoint(wal)
+    :ok = Wal.close(wal)
     :ets.delete(table_name)
   end
 

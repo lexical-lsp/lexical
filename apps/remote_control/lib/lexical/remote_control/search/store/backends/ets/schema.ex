@@ -45,7 +45,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
 
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer.Entry
-  alias Lexical.VM.Versions
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
+
+  use Wal
 
   @type write_concurrency_alternative :: boolean() | :auto
   @type table_tweak ::
@@ -88,73 +90,87 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
 
   def load(%Project{} = project, schema_order) do
     ensure_unique_versions(schema_order)
-    ensure_index_directory_exists(project)
 
-    case upgrade_chain(project, schema_order) do
-      {:ok, [[schema_module]]} ->
-        # this case is that there are no migrations to perform
-        # we get a single entry, which is the schema module
-        {table_name, entries} = load_initial(project, schema_module)
-        {:ok, table_name, load_status(entries)}
-
-      {:ok, [[initial, _] | _] = chain} ->
-        {table_name, entries} = load_initial(project, initial)
-
-        case apply_migrations(project, chain, entries) do
-          {:ok, schema_module, entries} ->
-            dest_table_name = populate_schema_table(schema_module, entries)
-            :ets.delete(table_name)
-            {:ok, dest_table_name, load_status(entries)}
-
-          error ->
-            error
-        end
-
-      :error ->
+    with {:ok, initial_schema, chain} <- upgrade_chain(project, schema_order),
+         {:ok, wal, table_name, entries} <- load_initial_schema(project, initial_schema) do
+      handle_upgrade_chain(chain, project, wal, table_name, entries)
+    else
+      _ ->
         schema_module = List.last(schema_order)
         table_name = schema_module.table_name()
         ensure_schema_table_exists(table_name, schema_module.table_options())
-        {:ok, table_name, :empty}
+
+        {:ok, new_wal} =
+          project
+          |> Wal.new(schema_module.version(), schema_module.table_name())
+          |> Wal.load()
+
+        {:ok, new_wal, table_name, :empty}
     end
-  end
-
-  def index_root(%Project{} = project) do
-    versions = Versions.current()
-    index_path = ["indexes", versions.erlang, versions.elixir]
-    Project.workspace_path(project, index_path)
-  end
-
-  def index_file_path(%Project{} = project, schema) do
-    project
-    |> index_root()
-    |> Path.join(schema.index_file_name())
   end
 
   defp load_status([]), do: :empty
   defp load_status(_entries), do: :stale
 
-  defp apply_migrations(%Project{} = project, chain, entries) do
-    Enum.reduce_while(chain, {:ok, nil, entries}, fn
-      [current], {:ok, _, entries} ->
-        {:halt, {:ok, current, entries}}
+  defp handle_upgrade_chain([_schema_module], _project, wal, table_name, entries) do
+    # this case is that there are no migrations to perform
+    # we get a single entry, which is the schema module
 
-      [from, to], {:ok, _, entries} ->
-        with {:ok, new_entries} <- to.migrate(entries),
-             :ok <- remove_old_schema_file(project, from) do
-          {:cont, {:ok, to, new_entries}}
-        else
+    {:ok, wal, table_name, load_status(entries)}
+  end
+
+  defp handle_upgrade_chain(chain, project, _wal, _table_name, entries) do
+    with {:ok, schema_module, entries} <- apply_migrations(project, chain, entries),
+         {:ok, new_wal, dest_table_name} <- populate_schema_table(project, schema_module, entries) do
+      {:ok, new_wal, dest_table_name, load_status(entries)}
+    end
+  end
+
+  defp apply_migrations(_project, [initial], entries) do
+    {:ok, initial, entries}
+  end
+
+  defp apply_migrations(project, chain, entries) do
+    Enum.reduce_while(chain, {:ok, nil, entries}, fn
+      initial, {:ok, nil, entries} ->
+        Wal.destroy(project, initial.version())
+        {:cont, {:ok, initial, entries}}
+
+      to, {:ok, _, entries} ->
+        case to.migrate(entries) do
+          {:ok, new_entries} ->
+            Wal.destroy(project, to.version())
+            {:cont, {:ok, to, new_entries}}
+
           error ->
             {:halt, error}
         end
     end)
   end
 
-  defp populate_schema_table(schema_module, entries) do
+  defp populate_schema_table(%Project{} = project, schema_module, entries) do
     dest_table_name = schema_module.table_name()
     ensure_schema_table_exists(dest_table_name, schema_module.table_options())
-    :ets.delete_all_objects(dest_table_name)
-    :ets.insert(dest_table_name, entries)
-    dest_table_name
+    wal = Wal.new(project, schema_module.version(), dest_table_name)
+
+    with {:ok, wal} <- Wal.load(wal),
+         {:ok, new_wal_state} <- do_populate_schema(wal, dest_table_name, entries),
+         {:ok, checkpoint_wal} <- Wal.checkpoint(new_wal_state) do
+      {:ok, checkpoint_wal, dest_table_name}
+    end
+  end
+
+  defp do_populate_schema(%Wal{} = wal, table_name, entries) do
+    result =
+      with_wal wal do
+        :ets.delete_all_objects(table_name)
+        :ets.insert(table_name, entries)
+      end
+
+    case result do
+      {:ok, new_wal_state, _} -> {:ok, new_wal_state}
+      error -> error
+    end
   end
 
   defp ensure_schema_table_exists(table_name, table_options) do
@@ -164,59 +180,40 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
     end
   end
 
-  defp load_initial(%Project{} = project, schema_module) do
-    filename =
-      project
-      |> index_file_path(schema_module)
-      |> String.to_charlist()
-
+  defp load_initial_schema(%Project{} = project, schema_module) do
     table_name = schema_module.table_name()
+    ensure_schema_table_exists(table_name, schema_module.table_options())
 
-    entries =
-      case :ets.file2tab(filename) do
-        {:ok, ^table_name} ->
-          :ets.tab2list(table_name)
+    wal = Wal.new(project, schema_module.version(), table_name)
 
-        {:ok, other_name} ->
-          # the data file loaded was saved from some other module
-          # likely due to namespacing. We delete the table and create
-          # another one with the correct name.
-          entries = :ets.tab2list(other_name)
-          :ets.delete(other_name)
-          ensure_schema_table_exists(table_name, schema_module.table_options())
-          :ets.insert(table_name, entries)
-          entries
-      end
-
-    {table_name, entries}
+    case Wal.load(wal) do
+      {:ok, wal} -> {:ok, wal, table_name, :ets.tab2list(table_name)}
+      error -> error
+    end
   end
 
   defp upgrade_chain(%Project{} = project, schema_order) do
-    filtered =
+    {_, initial_schema, schemas} =
       schema_order
-      |> Enum.chunk_every(2, 1)
-      |> Enum.filter(fn
-        [schema_module | _] ->
-          File.exists?(index_file_path(project, schema_module))
+      |> Enum.reduce({:not_found, nil, []}, fn
+        schema_module, {:not_found, nil, _} ->
+          if Wal.exists?(project, schema_module.version()) do
+            {:found, schema_module, [schema_module]}
+          else
+            {:not_found, nil, []}
+          end
+
+        schema_module, {:found, initial_schema, chain} ->
+          {:found, initial_schema, [schema_module | chain]}
       end)
 
-    case filtered do
+    case Enum.reverse(schemas) do
       [] ->
         :error
 
       other ->
-        {:ok, other}
+        {:ok, initial_schema, other}
     end
-  end
-
-  defp remove_old_schema_file(%Project{} = project, schema_module) do
-    File.rm(index_file_path(project, schema_module))
-  end
-
-  defp ensure_index_directory_exists(%Project{} = project) do
-    project
-    |> index_root()
-    |> File.mkdir_p!()
   end
 
   defp ensure_unique_versions(schemas) do

@@ -20,11 +20,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def sync(%Project{}) do
-    GenServer.call(genserver_name(), :sync)
-  end
-
-  @impl Backend
   def insert(entries) do
     GenServer.call(genserver_name(), {:insert, [entries]}, :infinity)
   end
@@ -43,7 +38,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
         GenServer.call(name, {:destroy, []})
 
       _ ->
-        State.destroy(project)
+        :ok
     end
 
     :ok
@@ -123,11 +118,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     end
   end
 
-  def handle_call(:sync, _from, %State{} = state) do
-    state = State.sync(state)
-    {:reply, :ok, state}
-  end
-
   def handle_call({function_name, arguments}, _from, %State{} = state) do
     arguments = [state | arguments]
     reply = apply(State, function_name, arguments)
@@ -150,6 +140,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     # :global.random_notify_name. We've been selected to be the leader!
     new_state = become_leader(state.project)
     {:noreply, new_state}
+  end
+
+  @impl GenServer
+  def terminate(_reason, %State{} = state) do
+    State.terminate(state)
+    state
   end
 
   # Private

@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.Backends
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
@@ -25,10 +26,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     Lexical.RemoteControl.set_project(project)
     delete_indexes(project, backend)
 
+    on_exit(fn ->
+      delete_indexes(project, backend)
+    end)
+
     {:ok, backend: backend, project: project}
   end
 
   def delete_indexes(project, backend) do
+    project() |> Wal.root_path() |> File.rm_rf()
     backend.destroy(project)
   end
 
@@ -219,7 +225,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       entries = [definition(subject: My.Module)]
 
       assert :ok = Store.replace(entries)
-      Backends.Ets.sync(project)
 
       Store.stop()
 
@@ -256,8 +261,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   end
 
   def restart_store(%Project{} = project) do
-    Backends.Ets.sync(project)
-
     Store
     |> Process.whereis()
     |> Process.monitor()

@@ -228,7 +228,6 @@ defmodule Lexical.RemoteControl.Search.Store do
   @impl GenServer
   def terminate(_reason, {_, state}) do
     {:ok, state} = State.flush_buffered_updates(state)
-    State.drop(state)
     {:noreply, state}
   end
 
