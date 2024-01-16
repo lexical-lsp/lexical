@@ -103,8 +103,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   def start(project, paths) do
     node_name = Project.node_name(project)
-    remote_control_config = Application.get_all_env(:remote_control)
-    bootstrap_args = [project, Document.Store.entropy(), remote_control_config]
+    bootstrap_args = [project, Document.Store.entropy(), all_app_configs()]
 
     with {:ok, node_pid} <- ProjectNodeSupervisor.start_project_node(project),
          :ok <- start_node(project, paths),
@@ -227,5 +226,12 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
   def name(%Project{} = project) do
     :"#{Project.name(project)}::node_process"
+  end
+
+  defp all_app_configs do
+    Application.started_applications()
+    |> Enum.map(fn {app_name, _, _} ->
+      {app_name, Application.get_all_env(app_name)}
+    end)
   end
 end

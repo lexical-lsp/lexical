@@ -10,10 +10,12 @@ defmodule Lexical.RemoteControl.Bootstrap do
   alias Lexical.RemoteControl
   require Logger
 
-  def init(%Project{} = project, document_store_entropy, remote_control_config) do
+  def init(%Project{} = project, document_store_entropy, app_configs) do
     Lexical.Document.Store.set_entropy(document_store_entropy)
+
+    Application.put_all_env(app_configs)
+
     maybe_append_hex_path()
-    Application.put_all_env(remote_control: remote_control_config)
 
     project_root = Project.root_path(project)
 
