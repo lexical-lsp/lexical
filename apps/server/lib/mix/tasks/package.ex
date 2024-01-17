@@ -258,6 +258,8 @@ defmodule Mix.Tasks.Package do
     config_dest = Path.join(package_root, "config")
     File.mkdir_p!(config_dest)
     File.cp_r!(config_source, config_dest)
+
+    Namespace.Transform.Configs.apply_to_all(config_dest)
   end
 
   @priv_apps [:remote_control]
