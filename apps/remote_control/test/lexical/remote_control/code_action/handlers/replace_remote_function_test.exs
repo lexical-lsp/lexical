@@ -10,8 +10,20 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
     :ok
   end
 
+  @default_message """
+  Enum.counts/1 is undefined or private. Did you mean:
+
+        * concat/1
+        * concat/2
+        * count/1
+        * count/2
+  """
+
   def apply_code_mod(original_text, _ast, options) do
     line_number = Keyword.get(options, :line, 1)
+    message_body = Keyword.get(options, :message, @default_message)
+    message_prefix = Keyword.get(options, :message_prefix, "")
+    message = message_prefix <> message_body
 
     suggestion =
       options
@@ -20,19 +32,6 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
 
     :ok = Document.Store.open("file:///file.ex", original_text, 0)
     {:ok, document} = Document.Store.fetch("file:///file.ex")
-
-    message =
-      String.trim(
-        Keyword.get(options, :message_prefix, "") <>
-          """
-          Enum.counts/1 is undefined or private. Did you mean:
-
-                * concat/1
-                * concat/2
-                * count/1
-                * count/2
-          """
-      )
 
     range =
       Document.Range.new(
@@ -151,6 +150,25 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
 
         assert result == "     Enum.count([1, 2, 3])"
       end
+
+      test "handles erlang functions" do
+        message = """
+        :ets.inserd/2 is undefined or private. Did you mean:
+
+              * insert/2
+              * insert_new/2
+
+        """
+
+        {:ok, result} =
+          modify(":ets.inserd(a, b)",
+            message: message,
+            message_prefix: unquote(prefix),
+            suggestion: :insert
+          )
+
+        assert result == ":ets.insert(a, b)"
+      end
     end
 
     describe "fixes captured function with message prefix \"#{prefix}\"" do
@@ -228,6 +246,25 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
         {:ok, result} = modify("     &Enum.counts/1", trim: false)
 
         assert result == "     &Enum.count/1"
+      end
+
+      test "handles erlang functions" do
+        message = """
+        :ets.inserd/2 is undefined or private. Did you mean:
+
+              * insert/2
+              * insert_new/2
+
+        """
+
+        {:ok, result} =
+          modify("&:ets.inserd/2",
+            message: message,
+            message_prefix: unquote(prefix),
+            suggestion: :insert
+          )
+
+        assert result == "&:ets.insert/2"
       end
     end
   end
