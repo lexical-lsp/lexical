@@ -2,12 +2,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Formats
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
+  alias Lexical.RemoteControl.Search.Subject
 
   @function_definitions [:def, :defp]
 
@@ -33,7 +33,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
         :defp -> :private_function
       end
 
-    mfa = "#{Formats.module(module)}.#{fn_name}/#{arity}"
+    mfa = Subject.mfa(module, fn_name, arity)
     %Block{} = block = Reducer.current_block(reducer)
     path = reducer.analysis.document.path
 

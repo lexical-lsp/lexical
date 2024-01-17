@@ -1,11 +1,11 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Formats
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
+  alias Lexical.RemoteControl.Search.Subject
 
   require Logger
 
@@ -136,7 +136,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
 
     case RemoteControl.Analyzer.expand_alias(module, reducer.analysis, range.start) do
       {:ok, module} ->
-        mfa = Formats.mfa(module, function_name, arity)
+        mfa = Subject.mfa(module, function_name, arity)
 
         Entry.reference(
           reducer.analysis.document.path,

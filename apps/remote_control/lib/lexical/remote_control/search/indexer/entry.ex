@@ -52,6 +52,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     new(path, Identifier.next_global!(), block.id, subject, type, :reference, range, application)
   end
 
+  def definition(path, %Block{} = block, subject, type, range, application) do
+    new(path, Identifier.next_global!(), block.id, subject, type, :definition, range, application)
+  end
+
   def block_definition(path, %Block{} = block, subject, type, range, application) do
     definition(
       path,

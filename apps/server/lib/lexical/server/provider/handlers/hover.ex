@@ -78,6 +78,10 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
+  defp hover_content(type, _) do
+    {:error, {:unsupported, type}}
+  end
+
   defp module_header(:module, %Docs{module: module}) do
     Ast.Module.name(module)
   end

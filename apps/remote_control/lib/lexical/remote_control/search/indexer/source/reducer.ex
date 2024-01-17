@@ -15,7 +15,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
 
   defstruct [:analysis, :entries, :position, :ends_at, :blocks, :block_hierarchy]
 
-  @extractors [Extractors.Module, Extractors.FunctionDefinition, Extractors.FunctionReference]
+  @extractors [
+    Extractors.Module,
+    Extractors.ModuleAttribute,
+    Extractors.FunctionDefinition,
+    Extractors.FunctionReference
+  ]
 
   def new(%Analysis{} = analysis) do
     %__MODULE__{

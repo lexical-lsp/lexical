@@ -125,6 +125,49 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
     end
   end
 
+  describe "module attribute references" do
+    test "are found in a module", %{project: project} do
+      code = ~q[
+      defmodule Refs do
+        @attr 3
+
+        def fun(@attr), do: true
+      end
+      ]
+
+      query = ~q[
+      defmodule Refs do
+        @att|r 3
+      end
+
+      ]
+
+      assert {:ok, [reference]} = references(project, query, code)
+      assert decorate(code, reference.range) =~ "  def fun(«@attr»), do: true"
+    end
+
+    test "includes definitions if the parameter is true", %{project: project} do
+      code = ~q[
+      defmodule Refs do
+        @attr 3
+
+        def fun(@attr), do: true
+      end
+      ]
+
+      query = ~q[
+      defmodule Refs do
+        @att|r 3
+      end
+
+      ]
+
+      assert {:ok, [definition, reference]} = references(project, query, code, true)
+      assert decorate(code, definition.range) =~ "«@attr 3»"
+      assert decorate(code, reference.range) =~ "  def fun(«@attr»), do: true"
+    end
+  end
+
   defp references(project, referenced, code, include_definitions? \\ false) do
     with {position, referenced} <- pop_cursor(referenced, as: :document),
          {:ok, document} <- project_module(project, code),

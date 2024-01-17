@@ -12,6 +12,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
+  alias Lexical.RemoteControl.Search.Subject
 
   require Logger
 
@@ -32,7 +33,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           Entry.block_definition(
             reducer.analysis.document.path,
             block,
-            aliased_module,
+            Subject.module(aliased_module),
             :module,
             range,
             Application.get_application(aliased_module)
@@ -64,7 +65,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           Entry.reference(
             reducer.analysis.document.path,
             current_block,
-            module,
+            Subject.module(module),
             :module,
             range,
             Application.get_application(module)
@@ -90,7 +91,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           Entry.reference(
             reducer.analysis.document.path,
             current_block,
-            module,
+            Subject.module(module),
             :module,
             range,
             Application.get_application(module)
