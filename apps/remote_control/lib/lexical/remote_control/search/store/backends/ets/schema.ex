@@ -47,7 +47,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
 
-  use Wal
+  import Wal, only: :macros
 
   @type write_concurrency_alternative :: boolean() | :auto
   @type table_tweak ::
@@ -100,10 +100,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
         table_name = schema_module.table_name()
         ensure_schema_table_exists(table_name, schema_module.table_options())
 
-        {:ok, new_wal} =
-          project
-          |> Wal.new(schema_module.version(), schema_module.table_name())
-          |> Wal.load()
+        {:ok, new_wal} = Wal.load(project, schema_module.version(), schema_module.table_name())
 
         {:ok, new_wal, table_name, :empty}
     end
@@ -151,9 +148,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
   defp populate_schema_table(%Project{} = project, schema_module, entries) do
     dest_table_name = schema_module.table_name()
     ensure_schema_table_exists(dest_table_name, schema_module.table_options())
-    wal = Wal.new(project, schema_module.version(), dest_table_name)
 
-    with {:ok, wal} <- Wal.load(wal),
+    with {:ok, wal} <- Wal.load(project, schema_module.version(), dest_table_name),
          {:ok, new_wal_state} <- do_populate_schema(wal, dest_table_name, entries),
          {:ok, checkpoint_wal} <- Wal.checkpoint(new_wal_state) do
       {:ok, checkpoint_wal, dest_table_name}
@@ -184,9 +180,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schema do
     table_name = schema_module.table_name()
     ensure_schema_table_exists(table_name, schema_module.table_options())
 
-    wal = Wal.new(project, schema_module.version(), table_name)
-
-    case Wal.load(wal) do
+    case Wal.load(project, schema_module.version(), table_name) do
       {:ok, wal} -> {:ok, wal, table_name, :ets.tab2list(table_name)}
       error -> error
     end

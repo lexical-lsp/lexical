@@ -1,8 +1,6 @@
 defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
   @moduledoc """
   A (hopefully) simple write-ahead log
-
-
   """
   alias Lexical.Identifier
   alias Lexical.Project
@@ -21,13 +19,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
     :update_log,
     :update_log_name
   ]
-
-  defmacro __using__(_) do
-    quote do
-      alias Lexical.Identifier
-      import unquote(__MODULE__), only: [with_wal: 2, operation: 1]
-    end
-  end
 
   @write_functions [
     :delete,
@@ -70,15 +61,23 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
     end
   end
 
-  def new(%Project{} = project, schema_version, ets_table, options \\ []) do
+  def load(%Project{} = project, schema_version, ets_table, options \\ []) do
     max_wal_operations = Keyword.get(options, :max_wal_operations, @default_max_operations)
 
-    %__MODULE__{
+    wal = %__MODULE__{
       ets_table: ets_table,
       max_wal_operations: max_wal_operations,
       project: project,
       schema_version: to_string(schema_version)
     }
+
+    ensure_wal_directory_exists(wal)
+
+    with {:ok, checkpoint_id} <- load_latest_checkpoint(wal),
+         {:ok, new_wal} <- open_update_wal(wal, checkpoint_id),
+         :ok <- apply_updates(new_wal) do
+      {:ok, new_wal}
+    end
   end
 
   def exists?(%__MODULE__{} = wal) do
@@ -90,16 +89,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
       {:ok, [_]} -> true
       {:ok, [_ | _]} -> true
       _ -> false
-    end
-  end
-
-  def load(%__MODULE__{} = wal) do
-    ensure_wal_directory_exists(wal)
-
-    with {:ok, checkpoint_id} <- load_latest_checkpoint(wal),
-         {:ok, new_wal} <- open_update_wal(wal, checkpoint_id),
-         :ok <- apply_updates(new_wal) do
-      {:ok, new_wal}
     end
   end
 
@@ -311,7 +300,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
     end
 
     {_count, items} = :ets.foldl(log_chunks, {0, []}, wal.ets_table)
-    :disk_log.log_terms(log, items)
+    :disk_log.log_terms(log, Enum.reverse(items))
   end
 
   defp load_latest_checkpoint(%__MODULE__{} = wal) do

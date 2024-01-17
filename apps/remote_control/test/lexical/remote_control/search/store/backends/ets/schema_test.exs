@@ -4,9 +4,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
 
   import Lexical.Test.Fixtures
+  import Wal, only: :macros
 
   use ExUnit.Case
-  use Wal
 
   setup do
     project = project()
@@ -168,8 +168,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.SchemaTest do
   def write_entries(project, schema_module, entries) do
     table_name = schema_module.table_name()
     :ets.new(table_name, schema_module.table_options())
-    wal = Wal.new(project, schema_module.version(), table_name)
-    {:ok, wal} = Wal.load(wal)
+    {:ok, wal} = Wal.load(project, schema_module.version(), table_name)
 
     with_wal wal do
       :ets.insert(table_name, entries)

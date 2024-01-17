@@ -16,7 +16,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     Schemas.V1,
     Schemas.V2
   ]
-  use Wal
+
+  import Wal, only: :macros
   import Entry, only: :macros
 
   import Schemas.V2,
@@ -147,10 +148,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
     {:ok, _, result} =
       with_wal state.wal_state do
-        with true <- :ets.delete_all_objects(state.table_name),
-             true <- :ets.insert(state.table_name, rows) do
-          :ok
-        end
+        true = :ets.delete_all_objects(state.table_name)
+        true = :ets.insert(state.table_name, rows)
+        :ok
       end
 
     # When we replace everything, the old checkpoint is invalidated
