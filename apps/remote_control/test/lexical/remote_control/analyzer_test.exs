@@ -51,7 +51,7 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
 
       assert %Analysis{valid?: false} = analysis = Ast.analyze(document)
       assert %Analysis{valid?: true} = analysis = Ast.reanalyze_to(analysis, position)
-      assert {:ok, Invalid} = Analyzer.expand_alias([:__MODULE__], analysis, position)
+      assert {:ok, Invalid} = Analyzer.current_module(analysis, position)
     end
   end
 end

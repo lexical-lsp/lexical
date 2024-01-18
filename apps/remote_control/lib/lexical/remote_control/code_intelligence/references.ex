@@ -3,10 +3,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
-  alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
+  alias Lexical.RemoteControl.Search.Subject
 
   require Logger
 
@@ -25,7 +25,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp find_references({:call, module, function_name, arity}, include_definitions?) do
-    function_references(module, function_name, arity, include_definitions?)
+    subject = Subject.mfa(module, function_name, arity)
+    subtype = subtype(include_definitions?)
+    query(subject, type: :function, subtype: subtype)
+  end
+
+  defp find_references({:module_attribute, module, attribute_name}, include_definitions?) do
+    subject = Subject.module_attribute(module, attribute_name)
+    subtype = subtype(include_definitions?)
+    query(subject, type: :module_attribute, subtype: subtype)
   end
 
   defp find_references(resolved, _include_definitions?) do
@@ -34,21 +42,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp module_references(module, include_definitions?) do
-    with {:ok, references} <- Store.exact(module, type: :module, subtype: :reference) do
-      entities = maybe_fetch_module_definitions(module, include_definitions?) ++ references
-      locations = Enum.map(entities, &to_location/1)
-      {:ok, locations}
-    end
-  end
-
-  defp function_references(module, function_name, arity, include_definitions) do
-    subject = Formats.mfa(module, function_name, arity)
-
-    with {:ok, references} <- Store.exact(subject, type: :function, subtype: :reference) do
-      entities = maybe_fetch_function_definitions(subject, include_definitions) ++ references
-      locations = Enum.map(entities, &to_location/1)
-      {:ok, locations}
-    end
+    subject = Subject.module(module)
+    subtype = subtype(include_definitions?)
+    query(subject, type: :module, subtype: subtype)
   end
 
   defp to_location(%Entry{} = entry) do
@@ -56,23 +52,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
     Location.new(entry.range, uri)
   end
 
-  defp maybe_fetch_function_definitions(subject, true) do
-    case Store.exact(subject, type: :function, subtype: :definition) do
-      {:ok, definitions} -> definitions
-      _ -> []
+  defp query(subject, opts) do
+    with {:ok, entities} <- Store.exact(subject, opts) do
+      locations = Enum.map(entities, &to_location/1)
+      {:ok, locations}
     end
   end
 
-  defp maybe_fetch_function_definitions(_, false), do: []
-
-  defp maybe_fetch_module_definitions(module, true) do
-    case Store.exact(module, type: :module, subtype: :definition) do
-      {:ok, definitions} -> definitions
-      _ -> []
-    end
-  end
-
-  defp maybe_fetch_module_definitions(_module, false) do
-    []
-  end
+  defp subtype(true = _include_definitions?), do: :_
+  defp subtype(false = _include_definitions?), do: :reference
 end

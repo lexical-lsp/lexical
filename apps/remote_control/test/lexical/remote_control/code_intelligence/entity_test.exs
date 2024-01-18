@@ -628,6 +628,67 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     end
   end
 
+  describe "module attribute resolve" do
+    test "in a scalar definition" do
+      code = ~q[
+       defmodule Parent do
+         @attribut|e 3
+       end
+      ]
+
+      assert {:ok, {:module_attribute, Parent, :attribute}, resolved_range} = resolve(code)
+      assert resolved_range =~ "«@attribute» 3"
+    end
+
+    test "in a nested reference" do
+      code = ~q[
+      defmodule Parent do
+        @foo 3
+        @ba|r @foo + 1
+      end
+      ]
+
+      assert {:ok, {:module_attribute, Parent, :bar}, resolved_range} = resolve(code)
+      assert resolved_range =~ "«@bar» @foo + 1"
+    end
+
+    test "in a function definition" do
+      code = ~q[
+      defmodule Parent do
+
+        def my_fun(@fo|o), do: 3
+      end
+      ]
+
+      assert {:ok, {:module_attribute, Parent, :foo}, resolved_range} = resolve(code)
+      assert resolved_range =~ "def my_fun(«@foo»), do: 3"
+    end
+
+    test "in map keys" do
+      code = ~q[
+      defmodule Parent do
+
+        def my_fun(_), do: %{@fo|o => 3}
+      end
+      ]
+
+      assert {:ok, {:module_attribute, Parent, :foo}, resolved_range} = resolve(code)
+      assert resolved_range =~ "%{«@foo» => 3}"
+    end
+
+    test "in map values" do
+      code = ~q[
+      defmodule Parent do
+
+        def my_fun(_), do: %{foo: @fo|o}
+      end
+      ]
+
+      assert {:ok, {:module_attribute, Parent, :foo}, resolved_range} = resolve(code)
+      assert resolved_range =~ "%{foo: «@foo»}"
+    end
+  end
+
   defp subject_module_uri do
     project()
     |> file_path(Path.join("lib", "my_module.ex"))

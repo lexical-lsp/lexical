@@ -15,6 +15,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
           | {:struct, module()}
           | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
           | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
+          | {:module_attribute, container_module :: module(), attribut_name :: atom()}
 
   defguardp is_call(form) when Sourceror.Identifier.is_call(form) and elem(form, 0) != :.
 
@@ -112,7 +113,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       {:ok, {:call, module, fun, arity}, node_range}
     else
       _ ->
-        {:ok, module} = RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position)
+        {:ok, module} = RemoteControl.Analyzer.current_module(analysis, position)
         {:ok, {:call, module, fun, 0}, node_range}
     end
   end
@@ -122,6 +123,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       {:ok, module} -> {:ok, {:module, module}, node_range}
       _ -> {:error, {:unsupported, context}}
     end
+  end
+
+  defp resolve({:module_attribute, attr_name}, node_range, analysis, position) do
+    {:ok, current_module} = RemoteControl.Analyzer.current_module(analysis, position)
+
+    {:ok, {:module_attribute, current_module, List.to_atom(attr_name)}, node_range}
   end
 
   defp resolve(context, _node_range, _analysis, _position) do
