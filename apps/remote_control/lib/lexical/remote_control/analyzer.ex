@@ -50,7 +50,7 @@ defmodule Lexical.RemoteControl.Analyzer do
   We could get the expansion for the `Issue` alias at the cursor position
   like so:
 
-      iex> Ast.expand_alias([:Issue], analysis, position)
+      iex> Analyzer.expand_alias([:Issue], analysis, position)
       {:ok, Project.Issue}
 
   Another example:
@@ -70,12 +70,12 @@ defmodule Lexical.RemoteControl.Analyzer do
 
   This would yield the same result:
 
-      iex> Ast.expand_alias([:MyProject, :Issue], analysis, position)
+      iex> Analyzer.expand_alias([:MyProject, :Issue], analysis, position)
       {:ok, Project.Issue}
 
   If no aliases are present at the given position, no expansion occurs:
 
-      iex> Ast.expand_alias([:Some, :Other, :Module], analysis, position)
+      iex> Analyzer.expand_alias([:Some, :Other, :Module], analysis, position)
       {:ok, Some.Other.Module}
 
   """
