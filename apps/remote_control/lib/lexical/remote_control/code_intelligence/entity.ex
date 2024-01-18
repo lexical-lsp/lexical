@@ -62,6 +62,19 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     resolve_alias(chars, node_range, analysis, position)
   end
 
+  defp resolve({:local_or_var, chars}, node_range, analysis, position) do
+    maybe_fun = List.to_atom(chars)
+
+    with {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local]} | _]} when def in [:def, :defp] <-
+           Ast.path_at(analysis, position),
+         {:ok, module} <- RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position) do
+      {:ok, {:call, module, maybe_fun, 0}, node_range}
+    else
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
   defp resolve({:struct, charlist}, {{start_line, start_col}, end_pos}, analysis, position) do
     # exclude the leading % from the node range so that it can be
     # resolved like a normal module alias

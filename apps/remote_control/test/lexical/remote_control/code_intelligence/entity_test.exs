@@ -445,6 +445,39 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[def «my_call»(a, b)]
     end
 
+    test "in private function definition" do
+      code = ~q[
+        defmodule Parent do
+
+          defp my_call|(a, b)
+        end
+      ]
+      assert {:ok, {:call, Parent, :my_call, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[defp «my_call»(a, b)]
+    end
+
+    test "in function definition without parens" do
+      code = ~q[
+        defmodule Parent do
+
+          def |my_call
+        end
+      ]
+      assert {:ok, {:call, Parent, :my_call, 0}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[def «my_call»]
+    end
+
+    test "in private function definition without parens" do
+      code = ~q[
+        defmodule Parent do
+
+          defp |my_call
+        end
+      ]
+      assert {:ok, {:call, Parent, :my_call, 0}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[defp «my_call»]
+    end
+
     test "in function body with arity 0" do
       code = ~q[
         defmodule Parent do
