@@ -15,8 +15,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
       when is_atom(fn_name) and definition in @function_definitions do
     range = get_definition_range(reducer.analysis, metadata, body)
 
-    {:ok, module} =
-      RemoteControl.Analyzer.expand_alias([:__MODULE__], reducer.analysis, range.start)
+    {:ok, module} = RemoteControl.Analyzer.current_module(reducer.analysis, range.start)
 
     arity =
       case args do
