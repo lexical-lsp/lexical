@@ -121,6 +121,13 @@ defmodule Lexical.RemoteControl.Analyzer do
     :error
   end
 
+  @doc """
+  Returns the current module at the given position in the analysis
+  """
+  def current_module(%Analysis{} = analysis, %Position{} = position) do
+    expand_alias([:__MODULE__], analysis, position)
+  end
+
   defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
     with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
       Ast.reify_alias(current_module, segments)

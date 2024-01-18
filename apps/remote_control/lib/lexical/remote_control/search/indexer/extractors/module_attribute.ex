@@ -5,7 +5,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
 
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
   alias Lexical.RemoteControl.Search.Subject
@@ -16,10 +16,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
   def extract({:@, _, [{attr_name, _, nil}]}, %Reducer{} = reducer) do
     block = Reducer.current_block(reducer)
 
-    current_module =
-      reducer.analysis
-      |> RemoteControl.Analyzer.Aliases.at(Reducer.position(reducer))
-      |> Map.get(:__MODULE__)
+    {:ok, current_module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
 
     reference =
       Entry.reference(
@@ -38,10 +35,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
   def extract({:@, _, [{attr_name, _, _attr_value}]} = attr, %Reducer{} = reducer) do
     block = Reducer.current_block(reducer)
 
-    current_module =
-      reducer.analysis
-      |> RemoteControl.Analyzer.Aliases.at(Reducer.position(reducer))
-      |> Map.get(:__MODULE__)
+    {:ok, current_module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
 
     definition =
       Entry.definition(
