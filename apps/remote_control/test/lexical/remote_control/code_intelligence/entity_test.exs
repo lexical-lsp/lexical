@@ -541,6 +541,53 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     end
   end
 
+  describe "imported call" do
+    test "imported in module scope" do
+      code = ~q[
+        defmodule Parent do
+          import Lexical.Ast
+
+          def parse(doc), do: |from(doc)
+        end
+      ]
+
+      assert {:ok, {:call, Lexical.Ast, :from, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[«from»(doc)]
+    end
+
+    test "imported in function scope" do
+      code = ~q[
+        defmodule Parent do
+          def parse(doc) do
+            import Lexical.Ast
+            |from(doc)
+          end
+        end
+      ]
+
+      assert {:ok, {:call, Lexical.Ast, :from, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[«from»(doc)]
+    end
+
+    test "imports in a different scope don't clobber local calls" do
+      code = ~q[
+        defmodule Parent do
+          def parse(doc) do
+            import Lexical.Ast
+            from(doc)
+          end
+
+          def parse2(doc) do
+            |from(doc)
+          end
+        end
+      ]
+
+      assert {:ok, {:call, Parent, :from, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[«from»(doc)]
+    end
+  end
+
   describe "type resolve/2" do
     test "qualified types in @type" do
       code = ~q[
