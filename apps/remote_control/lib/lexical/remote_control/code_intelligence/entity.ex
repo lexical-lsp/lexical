@@ -272,6 +272,23 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     length(args) + 1
   end
 
+  # Calls as part of a capture:
+  # &MyModule.some_function/2
+  defp arity_at_position(
+         [
+           # To correctly identify a fun/arity capture, the zero-arg call
+           # should be the first argument to a `/` binary op, and that `/`
+           # should be the only argument to a `&` unary op.
+           {_, _, []} = call,
+           {:/, _, [call, {:__block__, _, [arity]}]} = slash,
+           {:&, _, [slash]} | _
+         ],
+         _position
+       )
+       when is_call(call) and is_integer(arity) do
+    arity
+  end
+
   # Calls not inside of a pipe:
   # MyModule.some_function(1, 2)
   # some_function.(1, 2)
