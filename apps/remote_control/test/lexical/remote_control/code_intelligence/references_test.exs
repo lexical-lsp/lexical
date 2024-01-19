@@ -100,15 +100,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       assert decorate(code, location.range) =~ ~s[%«ReferencedModule»{} = something_else]
     end
 
-    test "includes modules when a struct is requested", %{project: project} do
-      code = ~q[
-        ReferencedModule = something_else
-      ]
-
-      assert {:ok, [%Location{} = location]} = references(project, "%ReferencedModule|{}", code)
-      assert decorate(code, location.range) =~ ~s[«ReferencedModule» = something_else]
-    end
-
     test "includes definitions if the parameter is true", %{project: project} do
       code = ~q[
         defmodule DefinedModule do
@@ -122,6 +113,29 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       assert {:ok, [location_1, location_2]} = references(project, "DefinedModule|", code, true)
       assert decorate(code, location_1.range) =~ ~s[defmodule «DefinedModule» do]
       assert decorate(code, location_2.range) =~ ~s[@attr «DefinedModule»]
+    end
+  end
+
+  describe "struct references" do
+    test "includes their definition if the parameter is true", %{project: project} do
+      code = ~q(
+      defmodule Struct do
+        defstruct [:field]
+      end
+      )
+
+      assert {:ok, [location]} = references(project, "%Struct|{}", code, true)
+      assert decorate(code, location.range) =~ "«defstruct [:field]»"
+    end
+
+    test "excludes their definition", %{project: project} do
+      code = ~q(
+      defmodule Struct do
+        defstruct [:field]
+      end
+      )
+
+      assert {:ok, []} = references(project, "%Struct|{}", code)
     end
   end
 
