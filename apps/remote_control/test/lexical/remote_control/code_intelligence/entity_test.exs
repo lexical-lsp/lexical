@@ -431,6 +431,22 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:call, :code, :which, 0}, resolved_range} = resolve(code)
       assert resolved_range =~ "«:code.which»()"
     end
+
+    test "captured calls with arity" do
+      code = ~q[
+        &MyModule.|my_fun/2
+      ]
+      assert {:ok, {:call, MyModule, :my_fun, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ "«MyModule.my_fun»/2"
+    end
+
+    test "captured calls with args" do
+      code = ~q[
+        &MyModule.|my_fun(:foo, &1)
+      ]
+      assert {:ok, {:call, MyModule, :my_fun, 2}, resolved_range} = resolve(code)
+      assert resolved_range =~ "&«MyModule.my_fun»(:foo, &1)"
+    end
   end
 
   describe "local call" do
