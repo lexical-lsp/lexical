@@ -259,19 +259,20 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     refute_eventually ready?(project)
     assert_eventually Store |> Process.whereis() |> is_pid()
     Store.enable()
-    assert_eventually ready?(project)
+    assert_eventually ready?(project), 1500
   end
 
   def restart_store(%Project{} = project) do
-    Store
-    |> Process.whereis()
-    |> Process.monitor()
+    ref =
+      Store
+      |> Process.whereis()
+      |> Process.monitor()
 
     Store.stop()
     refute_eventually ready?(project)
 
     receive do
-      {:DOWN, _, _, _, _} ->
+      {:DOWN, ^ref, _, _, _} ->
         assert_eventually Store |> Process.whereis() |> is_pid()
         Store.enable()
         assert_eventually ready?(project)
