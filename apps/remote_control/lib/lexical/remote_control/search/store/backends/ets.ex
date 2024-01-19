@@ -33,15 +33,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   def destroy(%Project{} = project) do
     name = genserver_name(project)
 
-    case :global.whereis_name(name) do
-      pid when is_pid(pid) ->
-        GenServer.call(name, {:destroy, []})
-
-      _ ->
-        :ok
+    if pid = GenServer.whereis(name) do
+      GenServer.call(pid, {:destroy, []})
     end
 
     :ok
+  end
+
+  def destroy_all(%Project{} = project) do
+    State.destroy_all(project)
   end
 
   @impl Backend

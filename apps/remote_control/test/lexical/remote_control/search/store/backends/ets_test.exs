@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.Backends
-  alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
   alias Lexical.Test.Entry
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
@@ -33,8 +32,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     {:ok, backend: backend, project: project}
   end
 
+  def delete_indexes(project, Backends.Ets) do
+    Backends.Ets.destroy_all(project)
+  end
+
   def delete_indexes(project, backend) do
-    project() |> Wal.root_path() |> File.rm_rf()
     backend.destroy(project)
   end
 

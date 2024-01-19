@@ -124,6 +124,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
     |> File.rm_rf!()
   end
 
+  def destroy_all(%Project{} = project) do
+    project
+    |> root_path()
+    |> File.rm_rf!()
+  end
+
   def checkpoint(%__MODULE__{} = wal) do
     case :ets.info(wal.ets_table) do
       :undefined ->

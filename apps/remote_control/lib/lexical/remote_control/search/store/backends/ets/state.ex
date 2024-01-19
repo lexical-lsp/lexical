@@ -180,12 +180,24 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     {:ok, ids_to_delete}
   end
 
-  def destroy(%__MODULE__{leader?: true} = state) do
+  def destroy_all(%Project{} = project) do
+    Wal.destroy_all(project)
+  end
+
+  def destroy(%__MODULE__{leader?: true, wal_state: %Wal{}} = state) do
     Wal.destroy(state.wal_state)
   end
 
-  def terminate(%__MODULE__{} = state) do
+  def destroy(%__MODULE__{leader?: true}) do
+    :ok
+  end
+
+  def terminate(%__MODULE__{wal_state: %Wal{}} = state) do
     Wal.close(state.wal_state)
+  end
+
+  def terminate(%__MODULE__{}) do
+    :ok
   end
 
   defp child_path(structure, child_id) do
