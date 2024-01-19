@@ -341,6 +341,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   defp with_a_started_store(project, backend) do
+    destroy_backend(backend, project)
+
     start_supervised!(Dispatch)
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
 
