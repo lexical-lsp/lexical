@@ -215,10 +215,9 @@ defmodule Lexical.RemoteControl.Search.Store do
     {:reply, loaded?, {ref, state}}
   end
 
-  def handle_call(:loaded?, _, %State{} = state) do
+  def handle_call(:loaded?, _, %State{loaded?: loaded?} = state) do
     # We're not enabled yet, but we can still reply to the query
-    # if we're loaded, because if we're not enabled, we're not loaded.
-    {:reply, false, state}
+    {:reply, loaded?, state}
   end
 
   def handle_call(:destroy, _, {ref, %State{} = state}) do
