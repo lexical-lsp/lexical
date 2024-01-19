@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import Entry.Builder
   import EventualAssertions

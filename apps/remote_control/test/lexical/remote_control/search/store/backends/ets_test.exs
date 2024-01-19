@@ -228,9 +228,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       assert :ok = Store.replace(entries)
 
-      Store.stop()
-
-      ensure_restarted(project)
+      restart_store(project)
 
       assert_eventually entries == Store.all()
     end
@@ -247,19 +245,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
         reference(id: 2, subject: Present, path: path)
       ])
 
-      Store.stop()
-
-      ensure_restarted(project)
+      restart_store(project)
 
       assert_eventually [%{id: 2}] = Store.all()
     end
-  end
-
-  defp ensure_restarted(%Project{} = project) do
-    refute_eventually ready?(project)
-    assert_eventually Store |> Process.whereis() |> is_pid()
-    Store.enable()
-    assert_eventually ready?(project), 1500
   end
 
   def restart_store(%Project{} = project) do
@@ -275,7 +264,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       {:DOWN, ^ref, _, _, _} ->
         assert_eventually Store |> Process.whereis() |> is_pid()
         Store.enable()
-        assert_eventually ready?(project)
+        assert_eventually ready?(project), 1500
     after
       1000 ->
         raise "Could not stop store"

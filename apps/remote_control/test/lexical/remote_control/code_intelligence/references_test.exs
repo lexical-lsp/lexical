@@ -21,16 +21,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
     start_supervised!(
       {Search.Store,
-       [
-         project,
-         fn _ -> {:ok, []} end,
-         fn _, _ -> {:ok, [], []} end,
-         Search.Store.Backends.Ets
-       ]}
+       [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Search.Store.Backends.Ets]}
     )
 
     Search.Store.enable()
-    assert_eventually Search.Store.loaded?()
+    assert_eventually Search.Store.loaded?(), 1500
     {:ok, project: project}
   end
 
