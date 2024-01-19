@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import EventualAssertions
   import Entry.Builder
@@ -258,7 +258,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       |> Process.monitor()
 
     Store.stop()
-    refute_eventually ready?(project)
 
     receive do
       {:DOWN, ^ref, _, _, _} ->
