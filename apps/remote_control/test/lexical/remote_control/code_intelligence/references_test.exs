@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.References
   alias Lexical.RemoteControl.Search
+  alias Lexical.RemoteControl.Search.Store.Backends
 
   use ExUnit.Case, async: false
 
@@ -15,17 +16,24 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
   setup do
     project = project()
+
+    Backends.Ets.destroy_all(project)
     RemoteControl.set_project(project)
+
     start_supervised!(Document.Store)
     start_supervised!(RemoteControl.Dispatch)
 
     start_supervised!(
-      {Search.Store,
-       [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Search.Store.Backends.Ets]}
+      {Search.Store, [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Backends.Ets]}
     )
 
     Search.Store.enable()
     assert_eventually Search.Store.loaded?(), 1500
+
+    on_exit(fn ->
+      Backends.Ets.destroy_all(project)
+    end)
+
     {:ok, project: project}
   end
 
