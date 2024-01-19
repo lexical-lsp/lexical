@@ -24,6 +24,32 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructDefinitionTest d
     assert decorate(doc, struct.range) =~ "«defstruct [:name, :value]»"
   end
 
+  test "it highlights multiple line definitions" do
+    {:ok, [struct], doc} =
+      ~q(
+        defmodule Root do
+         defstruct [
+          :name,
+          :value,
+          :other
+         ]
+        end
+        )
+      |> index()
+
+    expected =
+      """
+      «defstruct [
+        :name,
+        :value,
+        :other
+       ]»
+      """
+      |> String.trim()
+
+    assert decorate(doc, struct.range) =~ expected
+  end
+
   test "it should find a module that defines a struct via a keyword list" do
     {:ok, [struct], doc} =
       ~q(
