@@ -23,6 +23,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     # start with a clean slate.
 
     Lexical.RemoteControl.set_project(project)
+
     delete_indexes(project, backend)
 
     on_exit(fn ->
@@ -51,16 +52,13 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   defp start_supervised_store(%Project{} = project, create_fn, update_fn, backend) do
     start_supervised!(Dispatch)
     start_supervised!({Store, [project, create_fn, update_fn, backend]})
+    assert_eventually alive?(), 1500
     Store.enable()
-    assert_eventually ready?(project)
+    assert_eventually ready?(project), 1500
   end
 
   def with_a_started_store(%{project: project, backend: backend}) do
     start_supervised_store(project, &default_create/1, &default_update/2, backend)
-
-    on_exit(fn ->
-      delete_indexes(project, backend)
-    end)
 
     :ok
   end
