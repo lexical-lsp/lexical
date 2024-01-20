@@ -1,7 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReference do
-  alias Lexical.Document
-  alias Lexical.Document.Position
-  alias Lexical.Document.Range
+  alias Lexical.Ast
   alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
@@ -27,7 +25,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReference do
 
   # Call to Kernel.struct with a fully qualified module e.g. Kernel.struct(MyStruct, ...)
   def extract(
-        {{:., _, [kernel_alias, struct_fn_name]}, _, [struct_alias]} = reference,
+        {{:., _, [kernel_alias, struct_fn_name]}, _, [struct_alias | _]} = reference,
         %Reducer{} = reducer
       )
       when struct_fn_name in @struct_fn_names do
@@ -44,7 +42,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReference do
     imports = Analyzer.imports_at(reducer.analysis, reducer_position)
     arity = length(args)
 
-    with true <- Enum.member?(imports, {Kernel, :struct, arity}),
+    with true <- Enum.member?(imports, {Kernel, struct_fn_name, arity}),
          {:ok, struct_module} <- expand_alias(struct_alias, reducer) do
       {:ok, entry(reducer, struct_module, reference)}
     else
@@ -67,19 +65,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReference do
       block,
       subject,
       :struct,
-      range(document, reference),
+      Ast.Range.fetch!(reference, document),
       Application.get_application(struct_module)
-    )
-  end
-
-  defp range(%Document{} = document, ast) do
-    %{start: start_pos, end: end_pos} = Sourceror.get_range(ast)
-    [line: start_line, column: start_column] = start_pos
-    [line: end_line, column: end_column] = end_pos
-
-    Range.new(
-      Position.new(document, start_line, start_column),
-      Position.new(document, end_line, end_column)
     )
   end
 

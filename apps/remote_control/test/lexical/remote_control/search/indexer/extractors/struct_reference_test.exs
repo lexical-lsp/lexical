@@ -219,6 +219,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReferenceTest do
       assert decorate(doc, struct.range) == ~S[struct = «Kernel.struct(MyStruct)»]
     end
 
+    test "in a fully qualified call to Kernel.struct/2" do
+      {:ok, [struct], doc} = ~q[struct = Kernel.struct(MyStruct, foo: 3)] |> index()
+
+      assert struct.type == :struct
+      assert struct.subtype == :reference
+      assert struct.subject == Subject.module(MyStruct)
+      assert decorate(doc, struct.range) == ~S[struct = «Kernel.struct(MyStruct, foo: 3)»]
+    end
+
     test "other functions named struct are not counted" do
       {:ok, [], _} = ~q[struct = Macro.struct(MyStruct)] |> index()
     end
