@@ -19,7 +19,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     Extractors.Module,
     Extractors.ModuleAttribute,
     Extractors.FunctionDefinition,
-    Extractors.FunctionReference
+    Extractors.FunctionReference,
+    Extractors.StructDefinition,
+    Extractors.StructReference
   ]
 
   def new(%Analysis{} = analysis) do

@@ -17,34 +17,36 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp find_references({:module, module}, include_definitions?) do
-    module_references(module, include_definitions?)
+    subject = Subject.module(module)
+    subtype = subtype(include_definitions?)
+
+    query(subject, type: :module, subtype: subtype)
   end
 
   defp find_references({:struct, struct_module}, include_definitions?) do
-    module_references(struct_module, include_definitions?)
+    subject = Subject.module(struct_module)
+    subtype = subtype(include_definitions?)
+
+    query(subject, type: :struct, subtype: subtype)
   end
 
   defp find_references({:call, module, function_name, arity}, include_definitions?) do
     subject = Subject.mfa(module, function_name, arity)
     subtype = subtype(include_definitions?)
+
     query(subject, type: :function, subtype: subtype)
   end
 
   defp find_references({:module_attribute, module, attribute_name}, include_definitions?) do
     subject = Subject.module_attribute(module, attribute_name)
     subtype = subtype(include_definitions?)
+
     query(subject, type: :module_attribute, subtype: subtype)
   end
 
   defp find_references(resolved, _include_definitions?) do
     Logger.info("Not attempting to find references for unhandled type: #{inspect(resolved)}")
     []
-  end
-
-  defp module_references(module, include_definitions?) do
-    subject = Subject.module(module)
-    subtype = subtype(include_definitions?)
-    query(subject, type: :module, subtype: subtype)
   end
 
   defp to_location(%Entry{} = entry) do
