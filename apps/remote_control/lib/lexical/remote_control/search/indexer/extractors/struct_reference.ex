@@ -32,6 +32,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReference do
     with {:ok, Kernel} <- expand_alias(kernel_alias, reducer),
          {:ok, struct_module} <- expand_alias(struct_alias, reducer) do
       {:ok, entry(reducer, struct_module, reference)}
+    else
+      _ ->
+        :ignored
     end
   end
 
