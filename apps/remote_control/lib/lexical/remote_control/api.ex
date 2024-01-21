@@ -122,4 +122,8 @@ defmodule Lexical.RemoteControl.Api do
   def index_running?(%Project{} = project) do
     RemoteControl.call(project, Commands.Reindex, :running?, [])
   end
+
+  def resolve_entity(%Project{} = project, %Analysis{} = analysis, %Position{} = position) do
+    RemoteControl.call(project, CodeIntelligence.Entity, :resolve, [analysis, position])
+  end
 end

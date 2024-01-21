@@ -1,12 +1,14 @@
 defmodule Lexical.Server.Provider.Handlers.Hover do
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
+  alias Lexical.Document.Position
+  alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Hover
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Docs
-  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Markdown
 
@@ -16,7 +18,7 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     maybe_hover =
       with {:ok, _document, %Ast.Analysis{} = analysis} <-
              Document.Store.fetch(request.document.uri, :analysis),
-           {:ok, entity, range} <- Entity.resolve(analysis, request.position),
+           {:ok, entity, range} <- resolve_entity(env.project, analysis, request.position),
            {:ok, markdown} <- hover_content(entity, env) do
         content = Markdown.to_content(markdown)
         %Hover{contents: content, range: range}
@@ -27,6 +29,10 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
       end
 
     {:reply, Responses.Hover.new(request.id, maybe_hover)}
+  end
+
+  defp resolve_entity(%Project{} = project, %Analysis{} = analysis, %Position{} = position) do
+    RemoteControl.Api.resolve_entity(project, analysis, position)
   end
 
   defp hover_content({kind, module}, env) when kind in [:module, :struct] do
