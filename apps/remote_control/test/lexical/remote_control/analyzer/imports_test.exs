@@ -340,9 +340,20 @@ defmodule Lexical.Ast.Analysis.ImportsTest do
       assert_imported(imports, ImportedModule, :macro, 1)
 
       assert_imported(imports, ImportedModule, :function, 0)
-      assert_imported(imports, ImportedModule, :function, 0)
       assert_imported(imports, ImportedModule, :function, 1)
       assert_imported(imports, ImportedModule, :function, 2)
+    end
+
+    test "imports nothing when the only part is incomplete" do
+      imports =
+        ~q(
+        defmodule New do
+          import Parent.Child.ImportedModule, only: [wi|]
+        end
+        )
+        |> imports_at_cursor()
+
+      refute_imported(imports, ImportedModule)
     end
   end
 
