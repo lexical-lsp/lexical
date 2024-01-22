@@ -331,4 +331,62 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructReferenceTest do
       assert decorate(doc, struct.range) == ~S[  struct = «struct!(__MODULE__, foo: 3)»]
     end
   end
+
+  describe "when aliases can't be expanded" do
+    test "a fully qualified call to Kernel.struct/1 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = Kernel.struct(unquote(__MODULE__))
+         end
+        ] |> index()
+    end
+
+    test "a fully qualified call to Kernel.struct/2 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = Kernel.struct(unquote(__MODULE__), foo: 3)
+         end
+        ] |> index()
+    end
+
+    test "a call to struct!/2 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = struct!(unquote(__MODULE__), foo: 3)
+         end
+        ] |> index()
+    end
+
+    test "a call to struct!/1 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = struct!(unquote(__MODULE__))
+         end
+        ] |> index()
+    end
+
+    test "a call to struct/1 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = struct(unquote(__MODULE__))
+         end
+        ] |> index()
+    end
+
+    test "a call to struct/2 is ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = struct(unquote(__MODULE__), foo: 3)
+         end
+        ] |> index()
+    end
+
+    test "a reference ignored" do
+      assert {:ok, [], _} = ~q[
+         defmodule Parent do
+           struct = %unquote(__MODULE__){}
+         end
+        ] |> index()
+    end
+  end
 end
