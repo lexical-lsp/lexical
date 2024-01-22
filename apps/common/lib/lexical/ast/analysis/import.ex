@@ -38,10 +38,9 @@ defmodule Lexical.Ast.Analysis.Import do
                 :sigils
 
               keyword when is_list(keyword) ->
-                Enum.map(keyword, fn
-                  {{:__block__, _, [function_name]}, {:__block__, _, [arity]}} ->
-                    {function_name, arity}
-                end)
+                keyword
+                |> Enum.reduce([], &expand_function_keywords/2)
+                |> Enum.reverse()
 
               _ ->
                 # they're likely in the middle of typing in something, and have produced an
@@ -66,4 +65,15 @@ defmodule Lexical.Ast.Analysis.Import do
   defp expand_selector(_) do
     :all
   end
+
+  defp expand_function_keywords(
+         {{:__block__, _, [function_name]}, {:__block__, _, [arity]}},
+         acc
+       )
+       when is_atom(function_name) and is_number(arity) do
+    [{function_name, arity} | acc]
+  end
+
+  defp expand_function_keywords(_ignored, acc),
+    do: acc
 end
