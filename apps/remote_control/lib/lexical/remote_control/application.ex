@@ -26,8 +26,8 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.Plugin.Runner.Coordinator,
           maybe_search_store()
         ]
-        |> Enum.reject(&is_nil/1)
         |> List.flatten()
+        |> Enum.reject(&is_nil/1)
       else
         []
       end
