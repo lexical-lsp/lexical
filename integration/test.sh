@@ -94,11 +94,11 @@ test_asdf_dir_found() {
     return $?
 }
 
-test_asdf_used_when_activated_rtx_missing_elixir() {
+test_asdf_used_when_activated_mise_missing_elixir() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
-        'eval "$(/version_managers/rtx_vm/rtx activate bash)" && '
-        'rtx uninstall "elixir@$ELIXIR_VERSION" && '
+        'eval "$(/version_managers/mise_vm/mise activate bash)" && '
+        'mise uninstall "elixir@$ELIXIR_VERSION" && '
         'export ASDF_DIR=/version_managers/asdf_vm'
     )
     local expect=(
@@ -111,45 +111,45 @@ test_asdf_used_when_activated_rtx_missing_elixir() {
     return $?
 }
 
-test_rtx_already_activated() {
+test_mise_already_activated() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
-        'eval "$(/version_managers/rtx_vm/rtx activate bash)"'
+        'eval "$(/version_managers/mise_vm/mise activate bash)"'
     )
     local expect=(
-        "Detected Elixir through rtx"
+        "Detected Elixir through mise"
     )
 
     run_test "${setup[*]}" "${expect[@]}"
     return $?
 }
 
-test_rtx_binary_found_and_activated() {
+test_mise_binary_found_and_activated() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
-        'export PATH="/version_managers/rtx_vm:$PATH"'
+        'export PATH="/version_managers/mise_vm:$PATH"'
     )
     local expect=(
         "No activated version manager detected"
-        "Found rtx"
-        "Detected Elixir through rtx"
+        "Found mise"
+        "Detected Elixir through mise"
     )
 
     run_test "${setup[*]}" "${expect[@]}"
     return $?
 }
 
-test_rtx_used_when_activated_asdf_missing_elixir() {
+test_mise_used_when_activated_asdf_missing_elixir() {
     local setup=(
         'mv "$(which elixir)" "$(which elixir).hidden" && '
         'ASDF_DIR=/version_managers/asdf_vm . /version_managers/asdf_vm/asdf.sh && '
         'asdf uninstall elixir "$ELIXIR_VERSION" && '
-        'export PATH="/version_managers/rtx_vm:$PATH"'
+        'export PATH="/version_managers/mise_vm:$PATH"'
     )
     local expect=(
         "No activated version manager detected"
-        "Found rtx. Activating"
-        "Detected Elixir through rtx"
+        "Found mise. Activating"
+        "Detected Elixir through mise"
     )
 
     run_test "${setup[*]}" "${expect[@]}"

@@ -80,6 +80,7 @@ defmodule Lexical.RemoteControl do
 
     {path_result, env} =
       with nil <- version_manager_path_and_env("asdf", root_path),
+           nil <- version_manager_path_and_env("mise", root_path),
            nil <- version_manager_path_and_env("rtx", root_path) do
         {File.cd!(root_path, fn -> System.find_executable("elixir") end), System.get_env()}
       end
@@ -135,6 +136,27 @@ defmodule Lexical.RemoteControl do
 
   defp reset_env("rtx", root_path) do
     {env, _} = System.cmd("rtx", ~w(env -s bash), cd: root_path)
+
+    env
+    |> String.trim()
+    |> String.split("\n")
+    |> Enum.map(fn
+      "export " <> key_and_value ->
+        [key, value] =
+          key_and_value
+          |> String.split("=", parts: 2)
+          |> Enum.map(&String.trim/1)
+
+        {key, value}
+
+      _ ->
+        nil
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp reset_env("mise", root_path) do
+    {env, _} = System.cmd("mise", ~w(env -s bash), cd: root_path)
 
     env
     |> String.trim()

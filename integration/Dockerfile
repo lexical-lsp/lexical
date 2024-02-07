@@ -24,8 +24,8 @@ RUN apt-get install -y \
 
 WORKDIR /lexical
 
-COPY integration/boot/set_up_rtx.sh integration/boot/set_up_rtx.sh
-RUN integration/boot/set_up_rtx.sh
+COPY integration/boot/set_up_mise.sh integration/boot/set_up_mise.sh
+RUN integration/boot/set_up_mise.sh
 
 COPY integration/boot/set_up_asdf.sh integration/boot/set_up_asdf.sh
 RUN integration/boot/set_up_asdf.sh
