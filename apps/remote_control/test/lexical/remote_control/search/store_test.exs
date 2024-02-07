@@ -344,6 +344,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     destroy_backend(backend, project)
 
     start_supervised!(Dispatch)
+    start_supervised!(backend)
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
 
     assert_eventually alive?()

@@ -113,6 +113,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Wal do
     end
   end
 
+  def truncate(%__MODULE__{} = wal) do
+    :disk_log.truncate(wal.update_log)
+  end
+
   def destroy(%__MODULE__{} = wal) do
     close(wal)
     destroy(wal.project, wal.schema_version)

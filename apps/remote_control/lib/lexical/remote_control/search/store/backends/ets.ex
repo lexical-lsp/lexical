@@ -10,8 +10,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   @behaviour Backend
 
   @impl Backend
-  def new(%Project{} = project) do
-    start_link(project)
+  def new(%Project{}) do
+    {:ok, Process.whereis(__MODULE__)}
   end
 
   @impl Backend
@@ -85,7 +85,19 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   def start_link(%Project{} = project) do
-    GenServer.start_link(__MODULE__, [project])
+    GenServer.start_link(__MODULE__, [project], name: __MODULE__)
+  end
+
+  def start_link do
+    start_link(RemoteControl.get_project())
+  end
+
+  def child_spec([%Project{}] = init_args) do
+    %{id: __MODULE__, start: {__MODULE__, :start_link, init_args}}
+  end
+
+  def child_spec(_) do
+    child_spec([RemoteControl.get_project()])
   end
 
   @impl GenServer

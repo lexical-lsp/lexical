@@ -51,6 +51,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
   defp start_supervised_store(%Project{} = project, create_fn, update_fn, backend) do
     start_supervised!(Dispatch)
+    start_supervised!(Backends.Ets)
     start_supervised!({Store, [project, create_fn, update_fn, backend]})
     assert_eventually alive?(), 1500
     Store.enable()

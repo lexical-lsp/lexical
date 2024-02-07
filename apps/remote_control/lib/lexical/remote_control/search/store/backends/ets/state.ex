@@ -52,9 +52,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def drop(%__MODULE__{leader?: true} = state) do
-    with_wal state.wal_state do
-      :ets.delete_all_objects(state.table_name)
-    end
+    Wal.truncate(state.wal_state)
+    :ets.delete_all_objects(state.table_name)
   end
 
   def insert(%__MODULE__{leader?: true} = state, entries) do

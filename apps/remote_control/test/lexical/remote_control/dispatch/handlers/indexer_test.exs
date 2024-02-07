@@ -22,6 +22,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
     start_supervised!(RemoteControl.Dispatch)
     start_supervised!(Commands.Reindex)
+    start_supervised!(Search.Store.Backends.Ets)
     start_supervised!({Search.Store, [project, create_index, update_index]})
     start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
 

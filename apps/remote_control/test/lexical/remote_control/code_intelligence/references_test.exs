@@ -22,6 +22,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
     start_supervised!(Document.Store)
     start_supervised!(RemoteControl.Dispatch)
+    start_supervised!(Backends.Ets)
 
     start_supervised!(
       {Search.Store, [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Backends.Ets]}

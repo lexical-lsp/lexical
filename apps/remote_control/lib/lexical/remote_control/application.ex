@@ -26,6 +26,8 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.Plugin.Runner.Coordinator,
           maybe_search_store()
         ]
+        |> Enum.reject(&is_nil/1)
+        |> List.flatten()
       else
         []
       end
@@ -39,16 +41,19 @@ defmodule Lexical.RemoteControl.Application do
 
   defp maybe_search_store do
     if Features.indexing_enabled?() do
-      {RemoteControl.Search.Store,
-       [
-         &RemoteControl.Search.Indexer.create_index/1,
-         &RemoteControl.Search.Indexer.update_index/2
-       ]}
+      [
+        RemoteControl.Search.Store.Backends.Ets,
+        {RemoteControl.Search.Store,
+         [
+           &RemoteControl.Search.Indexer.create_index/1,
+           &RemoteControl.Search.Indexer.update_index/2
+         ]}
+      ]
     end
   end
 
   defp maybe_reindex do
-    if Features.indexing_enabled? do
+    if Features.indexing_enabled?() do
       {RemoteControl.Commands.Reindex, nil}
     end
   end
