@@ -3,13 +3,13 @@
 # Build: docker build -t lx -f integration/Dockerfile .
 # Run:   docker run -it lx
 
-ARG SYS_ELIXIR_VERSION=1.15.6
-ARG SYS_ERLANG_VERSION=26.1.1
+ARG SYS_ELIXIR_VERSION=1.15.7
+ARG SYS_ERLANG_VERSION=26.2.1
 
-FROM hexpm/elixir:${SYS_ELIXIR_VERSION}-erlang-${SYS_ERLANG_VERSION}-ubuntu-jammy-20230126
+FROM hexpm/elixir:${SYS_ELIXIR_VERSION}-erlang-${SYS_ERLANG_VERSION}-ubuntu-jammy-20231128
 
-ENV ELIXIR_VERSION=1.15.6-otp-26
-ENV ERLANG_VERSION=26.1.1
+ENV ELIXIR_VERSION=1.15.7-otp-26
+ENV ERLANG_VERSION=26.2.1
 
 RUN apt-get update
 RUN apt-get install -y \
@@ -24,8 +24,8 @@ RUN apt-get install -y \
 
 WORKDIR /lexical
 
-COPY integration/boot/set_up_rtx.sh integration/boot/set_up_rtx.sh
-RUN integration/boot/set_up_rtx.sh
+COPY integration/boot/set_up_mise.sh integration/boot/set_up_mise.sh
+RUN integration/boot/set_up_mise.sh
 
 COPY integration/boot/set_up_asdf.sh integration/boot/set_up_asdf.sh
 RUN integration/boot/set_up_asdf.sh
