@@ -27,7 +27,8 @@ chmod +x ./mise
 eval "$(./mise activate bash)"
 
 export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac --without-termcap --without-wx"
-./mise plugins install erlang
+export RUST_BACKTRACE=full
+./mise --verbose plugins install erlang
 ./mise use --global "erlang@$ERLANG_VERSION"
 
 ./mise plugins install elixir
