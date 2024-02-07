@@ -215,6 +215,11 @@ defmodule Lexical.RemoteControl.Search.Store do
     {:reply, loaded?, {ref, state}}
   end
 
+  def handle_call(:loaded?, _, %State{loaded?: loaded?} = state) do
+    # We're not enabled yet, but we can still reply to the query
+    {:reply, loaded?, state}
+  end
+
   def handle_call(:destroy, _, {ref, %State{} = state}) do
     new_state = State.destroy(state)
     {:reply, :ok, {ref, new_state}}
@@ -228,7 +233,6 @@ defmodule Lexical.RemoteControl.Search.Store do
   @impl GenServer
   def terminate(_reason, {_, state}) do
     {:ok, state} = State.flush_buffered_updates(state)
-    State.drop(state)
     {:noreply, state}
   end
 

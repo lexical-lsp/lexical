@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import EventualAssertions
   import Entry.Builder
@@ -23,9 +23,18 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     # start with a clean slate.
 
     Lexical.RemoteControl.set_project(project)
+
     delete_indexes(project, backend)
 
+    on_exit(fn ->
+      delete_indexes(project, backend)
+    end)
+
     {:ok, backend: backend, project: project}
+  end
+
+  def delete_indexes(project, Backends.Ets) do
+    Backends.Ets.destroy_all(project)
   end
 
   def delete_indexes(project, backend) do
@@ -42,17 +51,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
   defp start_supervised_store(%Project{} = project, create_fn, update_fn, backend) do
     start_supervised!(Dispatch)
+    start_supervised!(Backends.Ets)
     start_supervised!({Store, [project, create_fn, update_fn, backend]})
+    assert_eventually alive?(), 1500
     Store.enable()
-    assert_eventually ready?(project)
+    assert_eventually ready?(project), 1500
   end
 
   def with_a_started_store(%{project: project, backend: backend}) do
     start_supervised_store(project, &default_create/1, &default_update/2, backend)
-
-    on_exit(fn ->
-      delete_indexes(project, backend)
-    end)
 
     :ok
   end
@@ -219,11 +226,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       entries = [definition(subject: My.Module)]
 
       assert :ok = Store.replace(entries)
-      Backends.Ets.sync(project)
 
-      Store.stop()
-
-      ensure_restarted(project)
+      restart_store(project)
 
       assert_eventually entries == Store.all()
     end
@@ -240,36 +244,25 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
         reference(id: 2, subject: Present, path: path)
       ])
 
-      Store.stop()
-
-      ensure_restarted(project)
+      restart_store(project)
 
       assert_eventually [%{id: 2}] = Store.all()
     end
   end
 
-  defp ensure_restarted(%Project{} = project) do
-    refute_eventually ready?(project)
-    assert_eventually Store |> Process.whereis() |> is_pid()
-    Store.enable()
-    assert_eventually ready?(project)
-  end
-
   def restart_store(%Project{} = project) do
-    Backends.Ets.sync(project)
-
-    Store
-    |> Process.whereis()
-    |> Process.monitor()
+    ref =
+      Store
+      |> Process.whereis()
+      |> Process.monitor()
 
     Store.stop()
-    refute_eventually ready?(project)
 
     receive do
-      {:DOWN, _, _, _, _} ->
+      {:DOWN, ^ref, _, _, _} ->
         assert_eventually Store |> Process.whereis() |> is_pid()
         Store.enable()
-        assert_eventually ready?(project)
+        assert_eventually ready?(project), 1500
     after
       1000 ->
         raise "Could not stop store"

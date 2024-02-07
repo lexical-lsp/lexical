@@ -10,18 +10,13 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   @behaviour Backend
 
   @impl Backend
-  def new(%Project{} = project) do
-    start_link(project)
+  def new(%Project{}) do
+    {:ok, Process.whereis(__MODULE__)}
   end
 
   @impl Backend
   def prepare(pid) do
     GenServer.call(pid, :prepare, :infinity)
-  end
-
-  @impl Backend
-  def sync(%Project{}) do
-    GenServer.call(genserver_name(), :sync)
   end
 
   @impl Backend
@@ -38,15 +33,15 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   def destroy(%Project{} = project) do
     name = genserver_name(project)
 
-    case :global.whereis_name(name) do
-      pid when is_pid(pid) ->
-        GenServer.call(name, {:destroy, []})
-
-      _ ->
-        State.destroy(project)
+    if pid = GenServer.whereis(name) do
+      GenServer.call(pid, {:destroy, []})
     end
 
     :ok
+  end
+
+  def destroy_all(%Project{} = project) do
+    State.destroy_all(project)
   end
 
   @impl Backend
@@ -90,7 +85,19 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   def start_link(%Project{} = project) do
-    GenServer.start_link(__MODULE__, [project])
+    GenServer.start_link(__MODULE__, [project], name: __MODULE__)
+  end
+
+  def start_link do
+    start_link(RemoteControl.get_project())
+  end
+
+  def child_spec([%Project{}] = init_args) do
+    %{id: __MODULE__, start: {__MODULE__, :start_link, init_args}}
+  end
+
+  def child_spec(_) do
+    child_spec([RemoteControl.get_project()])
   end
 
   @impl GenServer
@@ -123,11 +130,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     end
   end
 
-  def handle_call(:sync, _from, %State{} = state) do
-    state = State.sync(state)
-    {:reply, :ok, state}
-  end
-
   def handle_call({function_name, arguments}, _from, %State{} = state) do
     arguments = [state | arguments]
     reply = apply(State, function_name, arguments)
@@ -150,6 +152,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     # :global.random_notify_name. We've been selected to be the leader!
     new_state = become_leader(state.project)
     {:noreply, new_state}
+  end
+
+  @impl GenServer
+  def terminate(_reason, %State{} = state) do
+    State.terminate(state)
+    state
   end
 
   # Private

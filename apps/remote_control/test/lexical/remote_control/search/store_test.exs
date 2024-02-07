@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   alias Lexical.Test.EventualAssertions
   alias Lexical.Test.Fixtures
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import Entry.Builder
   import EventualAssertions
@@ -316,8 +316,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     entries
   end
 
-  defp after_each_test(_, _) do
-    :ok
+  defp after_each_test(backend, project) do
+    destroy_backend(backend, project)
   end
 
   defp destroy_backends(project) do
@@ -325,7 +325,11 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   defp destroy_backend(Ets, project) do
-    Ets.destroy(project)
+    Ets.destroy_all(project)
+  end
+
+  defp destroy_backend(_, _) do
+    :ok
   end
 
   defp default_create(_project) do
@@ -337,9 +341,16 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
   end
 
   defp with_a_started_store(project, backend) do
+    destroy_backend(backend, project)
+
     start_supervised!(Dispatch)
+    start_supervised!(backend)
     start_supervised!({Store, [project, &default_create/1, &default_update/2, backend]})
+
+    assert_eventually alive?()
+
     Store.enable()
+
     assert_eventually ready?(), 1500
 
     on_exit(fn ->

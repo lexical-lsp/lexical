@@ -9,6 +9,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schema
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas
+  alias Lexical.RemoteControl.Search.Store.Backends.Ets.Wal
 
   @schema_order [
     Schemas.LegacyV0,
@@ -16,6 +17,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     Schemas.V2
   ]
 
+  import Wal, only: :macros
   import Entry, only: :macros
 
   import Schemas.V2,
@@ -29,7 +31,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       structure: 1
     ]
 
-  defstruct [:project, :table_name, :leader?, :leader_pid]
+  defstruct [:project, :table_name, :leader?, :leader_pid, :wal_state]
 
   def new_leader(%Project{} = project) do
     %__MODULE__{project: project, leader?: true, leader_pid: self()}
@@ -40,9 +42,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def prepare(%__MODULE__{leader?: true} = state) do
-    {:ok, table_name, result} = Schema.load(state.project, @schema_order)
-    :ets.info(table_name)
-    {{:ok, result}, %__MODULE__{state | table_name: table_name}}
+    {:ok, wal, table_name, result} = Schema.load(state.project, @schema_order)
+
+    {{:ok, result}, %__MODULE__{state | table_name: table_name, wal_state: wal}}
   end
 
   def prepare(%__MODULE__{leader?: false}) do
@@ -50,12 +52,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   end
 
   def drop(%__MODULE__{leader?: true} = state) do
+    Wal.truncate(state.wal_state)
     :ets.delete_all_objects(state.table_name)
   end
 
   def insert(%__MODULE__{leader?: true} = state, entries) do
     rows = Schema.entries_to_rows(entries, current_schema())
-    true = :ets.insert(state.table_name, rows)
+
+    with_wal state.wal_state do
+      true = :ets.insert(state.table_name, rows)
+    end
+
     :ok
   end
 
@@ -138,10 +145,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   def replace_all(%__MODULE__{leader?: true} = state, entries) do
     rows = Schema.entries_to_rows(entries, current_schema())
 
-    with true <- :ets.delete_all_objects(state.table_name),
-         true <- :ets.insert(state.table_name, rows) do
-      :ok
-    end
+    {:ok, _, result} =
+      with_wal state.wal_state do
+        true = :ets.delete_all_objects(state.table_name)
+        true = :ets.insert(state.table_name, rows)
+        :ok
+      end
+
+    # When we replace everything, the old checkpoint is invalidated
+    # so it makes sense to force a new one.
+    Wal.checkpoint(state.wal_state)
+    result
   end
 
   def delete_by_path(%__MODULE__{leader?: true} = state, path) do
@@ -150,36 +164,39 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       |> :ets.match({query_by_path(path: path), :"$0"})
       |> List.flatten()
 
-    :ets.match_delete(state.table_name, {query_by_subject(path: path), :_})
-    :ets.match_delete(state.table_name, {query_by_path(path: path), :_})
-    :ets.match_delete(state.table_name, {query_structure(path: path), :_})
+    with_wal state.wal_state do
+      :ets.match_delete(state.table_name, {query_by_subject(path: path), :_})
+      :ets.match_delete(state.table_name, {query_by_path(path: path), :_})
+      :ets.match_delete(state.table_name, {query_structure(path: path), :_})
+    end
 
-    Enum.each(ids_to_delete, &:ets.delete(state.table_name, &1))
+    Enum.each(ids_to_delete, fn id ->
+      with_wal state.wal_state do
+        :ets.delete(state.table_name, id)
+      end
+    end)
+
     {:ok, ids_to_delete}
   end
 
-  def destroy(%__MODULE__{leader?: true} = state) do
-    destroy(state.project)
+  def destroy_all(%Project{} = project) do
+    Wal.destroy_all(project)
   end
 
-  def destroy(%Project{} = project) do
-    project
-    |> Schema.index_root()
-    |> File.rm_rf()
+  def destroy(%__MODULE__{leader?: true, wal_state: %Wal{}} = state) do
+    Wal.destroy(state.wal_state)
   end
 
-  def sync(%__MODULE__{leader?: true} = state) do
-    file_path_charlist =
-      state.project
-      |> Schema.index_file_path(current_schema())
-      |> String.to_charlist()
-
-    :ets.tab2file(state.table_name, file_path_charlist)
-    state
+  def destroy(%__MODULE__{leader?: true}) do
+    :ok
   end
 
-  def sync(%__MODULE__{leader?: false} = state) do
-    state
+  def terminate(%__MODULE__{wal_state: %Wal{}} = state) do
+    Wal.close(state.wal_state)
+  end
+
+  def terminate(%__MODULE__{}) do
+    :ok
   end
 
   defp child_path(structure, child_id) do
