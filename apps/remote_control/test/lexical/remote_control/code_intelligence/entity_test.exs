@@ -447,6 +447,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:call, MyModule, :my_fun, 2}, resolved_range} = resolve(code)
       assert resolved_range =~ "&«MyModule.my_fun»(:foo, &1)"
     end
+
+    test "defstruct call" do
+      code = ~q[
+      defmodule MyModule do
+        defstruct| foo: nil
+      end
+      ]
+      assert {:ok, {:call, Kernel, :defstruct, 1}, resolved_range} = resolve(code)
+      assert resolved_range =~ "  «defstruct» foo: nil"
+    end
   end
 
   describe "local call" do

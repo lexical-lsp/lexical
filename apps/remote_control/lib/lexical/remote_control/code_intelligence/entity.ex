@@ -63,6 +63,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     resolve_alias(chars, node_range, analysis, position)
   end
 
+  defp resolve({:local_or_var, 'defstruct'}, node_range, _analysis, _position) do
+    {:ok, {:call, Kernel, :defstruct, 1}, node_range}
+  end
+
   defp resolve({:local_or_var, chars}, node_range, analysis, position) do
     maybe_fun = List.to_atom(chars)
 
