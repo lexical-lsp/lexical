@@ -273,6 +273,50 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       refute ref.block_id == parent.id
       assert decorate(doc, ref.range) =~ "      «Ref.To.Something»"
     end
+
+    test "can detect a @protocol module reference" do
+      {:ok, [protocol_ref, for_ref, proto_module_attr], doc} =
+        ~q[
+          defimpl MyProtocol, for: Atom do
+            def something do
+             @protocol.Something
+            end
+          end
+        ]
+        |> index()
+
+      assert protocol_ref.type == :module
+      assert protocol_ref.subtype == :reference
+      assert protocol_ref.subject == MyProtocol
+      assert decorate(doc, protocol_ref.range) == "defimpl «MyProtocol», for: Atom do"
+
+      assert for_ref.type == :module
+      assert for_ref.subtype == :reference
+      assert for_ref.subject == Atom
+      assert decorate(doc, for_ref.range) == "defimpl MyProtocol, for: «Atom» do"
+
+      assert proto_module_attr.type == :module
+      assert proto_module_attr.subtype == :reference
+      assert proto_module_attr.subject == MyProtocol.Something
+      assert decorate(doc, proto_module_attr.range) == "   «@protocol.Something»"
+    end
+
+    test "can detect an @for module reference" do
+      {:ok, [_, _, for_module_attr], doc} =
+        ~q[
+          defimpl MyProtocol, for: DataStructure do
+            def something do
+             @for.Something
+            end
+          end
+        ]
+        |> index()
+
+      assert for_module_attr.type == :module
+      assert for_module_attr.subtype == :reference
+      assert for_module_attr.subject == DataStructure.Something
+      assert decorate(doc, for_module_attr.range) == "   «@for.Something»"
+    end
   end
 
   describe "multiple modules in one document" do

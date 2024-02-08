@@ -173,6 +173,29 @@ defmodule Lexical.Ast.Analysis do
     |> State.push_alias(current_module_alias)
   end
 
+  # defimpl Foo, for: SomeProtocol do
+  defp analyze_node(
+         {:defimpl, meta,
+          [
+            {:__aliases__, _, protocol_segments},
+            [{_for_keyword, {:__aliases__, _, for_segments}}] | _
+          ]} = quoted,
+         state
+       ) do
+    module = protocol_segments
+    line = meta[:line]
+    current_module_alias = Alias.new(module, :__MODULE__, line)
+    for_alias = Alias.new(for_segments, :"@for", line)
+    protocol_alias = Alias.new(module, :"@protocol", line)
+
+    state
+    |> maybe_push_implicit_alias(protocol_segments, line)
+    |> State.push_scope_for(quoted, module)
+    |> State.push_alias(current_module_alias)
+    |> State.push_alias(for_alias)
+    |> State.push_alias(protocol_alias)
+  end
+
   # alias Foo.{Bar, Baz, Buzz.Qux}
   defp analyze_node({:alias, meta, [{{:., _, [aliases, :{}]}, _, aliases_nodes}]}, state) do
     base_segments = expand_alias(aliases, state)

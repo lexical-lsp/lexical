@@ -407,6 +407,10 @@ defmodule Lexical.Ast do
     end
   end
 
+  def reify_alias(current_module, []) do
+    {:ok, List.wrap(current_module)}
+  end
+
   # private
 
   defp do_string_to_quoted(string) when is_binary(string) do

@@ -25,6 +25,41 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
       assert {:ok, Parent.Child} =
                Analyzer.expand_alias([quote(do: __MODULE__), nil], analysis, position)
     end
+
+    test "works with @protocol in a protocol" do
+      {position, document} =
+        ~q[
+      defimpl MyProtocol, for: Atom do
+
+        def pack(atom) do
+          |
+        end
+      end
+      ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+
+      assert {:ok, MyProtocol} = Analyzer.expand_alias([quote(do: @protocol)], analysis, position)
+
+      assert {:ok, MyProtocol.BitString} =
+               Analyzer.expand_alias([quote(do: @protocol.BitString)], analysis, position)
+
+      assert {:ok, Atom} = Analyzer.expand_alias([quote(do: @for)], analysis, position)
+
+      assert {:ok, Atom.Something} =
+               Analyzer.expand_alias([quote(do: @for.Something)], analysis, position)
+
+      assert {:ok, MyProtocol.BitString} =
+               Analyzer.expand_alias(
+                 [
+                   {:@, [line: 9, column: 8], [{:protocol, [line: 9, column: 9], nil}]},
+                   :BitString
+                 ],
+                 analysis,
+                 position
+               )
+    end
   end
 
   describe "reanalyze_to/2" do

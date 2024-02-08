@@ -141,10 +141,17 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
   defp module(_, _), do: :error
 
+  @protocol_module_attribue_names [:protocol, :for]
+
   @starts_with_capital ~r/[A-Z]+/
   defp module_part?(part) when is_atom(part) do
     Regex.match?(@starts_with_capital, Atom.to_string(part))
   end
+
+  defp module_part?({:@, _, [{type, _, _} | _]}) when type in @protocol_module_attribue_names,
+    do: true
+
+  defp module_part?({:__MODULE__, _, _}), do: true
 
   defp module_part?(_), do: false
 
@@ -158,6 +165,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
         List.to_atom(module_charlist)
       end)
     end)
+  end
+
+  # handles @protocol and @for in defimpl blocks
+  defp to_range(%Reducer{} = reducer, [{:@, _, [{type, _, _} | _]} = attribute | segments], _)
+       when type in @protocol_module_attribue_names do
+    range = Sourceror.get_range(attribute)
+
+    document = reducer.analysis.document
+    module_length = segments |> Ast.Module.name() |> String.length()
+    # add one because we're off by the @ sign
+    end_column = range.end[:column] + module_length + 1
+
+    Range.new(
+      Position.new(document, range.start[:line], range.start[:column]),
+      Position.new(document, range.end[:line], end_column)
+    )
   end
 
   defp to_range(%Reducer{} = reducer, module_name, {line, column}) do
