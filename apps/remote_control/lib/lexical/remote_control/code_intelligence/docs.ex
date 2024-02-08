@@ -31,9 +31,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
   def for_module(module, opts) when is_atom(module) do
     exclude_hidden? = Keyword.get(opts, :exclude_hidden, false)
 
-    with {:ok, beam} <- Modules.ensure_beam(module) do
-      %__MODULE__{} = docs = parse_docs(module, beam)
-
+    with {:ok, beam} <- Modules.ensure_beam(module),
+         {:ok, docs} <- parse_docs(module, beam) do
       if docs.doc == :hidden and exclude_hidden? do
         {:error, :hidden}
       else
@@ -43,25 +42,31 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Docs do
   end
 
   defp parse_docs(module, beam) do
-    with {:ok, {:docs_v1, _anno, _lang, _format, module_doc, _meta, entries}} <-
-           Modules.fetch_docs(beam) do
-      entries_by_kind = Enum.group_by(entries, &doc_kind/1)
-      function_entries = Map.get(entries_by_kind, :function, [])
-      macro_entries = Map.get(entries_by_kind, :macro, [])
-      callback_entries = Map.get(entries_by_kind, :callback, [])
-      type_entries = Map.get(entries_by_kind, :type, [])
+    case Modules.fetch_docs(beam) do
+      {:ok, {:docs_v1, _anno, _lang, _format, module_doc, _meta, entries}} ->
+        entries_by_kind = Enum.group_by(entries, &doc_kind/1)
+        function_entries = Map.get(entries_by_kind, :function, [])
+        macro_entries = Map.get(entries_by_kind, :macro, [])
+        callback_entries = Map.get(entries_by_kind, :callback, [])
+        type_entries = Map.get(entries_by_kind, :type, [])
 
-      spec_defs = beam |> Modules.fetch_specs() |> ok_or([])
-      callback_defs = beam |> Modules.fetch_callbacks() |> ok_or([])
-      type_defs = beam |> Modules.fetch_types() |> ok_or([])
+        spec_defs = beam |> Modules.fetch_specs() |> ok_or([])
+        callback_defs = beam |> Modules.fetch_callbacks() |> ok_or([])
+        type_defs = beam |> Modules.fetch_types() |> ok_or([])
 
-      %__MODULE__{
-        module: module,
-        doc: Entry.parse_doc(module_doc),
-        functions_and_macros: parse_entries(module, function_entries ++ macro_entries, spec_defs),
-        callbacks: parse_entries(module, callback_entries, callback_defs),
-        types: parse_entries(module, type_entries, type_defs)
-      }
+        result = %__MODULE__{
+          module: module,
+          doc: Entry.parse_doc(module_doc),
+          functions_and_macros:
+            parse_entries(module, function_entries ++ macro_entries, spec_defs),
+          callbacks: parse_entries(module, callback_entries, callback_defs),
+          types: parse_entries(module, type_entries, type_defs)
+        }
+
+        {:ok, result}
+
+      _ ->
+        {:error, :no_docs}
     end
   end
 
