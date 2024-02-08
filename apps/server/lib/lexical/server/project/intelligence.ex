@@ -216,7 +216,7 @@ defmodule Lexical.Server.Project.Intelligence do
     {:ok, struct_definitions} = Api.struct_definitions(state.project)
 
     state =
-      Enum.reduce(struct_definitions, State.new(state.project), fn {module, _}, state ->
+      Enum.reduce(struct_definitions, State.new(state.project), fn module, state ->
         State.add_struct_module(state, module)
       end)
 

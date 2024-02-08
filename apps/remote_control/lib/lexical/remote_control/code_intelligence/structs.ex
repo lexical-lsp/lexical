@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   alias Lexical.RemoteControl
-
   alias Lexical.RemoteControl.Module.Loader
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
@@ -24,10 +23,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
       end
 
     for %Entry{subject: struct_module} <- entries,
-        Loader.ensure_loaded?(struct_module),
-        fields = struct_module.__info__(:struct),
-        is_list(fields) do
-      {struct_module, fields}
+        Loader.ensure_loaded?(struct_module) do
+      struct_module
     end
   end
 end
