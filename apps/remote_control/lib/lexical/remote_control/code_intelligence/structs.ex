@@ -1,59 +1,33 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.RemoteControl.Dispatch
+
   alias Lexical.RemoteControl.Module.Loader
+  alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Store
 
-  import Messages
-
-  def discover_deps_structs do
+  def for_project do
     if Mix.Project.get() do
-      deps_projects()
+      {:ok, structs_from_index()}
     else
-      RemoteControl.Mix.in_project(fn _ -> deps_projects() end)
+      RemoteControl.Mix.in_project(fn _ -> structs_from_index() end)
     end
   end
 
-  defp elixir_module?(module_name_charlist) when is_list(module_name_charlist) do
-    List.starts_with?(module_name_charlist, 'Elixir.')
-  end
-
-  defp elixir_module?(module_atom) when is_atom(module_atom) do
-    module_atom
-    |> Atom.to_charlist()
-    |> elixir_module?()
-  end
-
-  defp deps_projects do
+  defp structs_from_index do
     # This might be a performance / memory issue on larger projects. It
     # iterates through all modules, loading each as necessary and then removing them
     # if they're not already loaded to try and claw back some memory
-
-    for dep_app <- Mix.Project.deps_apps(),
-        module_name <- dep_modules(dep_app),
-        elixir_module?(module_name),
-        was_loaded? = :code.is_loaded(module_name),
-        Loader.ensure_loaded?(module_name) do
-      case module_name.__info__(:struct) do
-        struct_fields when is_list(struct_fields) ->
-          message = struct_discovered(module: module_name, fields: struct_fields)
-          Dispatch.broadcast(message)
-
-        _ ->
-          :ok
+    entries =
+      case Store.exact(type: :struct, subtype: :definition) do
+        {:ok, entries} -> entries
+        _ -> []
       end
 
-      unless was_loaded? do
-        :code.delete(module_name)
-        :code.purge(module_name)
-      end
-    end
-  end
-
-  defp dep_modules(app_name) do
-    case :application.get_key(app_name, :modules) do
-      {:ok, modules} -> modules
-      _ -> []
+    for %Entry{subject: struct_module} <- entries,
+        Loader.ensure_loaded?(struct_module),
+        fields = struct_module.__info__(:struct),
+        is_list(fields) do
+      {struct_module, fields}
     end
   end
 end

@@ -67,15 +67,6 @@ bug.
 For the following examples, assume the absolute path to your Lexical
 source code is `/my/home/projects/lexical`.
 
-### Enabling indexing
-
-We've recently added indexing support to lexical. This powers features like `find references` and will go on to power a host of other features. While we're continuting to 
-develop indexing, we've disabled it by default. If you want to enable indexing (and find references), build lexical like this:
-
-```shell
-INDEXING_ENABLED=true mix package
-```
-
 ## Editor-specific setup
 1. [Vanilla Emacs with lsp-mode](#vanilla-emacs-with-lsp-mode)
 2. [Vanilla Emacs with eglot](#vanilla-emacs-with-eglot)

@@ -126,4 +126,8 @@ defmodule Lexical.RemoteControl.Api do
   def resolve_entity(%Project{} = project, %Analysis{} = analysis, %Position{} = position) do
     RemoteControl.call(project, CodeIntelligence.Entity, :resolve, [analysis, position])
   end
+
+  def struct_definitions(%Project{} = project) do
+    RemoteControl.call(project, CodeIntelligence.Structs, :for_project, [])
+  end
 end

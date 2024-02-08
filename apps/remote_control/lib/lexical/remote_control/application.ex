@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Application do
   # for more information on OTP Applications
   @moduledoc false
 
-  alias Lexical.Features
   alias Lexical.RemoteControl
 
   use Application
@@ -11,12 +10,10 @@ defmodule Lexical.RemoteControl.Application do
 
   @impl true
   def start(_type, _args) do
-    Logger.info("Remote control: indexing? #{Features.indexing_enabled?()}")
-
     children =
       if RemoteControl.project_node?() do
         [
-          maybe_reindex(),
+          {RemoteControl.Commands.Reindex, nil},
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,
@@ -24,7 +21,12 @@ defmodule Lexical.RemoteControl.Application do
           RemoteControl.Build.CaptureServer,
           RemoteControl.Plugin.Runner.Supervisor,
           RemoteControl.Plugin.Runner.Coordinator,
-          maybe_search_store()
+          RemoteControl.Search.Store.Backends.Ets,
+          {RemoteControl.Search.Store,
+           [
+             &RemoteControl.Search.Indexer.create_index/1,
+             &RemoteControl.Search.Indexer.update_index/2
+           ]}
         ]
         |> List.flatten()
         |> Enum.reject(&is_nil/1)
@@ -37,24 +39,5 @@ defmodule Lexical.RemoteControl.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Lexical.RemoteControl.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  defp maybe_search_store do
-    if Features.indexing_enabled?() do
-      [
-        RemoteControl.Search.Store.Backends.Ets,
-        {RemoteControl.Search.Store,
-         [
-           &RemoteControl.Search.Indexer.create_index/1,
-           &RemoteControl.Search.Indexer.update_index/2
-         ]}
-      ]
-    end
-  end
-
-  defp maybe_reindex do
-    if Features.indexing_enabled?() do
-      {RemoteControl.Commands.Reindex, nil}
-    end
   end
 end

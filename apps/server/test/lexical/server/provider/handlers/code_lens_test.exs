@@ -33,7 +33,6 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   end
 
   defp with_indexing_enabled(_) do
-    patch(Lexical.Features, :indexing_enabled?, true)
     patch(Lexical.RemoteControl.Api, :index_running?, false)
     :ok
   end

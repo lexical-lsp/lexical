@@ -21,9 +21,14 @@ defmodule Lexical.Test.Server.CompletionCase do
     start_supervised!({DynamicSupervisor, Server.Project.Supervisor.options()})
     start_supervised!({Server.Project.Supervisor, project})
 
-    RemoteControl.Api.register_listener(project, self(), [project_compiled()])
+    RemoteControl.Api.register_listener(project, self(), [
+      project_compiled(),
+      project_index_ready()
+    ])
+
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
+    assert_receive project_index_ready(), 5000
     {:ok, project: project}
   end
 
