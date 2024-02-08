@@ -184,6 +184,10 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
     Module.new(elixir_sense_map)
   end
 
+  def from_elixir_sense(%{type: :module, subtype: :alias} = elixir_sense_map) do
+    Module.new(elixir_sense_map)
+  end
+
   def from_elixir_sense(%{type: :module, subtype: :behaviour} = elixir_sense_map) do
     Behaviour.new(elixir_sense_map)
   end
