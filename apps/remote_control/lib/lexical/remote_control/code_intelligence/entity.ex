@@ -63,18 +63,28 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     resolve_alias(chars, node_range, analysis, position)
   end
 
-  defp resolve({:local_or_var, 'defstruct'}, node_range, _analysis, _position) do
-    {:ok, {:call, Kernel, :defstruct, 1}, node_range}
-  end
-
   defp resolve({:local_or_var, chars}, node_range, analysis, position) do
     maybe_fun = List.to_atom(chars)
 
-    with {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local]} | _]} when def in [:def, :defp] <-
-           Ast.path_at(analysis, position),
-         {:ok, module} <- RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position) do
-      {:ok, {:call, module, maybe_fun, 0}, node_range}
-    else
+    case Ast.path_at(analysis, position) do
+      {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local]} | _]} when def in [:def, :defp] ->
+        {:ok, module} = RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position)
+        {:ok, {:call, module, maybe_fun, 0}, node_range}
+
+      {:ok, [{^maybe_fun, _, args} | _]} ->
+        # imported functions
+        arity = length(args)
+
+        analysis
+        |> RemoteControl.Analyzer.imports_at(position)
+        |> Enum.find_value({:error, :not_found}, fn
+          {module, ^maybe_fun, ^arity} ->
+            {:ok, {:call, module, maybe_fun, arity}, node_range}
+
+          _ ->
+            false
+        end)
+
       _ ->
         {:error, :not_found}
     end
