@@ -5,7 +5,6 @@ defmodule Lexical.RemoteControl.Build.State do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.CodeIntelligence
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Plugin
   alias Lexical.VM.Versions
@@ -67,7 +66,7 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  def compile_project(%__MODULE__{} = state, force?) do
+  def compile_project(%__MODULE__{} = state, initial?) do
     state = increment_build_number(state)
     project = state.project
 
@@ -76,7 +75,7 @@ defmodule Lexical.RemoteControl.Build.State do
         project_compile_requested(project: project, build_number: state.build_number)
 
       Dispatch.broadcast(compile_requested_message)
-      {elapsed_us, result} = :timer.tc(fn -> Build.Project.compile(project, force?) end)
+      {elapsed_us, result} = :timer.tc(fn -> Build.Project.compile(project, initial?) end)
       elapsed_ms = to_ms(elapsed_us)
 
       {compile_message, diagnostics} =
@@ -106,7 +105,6 @@ defmodule Lexical.RemoteControl.Build.State do
 
       Dispatch.broadcast(compile_message)
       Dispatch.broadcast(diagnostics_message)
-      CodeIntelligence.Structs.discover_deps_structs()
       Plugin.diagnose(project, state.build_number)
     end)
   end
@@ -183,7 +181,7 @@ defmodule Lexical.RemoteControl.Build.State do
     :ok
   end
 
-  def mix_compile_opts(force?) do
+  def mix_compile_opts(initial?) do
     opts = ~w(
         --return-errors
         --ignore-module-conflict
@@ -193,7 +191,7 @@ defmodule Lexical.RemoteControl.Build.State do
         --no-protocol-consolidation
     )
 
-    if force? do
+    if initial? do
       ["--force " | opts]
     else
       opts

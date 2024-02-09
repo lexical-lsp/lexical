@@ -167,7 +167,12 @@ defmodule Lexical.Server.Project.Intelligence do
 
   @impl GenServer
   def init([%Project{} = project]) do
-    Api.register_listener(project, self(), [module_updated(), struct_discovered()])
+    Api.register_listener(project, self(), [
+      project_index_ready(),
+      module_updated(),
+      struct_discovered()
+    ])
+
     state = State.new(project)
     {:ok, state}
   end
@@ -201,6 +206,20 @@ defmodule Lexical.Server.Project.Intelligence do
   @impl GenServer
   def handle_info(struct_discovered(module: module_name), %State{} = state) do
     state = State.add_struct_module(state, module_name)
+    {:noreply, state}
+  end
+
+  require Logger
+
+  @impl GenServer
+  def handle_info(project_index_ready(), %State{} = state) do
+    {:ok, struct_definitions} = Api.struct_definitions(state.project)
+
+    state =
+      Enum.reduce(struct_definitions, State.new(state.project), fn module, state ->
+        State.add_struct_module(state, module)
+      end)
+
     {:noreply, state}
   end
 

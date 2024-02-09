@@ -9,17 +9,17 @@ defmodule Lexical.RemoteControl.Build.Project do
   use RemoteControl.Progress
   require Logger
 
-  def compile(%Project{} = project, force?) do
+  def compile(%Project{} = project, initial?) do
     RemoteControl.Mix.in_project(fn _ ->
       Mix.Task.clear()
 
-      prepare_for_project_build(force?)
+      prepare_for_project_build(initial?)
 
       compile_fun = fn ->
         Mix.Task.clear()
 
         with_progress building_label(project), fn ->
-          result = compile_in_isolation(force?)
+          result = compile_in_isolation()
           Mix.Task.run(:loadpaths)
           result
         end
@@ -46,8 +46,8 @@ defmodule Lexical.RemoteControl.Build.Project do
     end)
   end
 
-  defp compile_in_isolation(force?) do
-    compile_fun = fn -> Mix.Task.run(:compile, mix_compile_opts(force?)) end
+  defp compile_in_isolation do
+    compile_fun = fn -> Mix.Task.run(:compile, mix_compile_opts()) end
 
     case Isolation.invoke(compile_fun) do
       {:ok, result} ->
@@ -66,11 +66,11 @@ defmodule Lexical.RemoteControl.Build.Project do
     end
   end
 
-  defp prepare_for_project_build(false = _force?) do
+  defp prepare_for_project_build(false = _initial?) do
     :ok
   end
 
-  defp prepare_for_project_build(true = _force?) do
+  defp prepare_for_project_build(true = _initial?) do
     if connected_to_internet?() do
       with_progress "mix local.hex", fn ->
         Mix.Task.run("local.hex", ~w(--force --if-missing))
@@ -105,8 +105,6 @@ defmodule Lexical.RemoteControl.Build.Project do
     with_progress "loading plugins", fn ->
       Plugin.Discovery.run()
     end
-
-    Mix.Task.run("clean")
   end
 
   defp connected_to_internet? do
@@ -124,8 +122,8 @@ defmodule Lexical.RemoteControl.Build.Project do
     "Building #{Project.display_name(project)}"
   end
 
-  defp mix_compile_opts(force?) do
-    opts = ~w(
+  defp mix_compile_opts do
+    ~w(
         --return-errors
         --ignore-module-conflict
         --all-warnings
@@ -133,11 +131,5 @@ defmodule Lexical.RemoteControl.Build.Project do
         --debug-info
         --no-protocol-consolidation
     )
-
-    if force? do
-      ["--force " | opts]
-    else
-      opts
-    end
   end
 end

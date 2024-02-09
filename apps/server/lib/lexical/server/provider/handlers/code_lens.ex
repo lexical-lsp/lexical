@@ -2,7 +2,6 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Features
   alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
@@ -53,7 +52,7 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   defp show_reindex_lens?(%Project{} = project, %Document{} = document) do
     document_path = Path.expand(document.path)
 
-    Features.indexing_enabled?() and document_path == Project.mix_exs_path(project) and
+    document_path == Project.mix_exs_path(project) and
       not RemoteControl.Api.index_running?(project)
   end
 end

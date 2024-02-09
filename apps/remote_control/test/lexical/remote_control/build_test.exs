@@ -37,6 +37,10 @@ defmodule Lexical.BuildTest do
     fixture_dir = Path.join(fixtures_path(), project_name)
     project = Project.new("file://#{fixture_dir}")
 
+    project
+    |> Project.workspace_path()
+    |> File.rm_rf()
+
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project)
     RemoteControl.Api.register_listener(project, self(), [:all])

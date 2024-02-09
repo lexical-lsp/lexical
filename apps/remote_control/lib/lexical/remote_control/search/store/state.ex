@@ -1,8 +1,11 @@
 defmodule Lexical.RemoteControl.Search.Store.State do
   alias Lexical.Project
+  alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Fuzzy
 
   require Logger
+  import Messages
 
   defstruct [
     :project,
@@ -56,16 +59,20 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def async_load_complete(%__MODULE__{} = state, result) do
     new_state = %__MODULE__{state | loaded?: true, async_load_ref: nil}
 
-    case result do
-      {:create_index, result} ->
-        create_index_complete(new_state, result)
+    response =
+      case result do
+        {:create_index, result} ->
+          create_index_complete(new_state, result)
 
-      {:update_index, result} ->
-        update_index_complete(new_state, result)
+        {:update_index, result} ->
+          update_index_complete(new_state, result)
 
-      :initialize_fuzzy ->
-        initialize_fuzzy(new_state)
-    end
+        :initialize_fuzzy ->
+          initialize_fuzzy(new_state)
+      end
+
+    Dispatch.broadcast(project_index_ready(project: state.project))
+    response
   end
 
   def replace(%__MODULE__{} = state, entries) do

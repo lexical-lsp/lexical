@@ -39,6 +39,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :struct_discovered, module: nil, fields: []
 
+  defrecord :project_index_ready, project: nil
+
   defrecord :project_reindex_requested, project: nil
 
   defrecord :project_reindexed, project: nil, elapsed_ms: 0, status: :success
@@ -122,6 +124,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
           )
 
   @type struct_discovered :: record(:struct_discovered, module: module(), fields: field_list())
+
+  @type project_index_ready :: record(:project_index_ready, project: Lexical.Project.t())
 
   @type project_reindex_requested ::
           record(:project_reindex_requested, project: Lexical.Project.t())
