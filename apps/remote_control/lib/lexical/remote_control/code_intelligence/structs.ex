@@ -13,9 +13,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   end
 
   defp structs_from_index do
-    # This might be a performance / memory issue on larger projects. It
-    # iterates through all modules, loading each as necessary and then removing them
-    # if they're not already loaded to try and claw back some memory
     entries =
       case Store.exact(type: :struct, subtype: :definition) do
         {:ok, entries} -> entries
