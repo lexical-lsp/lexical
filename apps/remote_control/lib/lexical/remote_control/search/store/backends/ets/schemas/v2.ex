@@ -59,7 +59,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
   end
 
   def table_options do
-    [:named_table, :ordered_set]
+    [:named_table, :ordered_set, :compressed]
   end
 
   defp to_subject(binary) when is_binary(binary), do: binary
