@@ -230,10 +230,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp initialize_fuzzy(%__MODULE__{} = state) do
-    fuzzy =
-      state
-      |> all()
-      |> Fuzzy.from_entries()
+    fuzzy = Fuzzy.from_entries([])
 
     %__MODULE__{state | fuzzy: fuzzy}
   end
