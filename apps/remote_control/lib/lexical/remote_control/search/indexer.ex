@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Search.Indexer do
   alias Lexical.ProcessCache
   alias Lexical.Project
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer
 
   import Lexical.RemoteControl.Progress
@@ -13,7 +14,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
       entries =
         project
         |> indexable_files()
-        |> async_chunks(&index_path/1)
+        |> async_chunks(&index_path(&1, deps_dir()))
         |> List.flatten()
 
       {:ok, entries}
@@ -56,16 +57,22 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
     entries =
       paths_to_reindex
-      |> async_chunks(&index_path/1)
+      |> async_chunks(&index_path(&1, deps_dir()))
       |> List.flatten()
 
     {:ok, entries, paths_to_delete}
   end
 
-  defp index_path(path) do
+  defp index_path(path, deps_dir) do
     with {:ok, contents} <- File.read(path),
          {:ok, entries} <- Indexer.Source.index(path, contents) do
-      entries
+      Enum.filter(entries, fn entry ->
+        if contained_in?(path, deps_dir) do
+          entry.subtype == :definition
+        else
+          true
+        end
+      end)
     else
       _ ->
         []
@@ -163,5 +170,18 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   # stat(path) is here for testing so it can be mocked
   defp stat(path) do
     File.stat(path)
+  end
+
+  defp contained_in?(file_path, possible_parent) do
+    normalized_path = file_path
+
+    String.starts_with?(normalized_path, possible_parent)
+  end
+
+  defp deps_dir do
+    case RemoteControl.Mix.in_project(&Mix.Project.deps_path/0) do
+      {:ok, path} -> path
+      _ -> Mix.Project.deps_path()
+    end
   end
 end
