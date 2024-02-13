@@ -33,6 +33,10 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     {:ok, backend: backend, project: project}
   end
 
+  def all_entries(backend) do
+    backend.reduce([], fn entry, acc -> [entry | acc] end)
+  end
+
   def delete_indexes(project, Backends.Ets) do
     Backends.Ets.destroy_all(project)
   end
@@ -110,11 +114,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
     test "starts empty if there are no disk files", %{project: project, backend: backend} do
       start_supervised_store(project, &default_create/1, &default_update/2, backend)
 
-      assert [] = Store.all()
+      assert [] = all_entries(backend)
 
       entry = definition()
       Store.replace([entry])
-      assert Store.all() == [entry]
+      assert all_entries(backend) == [entry]
     end
 
     test "incorporates any indexed files in an empty index", %{project: project, backend: backend} do
@@ -131,7 +135,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       restart_store(project)
 
-      paths = Enum.map(Store.all(), & &1.path)
+      paths = Enum.map(all_entries(backend), & &1.path)
 
       assert "/foo/bar/baz.ex" in paths
       assert "/foo/bar/quux.ex" in paths
@@ -143,7 +147,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       assert_eventually ready?(project)
 
-      assert Store.all() == []
+      assert all_entries(backend) == []
     end
 
     test "incorporates any indexed files in a stale index", %{project: project, backend: backend} do
@@ -169,7 +173,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       restart_store(project)
 
-      entries = Enum.map(Store.all(), &{&1.id, &1.path})
+      entries = Enum.map(all_entries(backend), &{&1.id, &1.path})
       assert {2, "/foo/bar/quux.ex"} in entries
       assert {3, "/foo/bar/baz.ex"} in entries
       assert {4, "/foo/bar/other.ex"} in entries
@@ -182,7 +186,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
       start_supervised_store(project, create, update, backend)
       restart_store(project)
 
-      assert [] = Store.all()
+      assert [] = all_entries(backend)
     end
 
     test "the updater allows you to delete paths", %{project: project, backend: backend} do
@@ -210,7 +214,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       restart_store(project)
 
-      assert [entry] = Store.all()
+      assert [entry] = all_entries(backend)
       assert entry.path == "/path/to/keep.ex"
 
       assert :error = Backends.Ets.structure_for_path("/path/to/delete.ex")
@@ -222,21 +226,21 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
   describe "replace/1" do
     setup [:with_a_started_store]
 
-    test "replace survives a restart", %{project: project} do
+    test "replace survives a restart", %{project: project, backend: backend} do
       entries = [definition(subject: My.Module)]
 
       assert :ok = Store.replace(entries)
 
       restart_store(project)
 
-      assert_eventually entries == Store.all()
+      assert_eventually entries == all_entries(backend)
     end
   end
 
   describe "updating entries in a file" do
     setup [:with_a_started_store]
 
-    test "updates survive a restart", %{project: project} do
+    test "updates survive a restart", %{project: project, backend: backend} do
       path = "/path/to/something.ex"
       Store.replace([definition(id: 1, subject: My.Module, path: path)])
 
@@ -246,7 +250,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backend.EtsTest do
 
       restart_store(project)
 
-      assert_eventually [%{id: 2}] = Store.all()
+      assert_eventually [%{id: 2}] = all_entries(backend)
     end
   end
 

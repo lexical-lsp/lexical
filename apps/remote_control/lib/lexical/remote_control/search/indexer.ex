@@ -1,8 +1,10 @@
 defmodule Lexical.RemoteControl.Search.Indexer do
+  alias Lexical.Identifier
   alias Lexical.ProcessCache
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer
+  alias Lexical.RemoteControl.Search.Indexer.Entry
 
   import Lexical.RemoteControl.Progress
   require ProcessCache
@@ -21,17 +23,17 @@ defmodule Lexical.RemoteControl.Search.Indexer do
     end
   end
 
-  def update_index(%Project{} = project, existing_entries) do
+  def update_index(%Project{} = project, backend) do
     ProcessCache.with_cleanup do
-      do_update_index(project, existing_entries)
+      do_update_index(project, backend)
     end
   end
 
-  defp do_update_index(%Project{} = project, existing_entries) do
+  defp do_update_index(%Project{} = project, backend) do
     path_to_last_index_at =
-      existing_entries
-      |> Enum.group_by(& &1.path, & &1.updated_at)
-      |> Map.new(fn {k, v} -> {k, Enum.max(v)} end)
+      backend.reduce(%{}, fn %Entry{path: path} = entry, path_to_ids when is_integer(entry.id) ->
+        Map.update(path_to_ids, path, entry.id, &max(&1, entry.id))
+      end)
 
     project_files =
       project
@@ -149,10 +151,10 @@ defmodule Lexical.RemoteControl.Search.Indexer do
     end)
   end
 
-  defp newer_than?(path, timestamp) do
+  defp newer_than?(path, entry_id) do
     case stat(path) do
       {:ok, %File.Stat{} = stat} ->
-        stat.mtime > timestamp
+        stat.mtime > Identifier.to_erl(entry_id)
 
       _ ->
         false

@@ -45,6 +45,12 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     new(entries, mapper, &stringify/1)
   end
 
+  def from_backend(backend) do
+    mapper = default_mapper()
+    mapped_items = backend.reduce([], fn entry, acc -> [mapper.(entry) | acc] end)
+    new(mapped_items, mapper, &stringify/1, false)
+  end
+
   @doc """
   Creates a new fuzzy matcher.
 
@@ -53,8 +59,13 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   This will produce a subject, which is what the `match/2` function uses for fuzzy matching.
   """
   @spec new(Enumerable.t(), mapper(), subject_converter()) :: t
-  def new(items, mapper, subject_converter) do
-    subject_grouping_key_values = Enum.map(items, mapper)
+  def new(items, mapper, subject_converter, map_items? \\ true) do
+    subject_grouping_key_values =
+      if map_items? do
+        Enum.map(items, mapper)
+      else
+        items
+      end
 
     extract_and_fix_subject = fn {subject, _, _} -> subject_converter.(subject) end
 
@@ -247,5 +258,11 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
 
   defp stringify(thing) do
     inspect(thing)
+  end
+
+  defp default_mapper do
+    fn %Entry{} = entry ->
+      {entry.subject, entry.path, entry.id}
+    end
   end
 end

@@ -23,7 +23,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   import Schemas.V2,
     only: [
       by_block_id: 1,
-      query_by_id: 0,
       query_by_id: 1,
       query_by_path: 1,
       query_structure: 1,
@@ -66,10 +65,19 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     :ok
   end
 
-  def select_all(%__MODULE__{} = state) do
-    state.table_name
-    |> :ets.match({query_by_id(), :"$1"})
-    |> List.flatten()
+  def reduce(%__MODULE__{} = state, acc, reducer_fun) do
+    ets_reducer = fn
+      {{:by_id, _, _, _}, entries}, acc when is_list(entries) ->
+        Enum.reduce(entries, acc, reducer_fun)
+
+      {{:by_id, _, _, _}, %Entry{} = entry}, acc ->
+        reducer_fun.(entry, acc)
+
+      _, acc ->
+        acc
+    end
+
+    :ets.foldl(ets_reducer, acc, state.table_name)
   end
 
   def find_by_subject(%__MODULE__{} = state, subject, type, subtype) do

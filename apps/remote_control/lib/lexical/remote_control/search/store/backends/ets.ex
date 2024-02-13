@@ -45,8 +45,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
   end
 
   @impl Backend
-  def select_all do
-    GenServer.call(genserver_name(), {:select_all, []})
+  def reduce(acc, reducer_fun) do
+    GenServer.call(genserver_name(), {:reduce, [acc, reducer_fun]}, :infinity)
   end
 
   @impl Backend

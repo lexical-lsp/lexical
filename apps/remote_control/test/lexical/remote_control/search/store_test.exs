@@ -35,6 +35,12 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
     {:ok, project: project}
   end
 
+  def all_entries(backend) do
+    []
+    |> backend.reduce(fn entry, acc -> [entry | acc] end)
+    |> Enum.reverse()
+  end
+
   for backend <- @backends,
       backend_name = backend |> Module.split() |> List.last() do
     describe "#{backend_name} :: replace/1" do
@@ -46,7 +52,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         entries = [definition(subject: OtherModule)]
 
         Store.replace(entries)
-        assert entries == Store.all()
+        assert entries == all_entries(unquote(backend))
       end
     end
 
@@ -125,7 +131,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
         Store.update(path, updated)
 
-        assert_eventually [remaining] = Store.all()
+        assert_eventually [remaining] = all_entries(unquote(backend))
         refute remaining.id in [1, 2]
       end
 
@@ -144,7 +150,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
 
         Store.update(updated_path, updated)
 
-        assert_eventually [first, second] = Store.all()
+        assert_eventually [first, second] = all_entries(unquote(backend))
 
         assert first.id in [3, 4]
         assert second.id in [3, 4]
