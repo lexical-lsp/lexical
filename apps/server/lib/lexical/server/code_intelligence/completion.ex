@@ -221,7 +221,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp struct_reference_completion?(%Candidate.Module{} = module, %Env{} = env) do
-    Intelligence.defines_struct?(env.project, module.full_name, to: :child)
+    Intelligence.defines_struct?(env.project, module.full_name, to: :great_grandchild)
   end
 
   defp struct_reference_completion?(%Candidate.Macro{name: "__MODULE__"}, _) do
