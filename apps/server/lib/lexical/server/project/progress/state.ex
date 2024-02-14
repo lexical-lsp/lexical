@@ -63,7 +63,14 @@ defmodule Lexical.Server.Project.Progress.State do
     {progress, progress_by_label} =
       Map.get_and_update(state.progress_by_label, label, fn _ -> :pop end)
 
-    progress |> Value.complete(message) |> write()
+    case progress do
+      %Value{} = progress ->
+        progress |> Value.complete(message) |> write
+
+      _ ->
+        :ok
+    end
+
     %__MODULE__{state | progress_by_label: progress_by_label}
   end
 
@@ -71,7 +78,13 @@ defmodule Lexical.Server.Project.Progress.State do
     {progress, progress_by_label} =
       Map.get_and_update(state.progress_by_label, label, fn _ -> :pop end)
 
-    progress |> Percentage.complete(message) |> write()
+    case progress do
+      %Percentage{} = progress ->
+        progress |> Percentage.complete(message) |> write()
+
+      nil ->
+        :ok
+    end
 
     %__MODULE__{state | progress_by_label: progress_by_label}
   end

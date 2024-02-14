@@ -3,10 +3,10 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   alias Lexical.ProcessCache
   alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Progress
   alias Lexical.RemoteControl.Search.Indexer
   alias Lexical.RemoteControl.Search.Indexer.Entry
 
-  import Lexical.RemoteControl.Progress
   require ProcessCache
 
   @indexable_extensions "*.{ex,exs}"
@@ -17,7 +17,6 @@ defmodule Lexical.RemoteControl.Search.Indexer do
         project
         |> indexable_files()
         |> async_chunks(&index_path(&1, deps_dir()))
-        |> List.flatten()
 
       {:ok, entries}
     end
@@ -57,10 +56,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
     paths_to_reindex = changed_paths ++ Enum.to_list(new_paths)
 
-    entries =
-      paths_to_reindex
-      |> async_chunks(&index_path(&1, deps_dir()))
-      |> List.flatten()
+    entries = async_chunks(paths_to_reindex, &index_path(&1, deps_dir()))
 
     {:ok, entries, paths_to_delete}
   end
@@ -88,6 +84,19 @@ defmodule Lexical.RemoteControl.Search.Indexer do
     # async stream by making each chunk emitted by the initial stream to
     # be roughly equivalent
 
+    # Shuffling the results helps speed in some projects, as larger files tend to clump
+    # together, like when there are auto-generated elixir modules.
+    paths_to_sizes =
+      file_paths
+      |> path_to_sizes()
+      |> Enum.shuffle()
+
+    path_to_size_map = Map.new(paths_to_sizes)
+
+    total_bytes = paths_to_sizes |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+
+    {on_update_progess, on_complete} = Progress.begin_percent("Indexing source code", total_bytes)
+
     initial_state = {0, []}
 
     chunk_fn = fn {path, file_size}, {block_size, paths} ->
@@ -109,34 +118,34 @@ defmodule Lexical.RemoteControl.Search.Indexer do
         {:cont, paths, []}
     end
 
-    # Shuffling the results helps speed in some projects, as larger files tend to clump
-    # together, like when there are auto-generated elixir modules.
-    paths_to_sizes =
-      file_paths
-      |> path_to_sizes()
-      |> Enum.shuffle()
-
-    path_to_size_map = Map.new(paths_to_sizes)
-
-    total_bytes = paths_to_sizes |> Enum.map(&elem(&1, 1)) |> Enum.sum()
-
-    with_percent_progress("Indexing source code", total_bytes, fn update_progress ->
-      paths_to_sizes
-      |> Stream.chunk_while(initial_state, chunk_fn, after_fn)
-      |> Task.async_stream(
-        fn chunk ->
-          block_bytes = chunk |> Enum.map(&Map.get(path_to_size_map, &1)) |> Enum.sum()
-          result = Enum.map(chunk, processor)
-          update_progress.(block_bytes, "Indexing")
-          result
-        end,
-        timeout: timeout
-      )
-      |> Enum.flat_map(fn
-        {:ok, entry_chunks} -> entry_chunks
-        _ -> []
-      end)
+    paths_to_sizes
+    |> Stream.chunk_while(initial_state, chunk_fn, after_fn)
+    |> Task.async_stream(
+      fn chunk ->
+        block_bytes = chunk |> Enum.map(&Map.get(path_to_size_map, &1)) |> Enum.sum()
+        result = Enum.map(chunk, processor)
+        on_update_progess.(block_bytes, "Indexing")
+        result
+      end,
+      timeout: timeout
+    )
+    |> Stream.flat_map(fn
+      {:ok, entry_chunks} -> entry_chunks
+      _ -> []
     end)
+    # The next bit is the only way i could figure out how to
+    # call complete once the stream was realized
+    |> Stream.transform(
+      fn -> nil end,
+      fn chunk_items, acc ->
+        # By the chunk items list directly, each transformation
+        # will flatten the resulting steam
+        {chunk_items, acc}
+      end,
+      fn _acc ->
+        on_complete.()
+      end
+    )
   end
 
   defp path_to_sizes(paths) do
