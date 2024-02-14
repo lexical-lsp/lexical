@@ -73,7 +73,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
       {:ok, [{^maybe_fun, _, args} | _]} ->
         # imported functions
-        arity = length(args)
+        arity =
+          case args do
+            arg_list when is_list(arg_list) -> length(arg_list)
+            _ -> 0
+          end
 
         analysis
         |> RemoteControl.Analyzer.imports_at(position)
