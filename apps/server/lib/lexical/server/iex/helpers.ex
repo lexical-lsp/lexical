@@ -17,6 +17,7 @@ defmodule Lexical.Server.IEx.Helpers do
       import unquote(__MODULE__)
 
       RemoteControl.Module.Loader.start_link(nil)
+      RemoteControl.Dispatch.start_link([])
     end
   end
 
