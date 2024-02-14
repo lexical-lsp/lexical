@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.Search.IndexerTest do
   alias Lexical.Project
   alias Lexical.RemoteControl.Search.Indexer
+  alias Lexical.RemoteControl.Search.Indexer.Entry
 
   use ExUnit.Case
   use Patch
@@ -96,9 +97,11 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
       entries: entries,
       file_path: file_path
     } do
-      path_to_mtime = Map.new(entries, & &1.updated_at)
+      entries = Enum.reject(entries, &is_nil(&1.id))
+      path_to_mtime = Map.new(entries, fn entry -> {entry.path, Entry.updated_at(entry)} end)
+
       [entry | _] = entries
-      {{year, month, day}, hms} = entry.updated_at
+      {{year, month, day}, hms} = Entry.updated_at(entry)
       old_mtime = {{year - 1, month, day}, hms}
 
       patch(Indexer, :stat, fn path ->

@@ -14,8 +14,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :range,
     :subject,
     :subtype,
-    :type,
-    :updated_at
+    :type
   ]
 
   @type t :: %__MODULE__{
@@ -25,9 +24,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           path: Path.t(),
           range: Lexical.Document.Range.t(),
           subtype: entry_subtype(),
-          type: entry_type(),
-          updated_at: :calendar.datetime()
+          type: entry_type()
         }
+  @type datetime_format :: :erl | :unix | :datetime
+  @type date_type :: :calendar.datetime() | integer() | DateTime.t()
 
   alias Lexical.Identifier
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
@@ -43,8 +43,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
       path: path,
       subject: structure,
       type: :metadata,
-      subtype: :block_structure,
-      updated_at: timestamp()
+      subtype: :block_structure
     }
   end
 
@@ -81,8 +80,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
       range: range,
       subject: subject,
       subtype: subtype,
-      type: type,
-      updated_at: timestamp()
+      type: type
     }
   end
 
@@ -90,7 +88,19 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     is_block(entry)
   end
 
-  defp timestamp do
-    :calendar.universal_time()
+  @spec updated_at(t()) :: date_type()
+  @spec updated_at(t(), datetime_format) :: date_type()
+  def updated_at(entry, format \\ :erl)
+
+  def updated_at(%__MODULE__{id: id} = entry, format) when is_integer(id) do
+    case format do
+      :erl -> Identifier.to_erl(entry.id)
+      :unix -> Identifier.to_unix(id)
+      :datetime -> Identifier.to_datetime(id)
+    end
+  end
+
+  def updated_at(%__MODULE__{}, _format) do
+    nil
   end
 end
