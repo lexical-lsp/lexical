@@ -44,10 +44,6 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.stop(__MODULE__)
   end
 
-  def all do
-    GenServer.call(__MODULE__, :all)
-  end
-
   def loaded? do
     GenServer.call(__MODULE__, :loaded?)
   end
@@ -182,10 +178,6 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   def handle_call({:fuzzy, subject, constraints}, _from, {ref, %State{} = state}) do
     {:reply, State.fuzzy(state, subject, constraints), {ref, state}}
-  end
-
-  def handle_call(:all, _from, {ref, %State{} = state}) do
-    {:reply, State.all(state), {ref, state}}
   end
 
   def handle_call({:update, path, entries}, _from, {ref, %State{} = state}) do

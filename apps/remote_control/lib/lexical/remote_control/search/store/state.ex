@@ -101,10 +101,6 @@ defmodule Lexical.RemoteControl.Search.Store.State do
     end
   end
 
-  def all(%__MODULE__{} = state) do
-    state.backend.select_all()
-  end
-
   def siblings(%__MODULE__{} = state, entry) do
     state.backend.siblings(entry)
   end
@@ -169,7 +165,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
 
           {:ok, :stale} ->
             Logger.info("backend reports stale")
-            {:update_index, state.update_index.(state.project, all(state))}
+            {:update_index, state.update_index.(state.project, state.backend)}
 
           {:error, :not_leader} ->
             :initialize_fuzzy

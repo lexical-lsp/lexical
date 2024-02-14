@@ -22,6 +22,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @type subtype_query :: Entry.entry_subtype() | wildcard()
   @type block_structure :: %{Entry.block_id() => block_structure()} | %{}
   @type path_structures :: %{Path.t() => block_structure()}
+  @type accumulator :: any()
+  @type reducer_fun :: (Entry.t(), accumulator() -> accumulator())
 
   @doc """
   Create a new backend.
@@ -57,9 +59,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @callback destroy(Project.t()) :: :ok
 
   @doc """
-  Returns all entries currently residing in the backend
+  Applies a reducer function to the backend's entries
   """
-  @callback select_all() :: [Entry.t()]
+  @callback reduce(accumulator(), reducer_fun()) :: accumulator()
 
   @doc """
   Replaces all the entries in the store with those passed in
