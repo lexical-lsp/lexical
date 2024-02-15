@@ -113,6 +113,7 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   @impl GenServer
   def init([%Project{} = project, create_index, update_index, backend]) do
+    Process.flag(:fullsweep_after, 5)
     # I've found that if indexing happens before the first compile, for some reason
     # the compilation is 4x slower than if indexing happens after it. I was
     # unable to figure out why this is the case, and I looked extensively, so instead
