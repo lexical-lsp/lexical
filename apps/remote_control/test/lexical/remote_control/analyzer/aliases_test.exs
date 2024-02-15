@@ -232,6 +232,19 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
 
       assert aliases[:Else] == Something.Else
     end
+
+    test "in a protocol implementation" do
+      aliases =
+        ~q[
+      defimpl MyProtocol, for: Atom do
+        |
+      end
+      ]
+        |> aliases_at_cursor()
+
+      assert aliases[:"@protocol"] == MyProtocol
+      assert aliases[:"@for"] == Atom
+    end
   end
 
   describe "nested modules" do

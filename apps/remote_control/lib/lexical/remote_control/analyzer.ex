@@ -128,6 +128,32 @@ defmodule Lexical.RemoteControl.Analyzer do
     expand_alias([:__MODULE__], analysis, position)
   end
 
+  defp resolve_alias([{:@, _, [{:protocol, _, _}]} | rest], alias_mapping) do
+    with {:ok, protocol} <- Map.fetch(alias_mapping, :"@protocol") do
+      Ast.reify_alias(protocol, rest)
+    end
+  end
+
+  defp resolve_alias(
+         [{:__aliases__, _, [{:@, _, [{:protocol, _, _}]} | _] = protocol}],
+         alias_mapping
+       ) do
+    resolve_alias(protocol, alias_mapping)
+  end
+
+  defp resolve_alias([{:@, _, [{:for, _, _} | _]} | rest], alias_mapping) do
+    with {:ok, protocol_for} <- Map.fetch(alias_mapping, :"@for") do
+      Ast.reify_alias(protocol_for, rest)
+    end
+  end
+
+  defp resolve_alias(
+         [{:__aliases__, _, [{:@, _, [{:for, _, _}]} | _] = protocol_for}],
+         alias_mapping
+       ) do
+    resolve_alias(protocol_for, alias_mapping)
+  end
+
   defp resolve_alias([first | _] = segments, aliases_mapping) when is_tuple(first) do
     with {:ok, current_module} <- Map.fetch(aliases_mapping, :__MODULE__) do
       Ast.reify_alias(current_module, segments)
