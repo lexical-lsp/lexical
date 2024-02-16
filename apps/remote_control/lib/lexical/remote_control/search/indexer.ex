@@ -31,8 +31,12 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
   defp do_update_index(%Project{} = project, backend) do
     path_to_ids =
-      backend.reduce(%{}, fn %Entry{path: path} = entry, path_to_ids when is_integer(entry.id) ->
-        Map.update(path_to_ids, path, entry.id, &max(&1, entry.id))
+      backend.reduce(%{}, fn
+        %Entry{path: path} = entry, path_to_ids when is_integer(entry.id) ->
+          Map.update(path_to_ids, path, entry.id, &max(&1, entry.id))
+
+        _entry, path_to_ids ->
+          path_to_ids
       end)
 
     project_files =
