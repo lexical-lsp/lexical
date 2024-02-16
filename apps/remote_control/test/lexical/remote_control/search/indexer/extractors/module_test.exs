@@ -437,5 +437,19 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert child.type == :module
       assert child.subtype == :definition
     end
+
+    test "works with __MODULE__ alias concatenations" do
+      {:ok, [_, child], _} =
+        ~q[
+        defmodule Parent do
+          @child_module __MODULE__.Child
+        end
+        ]
+        |> index()
+
+      assert child.type == :module
+      assert child.subtype == :reference
+      assert child.subject == Parent.Child
+    end
   end
 end

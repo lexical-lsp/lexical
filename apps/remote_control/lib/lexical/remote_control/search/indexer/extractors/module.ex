@@ -151,7 +151,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   defp module_part?({:@, _, [{type, _, _} | _]}) when type in @protocol_module_attribue_names,
     do: true
 
-  defp module_part?({:__MODULE__, _, _}), do: true
+  defp module_part?({:__MODULE__, _, context}) when is_atom(context), do: true
 
   defp module_part?(_), do: false
 
