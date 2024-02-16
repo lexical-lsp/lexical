@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
   import Lexical.Test.Fixtures
 
   defmodule FakeBackend do
-    def set_entries(entries) do
+    def set_entries(entries) when is_list(entries) do
       :persistent_term.put({__MODULE__, :entries}, entries)
     end
 
@@ -30,7 +30,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
   describe "create_index/1" do
     test "returns a list of entries", %{project: project} do
-      assert {:ok, entries} = Indexer.create_index(project)
+      assert {:ok, entry_stream} = Indexer.create_index(project)
+      entries = Enum.to_list(entry_stream)
       project_root = Project.root_path(project)
 
       assert length(entries) > 0
@@ -61,7 +62,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
   end
 
   def with_an_existing_index(%{project: project}) do
-    {:ok, entries} = Indexer.create_index(project)
+    {:ok, entry_stream} = Indexer.create_index(project)
+    entries = Enum.to_list(entry_stream)
     FakeBackend.set_entries(entries)
     {:ok, entries: entries}
   end
@@ -74,7 +76,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
     end
 
     test "the ephemeral file is listed in the updated index", %{project: project} do
-      {:ok, [_structure, updated_entry], []} = Indexer.update_index(project, FakeBackend)
+      {:ok, entry_stream, []} = Indexer.update_index(project, FakeBackend)
+      assert [_structure, updated_entry] = Enum.to_list(entry_stream)
       assert Path.basename(updated_entry.path) == @ephemeral_file_name
       assert updated_entry.subject == Ephemeral
     end
@@ -89,7 +92,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
     test "returns the file paths of deleted files", %{project: project, file_path: file_path} do
       File.rm(file_path)
-      assert {:ok, [], [^file_path]} = Indexer.update_index(project, FakeBackend)
+      assert {:ok, entry_stream, [^file_path]} = Indexer.update_index(project, FakeBackend)
+      assert [] = Enum.to_list(entry_stream)
     end
 
     test "updates files that have changed since the last index", %{
@@ -125,7 +129,8 @@ defmodule Lexical.RemoteControl.Search.IndexerTest do
 
       File.write!(file_path, new_contents)
 
-      assert {:ok, [_structure, entry], []} = Indexer.update_index(project, FakeBackend)
+      assert {:ok, entry_stream, []} = Indexer.update_index(project, FakeBackend)
+      assert [_structure, entry] = Enum.to_list(entry_stream)
       assert entry.path == file_path
       assert entry.subject == Brand.Spanking.New
     end
