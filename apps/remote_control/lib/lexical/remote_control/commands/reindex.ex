@@ -101,6 +101,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
 
   @impl GenServer
   def init(reindex_fun) do
+    Process.flag(:fullsweep_after, 5)
     {:ok, State.new(reindex_fun)}
   end
 

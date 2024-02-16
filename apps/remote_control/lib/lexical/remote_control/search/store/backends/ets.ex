@@ -102,6 +102,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
 
   @impl GenServer
   def init([%Project{} = project]) do
+    Process.flag(:fullsweep_after, 5)
     :ok = connect_to_project_nodes(project)
     {:ok, project, {:continue, :try_for_leader}}
   end
