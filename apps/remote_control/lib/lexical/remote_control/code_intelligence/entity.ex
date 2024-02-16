@@ -67,8 +67,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     maybe_fun = List.to_atom(chars)
 
     case Ast.path_at(analysis, position) do
-      {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local]} | _]} when def in [:def, :defp] ->
-        {:ok, module} = RemoteControl.Analyzer.expand_alias([:__MODULE__], analysis, position)
+      {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local | _]} | _]}
+      when def in [:def, :defp] ->
+        # This case handles resolving calls that come from zero-arg definitions in
+        # a module, like hovering in `def my_fun| do`
+        {:ok, module} = RemoteControl.Analyzer.current_module(analysis, position)
         {:ok, {:call, module, maybe_fun, 0}, node_range}
 
       {:ok, [{^maybe_fun, _, args} | _]} ->
@@ -79,15 +82,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
             _ -> 0
           end
 
-        analysis
-        |> RemoteControl.Analyzer.imports_at(position)
-        |> Enum.find_value({:error, :not_found}, fn
-          {module, ^maybe_fun, ^arity} ->
-            {:ok, {:call, module, maybe_fun, arity}, node_range}
-
-          _ ->
-            false
-        end)
+        case fetch_module_for_function(analysis, position, maybe_fun, arity) do
+          {:ok, module} -> {:ok, {:call, module, maybe_fun, arity}, node_range}
+          _ -> {:error, :not_found}
+        end
 
       _ ->
         {:error, :not_found}
@@ -362,4 +360,31 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   # Catch-all:
   defp kind_of_alias(_), do: :module
+
+  defp fetch_module_for_function(analysis, position, function_name, arity) do
+    with :error <- fetch_module_for_local_function(analysis, position, function_name, arity) do
+      fetch_module_for_imported_function(analysis, position, function_name, arity)
+    end
+  end
+
+  defp fetch_module_for_imported_function(analysis, position, function_name, arity) do
+    analysis
+    |> RemoteControl.Analyzer.imports_at(position)
+    |> Enum.find_value({:error, :not_found}, fn
+      {imported_module, ^function_name, ^arity} ->
+        {:ok, imported_module}
+
+      _ ->
+        false
+    end)
+  end
+
+  defp fetch_module_for_local_function(analysis, position, function_name, arity) do
+    with {:ok, current_module} <- RemoteControl.Analyzer.current_module(analysis, position),
+         true <- function_exported?(current_module, function_name, arity) do
+      {:ok, current_module}
+    else
+      _ -> :error
+    end
+  end
 end

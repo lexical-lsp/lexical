@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
   alias Lexical.Document
   alias Lexical.RemoteControl.CodeIntelligence.Entity
 
+  import ExUnit.CaptureIO
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
   import Lexical.Test.Fixtures
@@ -471,6 +472,32 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[def «my_call»(a, b)]
     end
 
+    test "in zero arg function definition" do
+      code = ~q[
+      defmodule Parent do
+        def zero_ar|g do
+        end
+      end
+      ]
+
+      assert {:ok, {:call, Parent, :zero_arg, 0}, resolved_range} = resolve(code, evaluate: true)
+      assert resolved_range =~ "  def «zero_arg» do"
+    end
+
+    @tag skip: Version.match?(System.version(), "< 1.15.0")
+    test "in zero arg function call" do
+      code = ~q[
+      defmodule Parent do
+        def zero_arg do
+          zero_ar|g
+        end
+      end
+      ]
+
+      assert {:ok, {:call, Parent, :zero_arg, 0}, resolved_range} = resolve(code, evaluate: true)
+      assert resolved_range =~ "  «zero_arg»"
+    end
+
     test "in private function definition" do
       code = ~q[
         defmodule Parent do
@@ -726,12 +753,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     Document.new(uri, content, 1)
   end
 
-  defp resolve(code) do
+  defp resolve(code, opts \\ []) do
+    evaluate? = Keyword.get(opts, :evaluate, false)
+
     with {position, code} <- pop_cursor(code),
+         :ok <- maybe_evaluate(code, evaluate?),
          document = subject_module(code),
          analysis = Lexical.Ast.analyze(document),
          {:ok, resolved, range} <- Entity.resolve(analysis, position) do
       {:ok, resolved, decorate(document, range)}
     end
+  end
+
+  defp maybe_evaluate(_code, false), do: :ok
+
+  defp maybe_evaluate(code, true) do
+    capture_io(:stderr, fn ->
+      Code.compile_string(code)
+    end)
+
+    :ok
   end
 end
