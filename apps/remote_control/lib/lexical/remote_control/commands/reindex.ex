@@ -102,6 +102,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   @impl GenServer
   def init(reindex_fun) do
     Process.flag(:fullsweep_after, 5)
+    schedule_gc()
     {:ok, State.new(reindex_fun)}
   end
 
@@ -134,6 +135,13 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
     {:noreply, new_state}
   end
 
+  @impl GenServer
+  def handle_info(:gc, %State{} = state) do
+    :erlang.garbage_collect()
+    schedule_gc()
+    {:noreply, state}
+  end
+
   defp do_reindex(%Project{} = project) do
     Dispatch.broadcast(project_reindex_requested(project: project))
 
@@ -149,5 +157,9 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
     )
 
     result
+  end
+
+  defp schedule_gc do
+    Process.send_after(self(), :gc, :timer.seconds(5))
   end
 end

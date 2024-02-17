@@ -155,6 +155,12 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
     {:noreply, new_state}
   end
 
+  def handle_info(:gc, %State{} = state) do
+    :erlang.garbage_collect()
+    schedule_gc()
+    {:noreply, state}
+  end
+
   @impl GenServer
   def terminate(_reason, %State{} = state) do
     State.terminate(state)
@@ -227,5 +233,9 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets do
         String.contains?(node_name_string, project_substring) do
       :"#{node_name_string}@127.0.0.1"
     end
+  end
+
+  defp schedule_gc do
+    Process.send_after(self(), :gc, :timer.seconds(5))
   end
 end
