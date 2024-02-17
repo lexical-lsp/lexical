@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
+  alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
@@ -12,7 +13,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
 
   def references(%Analysis{} = analysis, %Position{} = position, include_definitions?) do
     with {:ok, resolved, _range} <- Entity.resolve(analysis, position) do
-      find_references(resolved, include_definitions?)
+      resolved = maybe_rewrite_resolution(resolved, analysis, position)
+
+      resolved
+      |> maybe_rewrite_resolution(analysis, position)
+      |> find_references(include_definitions?)
     end
   end
 
@@ -47,6 +52,17 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   defp find_references(resolved, _include_definitions?) do
     Logger.info("Not attempting to find references for unhandled type: #{inspect(resolved)}")
     []
+  end
+
+  def maybe_rewrite_resolution({:call, Kernel, :defstruct, 1}, analysis, position) do
+    case Analyzer.current_module(analysis, position) do
+      {:ok, struct_module} -> {:struct, struct_module}
+      orig -> orig
+    end
+  end
+
+  def maybe_rewrite_resolution(resolution, _analysis, _position) do
+    resolution
   end
 
   defp to_location(%Entry{} = entry) do

@@ -132,6 +132,23 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       assert decorate(code, location.range) =~ "«defstruct [:field]»"
     end
 
+    test "includes references if defstruct is selected", %{project: project} do
+      code = ~q[
+        defmodule UsesStruct do
+          def something(%Struct{}) do
+          end
+        end
+      ]
+
+      selector = ~q(
+      defmodule Struct do
+        defstruc|t [:name, :value]
+      end
+      )
+      assert {:ok, [location]} = references(project, selector, code)
+      assert decorate(code, location.range) =~ "def something(«%Struct{}») do"
+    end
+
     test "excludes their definition", %{project: project} do
       code = ~q(
       defmodule Struct do
