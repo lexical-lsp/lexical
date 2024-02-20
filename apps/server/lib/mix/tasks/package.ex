@@ -287,23 +287,12 @@ defmodule Mix.Tasks.Package do
   defp zip(package_root) do
     package_name = Path.basename(package_root)
 
-    zip_output =
-      File.cwd!()
-      |> Path.join("#{package_name}.zip")
-      |> String.to_charlist()
+    zip_output = Path.join(File.cwd!(), "#{package_name}.zip")
 
     package_root
     |> Path.dirname()
     |> File.cd!(fn ->
-      glob = Path.join(package_name, "**")
-
-      files =
-        for path <- Path.wildcard(glob, match_dot: true),
-            File.regular?(path) do
-          String.to_charlist(path)
-        end
-
-      :zip.create(zip_output, files, uncompress: ['ez', 'beam'])
+      System.cmd("zip", ["-r", zip_output, package_name])
     end)
   end
 
