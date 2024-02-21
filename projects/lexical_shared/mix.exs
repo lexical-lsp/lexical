@@ -1,7 +1,7 @@
 defmodule Lexical.Shared.MixProject do
   use Mix.Project
   @repo_url "https://github.com/lexical-lsp/lexical"
-  @version "0.0.1"
+  @version "0.5.0"
 
   def project do
     [

@@ -2,7 +2,7 @@ defmodule LexicalCredo.MixProject do
   use Mix.Project
 
   @repo_url "https://github.com/lexical-lsp/lexical/"
-  @version "0.1.1"
+  @version "0.5.0"
 
   def project do
     [
@@ -28,7 +28,7 @@ defmodule LexicalCredo.MixProject do
   defp deps do
     [
       env_dep(
-        hex: {:lexical_plugin, "> 0.0.0"},
+        hex: {:lexical_plugin, "~> 0.5"},
         else: {:lexical_plugin, path: "../lexical_plugin"}
       ),
       {:credo, "> 0.0.0", optional: true},
