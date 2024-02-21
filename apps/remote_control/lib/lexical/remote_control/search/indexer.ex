@@ -40,7 +40,7 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
     project_files =
       project
-      |> indexable_files
+      |> indexable_files()
       |> MapSet.new()
 
     previously_indexed_paths = MapSet.new(path_to_ids, fn {path, _} -> path end)
@@ -176,10 +176,12 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
   def indexable_files(%Project{} = project) do
     root_dir = Project.root_path(project)
+    build_dir = build_dir()
 
     [root_dir, "**", @indexable_extensions]
     |> Path.join()
     |> Path.wildcard()
+    |> Enum.reject(&contained_in?(&1, build_dir))
   end
 
   # stat(path) is here for testing so it can be mocked
@@ -188,15 +190,20 @@ defmodule Lexical.RemoteControl.Search.Indexer do
   end
 
   defp contained_in?(file_path, possible_parent) do
-    normalized_path = file_path
-
-    String.starts_with?(normalized_path, possible_parent)
+    String.starts_with?(file_path, possible_parent)
   end
 
   defp deps_dir do
     case RemoteControl.Mix.in_project(&Mix.Project.deps_path/0) do
       {:ok, path} -> path
       _ -> Mix.Project.deps_path()
+    end
+  end
+
+  defp build_dir do
+    case RemoteControl.Mix.in_project(&Mix.Project.build_path/0) do
+      {:ok, path} -> path
+      _ -> Mix.Project.build_path()
     end
   end
 end
