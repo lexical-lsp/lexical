@@ -20,7 +20,7 @@ defmodule Lexical.Plugin.MixProject do
   defp deps do
     [
       env_dep(
-        hex: {:lexical_shared, "> 0.5.0"},
+        hex: {:lexical_shared, "~> 0.5"},
         else: {:lexical_shared, path: "../lexical_shared"}
       ),
       env_dep(
