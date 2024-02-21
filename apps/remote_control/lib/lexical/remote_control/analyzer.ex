@@ -95,14 +95,6 @@ defmodule Lexical.RemoteControl.Analyzer do
         if Enum.all?(segments, &is_atom/1) do
           {:ok, Module.concat(segments)}
         else
-          path = analysis.document.path
-          line = position.line
-          character = position.character
-
-          Logger.warning(
-            "Could not expand alias #{inspect(segments)}. Please report this! (at #{path} #{line}:#{character})"
-          )
-
           :error
         end
     end

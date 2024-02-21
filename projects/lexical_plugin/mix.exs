@@ -1,7 +1,7 @@
 defmodule Lexical.Plugin.MixProject do
   use Mix.Project
 
-  @version "0.0.2"
+  @version "0.5.0"
   def project do
     [
       app: :lexical_plugin,
@@ -20,7 +20,7 @@ defmodule Lexical.Plugin.MixProject do
   defp deps do
     [
       env_dep(
-        hex: {:lexical_shared, "> 0.0.0"},
+        hex: {:lexical_shared, "> 0.5.0"},
         else: {:lexical_shared, path: "../lexical_shared"}
       ),
       env_dep(
