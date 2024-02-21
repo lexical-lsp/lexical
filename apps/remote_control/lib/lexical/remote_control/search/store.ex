@@ -114,6 +114,7 @@ defmodule Lexical.RemoteControl.Search.Store do
   @impl GenServer
   def init([%Project{} = project, create_index, update_index, backend]) do
     Process.flag(:fullsweep_after, 5)
+    schedule_gc()
     # I've found that if indexing happens before the first compile, for some reason
     # the compilation is 4x slower than if indexing happens after it. I was
     # unable to figure out why this is the case, and I looked extensively, so instead
@@ -145,6 +146,12 @@ defmodule Lexical.RemoteControl.Search.Store do
     {:ok, state} = State.flush_buffered_updates(state)
     ref = schedule_flush()
     {:noreply, {ref, state}}
+  end
+
+  def handle_info(:gc, state) do
+    :erlang.garbage_collect()
+    schedule_gc()
+    {:noreply, state}
   end
 
   def handle_info(_, state) do
@@ -253,5 +260,9 @@ defmodule Lexical.RemoteControl.Search.Store do
   defp enable(%State{} = state) do
     state = State.async_load(state)
     {nil, state}
+  end
+
+  defp schedule_gc do
+    Process.send_after(self(), :gc, :timer.seconds(5))
   end
 end
