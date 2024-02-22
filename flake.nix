@@ -30,6 +30,22 @@
       in {
         formatter = pkgs.alejandra;
 
+        apps.update-hash = let
+          script = pkgs.writeShellApplication {
+            name = "update-hash";
+
+            runtimeInputs = [ pkgs.nixFlakes pkgs.gawk ];
+
+            text = ''
+              nix --extra-experimental-features 'nix-command flakes' \
+                build --no-link "${self}#__fodHashGen" 2>&1 | gawk '/got:/ { print $2 }'
+            '';
+          };
+        in {
+          type = "app";
+          program = "${script}/bin/update-hash";
+        };
+
         packages = {
           inherit lexical;
           default = lexical;

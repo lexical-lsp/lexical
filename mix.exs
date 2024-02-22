@@ -58,7 +58,17 @@ defmodule Lexical.LanguageServer.MixProject do
     [
       compile: "compile --docs --debug-info",
       docs: "docs --html",
-      test: "test --no-start"
+      test: "test --no-start",
+      "nix.hash": &nix_hash/1
     ]
+  end
+
+  defp nix_hash(_args) do
+    docker = System.get_env("DOCKER_CMD", "docker")
+
+    Mix.shell().cmd(
+      "#{docker} run --rm -v '#{File.cwd!()}:/data' nixos/nix nix --extra-experimental-features 'nix-command flakes' run ./data#update-hash",
+      stderr_to_stdout: false
+    )
   end
 end

@@ -14,7 +14,7 @@ jobs:
     - uses: DeterminateSystems/nix-installer-action@main
     - uses: DeterminateSystems/magic-nix-cache-action@main
     - run: |
-        nix build --no-link .#__fodHashGen 2>&1 | awk '/gen:/ { print $2 }' > nix/hash
+        nix run .#update-hash
         git config user.email ""
         git config user.name "GitHub Action Bot"
         git commit -m 'Update Nix hash of Mix deps' nix/hash && git push || true
