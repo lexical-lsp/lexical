@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Block
 
-  defstruct [:analysis, :entries, :position, :ends_at, :blocks, :block_hierarchy]
+  defstruct [:analysis, :entries, :position, :blocks, :block_hierarchy, extractors: []]
 
   @extractors [
     Extractors.Module,
@@ -24,13 +24,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
     Extractors.StructReference
   ]
 
-  def new(%Analysis{} = analysis) do
+  def new(%Analysis{} = analysis, extractors \\ nil) do
+
     %__MODULE__{
       analysis: analysis,
-      entries: [],
-      position: {0, 0},
+      block_hierarchy: %{root: %{}},
       blocks: [Block.root()],
-      block_hierarchy: %{root: %{}}
+      entries: [],
+      extractors: extractors || @extractors,
+      position: {0, 0}
     }
   end
 
@@ -90,7 +92,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   end
 
   defp apply_extractors(%__MODULE__{} = reducer, element) do
-    Enum.reduce(@extractors, {reducer, element}, fn detector_module, {reducer, element} ->
+    Enum.reduce(reducer.extractors, {reducer, element}, fn detector_module, {reducer, element} ->
       case detector_module.extract(element, reducer) do
         {:ok, entry} ->
           reducer = push_entry(reducer, entry)
@@ -160,6 +162,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
       true ->
         false
     end
+  end
+
+  defp push_entry(%__MODULE__{} = reducer, entries) when is_list(entries) do
+    Enum.reduce(entries, reducer, &push_entry(&2, &1))
   end
 
   defp push_entry(%__MODULE__{} = reducer, %Entry{} = entry) do

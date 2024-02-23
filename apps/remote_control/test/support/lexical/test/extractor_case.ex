@@ -12,11 +12,11 @@ defmodule Lexical.Test.ExtractorCase do
     end
   end
 
-  def do_index(source, filter \\ &Function.identity/1) do
+  def do_index(source, filter, extractors \\ nil) do
     path = "/foo/bar/baz.ex"
     doc = Document.new("file:///#{path}", source, 1)
 
-    case Indexer.Source.index("/foo/bar/baz.ex", source) do
+    case Indexer.Source.index("/foo/bar/baz.ex", source, extractors) do
       {:ok, indexed_items} ->
         indexed_items = Enum.filter(indexed_items, filter)
         {:ok, indexed_items, doc}

@@ -11,9 +11,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Quoted do
     end
   end
 
-  def index(%Analysis{valid?: true} = analysis) do
+  def index(analysis, extractors \\ nil)
+
+  def index(%Analysis{valid?: true} = analysis, extractors) do
     {_, reducer} =
-      Macro.prewalk(analysis.ast, Reducer.new(analysis), fn elem, reducer ->
+      Macro.prewalk(analysis.ast, Reducer.new(analysis, extractors), fn elem, reducer ->
         {reducer, elem} = Reducer.reduce(reducer, elem)
         {elem, reducer}
       end)
@@ -21,7 +23,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Quoted do
     {:ok, Reducer.entries(reducer)}
   end
 
-  def index(%Analysis{valid?: false}) do
+  def index(%Analysis{valid?: false}, _extractors) do
     {:ok, []}
   end
 end
