@@ -15,6 +15,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
     ])
   end
 
+  def index(source) do
+    do_index(source, &(&1.type == :variable), [Extractors.Variable])
+  end
+
   def assert_definition(entry, variable_name) do
     assert entry.type == :variable
     assert entry.subtype == :definition
@@ -136,6 +140,121 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
           |> index_definitions()
       end
     end
+
+    describe "variable definitions in #{def_type} that contain references are extracted" do
+      test "when passed through" do
+        {:ok, [def, ref], doc} =
+          ~q[
+            #{unquote(def_type)} my_fun(var) do
+              var
+            end
+          ]
+          |> index()
+
+        assert_definition(def, :var)
+        assert_reference(ref, :var)
+
+        assert decorate(doc, def.range) =~ "#{unquote(def_type)} my_fun(«var») do"
+        assert decorate(doc, ref.range) =~ "  «var»"
+      end
+
+      test "when wrapped in a list" do
+        {:ok, [def, ref], doc} =
+          ~q{
+            #{unquote(def_type)} my_fun([var]) do
+              [var]
+            end
+          }
+          |> index()
+
+        assert_definition(def, :var)
+        assert_reference(ref, :var)
+
+        assert decorate(doc, def.range) =~ "#{unquote(def_type)} my_fun([«var»]) do"
+        assert decorate(doc, ref.range) =~ "  [«var»]"
+      end
+
+      test "when it's a map value" do
+        {:ok, [def, ref], doc} =
+          ~q[
+            #{unquote(def_type)} my_fun(%{key: var}) do
+              %{key: var}
+            end
+          ]
+          |> index()
+
+        assert_definition(def, :var)
+        assert_reference(ref, :var)
+
+        assert decorate(doc, def.range) =~ "#{unquote(def_type)} my_fun(%{key: «var»}) do"
+        assert decorate(doc, ref.range) =~ "  %{key: «var»}"
+      end
+
+      test "when it's a struct module" do
+        {:ok, [def, ref], doc} =
+          ~q[
+            #{unquote(def_type)} my_fun(%{key: var}) do
+              %{key: var}
+            end
+          ]
+          |> index()
+
+        assert_definition(def, :var)
+        assert_reference(ref, :var)
+
+        assert decorate(doc, def.range) =~ "#{unquote(def_type)} my_fun(%{key: «var»}) do"
+        assert decorate(doc, ref.range) =~ "  %{key: «var»}"
+      end
+
+      test "when it's a tuple entry " do
+        {:ok, [def, ref], doc} =
+          ~q[
+            #{unquote(def_type)} my_fun({var}) do
+              {var}
+            end
+          ]
+          |> index()
+
+        assert_definition(def, :var)
+        assert_reference(ref, :var)
+
+        assert decorate(doc, def.range) =~ "#{unquote(def_type)} my_fun({«var»}) do"
+        assert decorate(doc, ref.range) =~ "  {«var»}"
+      end
+
+      test "when it utilizes a pin " do
+        {:ok, [first_def, second_def, first_pin, other_def, second_ref, other_ref], doc} =
+          ~q"
+            #{unquote(def_type)} my_fun({first, second}) do
+              [^first, other] = second
+              other
+            end
+          "
+          |> index()
+
+        assert_definition(first_def, :first)
+
+        assert decorate(doc, first_def.range) =~
+                 "#{unquote(def_type)} my_fun({«first», second}) do"
+
+        assert_definition(second_def, :second)
+
+        assert decorate(doc, second_def.range) =~
+                 "#{unquote(def_type)} my_fun({first, «second»}) do"
+
+        assert_reference(first_pin, :first)
+        assert decorate(doc, first_pin.range) =~ "  [^«first», other]"
+
+        assert_definition(other_def, :other)
+        assert decorate(doc, other_def.range) =~ "  [^first, «other»]"
+
+        assert_reference(second_ref, :second)
+        assert decorate(doc, second_ref.range) =~ "  [^first, other] = «second»"
+
+        assert_reference(other_ref, :other)
+        assert decorate(doc, other_ref.range) =~ " «other»"
+      end
+    end
   end
 
   describe "variable definitions in anonymous function parameters are extracted" do
@@ -172,9 +291,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
           nil
         end
         ]
-        |> index_definitions()
+        |> index_references()
 
-      assert_definition(param, :pinned)
+      assert_reference(param, :pinned)
       assert decorate(doc, param.range) =~ "fn ^«pinned» ->"
     end
 
@@ -357,6 +476,19 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, ref.range) =~ "^«pinned» = 3"
     end
 
+    test "from pinned variables in a function head" do
+      {:ok, [ref], doc} =
+        ~q{
+          fn [^pinned] ->
+            nil
+          end
+        }
+        |> index
+
+      assert_reference(ref, :pinned)
+      assert decorate(doc, ref.range) =~ "fn [^«pinned»] ->"
+    end
+
     test "on the left side of operators" do
       assert {:ok, [ref], doc} = index_references(~q[x + 3])
 
@@ -435,6 +567,37 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert {:ok, [], _} = index_references("_unused")
       assert {:ok, [], _} = index_references("_unused = 3")
       assert {:ok, [], _} = index_references("_unused = foo()")
+    end
+  end
+
+  describe "variable and references are extracted" do
+    test "in an anoymous function" do
+      {:ok, [pin_param, var_param, first_def, pin_pin, var_ref, first_ref], doc} =
+        ~q{
+          fn pin, var ->
+            [first, ^pin] = var
+            first
+          end
+        }
+        |> index()
+
+      assert_definition(pin_param, :pin)
+      assert decorate(doc, pin_param.range) =~ "fn «pin», var ->"
+
+      assert_definition(var_param, :var)
+      assert decorate(doc, var_param.range) =~ "fn pin, «var» ->"
+
+      assert_definition(first_def, :first)
+      assert decorate(doc, first_def.range) =~ "  [«first», ^pin] = var"
+
+      assert_reference(pin_pin, :pin)
+      assert decorate(doc, pin_pin.range) =~ "  [first, ^«pin»] = var"
+
+      assert_reference(var_ref, :var)
+      assert decorate(doc, var_ref.range) =~ "  [first, ^pin] = «var»"
+
+      assert_reference(first_ref, :first)
+      assert decorate(doc, first_ref.range) =~ "  «first»"
     end
   end
 end

@@ -5,11 +5,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
   @defs [:def, :defmacro, :defp, :defmacrop]
-  def extract({def, _, [{_fn_name, _, params}, _body]}, %Reducer{} = reducer)
+  def extract({def, _, [{_fn_name, _, params}, body]}, %Reducer{} = reducer)
       when def in @defs do
     entries = extract_definitions(params, reducer)
 
-    {:ok, entries, nil}
+    {:ok, entries, body}
   end
 
   def extract({:fn, _, [{:->, _, [params, body]}]}, %Reducer{} = reducer) do
@@ -30,16 +30,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     end
   end
 
-  def extract(_ast, _reducer) do
-    :ignored
+  def extract({:^, _, [reference]}, %Reducer{} = reducer) do
+    reference = extract_reference(reference, reducer, get_current_app(reducer))
+    {:ok, reference, nil}
   end
 
-  # the pin operator is always on the left side of a pattern match, but it's
-  # not defining a variable, just referencing one.
-  defp extract_definitions({:^, _, [reference]}, %Reducer{} = reducer) do
-    reference
-    |> extract_reference(reducer, get_current_app(reducer))
-    |> List.wrap()
+  def extract(_ast, _reducer) do
+    :ignored
   end
 
   defp extract_definitions(ast, reducer) do
@@ -49,6 +46,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
       Macro.prewalk(ast, [], fn ast, acc ->
         case extract_definition(ast, reducer, current_app) do
           %Entry{} = entry ->
+            {ast, [entry | acc]}
+
+          {%Entry{} = entry, ast} ->
             {ast, [entry | acc]}
 
           _ ->
@@ -68,12 +68,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
           %Entry{} = entry ->
             {ast, [entry | acc]}
 
+          {%Entry{} = entry, ast} ->
+            {ast, [entry | acc]}
+
           _ ->
             {ast, acc}
         end
       end)
 
     Enum.reverse(entries)
+  end
+
+  # the pin operator is always on the left side of a pattern match, but it's
+  # not defining a variable, just referencing one.
+  defp extract_definition({:^, _, [reference]}, %Reducer{} = reducer, current_app) do
+    reference = extract_reference(reference, reducer, current_app)
+
+    {reference, nil}
   end
 
   defp extract_definition({var_name, _metadata, nil} = ast, reducer, current_app) do
