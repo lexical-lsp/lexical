@@ -12,17 +12,21 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     {:ok, entries, body}
   end
 
-  def extract({:fn, _, [{:->, _, [params, body]}]}, %Reducer{} = reducer) do
-    entries = extract_definitions(params, reducer)
-    {:ok, entries, body}
+  # Stab operator  x -> body
+  def extract({:->, _, [params, body]}, %Reducer{} = reducer) do
+    entries = extract_definitions(params, reducer) ++ extract_in_definitions(params, reducer)
+
+    {:ok, entries, List.wrap(body)}
   end
 
+  # Match operator left = right
   def extract({:=, _, [left, right]}, %Reducer{} = reducer) do
     definitions = extract_definitions(left, reducer)
     references = extract_references(right, reducer)
     {:ok, definitions ++ references, nil}
   end
 
+  # Generic variable reference
   def extract({var_name, _, _} = ast, %Reducer{} = reducer) when is_atom(var_name) do
     case extract_reference(ast, reducer, get_current_app(reducer)) do
       %Entry{} = entry -> {:ok, entry}
@@ -30,6 +34,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     end
   end
 
+  # Pin operator ^pinned_variable
   def extract({:^, _, [reference]}, %Reducer{} = reducer) do
     reference = extract_reference(reference, reducer, get_current_app(reducer))
     {:ok, reference, nil}
@@ -49,23 +54,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
             {ast, [entry | acc]}
 
           {%Entry{} = entry, ast} ->
-            {ast, [entry | acc]}
-
-          _ ->
-            {ast, acc}
-        end
-      end)
-
-    Enum.reverse(entries)
-  end
-
-  defp extract_references(ast, reducer) do
-    current_app = get_current_app(reducer)
-
-    {_ast, entries} =
-      Macro.prewalk(ast, [], fn ast, acc ->
-        case extract_reference(ast, reducer, current_app) do
-          %Entry{} = entry ->
             {ast, [entry | acc]}
 
           _ ->
@@ -102,6 +90,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
 
   defp extract_definition(_, _reducer, _current_app), do: nil
 
+  defp extract_references(ast, reducer) do
+    current_app = get_current_app(reducer)
+
+    {_ast, entries} =
+      Macro.prewalk(ast, [], fn ast, acc ->
+        case extract_reference(ast, reducer, current_app) do
+          %Entry{} = entry ->
+            {ast, [entry | acc]}
+
+          _ ->
+            {ast, acc}
+        end
+      end)
+
+    Enum.reverse(entries)
+  end
+
   defp extract_reference({var_name, _metadata, nil} = ast, reducer, current_app) do
     if used_variable?(var_name) do
       document = reducer.analysis.document
@@ -119,6 +124,34 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   end
 
   defp extract_reference(_, _, _), do: nil
+
+  # extracts definitions like e in SomeException ->
+  defp extract_in_definitions(ast, %Reducer{} = reducer) do
+    current_app = get_current_app(reducer)
+
+    {_ast, entries} =
+      Macro.prewalk(ast, [], fn ast, acc ->
+        case extract_in_definition(ast, reducer, current_app) do
+          %Entry{} = entry ->
+            {ast, [entry | acc]}
+
+          _ ->
+            {ast, acc}
+        end
+      end)
+
+    Enum.reverse(entries)
+  end
+
+  defp extract_in_definition(
+         [[{:in, _, [definition, _right]}], _body],
+         %Reducer{} = reducer,
+         current_app
+       ) do
+    extract_definition(definition, reducer, current_app)
+  end
+
+  defp extract_in_definition(_ast, %Reducer{}, _current_app), do: nil
 
   defp get_current_app(%Reducer{} = reducer) do
     with {:ok, module} <- Analyzer.current_module(reducer.analysis, Reducer.position(reducer)) do

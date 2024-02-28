@@ -258,6 +258,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
   end
 
   describe "variable definitions in anonymous function parameters are extracted" do
+    test "hen definition on the right side of the equals" do
+      {:ok, [ref], doc} =
+        ~q[
+          fn 1 = a -> a end
+        ]
+        |> index_references()
+
+      assert decorate(doc, ref.range) =~ "fn 1 = a -> «a»"
+    end
+
     test "in a plain parameter" do
       {:ok, [param], doc} =
         ~q[
@@ -426,11 +436,86 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, value.range) =~ "%MyStruct{key: «value»} = whatever"
     end
 
-    test "from  struct modules" do
+    test "from struct modules" do
       {:ok, [module], doc} = index_definitions(~q(%struct_module{} = whatever))
 
       assert_definition(module, :struct_module)
       assert decorate(doc, module.range) =~ "%«struct_module»{} = whatever"
+    end
+
+    test "in an else block in a with" do
+      {:ok, [value], doc} =
+        ~q[
+          with true <- true do
+            :bad
+          else var ->
+            :ok
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(value, :var)
+      assert decorate(doc, value.range) =~ "else «var» ->"
+    end
+
+    test "in an else block in a try" do
+      {:ok, [value], doc} =
+        ~q[
+          try  do
+            :ok
+          else failure ->
+            failure
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(value, :failure)
+      assert decorate(doc, value.range) =~ "else «failure» ->"
+    end
+
+    test "in a catch block in a try" do
+      {:ok, [value], doc} =
+        ~q[
+          try  do
+            :ok
+           catch thrown ->
+             thrown
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(value, :thrown)
+      assert decorate(doc, value.range) =~ "catch «thrown» ->"
+    end
+
+    test "in a rescue block in a try" do
+      {:ok, [value], doc} =
+        ~q[
+          try  do
+            :ok
+          rescue ex ->
+             ex
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(value, :ex)
+      assert decorate(doc, value.range) =~ "rescue «ex» ->"
+    end
+
+    test "in a rescue block in a try using in" do
+      {:ok, [value], doc} =
+        ~q[
+          try  do
+            :ok
+          rescue ex in RuntimeError ->
+            ex
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(value, :ex)
+      assert decorate(doc, value.range) =~ "rescue «ex» in RuntimeError ->"
     end
 
     test "from complex, nested mappings" do
@@ -555,11 +640,83 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, access_ref.range) =~ "3 = foo[«bar»]"
     end
 
+    test "when inside a rescue block in a try" do
+      {:ok, [ref], doc} =
+        ~q[
+          try  do
+            :ok
+          rescue e in Something ->
+            e
+          end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :e)
+      assert decorate(doc, ref.range) =~ " «e»"
+    end
+
+    test "when inside a catch block in a try" do
+      {:ok, [ref], doc} =
+        ~q[
+          try  do
+            :ok
+           catch thrown ->
+            thrown
+          end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :thrown)
+      assert decorate(doc, ref.range) =~ " «thrown»"
+    end
+
+    test "when inside an after block in a try" do
+      {:ok, [ref], doc} =
+        ~q[
+          try  do
+            :ok
+           after ->
+            x
+          end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :x)
+      assert decorate(doc, ref.range) =~ " «x»"
+    end
+
+    test "when inside an else block in a with" do
+      {:ok, [ref], doc} =
+        ~q[
+          with :ok <- call() do
+          else other ->
+           other
+          end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :other)
+      assert decorate(doc, ref.range) =~ " «other»"
+    end
+
     test "when in the tail of a list" do
       assert {:ok, [ref], doc} = index_references(~q{[3 | acc]})
 
       assert_reference(ref, :acc)
       assert decorate(doc, ref.range) =~ "[3 | «acc»]"
+    end
+
+    test "in the body of an anonymous function" do
+      {:ok, [ref], doc} =
+        ~q[
+        fn %Pattern{foo: var} ->
+          var
+        end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :var)
+      assert decorate(doc, ref.range) =~ "  «var»"
     end
 
     test "unless it begins with underscore" do
