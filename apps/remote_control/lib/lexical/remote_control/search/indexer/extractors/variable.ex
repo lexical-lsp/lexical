@@ -68,9 +68,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
           %Entry{} = entry ->
             {ast, [entry | acc]}
 
-          {%Entry{} = entry, ast} ->
-            {ast, [entry | acc]}
-
           _ ->
             {ast, acc}
         end
