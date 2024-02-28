@@ -20,6 +20,7 @@ Lexical supports the following versions of Elixir and Erlang:
 | 1.13     |    `>= 1.13.4` |          |
 | 1.14     |    `all`       |          |
 | 1.15     | `>= 1.15.3`    | `1.15.0` - `1.15.2` had compiler bugs that prevented lexical from working |
+| 1.16     | `>= 1.16.0`    |          |
 
 Lexical can run projects in any version of Elixir and Erlang that it
 supports, but it's important to understand that Lexical needs to be
