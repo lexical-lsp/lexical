@@ -288,7 +288,7 @@ defmodule Lexical.BuildTest do
 
       assert diagnostic.uri
       assert diagnostic.severity == :warning
-      assert diagnostic.message =~ ~S[variable `unused` is unused]
+      assert diagnostic.message =~ ~S[variable "unused" is unused]
 
       if Features.with_diagnostics?() do
         assert diagnostic.position == {4, 13}
@@ -321,7 +321,7 @@ defmodule Lexical.BuildTest do
         assert diagnostic.severity == :error
 
         assert diagnostic.message =~
-                 ~s[undefined variable `calc`]
+                 ~s[undefined variable "calc"]
 
         assert diagnostic.position == {4, 13}
       else

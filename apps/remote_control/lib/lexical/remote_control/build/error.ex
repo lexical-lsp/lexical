@@ -50,7 +50,7 @@ defmodule Lexical.RemoteControl.Build.Error do
 
   defp format_message("undefined" <> _ = message) do
     # All undefined function messages explain the *same* thing inside the parentheses
-    message |> String.replace(@undefined_function_pattern, "") |> format_token()
+    String.replace(message, @undefined_function_pattern, "")
   end
 
   defp format_message(message) when is_binary(message) do
@@ -61,15 +61,11 @@ defmodule Lexical.RemoteControl.Build.Error do
     # Same reason as the `undefined` message above, we can remove the things in parentheses
     case String.split(message, "is unused (", parts: 2) do
       [prefix, _] ->
-        format_token(prefix) <> "is unused"
+        prefix <> "is unused"
 
       _ ->
         message
     end
-  end
-
-  defp format_token(string_contains_token) do
-    String.replace(string_contains_token, "\"", "`")
   end
 
   @doc """
