@@ -63,7 +63,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HeexTest do
       assert {:error, [%Result{} = result]} = compile(document)
 
       if Features.with_diagnostics?() do
-        assert result.message =~ ~S[undefined variable `thing`]
+        assert result.message =~ ~S[undefined variable "thing"]
       else
         assert result.message =~ "undefined function thing/0"
         assert result.position in [1, {1, 10}]

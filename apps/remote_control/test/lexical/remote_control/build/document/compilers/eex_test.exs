@@ -97,7 +97,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
                |> document_with_content()
                |> compile()
 
-      assert result.message =~ ~s[`something` is unused]
+      assert result.message =~ ~s["something" is unused]
       assert result.position in [1, {1, 5}]
       assert result.severity == :warning
       assert result.source == "EEx"
@@ -115,7 +115,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
       assert {:ok, [%Result{} = result]} = compile(document)
 
-      assert result.message == ~s[variable `something` is unused]
+      assert result.message == ~s[variable "something" is unused]
       assert decorate(document, result.position) == "<%= «something» = 6 %>"
       assert result.severity == :warning
       assert result.source == "EEx"
@@ -147,7 +147,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
       assert {:error, [%Result{} = result]} = compile(document)
 
       if Features.with_diagnostics?() do
-        assert result.message =~ "undefined variable `thing`"
+        assert result.message =~ "undefined variable \"thing\""
       else
         assert result.message =~ "undefined function thing/0"
       end
@@ -167,7 +167,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EExTest do
 
       assert {:error, [%Result{} = result]} = compile(document)
 
-      assert result.message == "undefined variable `thing`"
+      assert result.message == "undefined variable \"thing\""
       assert decorate(document, result.position) == "<%= «thing» %>"
       assert result.severity == :error
       assert result.source == "EEx"
