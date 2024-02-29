@@ -22,6 +22,12 @@ The language server (the `server` app) is the entry point to Lexical. When start
 
 When a message is received, it is parsed into either a [LSP Request](`Lexical.Protocol.Requests`) or a [LSP Notification](`Lexical.Protocol.Notifications`) and then it's handed to the [language server](`Lexical.Server`) to process.
 
-The only messages the [lexical server process](`Lexical.Server`) handles directly are those related to the lifecycle of the language server itself. All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](`Lexical.Server.Provider.Queue`). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
+The only messages the [lexical server process](`Lexical.Server`) handles directly are those related to the lifecycle of the language server itself:
+
+- Synchronizing document states.
+- Processing LSP configuration changes.
+- Performing Initialization and shutdown.
+
+All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](`Lexical.Server.Provider.Queue`). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
 
 A _Provider Handler_ is just a module that defines a function of arity 2 that takes the request to handle and a `Lexical.Server.Provider.Env`. These functions can reply to the request, ignore it, or do some other action.

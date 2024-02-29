@@ -7,9 +7,11 @@ Though it is not exhaustive, we hope it helps contributors more easily navigate 
 **You can help!** If you run across a new term while working on Lexical and you think it should be defined here, please [open an issue](https://github.com/lexical-lsp/lexical/issues) suggesting it!
 
 ## Language Server Protocol (LSP)
+
 This section covers features, names, and abstractions used by Lexical that have a correspondence to the Language Server Protocol. For a definitive reference, see the [LSP Specification](https://microsoft.github.io/language-server-protocol/specifications/specification-current).
 
 ### Messages, Requests, Responses, and Notifications
+
 LSP defines a general heirarchy of the types of messages langauge servers and clients and may exchange, and the expected behaviours associated with them.
 
 There's 3 top-level types of Messages: [Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage), [Responses](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage), and [Notifications](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage):
@@ -25,14 +27,16 @@ From these 3 top-level types, LSP defines more specific more concrete, actionabl
 
 ... and many more. These can serve as good reference for the specific features you're working on.
 
-Finally worth noting, all messages are JSON, specifically [JSON-RPC version 2.0](https://www.jsonrpc.org/specification).
+Lexical maps these in the modules [`Lexical.Protocol.Requests`](/apps/protocol/lib/lexical/protocol/requests.ex.ex), [`Lexical.Protocol.Responses`](/apps/protocol/lib/lexical/protocol/responses.ex), and [`Lexical.Protocol.Notifications`](/apps/protocol/lib/lexical/protocol/notifications.ex).
 
-**Todo: explain exactly what Lexical autogenerates from LSP's specification.**
+Finally, it's worth noting all messages are JSON, specifically [JSON-RPC version 2.0](https://www.jsonrpc.org/specification).
 
 ### Document(s)
+
 A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Document`](/projects/lexical_shared/lib/lexical/document.ex) structs in Lexical.
 
 ### Completions and Code Intelligence
+
 Auto-completion suggestions that appear in an editor's IntelliSense. For example, a user that's typed `IO.in|` may be suggested `IO.inspect(|)` as one of a few possible completions.
 
 **Todo:**
@@ -44,15 +48,19 @@ Auto-completion suggestions that appear in an editor's IntelliSense. For example
   - The language server provides meaningful values for the client to do so.
 
 ### Diagnostics
+
 Represents a diagnostic, such as a compiler error or warning. Diagnostic objects are only valid in the scope of a resource.
 
 ## Concepts exclusive to Lexical
+
 This section covers names and abstractions introduced by Lexical.
 
 ### Project
+
 - It's just a struct underneath! But an important one.
 
 ### Providers
+
 - What do they represent? Are there good analogs people are familiar with?
 
 ### Code Mod
