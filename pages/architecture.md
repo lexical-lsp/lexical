@@ -26,7 +26,7 @@ The only messages the [lexical server process](`Lexical.Server`) handles directl
 
 - Synchronizing document states.
 - Processing LSP configuration changes.
-- Performing Initialization and shutdown.
+- Performing initialization and shutdown.
 
 All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](`Lexical.Server.Provider.Queue`). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
 

@@ -53,19 +53,30 @@ Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
 
 ## Concepts exclusive to Lexical
 
-This section covers names and abstractions introduced by Lexical.
+This section briefly summarizes abstractions introduced by Lexical. Detailed information can be found in the respective moduledocs.
 
 ### Project
 
-- It's just a struct underneath! But an important one.
+An Elixir struct that represents the current state of an elixir project. See `Lexical.Project`.
 
-### Providers
+### Providers and Provider Handlers
 
 - What do they represent? Are there good analogs people are familiar with?
 
 ### Code Mod
-### Convertible
-### `Future.Code`
-### Provider
+
+**Todo: what are code mods?**
+
+### Convertible Protocol
+
+Some LSP data structures cannot be trivially converted to Elixir terms. The `Lexical.Convertible` protocol helps centralize conversion logic where this is the case.
+
 ### Translation
+
+**Tood: document this!**
+
 ### Transport
+
+A behaviour responsible for reading, writing, serializing, and deserializing messages between the LSP client and Lexical language server.
+
+The behaviour is defined in `Lexical.Server.Transport`, with the implementation for stdio in `Lexical.Server.Transport.StdIO`.
