@@ -69,11 +69,13 @@ An Elixir struct that represents the current state of an elixir project. See `Le
 
 ### Convertible Protocol
 
-Some LSP data structures cannot be trivially converted to Elixir terms. The `Lexical.Convertible` protocol helps centralize conversion logic where this is the case.
+Some LSP data structures cannot be trivially converted to Elixir terms.
 
-### Translation
+The `Lexical.Convertible` protocol helps centralize conversion logic where this is the case.
 
-**Tood: document this!**
+### Translations (code completion)
+
+Translations are implementations of the `Translatable` protocol. THey specify how Elixir/Lexical constructs such as [callbacks](`Lexical.RemoteControl.Completion.Candidate.Callback`) are converted into LSP constructs such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem).
 
 ### Transport
 
