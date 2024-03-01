@@ -15,9 +15,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
     with {:ok, resolved, _range} <- Entity.resolve(analysis, position) do
       resolved = maybe_rewrite_resolution(resolved, analysis, position)
 
-      resolved
-      |> maybe_rewrite_resolution(analysis, position)
-      |> find_references(include_definitions?)
+      references =
+        resolved
+        |> maybe_rewrite_resolution(analysis, position)
+        |> find_references(include_definitions?)
+
+      {:ok, references}
     end
   end
 
@@ -71,10 +74,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp query(subject, opts) do
-    with {:ok, entities} <- Store.exact(subject, opts) do
-      locations = Enum.map(entities, &to_location/1)
-      {:ok, locations}
-    end
+    subject |> Store.exact(opts) |> Enum.map(&to_location/1)
   end
 
   defp subtype(true = _include_definitions?), do: :_

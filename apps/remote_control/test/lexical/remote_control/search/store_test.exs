@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           reference(id: 3)
         ])
 
-        assert {:ok, [ref]} = Store.exact(subtype: :reference)
+        assert [ref] = Store.exact(subtype: :reference)
         assert ref.subtype == :reference
       end
 
@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(subject: Foo.Bar.Baz)
         ])
 
-        assert {:ok, [ref]} = Store.exact("Foo.Bar.Baz", subtype: :reference)
+        assert [ref] = Store.exact("Foo.Bar.Baz", subtype: :reference)
 
         assert ref.subject == Foo.Bar.Baz
         assert ref.type == :module
@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 2, subject: Foo.Bar.Bak)
         ])
 
-        assert {:ok, [entry]} = Store.exact("Foo.Bar.Baz", type: :module, subtype: :definition)
+        assert [entry] = Store.exact("Foo.Bar.Baz", type: :module, subtype: :definition)
 
         assert entry.subject == Foo.Bar.Baz
         assert entry.id == 1
@@ -104,7 +104,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 3, subject: Bad.Times.Now)
         ])
 
-        assert {:ok, [entry_1, entry_2]} =
+        assert [entry_1, entry_2] =
                  Store.fuzzy("Foo.Bar.B", type: :module, subtype: :definition)
 
         assert entry_1.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
@@ -167,7 +167,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           reference(id: 2, subject: Present, path: path)
         ])
 
-        assert_eventually {:ok, [found]} = Store.fuzzy("Pres", type: :module, subtype: :reference)
+        assert_eventually [found] = Store.fuzzy("Pres", type: :module, subtype: :reference)
         assert found.id == 2
         assert found.subject == Present
       end
