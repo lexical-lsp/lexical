@@ -27,13 +27,13 @@ From these 3 top-level types, LSP defines more specific more concrete, actionabl
 
 ... and many more. These can serve as good reference for the specific features you're working on.
 
-Lexical maps these in the modules [`Lexical.Protocol.Requests`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/requests.ex){:target="_blank"}, [`Lexical.Protocol.Responses`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/responses.ex){:target="_blank"}, and[ `Lexical.Protocol.Notifications`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/notifications.ex){:target="_blank"}.
+Lexical maps these in the modules [`Lexical.Protocol.Requests`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/requests.ex), [`Lexical.Protocol.Responses`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/responses.ex), and[ `Lexical.Protocol.Notifications`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/notifications.ex).
 
 Finally, it's worth noting all messages are JSON, specifically [JSON-RPC version 2.0](https://www.jsonrpc.org/specification).
 
 ### Document(s)
 
-A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Lexical.Document`](https://github.com/lexical-lsp/lexical/blob/main/projects/lexical_shared/lib/lexical/document.ex){:target="_blank"} structs in Lexical.
+A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Lexical.Document`](https://github.com/lexical-lsp/lexical/blob/main/projects/lexical_shared/lib/lexical/document.ex) structs in Lexical.
 
 ### Diagnostics
 
