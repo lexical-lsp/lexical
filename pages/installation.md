@@ -77,6 +77,7 @@ source code is `/my/home/projects/lexical`.
 6. [Vim + ALE](#vim--ale)
 7. [Vim + Vim-LSP](#vim--vim-lsp)
 8. [Helix](#helix)
+9. [Sublime Text](#sublime-text)
 
 ### Vanilla Emacs with lsp-mode
 The emacs instructions assume you're using `use-package`, which you
@@ -300,3 +301,37 @@ language-servers = ["lexical"]
 name = "heex"
 language-servers = ["lexical"]
 ```
+
+### Sublime Text
+
+#### Background
+
+Lexical can be used with Sublime Text via the [LSP-Sublime](https://lsp.sublimetext.io/) package, which integrates Language Servers with Sublime Text. If you don't have the LSP-Sublime package installed already, [install it with Package Control](https://packagecontrol.io/packages/LSP).
+
+There is currently no [language server package](https://lsp.sublimetext.io/language_servers/) specifically for Lexical that works with LSP-Sublime so we'll need to create a [custom client configuration](https://lsp.sublimetext.io/client_configuration/).
+
+#### Installation
+
+First, ensure that you have Lexical [installed from source](https://github.com/lexical-lsp/lexical/blob/main/pages/installation.md#prerequisites) correctly and note the full path of the directory with Lexical's executables:
+
+Print the full path of the directory holding the Lexical executables:
+`cd {directory_you_cloned_lexical_to}/_build/dev/package/lexical/bin/ && pwd`
+
+Then, install LSP-Sublime with Package Control if you haven't already.
+
+Next, open up the LSP settings in Sublime. You can do this by invoking the command palette (`ctrl/cmd + shift + p`) and selecting `Preferences: LSP Settings`.
+
+You'll need to add a key called `"clients"` in the top-level `LSP.sublime-settings` JSON dictionary that is as follows:
+
+```json
+"clients": {
+  "elixir-lexical": {
+    "enabled": true,
+    "command": ["{output_from_pwd_cmd_above}/start_lexical.sh", ""],
+    "selector": "source.elixir"
+  }
+}
+```
+_note: you can name elixir-lexical whatever you like, it's just for your own identification_
+
+Upon saving the configuration, LSP-Sublime should enable the new `elixir-lexical` LSP server. Go into an Elixir file and you should now see `elixir-lexical` in the lower left of the status bar. If not, invoke the command palette and select `LSP: Enable Language Server Globally/In Project` and it should run.
