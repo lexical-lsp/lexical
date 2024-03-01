@@ -258,7 +258,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
   end
 
   describe "variable definitions in anonymous function parameters are extracted" do
-    test "hen definition on the right side of the equals" do
+    test "when definition on the right side of the equals" do
       {:ok, [ref], doc} =
         ~q[
           fn 1 = a -> a end
