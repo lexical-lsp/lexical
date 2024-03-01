@@ -27,7 +27,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       query_by_path: 1,
       query_structure: 1,
       query_by_subject: 1,
-      structure: 1
+      structure: 1,
+      to_subject_charlist: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid, :wal_state]
@@ -83,7 +84,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   def find_by_subject(%__MODULE__{} = state, subject, type, subtype) do
     match_pattern =
       query_by_subject(
-        subject: to_subject(subject),
+        subject: to_subject_charlist(subject),
         type: type,
         subtype: subtype
       )
@@ -95,6 +96,28 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     end)
     |> MapSet.new()
     |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
+  end
+
+  def find_by_prefix(%__MODULE__{} = state, subject, type, subtype) do
+    match_pattern =
+      query_by_subject(
+        subject: to_prefix(subject),
+        type: type,
+        subtype: subtype
+      )
+
+    state.table_name
+    |> :ets.select([{{match_pattern, :_}, [], [:"$_"]}])
+    |> Enum.flat_map(fn {_, id_keys} -> id_keys end)
+    |> MapSet.new()
+    |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
+  end
+
+  @dialyzer {:nowarn_function, to_prefix: 1}
+
+  defp to_prefix(prefix) when is_binary(prefix) do
+    [last_char | others] = prefix |> String.to_charlist() |> Enum.reverse()
+    others |> Enum.reverse() |> Enum.concat([last_char | :_])
   end
 
   def siblings(%__MODULE__{} = state, %Entry{} = entry) do
@@ -263,11 +286,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   defp match_id_key(id, type, subtype) do
     {query_by_id(id: id, type: type, subtype: subtype), :_}
   end
-
-  defp to_subject(binary) when is_binary(binary), do: binary
-  defp to_subject(:_), do: :_
-  defp to_subject(atom) when is_atom(atom), do: inspect(atom)
-  defp to_subject(other), do: to_string(other)
 
   defp current_schema do
     List.last(@schema_order)
