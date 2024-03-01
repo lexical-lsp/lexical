@@ -47,7 +47,7 @@ Auto-completion suggestions that appear in an editor's IntelliSense. For example
 
 Broadly speaking, code actions are a feature that provides the user with possible corrective actions right next to an error or warning.
 
-LSP defines a protocol for language servers to tell clients what actions they're capable of performing, and for clients to request those actions be taken. See for example LSP's [`CodeActionClientCapabilities`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#codeActionClientCapabilities) interface.
+LSP defines a protocol for language servers to tell clients what actions they're capable of performing, and for clients to request those actions be taken. See for example LSP's [CodeActionClientCapabilities interface](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#codeActionClientCapabilities).
 
 Because the name "code actions" are heavily tied to the semantics of LSP, Lexical defines "code mods" as the actual executable operations it can take to modify code. See the [Code Mods](#code-mods) section below for further details.
 
