@@ -49,8 +49,6 @@ Broadly speaking, code actions are a feature that provides the user with possibl
 
 LSP defines a protocol for language servers to tell clients what actions they're capable of performing, and for clients to request those actions be taken. See for example LSP's [CodeActionClientCapabilities interface](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#codeActionClientCapabilities).
 
-Because the name "code actions" are heavily tied to the semantics of LSP, Lexical defines "code mods" as the actual executable operations it can take to modify code. See the [Code Mods](#code-mods) section below for further details.
-
 ## Concepts exclusive to Lexical
 
 This section briefly summarizes abstractions introduced by Lexical. Detailed information can be found in the respective moduledocs.
