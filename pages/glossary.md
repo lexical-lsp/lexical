@@ -35,27 +35,27 @@ Finally, it's worth noting all messages are JSON, specifically [JSON-RPC version
 
 A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Document`](/projects/lexical_shared/lib/lexical/document.ex) structs in Lexical.
 
+### Diagnostics
+
+Represents a diagnostic, such as a compiler error or warning. Diagnostic objects are only valid in the scope of a resource.
+
 ### Completions and Code Intelligence
 
 Auto-completion suggestions that appear in an editor's IntelliSense. For example, a user that's typed `IO.in|` may be suggested `IO.inspect(|)` as one of a few possible completions.
 
-**Todo:**
-- Explain the completion request cycle.
-- Define "completion contexts", "ast environments", and how they inform completions. 
-- Note Lexical's current support for things like [merging multiple contextual conditions](https://github.com/lexical-lsp/lexical/issues/284).
-- Explain where Lexical does/doesn't delegate to [elixir-sense](https://github.com/elixir-lsp/elixir_sense).
-- Note that LSP clients sort and filter completion items independent of language servers.
-  - The language server provides meaningful values for the client to do so.
+### Code Actions
 
-### Diagnostics
+Broadly speaking, code actions are a feature that provides the user with possible corrective actions right next to an error or warning.
 
-Represents a diagnostic, such as a compiler error or warning. Diagnostic objects are only valid in the scope of a resource.
+LSP defines a protocol for language servers to tell clients what actions they're capable of performing, and for clients to request those actions be taken. See for example LSP's [`CodeActionClientCapabilities`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#codeActionClientCapabilities) interface.
+
+Because the name "code actions" are heavily tied to the semantics of LSP, Lexical defines "code mods" as the actual executable operations it can take to modify code. See the [Code Mods](#code-mods) section below for further details.
 
 ## Concepts exclusive to Lexical
 
 This section briefly summarizes abstractions introduced by Lexical. Detailed information can be found in the respective moduledocs.
 
-### Project
+### The [`Project`](`Lexical.Project`) struct
 
 An Elixir struct that represents the current state of an elixir project. See `Lexical.Project`.
 
@@ -63,22 +63,30 @@ An Elixir struct that represents the current state of an elixir project. See `Le
 
 - What do they represent? Are there good analogs people are familiar with?
 
-### Code Mod
-
-**Todo: what are code mods?**
-
-### Convertible Protocol
+### The [`Convertible`](`Lexical.Convertible`) protocol
 
 Some LSP data structures cannot be trivially converted to Elixir terms.
 
-The `Lexical.Convertible` protocol helps centralize conversion logic where this is the case.
+The `Lexical.Convertible` protocol helps centralize the necessary conversion logic where this is the case.
 
-### Translations (code completion)
+### The [`Translatable`](`Lexical.Completion.Translatable`) protocol and [`Translations`](`Lexical.Server.CodeIntelligence.Completion.Translations`) modules
 
-Translations are implementations of the `Translatable` protocol. THey specify how Elixir/Lexical constructs such as [callbacks](`Lexical.RemoteControl.Completion.Candidate.Callback`) are converted into LSP constructs such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem).
+The `Lexical.Server.CodeIntelligence.Completion.Translations` set of modules are implementations of the `Lexical.Completion.Translatable` protocol.
 
-### Transport
+They specify how Elixir/Lexical constructs (such as [callbacks](`Lexical.RemoteControl.Completion.Candidate.Callback`)) are converted into LSP constructs (such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem)).
+
+### The [`Transport`](`Lexical.Server.Transport`) Behaviour
 
 A behaviour responsible for reading, writing, serializing, and deserializing messages between the LSP client and Lexical language server.
 
 The behaviour is defined in `Lexical.Server.Transport`, with the implementation for stdio in `Lexical.Server.Transport.StdIO`.
+
+### Code Mods
+
+A variety of modules that change existing code in some way. They take a document, modify it, and return diffs.
+
+Examples of code mods include:
+ * Formatting code in a file (`> Format Document`/`shift`+`alt`+`f` in VSCode).
+ * Prefixing unused variables with an `_`.
+
+Code mods are defined in the `remote_control` sub-app and are executed in the project's virutal machine.
