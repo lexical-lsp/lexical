@@ -59,10 +59,6 @@ This section briefly summarizes abstractions introduced by Lexical. Detailed inf
 
 An Elixir struct that represents the current state of an elixir project. See `Lexical.Project`.
 
-### Providers and Provider Handlers
-
-- What do they represent? Are there good analogs people are familiar with?
-
 ### The Convertible protocol
 
 Some LSP data structures cannot be trivially converted to Elixir terms.
