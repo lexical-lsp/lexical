@@ -73,7 +73,7 @@ The `Lexical.Convertible` protocol helps centralize the necessary conversion log
 
 The `Lexical.Server.CodeIntelligence.Completion.Translations` set of modules are implementations of the `Lexical.Completion.Translatable` protocol.
 
-They specify how Elixir/Lexical constructs (such as [callbacks](`Lexical.RemoteControl.Completion.Candidate.Callback`)) are converted into LSP constructs (such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem)).
+They specify how Elixir language constructs (such as behaviour callbacks) are converted into LSP constructs (such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem)).
 
 ### The Transport Behaviour
 
