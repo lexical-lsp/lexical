@@ -14,9 +14,9 @@ This section covers features, names, and abstractions used by Lexical that have 
 
 LSP defines a general heirarchy of the types of messages langauge servers and clients and may exchange, and the expected behaviours associated with them.
 
-There's 3 top-level types of Messages: [Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage), [Responses](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage), and [Notifications](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage):
+There's 3 top-level types of messages: [Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage), [Responses](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage), and [Notifications](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage):
 
-- [Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage) can be sent from client to server and vice versa, and must always be answered with a [Response](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage).
+- [Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage) are sent from client to server and vice versa, and must always be answered with a [Response](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage).
 
 - [Notifications](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage) are likewise bi-directional and work like events. They expressly do not receive responses per LSP's specification.
 
@@ -27,13 +27,13 @@ From these 3 top-level types, LSP defines more specific more concrete, actionabl
 
 ... and many more. These can serve as good reference for the specific features you're working on.
 
-Lexical maps these in the modules [`Lexical.Protocol.Requests`](/apps/protocol/lib/lexical/protocol/requests.ex.ex), [`Lexical.Protocol.Responses`](/apps/protocol/lib/lexical/protocol/responses.ex), and [`Lexical.Protocol.Notifications`](/apps/protocol/lib/lexical/protocol/notifications.ex).
+Lexical maps these in the modules [`Lexical.Protocol.Requests`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/requests.ex){:target="_blank"}, [`Lexical.Protocol.Responses`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/responses.ex){:target="_blank"}, and[ `Lexical.Protocol.Notifications`](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/notifications.ex){:target="_blank"}.
 
 Finally, it's worth noting all messages are JSON, specifically [JSON-RPC version 2.0](https://www.jsonrpc.org/specification).
 
 ### Document(s)
 
-A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Document`](/projects/lexical_shared/lib/lexical/document.ex) structs in Lexical.
+A single file identified by a URI and contains textual content. Formally referred to as [Text Documents](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments) in LSP and modeled as [`Lexical.Document`](https://github.com/lexical-lsp/lexical/blob/main/projects/lexical_shared/lib/lexical/document.ex){:target="_blank"} structs in Lexical.
 
 ### Diagnostics
 
@@ -55,7 +55,7 @@ Because the name "code actions" are heavily tied to the semantics of LSP, Lexica
 
 This section briefly summarizes abstractions introduced by Lexical. Detailed information can be found in the respective moduledocs.
 
-### The [`Project`](`Lexical.Project`) struct
+### The Project struct
 
 An Elixir struct that represents the current state of an elixir project. See `Lexical.Project`.
 
@@ -63,19 +63,19 @@ An Elixir struct that represents the current state of an elixir project. See `Le
 
 - What do they represent? Are there good analogs people are familiar with?
 
-### The [`Convertible`](`Lexical.Convertible`) protocol
+### The Convertible protocol
 
 Some LSP data structures cannot be trivially converted to Elixir terms.
 
 The `Lexical.Convertible` protocol helps centralize the necessary conversion logic where this is the case.
 
-### The [`Translatable`](`Lexical.Completion.Translatable`) protocol and [`Translations`](`Lexical.Server.CodeIntelligence.Completion.Translations`) modules
+### The Translatable protocol and Translation modules
 
 The `Lexical.Server.CodeIntelligence.Completion.Translations` set of modules are implementations of the `Lexical.Completion.Translatable` protocol.
 
 They specify how Elixir/Lexical constructs (such as [callbacks](`Lexical.RemoteControl.Completion.Candidate.Callback`)) are converted into LSP constructs (such as [completion items](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem)).
 
-### The [`Transport`](`Lexical.Server.Transport`) Behaviour
+### The Transport Behaviour
 
 A behaviour responsible for reading, writing, serializing, and deserializing messages between the LSP client and Lexical language server.
 
