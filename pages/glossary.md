@@ -45,7 +45,7 @@ Auto-completion suggestions that appear in an editor's IntelliSense. For example
 
 ### Code Actions
 
-A code action represents a change that can be performed in code. In VSCode they typically appear as quick fixes next to an error or warning, but they aren't exclusive to that.
+A code action represents a change that can be performed in code. In VSCode they typically appear as "quick fixes" next to an error or warning, but they aren't exclusive to that. In fact, VSCode frequently requests available code actions while users are browsing and editing code.
 
 LSP defines a protocol for language servers to tell clients what actions they're capable of performing, and for clients to request those actions be taken. See for example LSP's [CodeActionClientCapabilities interface](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#codeActionClientCapabilities).
 
