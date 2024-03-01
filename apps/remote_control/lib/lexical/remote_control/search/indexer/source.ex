@@ -5,10 +5,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source do
 
   require Logger
 
-  def index(path, source) do
+  def index(path, source, extractors \\ nil) do
     path
     |> Document.new(source, 1)
     |> Ast.analyze()
-    |> Indexer.Quoted.index()
+    |> Indexer.Quoted.index(extractors)
   end
 end
