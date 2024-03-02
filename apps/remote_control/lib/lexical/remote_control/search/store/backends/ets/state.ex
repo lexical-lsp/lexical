@@ -28,7 +28,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
       query_structure: 1,
       query_by_subject: 1,
       structure: 1,
-      to_subject_charlist: 1
+      to_subject: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid, :wal_state]
@@ -84,7 +84,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   def find_by_subject(%__MODULE__{} = state, subject, type, subtype) do
     match_pattern =
       query_by_subject(
-        subject: to_subject_charlist(subject),
+        subject: to_subject(subject),
         type: type,
         subtype: subtype
       )

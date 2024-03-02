@@ -30,7 +30,7 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
   def to_rows(%Entry{} = entry) do
     subject_key =
       by_subject(
-        subject: to_subject_charlist(entry.subject),
+        subject: to_subject(entry.subject),
         type: entry.type,
         subtype: entry.subtype,
         path: entry.path
@@ -62,8 +62,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
     [:named_table, :ordered_set, :compressed]
   end
 
-  def to_subject_charlist(charlist) when is_list(charlist), do: charlist
-  def to_subject_charlist(:_), do: :_
-  def to_subject_charlist(atom) when is_atom(atom), do: atom |> inspect() |> to_charlist()
-  def to_subject_charlist(other), do: to_charlist(other)
+  def to_subject(charlist) when is_list(charlist), do: charlist
+  def to_subject(:_), do: :_
+  def to_subject(atom) when is_atom(atom), do: atom |> inspect() |> to_charlist()
+  def to_subject(other), do: to_charlist(other)
 end
