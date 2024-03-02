@@ -116,6 +116,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   @dialyzer {:nowarn_function, to_prefix: 1}
 
   defp to_prefix(prefix) when is_binary(prefix) do
+    # what we really want to do here is convert the prefix to a improper list
+    # like this: `'abc' -> [97, 98, 99 | :_]`, it's different from `'abc' ++ [:_]`
     [last_char | others] = prefix |> String.to_charlist() |> Enum.reverse()
     others |> Enum.reverse() |> Enum.concat([last_char | :_])
   end
