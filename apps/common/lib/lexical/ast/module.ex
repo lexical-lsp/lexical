@@ -28,4 +28,16 @@ defmodule Lexical.Ast.Module do
     |> inspect()
     |> name()
   end
+
+  def local_module_name(entity) when is_atom(entity) do
+    entity
+    |> inspect()
+    |> local_module_name()
+  end
+
+  def local_module_name(entity) when is_binary(entity) do
+    entity
+    |> String.split(".")
+    |> List.last()
+  end
 end
