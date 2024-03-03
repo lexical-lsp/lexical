@@ -85,7 +85,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename.Module do
     prefix = "#{entity_string}."
 
     prefix
-    |> Store.prefix([])
+    |> Store.prefix(type: :module)
     |> Enum.filter(&(entry_matching?(&1, local_module_name) and has_dots_in_range?(&1)))
     |> adjust_range(entity)
   end
@@ -94,7 +94,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename.Module do
     entity_string = inspect(entity)
 
     entity_string
-    |> Store.exact([])
+    |> Store.exact(type: :module)
     |> Enum.filter(&entry_matching?(&1, local_module_name))
   end
 
