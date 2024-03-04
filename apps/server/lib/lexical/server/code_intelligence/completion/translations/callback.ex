@@ -32,7 +32,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
         sort_text: sort_text(callback),
         filter_text: "def #{name}",
         documentation: summary
-      ) |> Completion.Builder.boost(local_boost, 8)
+      )
+      |> Completion.Builder.boost(local_boost, 8)
     end
 
     # add tab stops and join with ", "
