@@ -37,7 +37,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
     end
 
     # add tab stops and join with ", "
-    defp arg_text(args) do
+    defp arg_text(args) when is_list(args) do
       args
       |> Enum.with_index(fn arg, i ->
         "${#{i + 1}:#{arg}}"
@@ -61,12 +61,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
       "supervision specification"
     end
 
-    defp detail(%{origin: origin, metadata: %{optional: true}}) do
-      "#{origin} callback"
-    end
-
     defp detail(%{origin: origin, metadata: %{optional: false}}) do
       "#{origin} callback (required)"
+    end
+
+    defp detail(%{origin: origin}) do
+      "#{origin} callback"
     end
 
     # cribbed from the callable translation for now.
