@@ -9,7 +9,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
       %Candidate.Callback{
         name: name,
         argument_names: arg_names,
-        summary: summary
+        summary: summary,
+        metadata: metadata
       } = callback
 
       insert_text =
@@ -17,14 +18,21 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
           "def #{name}(#{arg_text(arg_names)}) do" <>
           "\n\t$0\nend"
 
-      Completion.Builder.snippet(env, insert_text,
+      local_boost =
+        case metadata do
+          %{optional: false} -> 9
+          _ -> 1
+        end
+
+      env
+      |> Completion.Builder.snippet(insert_text,
         label: "#{name}(#{Enum.join(arg_names, ", ")})",
         kind: :interface,
         detail: detail(callback),
         sort_text: sort_text(callback),
         filter_text: "def #{name}",
         documentation: summary
-      )
+      ) |> Completion.Builder.boost(local_boost, 8)
     end
 
     # add tab stops and join with ", "
