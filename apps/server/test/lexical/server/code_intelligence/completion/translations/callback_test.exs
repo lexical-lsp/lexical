@@ -13,9 +13,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
       {:ok, completion} =
         project
         |> complete(source)
-        |> fetch_completion(kind: :function)
+        |> fetch_completion(kind: :interface)
 
-      assert apply_completion(completion) =~ "def handle_info(${1:msg}, ${2:state})"
+      assert apply_completion(completion) =~ "@impl true\ndef handle_info(${1:msg}, ${2:state}) do"
     end
 
     test "do not add parens if they're already present", %{project: project} do
@@ -29,9 +29,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
       {:ok, completion} =
         project
         |> complete(source)
-        |> fetch_completion(kind: :function)
+        |> fetch_completion(kind: :interface)
 
-      assert apply_completion(completion) =~ "def handle_info(msg, state)"
+      assert apply_completion(completion) =~ "@impl true\ndef handle_info(${1:msg}, ${2:state}) do"
     end
   end
 end
