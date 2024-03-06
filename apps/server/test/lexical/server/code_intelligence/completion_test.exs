@@ -188,8 +188,6 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
         |> complete(code)
         |> Enum.sort_by(& &1.sort_text)
 
-      IO.inspect(completions, label: "completions")
-
       module_index = Enum.find_index(completions, &(&1.label == "Foo-module"))
       behaviour_index = Enum.find_index(completions, &(&1.label == "Foo-behaviour"))
       submodule_index = Enum.find_index(completions, &(&1.label == "Foo-submodule"))
