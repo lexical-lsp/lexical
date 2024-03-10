@@ -12,7 +12,9 @@ defmodule Lexical.Document.Path do
   @spec ensure_uri(uri_or_path()) :: Lexical.uri()
   def ensure_uri("file://" <> _ = uri), do: uri
 
-  def ensure_uri(path), do: to_uri(path)
+  def ensure_uri("untitled:" <> _ = uri), do: uri
+
+  def ensure_uri(path) when is_binary(path), do: to_uri(path)
 
   @doc """
   Given a uri or a path, either return the path unmodified or converts the uri to a path
@@ -20,7 +22,7 @@ defmodule Lexical.Document.Path do
   @spec ensure_path(uri_or_path()) :: Lexical.path()
   def ensure_path("file://" <> _ = uri), do: from_uri(uri)
 
-  def ensure_path(path), do: path
+  def ensure_path(path) when is_binary(path), do: path
 
   @doc """
   Returns path from URI in a way that handles windows file:///c%3A/... URLs correctly
@@ -52,26 +54,37 @@ defmodule Lexical.Document.Path do
     convert_separators_to_native(path)
   end
 
+  def from_uri(%URI{scheme: "untitled", path: name}) do
+    "untitled:" <> name
+  end
+
   def from_uri(%URI{scheme: scheme}) do
     raise ArgumentError, message: "unexpected URI scheme #{inspect(scheme)}"
   end
 
-  def from_uri(uri) do
+  def from_uri(uri) when is_binary(uri) do
     uri |> URI.parse() |> from_uri()
   end
 
   def absolute_from_uri(uri) do
-    uri |> from_uri |> Path.absname()
+    uri |> from_uri() |> Path.absname()
   end
 
   def to_uri("file://" <> _path = uri) do
     uri
   end
 
+  def to_uri("untitled:" <> _name = uri) do
+    # https://github.com/microsoft/vscode-uri/blob/main/src/uri.ts#L262
+    # vscode supports the format `scheme:with/path` which is used for unsaved
+    # text buffers (e.g. `untitled:Untitled-1`).
+    uri
+  end
+
   @doc """
   Converts a path into a URI
   """
-  def to_uri(path) do
+  def to_uri(path) when is_binary(path) do
     path =
       path
       |> Path.expand()
