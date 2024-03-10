@@ -59,7 +59,7 @@ defmodule Lexical.Document.Path do
   end
 
   def from_uri(%URI{scheme: scheme}) do
-    raise ArgumentError, message: "unexpected URI scheme #{inspect(scheme)}"
+    raise ArgumentError, message: "unsupported URI scheme #{inspect(scheme)}"
   end
 
   def from_uri(uri) when is_binary(uri) do
