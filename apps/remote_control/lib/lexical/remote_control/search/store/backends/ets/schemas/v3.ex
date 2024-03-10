@@ -1,9 +1,9 @@
-defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
+defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V3 do
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store.Backends.Ets.Schema
 
   require Entry
-  use Schema, version: 2
+  use Schema, version: 3
 
   defkey :by_id, [:id, :type, :subtype]
 
@@ -18,8 +18,17 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
   defkey :by_block_id, [:block_id, :path]
   defkey :structure, [:path]
 
-  def migrate(_) do
-    {:ok, []}
+  def migrate(entries) do
+    migrated =
+      entries
+      |> Stream.filter(fn
+        {query_by_subject(), %Entry{}} -> true
+        _ -> false
+      end)
+      |> Stream.map(fn {_, entry} -> entry end)
+      |> Schema.entries_to_rows(__MODULE__)
+
+    {:ok, migrated}
   end
 
   def to_rows(%Entry{} = entry) when Entry.is_structure(entry) do
@@ -62,8 +71,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V2 do
     [:named_table, :ordered_set, :compressed]
   end
 
-  defp to_subject(binary) when is_binary(binary), do: binary
-  defp to_subject(:_), do: :_
-  defp to_subject(atom) when is_atom(atom), do: inspect(atom)
-  defp to_subject(other), do: to_string(other)
+  def to_subject(charlist) when is_list(charlist), do: charlist
+  def to_subject(:_), do: :_
+  def to_subject(atom) when is_atom(atom), do: atom |> inspect() |> to_charlist()
+  def to_subject(other), do: to_charlist(other)
 end
