@@ -115,14 +115,8 @@ defmodule ElixirLS.LanguageServer.SourceFile.PathTest do
       end)
     end
 
-    test "wrong schema" do
-      assert_raise ArgumentError, fn ->
-        from_uri("untitled:Untitled-1")
-      end
-
-      assert_raise ArgumentError, fn ->
-        from_uri("unsaved://343C3EE7-D575-486D-9D33-93AFFAF773BD")
-      end
+    test "vscode unsaved file uri" do
+      assert from_uri("untitled:Untitled-1") == "untitled:Untitled-1"
     end
   end
 
