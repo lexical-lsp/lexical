@@ -13,10 +13,12 @@ defmodule Lexical.RemoteControl.Search.Indexer do
 
   def create_index(%Project{} = project) do
     ProcessCache.with_cleanup do
+      deps_dir = deps_dir()
+
       entries =
         project
         |> indexable_files()
-        |> async_chunks(&index_path(&1, deps_dir()))
+        |> async_chunks(&index_path(&1, deps_dir))
 
       {:ok, entries}
     end
