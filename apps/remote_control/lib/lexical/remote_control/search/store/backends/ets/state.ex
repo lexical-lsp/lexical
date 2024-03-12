@@ -109,8 +109,8 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
 
     state.table_name
     |> :ets.select([{{match_pattern, :_}, [], [:"$_"]}])
-    |> Enum.flat_map(fn {_, id_keys} -> id_keys end)
-    |> MapSet.new()
+    |> Stream.flat_map(fn {_, id_keys} -> id_keys end)
+    |> Stream.uniq()
     |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
   end
 
