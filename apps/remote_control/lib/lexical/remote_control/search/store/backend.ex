@@ -84,6 +84,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backend do
   @callback find_by_subject(subject_query(), type_query(), subtype_query()) :: [Entry.t()]
 
   @doc """
+  Finds all entries by prefix
+  """
+  @callback find_by_prefix(subject_query(), type_query(), subtype_query()) :: [Entry.t()]
+
+  @doc """
   Finds entries whose ref attribute is in the given list
   """
   @callback find_by_ids([Entry.entry_id()], type_query(), subtype_query()) :: [Entry.t()]

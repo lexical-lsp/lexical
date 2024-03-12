@@ -97,6 +97,23 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         assert entry.id == 1
       end
 
+      test "matching prefix tokens should work" do
+        Store.replace([
+          definition(id: 1, subject: Foo.Bar),
+          definition(id: 2, subject: Foo.Baa.Baa),
+          definition(id: 3, subject: Foo.Bar.Baz)
+        ])
+
+        assert [entry1, entry3] =
+                 Store.prefix("Foo.Bar", type: :module, subtype: :definition)
+
+        assert entry1.subject == Foo.Bar
+        assert entry3.subject == Foo.Bar.Baz
+
+        assert entry1.id == 1
+        assert entry3.id == 3
+      end
+
       test "matching fuzzy tokens works" do
         Store.replace([
           definition(id: 1, subject: Foo.Bar.Baz),

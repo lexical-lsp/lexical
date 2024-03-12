@@ -14,20 +14,22 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   @schema_order [
     Schemas.LegacyV0,
     Schemas.V1,
-    Schemas.V2
+    Schemas.V2,
+    Schemas.V3
   ]
 
   import Wal, only: :macros
   import Entry, only: :macros
 
-  import Schemas.V2,
+  import Schemas.V3,
     only: [
       by_block_id: 1,
       query_by_id: 1,
       query_by_path: 1,
       query_structure: 1,
       query_by_subject: 1,
-      structure: 1
+      structure: 1,
+      to_subject: 1
     ]
 
   defstruct [:project, :table_name, :leader?, :leader_pid, :wal_state]
@@ -95,6 +97,31 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
     end)
     |> MapSet.new()
     |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
+  end
+
+  def find_by_prefix(%__MODULE__{} = state, subject, type, subtype) do
+    match_pattern =
+      query_by_subject(
+        subject: to_prefix(subject),
+        type: type,
+        subtype: subtype
+      )
+
+    state.table_name
+    |> :ets.select([{{match_pattern, :_}, [], [:"$_"]}])
+    |> Stream.flat_map(fn {_, id_keys} -> id_keys end)
+    |> Stream.uniq()
+    |> Enum.flat_map(&:ets.lookup_element(state.table_name, &1, 2))
+  end
+
+  @dialyzer {:nowarn_function, to_prefix: 1}
+
+  defp to_prefix(prefix) when is_binary(prefix) do
+    # what we really want to do here is convert the prefix to a improper list
+    # like this: `'abc' -> [97, 98, 99 | :_]`, it's different from `'abc' ++ [:_]`
+    # this is the required format for the `:ets.select` function.
+    {last_char, others} = prefix |> String.to_charlist() |> List.pop_at(-1)
+    others ++ [last_char | :_]
   end
 
   def siblings(%__MODULE__{} = state, %Entry{} = entry) do
@@ -263,11 +290,6 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.State do
   defp match_id_key(id, type, subtype) do
     {query_by_id(id: id, type: type, subtype: subtype), :_}
   end
-
-  defp to_subject(binary) when is_binary(binary), do: binary
-  defp to_subject(:_), do: :_
-  defp to_subject(atom) when is_atom(atom), do: inspect(atom)
-  defp to_subject(other), do: to_string(other)
 
   defp current_schema do
     List.last(@schema_order)
