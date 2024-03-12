@@ -58,7 +58,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         do_end_snippet = "do\n  $0\nend"
 
         env
-        |> Builder.snippet(do_end_snippet, label: "do/end block")
+        |> Builder.snippet(
+          do_end_snippet,
+          label: "do/end block",
+          filter_text: "do"
+        )
         |> List.wrap()
 
       Env.in_context?(env, :struct_field_key) ->
@@ -110,16 +114,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     Code.Fragment.surround_context(fragment, {line, column}) != :none
   end
 
-  # We emit a do/end snippet if the prefix token is the do operator and
+  # We emit a do/end snippet if the prefix token is the do operator or 'd', and
   # there is a space before the token preceding it on the same line. This
   # handles situations like `@do|` where a do/end snippet would be invalid.
+  defguardp valid_do_prefix(kind, value)
+            when (kind === :identifier and value === ~c"d") or
+                   (kind === :operator and value === :do)
+
+  defguardp space_before_preceding_token(do_col, preceding_col)
+            when do_col - preceding_col > 1
+
   defp should_emit_do_end_snippet?(%Env{} = env) do
     prefix_tokens = Env.prefix_tokens(env, 2)
 
     valid_prefix? =
       match?(
-        [{:operator, :do, {line, do_col}}, {_, _, {line, preceding_col}}]
-        when do_col - preceding_col > 1,
+        [{kind, value, {line, do_col}}, {_, _, {line, preceding_col}}]
+        when space_before_preceding_token(do_col, preceding_col) and
+               valid_do_prefix(kind, value),
         prefix_tokens
       )
 
