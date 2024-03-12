@@ -36,9 +36,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       test "in a plain parameter" do
         {:ok, [param], doc} =
           ~q[
-        #{unquote(def_type)} my_fun(var) do
-        end
-        ]
+          #{unquote(def_type)} my_fun(var) do
+          end
+          ]
           |> index_definitions()
 
         assert_definition(param, :var)
@@ -86,6 +86,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
 
         assert_definition(var_1, :my_module)
         assert decorate(doc, var_1.range) =~ "#{unquote(def_type)} my_fun(%«my_module»{})"
+      end
+
+      test "in a bitstrings" do
+        {:ok, [var], doc} =
+          ~q[
+            #{unquote(def_type)} my_fun(<<foo::binary-size(3)>>) do
+            end
+          ]
+          |> index_definitions()
+
+        assert_definition(var, :foo)
+
+        assert decorate(doc, var.range) =~
+                 "#{unquote(def_type)} my_fun(<<«foo»::binary-size(3)>>) do"
       end
 
       test "in list elements" do
@@ -640,6 +654,71 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, access_ref.range) =~ "3 = foo[«bar»]"
     end
 
+    test "inside string interpolations" do
+      quoted =
+        quote file: "foo.ex", line: 1 do
+          foo = 3
+          "#{foo}"
+        end
+
+      assert {:ok, [ref], doc} = index_references(quoted)
+
+      assert_reference(ref, :foo)
+      assert decorate(doc, ref.range) =~ ~S["#{«foo»}"]
+    end
+
+    test "inside string interpolations that have a statement" do
+      quoted =
+        quote file: "foo.ex", line: 1 do
+          foo = 3
+          "#{foo + 3}"
+        end
+
+      assert {:ok, [ref], doc} = index_references(quoted)
+
+      assert_reference(ref, :foo)
+      assert decorate(doc, ref.range) =~ ~S["#{«foo» + 3}"]
+    end
+
+    test "inside string interpolations that have a literal prefix" do
+      quoted =
+        quote file: "foo.ex", line: 1 do
+          foo = 3
+          "prefix #{foo}"
+        end
+
+      assert {:ok, [ref], doc} = index_references(quoted)
+
+      assert_reference(ref, :foo)
+      assert decorate(doc, ref.range) =~ ~S["prefix #{«foo»}"]
+    end
+
+    test "inside string interpolations that have a literal suffix" do
+      quoted =
+        quote file: "foo.ex", line: 1 do
+          foo = 3
+          "#{foo} suffix"
+        end
+
+      assert {:ok, [ref], doc} = index_references(quoted)
+
+      assert_reference(ref, :foo)
+      assert decorate(doc, ref.range) =~ ~S["#{«foo»} suffix"]
+    end
+
+    test "inside string interpolations that have a literal prefix and suffix" do
+      quoted =
+        quote file: "foo.ex", line: 1 do
+          foo = 3
+          "prefix #{foo} suffix"
+        end
+
+      assert {:ok, [ref], doc} = index_references(quoted)
+
+      assert_reference(ref, :foo)
+      assert decorate(doc, ref.range) =~ ~S["prefix #{«foo»} suffix"]
+    end
+
     test "when inside a rescue block in a try" do
       {:ok, [ref], doc} =
         ~q[
@@ -719,6 +798,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, ref.range) =~ "  «var»"
     end
 
+    test "when unquote is used in a function definition" do
+      {:ok, [ref], doc} =
+        ~q[
+        def my_fun(unquote(other_var)) do
+        end
+        ]
+        |> index_references()
+
+      assert_reference(ref, :other_var)
+      assert decorate(doc, ref.range) =~ "def my_fun(unquote(«other_var»)) do"
+    end
+
     test "unless it begins with underscore" do
       assert {:ok, [], _} = index_references("_")
       assert {:ok, [], _} = index_references("_unused")
@@ -728,6 +819,26 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
   end
 
   describe "variable and references are extracted" do
+    test "in a multiple match" do
+      {:ok, [foo_def, param_def, bar_def, other_ref], doc} =
+        ~q[
+          foo = param = bar = other
+        ]
+        |> index()
+
+      assert_definition(foo_def, :foo)
+      assert decorate(doc, foo_def.range) =~ "«foo» = param = bar = other"
+
+      assert_definition(param_def, :param)
+      assert decorate(doc, param_def.range) =~ "foo = «param» = bar = other"
+
+      assert_definition(bar_def, :bar)
+      assert decorate(doc, bar_def.range) =~ "foo = param = «bar» = other"
+
+      assert_reference(other_ref, :other)
+      assert decorate(doc, other_ref.range) =~ "foo = param = bar = «other»"
+    end
+
     test "in an anoymous function" do
       {:ok, [pin_param, var_param, first_def, pin_pin, var_ref, first_ref], doc} =
         ~q{
@@ -755,6 +866,39 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
 
       assert_reference(first_ref, :first)
       assert decorate(doc, first_ref.range) =~ "  «first»"
+    end
+
+    test "in the match arms of a with" do
+      {:ok, [var_def, var_2_def, var_ref], doc} =
+        ~q[
+          with {:ok, var} <- something(),
+               {:ok, var_2} <- something_else(var) do
+            :bad
+          end
+        ]
+        |> index()
+
+      assert_definition(var_def, :var)
+      assert decorate(doc, var_def.range) =~ "{:ok, «var»} <- something(),"
+
+      assert_definition(var_2_def, :var_2)
+      assert decorate(doc, var_2_def.range) =~ "     {:ok, «var_2»} <- something_else(var) do"
+
+      assert_reference(var_ref, :var)
+      assert decorate(doc, var_ref.range) =~ "     {:ok, var_2} <- something_else(«var») do"
+    end
+
+    test "in the body of a with" do
+      {:ok, [_var_def, var_ref], doc} =
+        ~q[
+          with {:ok, var} <- something() do
+            var + 1
+          end
+        ]
+        |> index()
+
+      assert_reference(var_ref, :var)
+      assert decorate(doc, var_ref.range) =~ "  «var» + 1"
     end
   end
 end

@@ -87,6 +87,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
       {:expression, position} ->
         reducer
         |> update_position(position)
+        |> maybe_pop_block()
         |> apply_extractors(element)
     end
   end

@@ -12,12 +12,10 @@ defmodule Lexical.Server.Provider.Handlers.FindReferences do
     include_declaration? = !!request.context.include_declaration
 
     locations =
-      with {:ok, _document, %Ast.Analysis{} = analysis} <-
-             Document.Store.fetch(request.document.uri, :analysis),
-           {:ok, locations} <-
-             Api.references(env.project, analysis, request.position, include_declaration?) do
-        locations
-      else
+      case Document.Store.fetch(request.document.uri, :analysis) do
+        {:ok, _document, %Ast.Analysis{} = analysis} ->
+          Api.references(env.project, analysis, request.position, include_declaration?)
+
         _ ->
           nil
       end
