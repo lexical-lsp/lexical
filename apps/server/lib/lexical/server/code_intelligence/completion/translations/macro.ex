@@ -36,7 +36,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       kind: :class,
       label: label
     )
-    |> builder.boost(1, 9)
+    |> builder.boost(9)
   end
 
   def translate(%Candidate.Macro{name: "defp", arity: 2} = macro, builder, env) do

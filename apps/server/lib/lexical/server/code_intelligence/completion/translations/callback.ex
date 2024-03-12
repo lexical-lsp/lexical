@@ -9,8 +9,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
       %Callback{
         name: name,
         argument_names: arg_names,
-        summary: summary,
-        metadata: metadata
+        summary: summary
       } = callback
 
       %Env{line: line} = env
@@ -26,7 +25,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
         filter_text: "def #{name}",
         documentation: summary
       )
-      |> Completion.Builder.boost(local_boost(metadata), 8)
+      |> Completion.Builder.boost(5)
     end
 
     defp insert_text(name, arg_names)
@@ -91,9 +90,5 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
 
       "#{name}:#{normalized_arity}"
     end
-
-    defp local_boost(%{optional: false}), do: 9
-
-    defp local_boost(_), do: 1
   end
 end
