@@ -87,6 +87,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
       {:expression, position} ->
         reducer
         |> update_position(position)
+        |> maybe_pop_block()
         |> apply_extractors(element)
     end
   end
@@ -176,7 +177,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
 
   defp maybe_pop_block(%__MODULE__{} = reducer) do
     if block_ended?(reducer) do
-      pop_block(reducer)
+      reducer
+      |> pop_block()
+      |> maybe_pop_block()
     else
       reducer
     end
