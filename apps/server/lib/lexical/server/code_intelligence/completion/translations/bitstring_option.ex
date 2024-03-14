@@ -20,6 +20,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
       kind: :unit,
       label: option.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 end

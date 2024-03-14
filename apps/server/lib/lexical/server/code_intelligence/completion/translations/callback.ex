@@ -26,7 +26,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
         filter_text: "def #{name}",
         documentation: summary
       )
-      |> Builder.set_sort_scope(SortScope.local_declarations())
+      |> Builder.set_sort_scope(SortScope.local())
     end
 
     defp insert_text(name, arg_names)

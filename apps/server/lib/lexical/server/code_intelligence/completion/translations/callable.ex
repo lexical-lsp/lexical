@@ -122,10 +122,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         item
       
       origin === "Kernel" ->
-        Builder.set_sort_scope(item, SortScope.global_declarations(deprecated?))
+        Builder.set_sort_scope(item, SortScope.global(deprecated?))
 
       true ->
-        Builder.set_sort_scope(item, SortScope.local_declarations(deprecated?))
+        Builder.set_sort_scope(item, SortScope.local(deprecated?))
     end
   end
 

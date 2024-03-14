@@ -31,7 +31,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
 
     env
     |> builder.text_edit_snippet(insert_text, range, builder_opts)
-    |> builder.set_sort_scope(SortScope.local_variables())
+    |> builder.set_sort_scope(SortScope.variable())
   end
 
   def translate(%Candidate.StructField{} = struct_field, builder, %Env{} = env) do

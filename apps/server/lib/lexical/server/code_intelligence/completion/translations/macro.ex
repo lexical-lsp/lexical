@@ -38,7 +38,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defp", arity: 2} = macro, builder, env) do
@@ -57,7 +57,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
@@ -77,7 +77,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defmacro", arity: 2} = macro, builder, env) do
@@ -96,7 +96,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defmacrop", arity: 2} = macro, builder, env) do
@@ -115,7 +115,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defprotocol"} = macro, builder, env) do
@@ -134,7 +134,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defimpl", arity: 3} = macro, builder, env) do
@@ -153,7 +153,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defoverridable"} = macro, builder, env) do
@@ -168,7 +168,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defdelegate", arity: 2} = macro, builder, env) do
@@ -183,7 +183,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defguard", arity: 1} = macro, builder, env) do
@@ -198,7 +198,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defguardp", arity: 1} = macro, builder, env) do
@@ -213,7 +213,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defexception", arity: 1} = macro, builder, env) do
@@ -228,7 +228,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "defstruct", arity: 1} = macro, builder, env) do
@@ -243,7 +243,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "alias", arity: 2} = macro, builder, env) do
@@ -258,7 +258,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "use", arity: 1}, builder, env) do
@@ -271,7 +271,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: "use"
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "require" <> _, arity: 2} = macro, builder, env) do
@@ -286,7 +286,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "quote" <> _, arity: 2} = macro, builder, env) do
@@ -305,7 +305,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "receive" <> _, arity: 1} = macro, builder, env) do
@@ -324,7 +324,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "try" <> _, arity: 1} = macro, builder, env) do
@@ -343,7 +343,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "with" <> _, arity: 1} = macro, builder, env) do
@@ -362,7 +362,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "case", arity: 2} = macro, builder, env) do
@@ -381,7 +381,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "if", arity: 2} = macro, builder, env) do
@@ -400,7 +400,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "import", arity: 2} = macro, builder, env) do
@@ -415,7 +415,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "unless", arity: 2} = macro, builder, env) do
@@ -434,7 +434,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "cond"} = macro, builder, env) do
@@ -454,7 +454,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "for"} = macro, builder, env) do
@@ -473,7 +473,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: label,
       filter_text: macro.name
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   @stub_label ~S(test "message"           )
@@ -492,7 +492,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: stub_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 2}, builder, env) do
@@ -511,7 +511,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: plain_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 3}, builder, env) do
@@ -530,7 +530,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: context_label,
       filter_text: "test"
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "describe"}, builder, env) do
@@ -547,7 +547,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: ~S(describe "message"),
       filter_text: "describe"
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
@@ -561,7 +561,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
         label: "__MODULE__",
         filter_text: "__MODULE__"
       )
-      |> builder.set_sort_scope(SortScope.global_declarations())
+      |> builder.set_sort_scope(SortScope.global())
     end
   end
 
@@ -574,7 +574,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       label: dunder_form,
       filter_text: dunder_form
     )
-    |> builder.set_sort_scope(SortScope.global_declarations())
+    |> builder.set_sort_scope(SortScope.global())
   end
 
   def translate(%Candidate.Macro{name: dunder_form}, _builder, _env)
