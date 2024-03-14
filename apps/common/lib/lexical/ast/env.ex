@@ -131,4 +131,19 @@ defmodule Lexical.Ast.Env do
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
   end
+
+  # def cursor_scope(%__MODULE__{} = env) do
+  #   %__MODULE__{
+  #     analysis: %Analysis{
+  #       scopes: scopes
+  #     },
+  #     position: %Position{
+  #       character: character,
+  #       line: line
+  #     } = position
+  #   } = env
+  #
+  #   # find which exact scope the cursor's in?
+  #   Enum.max
+  # end
 end

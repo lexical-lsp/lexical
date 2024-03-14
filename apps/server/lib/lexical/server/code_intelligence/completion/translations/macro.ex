@@ -6,6 +6,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
+  alias Lexical.Completion.SortScope
 
   @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
   @unhelpful_macros ~w(:: alias! in and or destructure)
@@ -34,9 +35,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost(9)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defp", arity: 2} = macro, builder, env) do
@@ -52,9 +54,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost(8)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
@@ -71,9 +74,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost(7)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defmacro", arity: 2} = macro, builder, env) do
@@ -89,9 +93,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost(6)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defmacrop", arity: 2} = macro, builder, env) do
@@ -107,9 +112,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost(5)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defprotocol"} = macro, builder, env) do
@@ -125,9 +131,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defimpl", arity: 3} = macro, builder, env) do
@@ -143,9 +150,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defoverridable"} = macro, builder, env) do
@@ -157,9 +165,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defdelegate", arity: 2} = macro, builder, env) do
@@ -171,9 +180,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defguard", arity: 1} = macro, builder, env) do
@@ -185,9 +195,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defguardp", arity: 1} = macro, builder, env) do
@@ -199,9 +210,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defexception", arity: 1} = macro, builder, env) do
@@ -213,9 +225,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "defstruct", arity: 1} = macro, builder, env) do
@@ -227,9 +240,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "alias", arity: 2} = macro, builder, env) do
@@ -241,9 +255,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "use", arity: 1}, builder, env) do
@@ -253,9 +268,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     env
     |> builder.snippet(snippet,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: "use"
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "require" <> _, arity: 2} = macro, builder, env) do
@@ -267,9 +283,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "quote" <> _, arity: 2} = macro, builder, env) do
@@ -285,9 +302,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "receive" <> _, arity: 1} = macro, builder, env) do
@@ -303,9 +321,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "try" <> _, arity: 1} = macro, builder, env) do
@@ -321,9 +340,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "with" <> _, arity: 1} = macro, builder, env) do
@@ -339,9 +359,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "case", arity: 2} = macro, builder, env) do
@@ -357,9 +378,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "if", arity: 2} = macro, builder, env) do
@@ -375,9 +397,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "import", arity: 2} = macro, builder, env) do
@@ -389,9 +412,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "unless", arity: 2} = macro, builder, env) do
@@ -407,9 +431,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "cond"} = macro, builder, env) do
@@ -426,9 +451,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "for"} = macro, builder, env) do
@@ -444,9 +470,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: macro.spec,
       kind: :class,
-      label: label
+      label: label,
+      filter_text: macro.name
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   @stub_label ~S(test "message"           )
@@ -462,9 +489,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(stub_snippet,
       detail: "A stub test",
       kind: :class,
-      label: stub_label
+      label: stub_label,
+      filter_text: "test"
     )
-    |> builder.boost(1)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 2}, builder, env) do
@@ -480,9 +508,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(plain_snippet,
       detail: "A test",
       kind: :class,
-      label: plain_label
+      label: plain_label,
+      filter_text: "test"
     )
-    |> builder.boost(2)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "test", arity: 3}, builder, env) do
@@ -498,9 +527,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(context_snippet,
       detail: "A test that receives context",
       kind: :class,
-      label: context_label
+      label: context_label,
+      filter_text: "test"
     )
-    |> builder.boost(3)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "describe"}, builder, env) do
@@ -514,9 +544,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.snippet(snippet,
       detail: "A describe block",
       kind: :class,
-      label: ~S(describe "message")
+      label: ~S(describe "message"),
+      filter_text: "describe"
     )
-    |> builder.boost(1)
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: "__MODULE__"} = macro, builder, env) do
@@ -527,9 +558,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       |> builder.plain_text("__MODULE__",
         detail: macro.spec,
         kind: :constant,
-        label: "__MODULE__"
+        label: "__MODULE__",
+        filter_text: "__MODULE__"
       )
-      |> builder.boost()
+      |> builder.set_sort_scope(SortScope.global_declarations())
     end
   end
 
@@ -539,9 +571,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.plain_text(dunder_form,
       detail: macro.spec,
       kind: :constant,
-      label: dunder_form
+      label: dunder_form,
+      filter_text: dunder_form
     )
-    |> builder.boost()
+    |> builder.set_sort_scope(SortScope.global_declarations())
   end
 
   def translate(%Candidate.Macro{name: dunder_form}, _builder, _env)

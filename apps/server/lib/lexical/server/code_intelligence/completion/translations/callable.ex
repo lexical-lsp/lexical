@@ -2,6 +2,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.Ast.Env
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Completion.SortScope
 
   @callables [Candidate.Function, Candidate.Macro, Candidate.Callback, Candidate.Typespec]
 
@@ -24,6 +25,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     do_completion(callable, env)
   end
 
+  # for a callable to be local, it must be defined in the current scope,
+  # or be a callback.
   defp do_completion(callable, %Env{} = env) do
     add_args? = not String.contains?(env.suffix, "(")
 
@@ -70,7 +73,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: name_and_arity,
         sort_text: sort_text(callable)
       )
-      |> maybe_boost(callable, 4)
+      |> maybe_boost(callable)
 
     call_capture =
       env
@@ -80,7 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: label(callable, env),
         sort_text: sort_text(callable)
       )
-      |> maybe_boost(callable, 4)
+      |> maybe_boost(callable)
 
     [complete_capture, call_capture]
   end
@@ -111,11 +114,18 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
-    if String.starts_with?(name, "__") or name in @default_functions do
-      item
-    else
-      Builder.boost(item, default_boost)
+  defp maybe_boost(item, %_{name: name, origin: origin, metadata: metadata} = _callable) do
+    deprecated? = Map.has_key?(metadata, :deprecated)
+
+    cond do
+      String.starts_with?(name, "__") or name in @default_functions ->
+        item
+      
+      origin === "Kernel" ->
+        Builder.set_sort_scope(item, SortScope.global_declarations(deprecated?))
+
+      true ->
+        Builder.set_sort_scope(item, SortScope.local_declarations(deprecated?))
     end
   end
 

@@ -4,6 +4,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
+  alias Lexical.Completion.SortScope
 
   defimpl Translatable, for: Candidate.StructField do
     def translate(field, builder, %Env{} = env) do
@@ -21,13 +22,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
 
     builder_opts = [
       kind: :field,
-      label: "#{name}: #{value}"
+      label: "#{name}: #{value}",
+      filter_text: "#{name}:"
     ]
 
     insert_text = "#{name}: ${1:#{value}}"
     range = edit_range(env)
 
-    builder.text_edit_snippet(env, insert_text, range, builder_opts)
+    env
+    |> builder.text_edit_snippet(insert_text, range, builder_opts)
+    |> builder.set_sort_scope(SortScope.local_variables())
   end
 
   def translate(%Candidate.StructField{} = struct_field, builder, %Env{} = env) do
