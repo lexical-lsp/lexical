@@ -119,7 +119,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     case Code.Fragment.cursor_context(env.prefix) do
       {:alias, alias_charlist} ->
         alias_charlist
-        |> :string.split('.', :all)
+        |> :string.split(~c".", :all)
         |> List.last()
         |> length()
 
@@ -230,7 +230,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     case item.documentation do
       doc when is_binary(doc) ->
         %{item | documentation: %Content{kind: :markdown, value: doc}}
-      
+
       _ ->
         item
     end
