@@ -50,9 +50,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
     env
     |> Builder.snippet(insert_text,
-      kind: kind,
       label: label(callable, env),
+      kind: kind,
+      detail: "(#{callable.type})",
       sort_text: sort_text(callable),
+      documentation: maybe_summary(callable),
       tags: tags
     )
     |> maybe_boost(callable)
@@ -65,20 +67,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     complete_capture =
       env
       |> Builder.plain_text(name_and_arity,
-        detail: "(Capture)",
-        kind: :function,
         label: name_and_arity,
-        sort_text: sort_text(callable)
+        kind: :function,
+        detail: "(Capture)",
+        sort_text: sort_text(callable),
+        documentation: maybe_summary(callable)
       )
       |> maybe_boost(callable, 4)
 
     call_capture =
       env
       |> Builder.snippet(callable_snippet(callable, env),
-        detail: "(Capture with arguments)",
-        kind: :function,
         label: label(callable, env),
-        sort_text: sort_text(callable)
+        kind: :function,
+        detail: "(Capture with arguments)",
+        sort_text: sort_text(callable),
+        documentation: maybe_summary(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -135,5 +139,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> String.pad_leading(3, "0")
 
     "#{name}:#{normalized_arity}"
+  end
+
+  defp maybe_summary(callable) do
+    summary =
+      if Map.has_key?(callable, :summary) do
+        callable.summary
+      end
+
+    spec =
+      if Map.has_key?(callable, :spec) do
+        "```elixir\n#{callable.spec}\n```"
+      end
+
+    "#{summary}\n#{spec}"
   end
 end
