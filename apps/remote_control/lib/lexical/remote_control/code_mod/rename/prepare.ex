@@ -1,43 +1,77 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
-  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
-  alias Lexical.Document.Line
   alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.CodeMod.Rename
+  alias Lexical.RemoteControl.Search.Store
 
-  import Line
+  require Logger
 
-  @spec prepare(Analysis.t(), Position.t()) :: {:ok, String.t(), Range.t()} | {:error, term()}
+  @spec prepare(Analysis.t(), Position.t()) ::
+          {:ok, {atom(), String.t()}, Range.t()} | {:error, term()}
   def prepare(%Analysis{} = analysis, %Position{} = position) do
-    case resolve_module(analysis, position) do
-      {:ok, _, range} ->
-        {:ok, local_module_name(range), range}
+    case resolve(analysis, position) do
+      {:ok, {:module, module}, range} ->
+        {:ok, inspect(module), range}
 
-      {:error, _} ->
-        {:error, :unsupported_entity}
+      {:ok, {:call, {_m, f}}, range} ->
+        {:ok, to_string(f), range}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
-  def resolve_module(analysis, position) do
-    case Entity.resolve(analysis, position) do
-      {:ok, {module_or_struct, module}, range} when module_or_struct in [:struct, :module] ->
-        {:ok, module, range}
+  @spec resolve(Analysis.t(), Position.t()) ::
+          {:ok, {atom(), atom()} | {atom(), tuple()}, Range.t()} | {:error, term()}
+  def resolve(%Analysis{} = analysis, %Position{} = position) do
+    case do_resolve(analysis, position) do
+      {:ok, {:module, module}, range} ->
+        if rename_at_declaration?(module, range) do
+          {:ok, {:module, module}, range}
+        else
+          {:error, {:unsupported_location, :module}}
+        end
 
-      {:ok, other, _} ->
-        {:error, {:unsupported_entity, other}}
-
-      {:error, reason} ->
-        {:error, reason}
+      other ->
+        other
     end
   end
 
-  def range_text(range) do
-    line(text: text) = range.end.context_line
-    String.slice(text, range.start.character - 1, range.end.character - range.start.character)
+  defp rename_at_declaration?(module, rename_range) do
+    case Store.exact(module, type: :module, subtype: :definition) do
+      [definition] ->
+        rename_range == definition.range
+
+      _ ->
+        false
+    end
   end
 
-  def local_module_name(%Range{} = range) do
-    range |> range_text() |> Ast.Module.local_name()
+  @renamable_module [Rename.Callable, Rename.Module]
+
+  defp do_resolve(%Analysis{} = analysis, %Position{} = position) do
+    result =
+      Enum.find_value(@renamable_module, fn module ->
+        result = module.resolve(analysis, position)
+
+        if match?({:ok, _, _}, result) do
+          result
+        end
+      end)
+
+    if is_nil(result) do
+      case Entity.resolve(analysis, position) do
+        {:ok, other, _} ->
+          Logger.info("Unsupported entity for renaming: #{inspect(other)}")
+          {:error, :unsupported_entity}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      result
+    end
   end
 end

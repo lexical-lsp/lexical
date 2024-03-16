@@ -1,127 +1,144 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
-  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Edit
+  alias Lexical.Document.Line
   alias Lexical.Document.Position
-  alias Lexical.RemoteControl.CodeMod.Rename.Prepare
+  alias Lexical.Document.Range
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Store
   require Logger
 
-  @spec rename(Analysis.t(), Position.t(), String.t()) ::
-          {:ok, %{Lexical.uri() => [Edit.t()]}} | {:error, term()}
-  def rename(%Analysis{} = analysis, %Position{} = position, new_name) do
-    with {:ok, entity, range} <- Prepare.resolve_module(analysis, position) do
-      edits =
-        analysis.document
-        |> search_related_candidates(position, entity, range)
-        |> to_edits_by_uri(new_name)
+  import Line
 
-      {:ok, edits}
-    end
+  @spec rename(Range.t(), String.t(), atom()) :: %{Lexical.uri() => [Edit.t()]}
+  def rename(%Range{} = old_range, new_name, entity) do
+    {old_suffix, new_suffix} = old_range |> range_text() |> diff(new_name)
+    results = exacts(entity, old_suffix) ++ descendants(entity, old_suffix)
+    to_edits_by_uri(results, new_suffix)
   end
 
-  defp search_related_candidates(document, position, entity, range) do
-    local_module_name = Prepare.local_module_name(range)
-    entities = exacts(entity, local_module_name)
-
-    # Users won't always want to rename descendants of a module.
-    # For instance, when there are no more submodules after the cursor.
-    # like: `defmodule TopLevel.Mo|dule do`
-    # in most cases, users only want to rename the module itself.
-    #
-    # However, there's an exception when the cursor is in the middle,
-    # such as `Top.Mo|dule.ChildModule`. If we rename it to `Top.Renamed.Child`,
-    # it would be natural to also rename `Module.ChildModule` to `Renamed.Child`.
-    if at_the_middle_of_module?(document, position, range) do
-      entities ++ descendants(entity, local_module_name)
-    else
-      entities
-    end
-  end
-
-  defp at_the_middle_of_module?(document, position, range) do
-    range_text = Prepare.range_text(range)
-
-    case Ast.surround_context(document, position) do
-      {:ok, %{context: {:alias, alias}}} ->
-        String.length(range_text) < length(alias)
+  @spec resolve(Analysis.t(), Position.t()) ::
+          {:ok, {atom(), atom()}, Range.t()} | {:error, term()}
+  def resolve(%Analysis{} = analysis, %Position{} = position) do
+    case Entity.resolve(analysis, position) do
+      {:ok, {module_or_struct, module}, range} when module_or_struct in [:struct, :module] ->
+        {:ok, {:module, module}, range}
 
       _ ->
-        false
+        {:error, :not_a_module}
     end
   end
 
-  defp descendants(entity, local_module_name) do
-    entity_string = inspect(entity)
-    prefix = "#{entity_string}."
+  defp diff(old_range_text, new_name) do
+    diff = String.myers_difference(old_range_text, new_name)
 
-    prefix
-    |> Store.prefix(type: :module)
-    |> Enum.filter(&(entry_matching?(&1, local_module_name) and has_dots_in_range?(&1)))
-    |> adjust_range(entity)
+    eq =
+      if match?([{:eq, _eq} | _], diff) do
+        diff |> hd() |> elem(1)
+      else
+        ""
+      end
+
+    old_suffix = String.replace(old_range_text, ~r"^#{eq}", "")
+    new_suffix = String.replace(new_name, ~r"^#{eq}", "")
+    {old_suffix, new_suffix}
   end
 
-  defp exacts(entity, local_module_name) do
+  defp exacts(entity, old_suffix) do
     entity_string = inspect(entity)
 
     entity_string
     |> Store.exact(type: :module)
-    |> Enum.filter(&entry_matching?(&1, local_module_name))
+    |> Enum.filter(&entry_matching?(&1, old_suffix))
+    |> adjust_range_for_exacts(old_suffix)
   end
 
-  defp entry_matching?(entry, local_module_name) do
-    entry.range |> Prepare.range_text() |> String.contains?(local_module_name)
+  defp descendants(entity, old_suffix) do
+    prefix = "#{inspect(entity)}."
+
+    prefix
+    |> Store.prefix(type: :module)
+    |> Enum.filter(&(entry_matching?(&1, old_suffix) and has_dots_in_range?(&1)))
+    |> adjust_range_for_descendants(entity, old_suffix)
+  end
+
+  defp entry_matching?(entry, old_suffix) do
+    entry.range |> range_text() |> String.contains?(old_suffix)
   end
 
   defp has_dots_in_range?(entry) do
-    entry.range |> Prepare.range_text() |> String.contains?(".")
+    entry.range |> range_text() |> String.contains?(".")
   end
 
-  defp adjust_range(entries, entity) do
-    for entry <- entries,
-        uri = Document.Path.ensure_uri(entry.path),
-        range_result = resolve_local_module_range(uri, entry.range.start, entity),
-        match?({:ok, _}, range_result) do
-      {_, range} = range_result
+  defp adjust_range_for_exacts(entries, old_suffix) do
+    for entry <- entries do
+      start_character = entry.range.end.character - String.length(old_suffix)
+      start_position = %{entry.range.start | character: start_character}
+      range = %{entry.range | start: start_position}
       %{entry | range: range}
     end
   end
 
-  defp resolve_local_module_range(uri, position, entity) do
-    with {:ok, _} <- Document.Store.open_temporary(uri),
-         {:ok, document, analysis} <- Document.Store.fetch(uri, :analysis),
-         {:ok, result, range} <- Prepare.resolve_module(analysis, position) do
-      if result == entity do
-        {:ok, range}
-      else
-        last_part_length = result |> Ast.Module.local_name() |> String.length()
-        # Move the cursor to the next part:
-        # `|Parent.Next.Target.Child` -> 'Parent.|Next.Target.Child' -> 'Parent.Next.|Target.Child'
-        character = position.character + last_part_length + 1
-        position = Position.new(document, position.line, character)
-        resolve_local_module_range(uri, position, entity)
-      end
-    else
-      _ ->
-        Logger.error("Failed to find entity range for #{inspect(uri)} at #{inspect(position)}")
-        :error
+  defp adjust_range_for_descendants(entries, entity, old_suffix) do
+    for entry <- entries,
+        range_text = range_text(entry.range),
+        matches = Regex.scan(~r"#{old_suffix}", range_text, return: :index),
+        result = resolve_module_range(entry, entity, matches),
+        match?({:ok, _}, result) do
+      {_, range} = result
+      %{entry | range: range}
     end
   end
 
-  defp to_edits_by_uri(results, new_name) do
+  defp range_text(range) do
+    line(text: text) = range.end.context_line
+    String.slice(text, range.start.character - 1, range.end.character - range.start.character)
+  end
+
+  defp resolve_module_range(_entry, _entity, []) do
+    {:error, :not_found}
+  end
+
+  defp resolve_module_range(entry, _entity, [[{start, length}]]) do
+    range = adjust_range_characters(entry.range, {start, length})
+    {:ok, range}
+  end
+
+  defp resolve_module_range(entry, entity, [[{start, length}] | tail] = _matches) do
+    # This function is mainly for the duplicated suffixes
+    # For example, if we have a module named `Foo.Bar.Foo.Bar` and we want to rename it to `Foo.Bar.Baz`
+    # The `Foo.Bar` will be duplicated in the range text, so we need to resolve the correct range
+    # and only rename the second occurrence of `Foo.Bar`
+    uri = Document.Path.ensure_uri(entry.path)
+
+    with {:ok, _} <- Document.Store.open_temporary(uri),
+         {:ok, _document, analysis} <- Document.Store.fetch(uri, :analysis),
+         start_character = entry.range.start.character + start,
+         position = %{entry.range.start | character: start_character},
+         {:ok, {:module, result}, range} <- resolve(analysis, position) do
+      if result == entity do
+        range = adjust_range_characters(range, {start, length})
+        {:ok, range}
+      else
+        resolve_module_range(entry, entity, tail)
+      end
+    end
+  end
+
+  defp adjust_range_characters(range, {start, length} = _matched_old_suffix) do
+    start_character = range.start.character + start
+    end_character = start_character + length
+    start_position = %{range.start | character: start_character}
+    end_end_position = %{range.start | character: end_character}
+    %{range | start: start_position, end: end_end_position}
+  end
+
+  defp to_edits_by_uri(results, new_suffix) do
     Enum.group_by(
       results,
       &Document.Path.ensure_uri(&1.path),
-      fn result ->
-        local_module_name_length = result.range |> Prepare.local_module_name() |> String.length()
-        # e.g: `Parent.|ToBeRenameModule`, we need the start position of `ToBeRenameModule`
-        start_character = result.range.end.character - local_module_name_length
-        start_position = %{result.range.start | character: start_character}
-
-        new_range = %{result.range | start: start_position}
-        Edit.new(new_name, new_range)
-      end
+      &Edit.new(new_suffix, &1.range)
     )
   end
 end
