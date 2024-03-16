@@ -29,13 +29,21 @@ defmodule Lexical.Ast.Module do
     |> name()
   end
 
-  def local_module_name(entity) when is_atom(entity) do
+  @doc """
+  local module name is the last part of a module name
+
+  ## Examples:
+
+      iex> local_name("Lexical.Ast.Module")
+      "Module"
+  """
+  def local_name(entity) when is_atom(entity) do
     entity
     |> inspect()
-    |> local_module_name()
+    |> local_name()
   end
 
-  def local_module_name(entity) when is_binary(entity) do
+  def local_name(entity) when is_binary(entity) do
     entity
     |> String.split(".")
     |> List.last()

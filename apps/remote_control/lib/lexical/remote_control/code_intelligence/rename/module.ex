@@ -123,7 +123,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename.Module do
       if result == entity do
         {:ok, range}
       else
-        last_part_length = result |> Ast.Module.local_module_name() |> String.length()
+        last_part_length = result |> Ast.Module.local_name() |> String.length()
         # Move the cursor to the next part:
         # `|Parent.Next.Target.Child` -> 'Parent.|Next.Target.Child' -> 'Parent.Next.|Target.Child'
         character = position.character + last_part_length + 1
@@ -159,6 +159,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Rename.Module do
   end
 
   defp local_module_name(%Range{} = range) do
-    range |> range_text() |> Ast.Module.local_module_name()
+    range |> range_text() |> Ast.Module.local_name()
   end
 end
