@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.CodeIntelligence.Rename.Module do
+defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document

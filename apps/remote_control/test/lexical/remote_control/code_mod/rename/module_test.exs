@@ -1,8 +1,8 @@
-defmodule Lexical.RemoteControl.CodeIntelligence.Rename.ModuleTest do
+defmodule Lexical.RemoteControl.CodeMod.Rename.ModuleTest do
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.CodeIntelligence.Rename
+  alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Store.Backends
   alias Lexical.Test.CodeSigil
