@@ -54,6 +54,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       kind: kind,
       detail: "(#{callable.type})",
       sort_text: sort_text(callable),
+      filter_text: "#{callable.name}",
       documentation: maybe_summary(callable),
       tags: tags
     )
@@ -71,6 +72,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         detail: "(Capture)",
         sort_text: sort_text(callable),
+        filter_text: "#{callable.name}",
         documentation: maybe_summary(callable)
       )
       |> maybe_boost(callable, 4)
@@ -82,6 +84,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         kind: :function,
         detail: "(Capture with arguments)",
         sort_text: sort_text(callable),
+        filter_text: "#{callable.name}",
         documentation: maybe_summary(callable)
       )
       |> maybe_boost(callable, 4)
