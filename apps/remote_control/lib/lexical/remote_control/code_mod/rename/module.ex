@@ -15,7 +15,12 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   def rename(%Range{} = old_range, new_name, entity) do
     {old_suffix, new_suffix} = old_range |> range_text() |> diff(new_name)
     results = exacts(entity, old_suffix) ++ descendants(entity, old_suffix)
-    to_edits_by_uri(results, new_suffix)
+
+    Enum.group_by(
+      results,
+      &Document.Path.ensure_uri(&1.path),
+      &Edit.new(new_suffix, &1.range)
+    )
   end
 
   @spec resolve(Analysis.t(), Position.t()) ::
@@ -132,13 +137,5 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     start_position = %{range.start | character: start_character}
     end_end_position = %{range.start | character: end_character}
     %{range | start: start_position, end: end_end_position}
-  end
-
-  defp to_edits_by_uri(results, new_suffix) do
-    Enum.group_by(
-      results,
-      &Document.Path.ensure_uri(&1.path),
-      &Edit.new(new_suffix, &1.range)
-    )
   end
 end

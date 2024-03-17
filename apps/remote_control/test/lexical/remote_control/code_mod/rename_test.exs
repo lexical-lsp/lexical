@@ -71,6 +71,16 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result == "TopLevel.Foo"
     end
 
+    test "returns the whole module name even if the cusor is not at the end" do
+      {:ok, result, _} =
+        ~q[
+        defmodule Top|Level.Foo do
+        end
+      ] |> prepare()
+
+      assert result == "TopLevel.Foo"
+    end
+
     test "returns location error when renaming a module occurs in a reference." do
       assert {:error, {:unsupported_location, :module}} ==
                ~q[
@@ -132,6 +142,16 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
                ~q[
         defmodule Baz do
           alias |Foo
+        end
+      ] |> rename("Renamed")
+    end
+
+    test "failed when the cursor is not at reference" do
+      assert {:error, {:unsupported_location, :module}} ==
+               ~q[
+        defmodule TopLevel.Context do
+          alias TopLevel.Baz
+          Ba|z.foo()
         end
       ] |> rename("Renamed")
     end

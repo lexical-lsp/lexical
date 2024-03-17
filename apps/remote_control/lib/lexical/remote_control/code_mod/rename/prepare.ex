@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
+  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -27,7 +28,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
           {:ok, {atom(), atom()} | {atom(), tuple()}, Range.t()} | {:error, term()}
   def resolve(%Analysis{} = analysis, %Position{} = position) do
     case do_resolve(analysis, position) do
-      {:ok, {:module, module}, range} ->
+      {:ok, {:module, _module}, _range} ->
+        {module, range} = surround_the_whole_module(analysis, position)
+
         if rename_at_declaration?(module, range) do
           {:ok, {:module, module}, range}
         else
@@ -37,6 +40,15 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
       other ->
         other
     end
+  end
+
+  defp surround_the_whole_module(analysis, position) do
+    # When renaming occurs, we want users to be able to choose any place in the defining module,
+    # not just the last local module, like: `defmodule |Foo.Bar do` also works.
+    {:ok, %{end: {_end_line, end_character}}} = Ast.surround_context(analysis, position)
+    end_position = %{position | character: end_character - 1}
+    {:ok, {:module, module}, range} = do_resolve(analysis, end_position)
+    {module, range}
   end
 
   defp rename_at_declaration?(module, rename_range) do
