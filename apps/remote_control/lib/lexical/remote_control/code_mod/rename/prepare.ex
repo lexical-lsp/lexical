@@ -17,6 +17,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
       {:ok, {:module, module}, range} ->
         {:ok, Formats.module(module), range}
 
+      {:ok, {:call, {_module, local_name}}, range} ->
+        {:ok, to_string(local_name), range}
+
       {:error, error} ->
         {:error, error}
     end
@@ -59,7 +62,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
     end
   end
 
-  @renamable_modules [Rename.Module]
+  @renamable_modules [Rename.Callable, Rename.Module]
 
   defp do_resolve(%Analysis{} = analysis, %Position{} = position) do
     result =
