@@ -58,7 +58,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       sort_text: sort_text(callable),
       tags: tags
     )
-    |> maybe_boost(callable)
+    |> maybe_boost(callable, env)
   end
 
   def capture_completions(%callable_module{} = callable, %Env{} = env)
@@ -73,7 +73,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: name_and_arity,
         sort_text: sort_text(callable)
       )
-      |> maybe_boost(callable)
+      |> maybe_boost(callable, env)
 
     call_capture =
       env
@@ -83,7 +83,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: label(callable, env),
         sort_text: sort_text(callable)
       )
-      |> maybe_boost(callable)
+      |> maybe_boost(callable, env)
 
     [complete_capture, call_capture]
   end
@@ -114,18 +114,34 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name, origin: origin, metadata: metadata} = _callable) do
+  defp maybe_boost(
+         item,
+         %_{name: name, origin: origin, metadata: metadata} = _callable,
+         %Env{} = env
+       ) do
     deprecated? = Map.has_key?(metadata, :deprecated)
+
+    [%Lexical.Ast.Analysis.Scope{module: local_module} | _] = env.cursor_scopes
+
+    local_module = Enum.join(local_module, ".")
+
+    callback_callable? = Map.has_key?(metadata, :implementing) || name === "child_spec"
 
     cond do
       String.starts_with?(name, "__") or name in @default_functions ->
         item
-      
+
+      origin === local_module and callback_callable? ->
+        Builder.set_sort_scope(item, SortScope.remote(deprecated?))
+
+      origin === local_module ->
+        Builder.set_sort_scope(item, SortScope.local(deprecated?))
+
       origin === "Kernel" ->
         Builder.set_sort_scope(item, SortScope.global(deprecated?))
 
       true ->
-        Builder.set_sort_scope(item, SortScope.local(deprecated?))
+        Builder.set_sort_scope(item, SortScope.remote(deprecated?))
     end
   end
 

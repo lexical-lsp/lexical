@@ -13,6 +13,7 @@ defmodule Lexical.Ast.Env do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
+  alias Lexical.Ast.Analysis.Scope
 
   defstruct [
     :project,
@@ -22,6 +23,7 @@ defmodule Lexical.Ast.Env do
     :prefix,
     :suffix,
     :position,
+    :cursor_scopes,
     :zero_based_character
   ]
 
@@ -31,6 +33,7 @@ defmodule Lexical.Ast.Env do
           prefix: String.t(),
           suffix: String.t(),
           position: Position.t(),
+          cursor_scopes: [Scope.t()],
           zero_based_character: non_neg_integer()
         }
 
@@ -43,11 +46,14 @@ defmodule Lexical.Ast.Env do
         prefix = String.slice(line, 0, zero_based_character)
         suffix = String.slice(line, zero_based_character..-1//1)
 
+        analysis = Ast.reanalyze_to(analysis, cursor_position)
+
         env = %__MODULE__{
-          analysis: Ast.reanalyze_to(analysis, cursor_position),
+          analysis: analysis,
           document: analysis.document,
           line: line,
           position: cursor_position,
+          cursor_scopes: Analysis.scopes_at(analysis, cursor_position),
           prefix: prefix,
           project: project,
           suffix: suffix,

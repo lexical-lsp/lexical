@@ -12,6 +12,7 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Document
   alias Lexical.Document
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.Identifier
   alias Sourceror.Zipper
 
@@ -42,6 +43,23 @@ defmodule Lexical.Ast.Analysis do
       parse_error: error,
       valid?: false
     }
+  end
+
+  @doc """
+  Returns the scopes for the given position, sorted by nearest proximity.
+  """
+  def scopes_at(%__MODULE__{scopes: scopes}, %Position{} = position) do
+    scopes
+    |> Enum.filter(fn %Scope{range: range} = scope ->
+      scope.id == :global or Range.contains?(range, position)
+    end)
+    |> Enum.sort_by(
+      fn
+        %Scope{id: :global} -> 0
+        %Scope{range: range} -> {range.start.line, range.start.character}
+      end,
+      :desc
+    )
   end
 
   @doc false
