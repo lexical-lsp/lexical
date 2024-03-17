@@ -61,7 +61,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
     end
   end
 
-  @renamable_module [Rename.Callable, Rename.Module]
+  @renamable_module [Rename.Module]
 
   defp do_resolve(%Analysis{} = analysis, %Position{} = position) do
     result =

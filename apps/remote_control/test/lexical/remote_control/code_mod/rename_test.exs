@@ -93,30 +93,6 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       ] |> prepare()
     end
 
-    test "returns the function name" do
-      {:ok, result, _} =
-        ~q[
-        defmodule Foo do
-          def |bar do
-          end
-        end
-      ] |> prepare()
-
-      assert result == "bar"
-    end
-
-    test "returns the macro name" do
-      {:ok, result, _} =
-        ~q[
-        defmodule Foo do
-          defmacro |bar(thing) do
-          end
-        end
-      ] |> prepare()
-
-      assert result == "bar"
-    end
-
     test "returns error when the entity is not found" do
       assert {:error, :not_found} =
                ~q[

@@ -11,7 +11,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     Prepare.prepare(analysis, position)
   end
 
-  @renamable_mapping %{call: __MODULE__.Callable, module: __MODULE__.Module}
+  @renamable_mapping %{module: __MODULE__.Module}
 
   @spec rename(Analysis.t(), Position.t(), String.t()) ::
           {:ok, %{Lexical.uri() => [Edit.t()]}} | {:error, term()}
