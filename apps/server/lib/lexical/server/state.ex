@@ -285,6 +285,7 @@ defmodule Lexical.Server.State do
         completion_provider: completion_options,
         definition_provider: true,
         document_formatting_provider: true,
+        document_symbol_provider: true,
         execute_command_provider: command_options,
         hover_provider: true,
         references_provider: true,
