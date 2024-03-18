@@ -41,6 +41,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     {:ok, [], body}
   end
 
+  # Test declarations
+  def extract(
+        {:test, _metadata,
+         [
+           {:__block__, [delimiter: "\"", line: 3, column: 8], ["my test"]},
+           args,
+           body
+         ]},
+        %Reducer{} = reducer
+      ) do
+    entries = extract_definitions(args, reducer)
+    {:ok, entries, body}
+  end
+
   def extract({:binary, _, _}, %Reducer{}) do
     :ignored
   end

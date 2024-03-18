@@ -558,6 +558,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, tuple_second.range) =~
                "%struct_module{key: [list_elem, {tuple_first, «tuple_second»}]} = whatever"
     end
+
+    test "from test arguments" do
+      {:ok, [test_def], doc} =
+        ~q[
+        defmodule TestCase do
+          use ExUnit.Case
+          test "my test", %{var: var} do
+            var
+          end
+        end
+        ]
+        |> index_definitions()
+
+      assert_definition(test_def, :var)
+      assert decorate(doc, test_def.range) =~ "%{var: «var»} do"
+    end
   end
 
   describe "variable references are extracted" do
