@@ -31,7 +31,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
       {:ok, {:module, _module}, _range} ->
         {module, range} = surround_the_whole_module(analysis, position)
 
-        if rename_at_declaration?(module, range) do
+        if cursor_at_declaration?(module, range) do
           {:ok, {:module, module}, range}
         else
           {:error, {:unsupported_location, :module}}
@@ -51,7 +51,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
     {module, range}
   end
 
-  defp rename_at_declaration?(module, rename_range) do
+  defp cursor_at_declaration?(module, rename_range) do
     case Store.exact(module, type: :module, subtype: :definition) do
       [definition] ->
         rename_range == definition.range
@@ -61,11 +61,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
     end
   end
 
-  @renamable_module [Rename.Module]
+  @renamable_modules [Rename.Module]
 
   defp do_resolve(%Analysis{} = analysis, %Position{} = position) do
     result =
-      Enum.find_value(@renamable_module, fn module ->
+      Enum.find_value(@renamable_modules, fn module ->
         result = module.resolve(analysis, position)
 
         if match?({:ok, _, _}, result) do

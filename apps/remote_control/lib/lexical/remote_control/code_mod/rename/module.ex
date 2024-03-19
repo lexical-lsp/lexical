@@ -131,11 +131,12 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     end
   end
 
-  defp adjust_range_characters(range, {start, length} = _matched_old_suffix) do
+  defp adjust_range_characters(%Range{} = range, {start, length} = _matched_old_suffix) do
     start_character = range.start.character + start
     end_character = start_character + length
-    start_position = %{range.start | character: start_character}
-    end_end_position = %{range.start | character: end_character}
-    %{range | start: start_position, end: end_end_position}
+
+    range
+    |> put_in([:start, :character], start_character)
+    |> put_in([:end, :character], end_character)
   end
 end
