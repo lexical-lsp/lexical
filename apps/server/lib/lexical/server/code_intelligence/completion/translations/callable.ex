@@ -114,34 +114,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(
-         item,
-         %_{name: name, origin: origin, metadata: metadata} = _callable,
-         %Env{} = env
-       ) do
+  defp maybe_boost(item, callable, %Env{position_module: position_module}) do
+    %_{
+      name: name,
+      origin: origin,
+      metadata: metadata
+    } = callable
+
+    # elixir_sense suggests child_spec as a callback, though it's not formally one.
+    callback? = Map.has_key?(metadata, :implementing) || name === "child_spec"
+
     deprecated? = Map.has_key?(metadata, :deprecated)
-
-    [%Lexical.Ast.Analysis.Scope{module: local_module} | _] = env.cursor_scopes
-
-    local_module = Enum.join(local_module, ".")
-
-    callback_callable? = Map.has_key?(metadata, :implementing) || name === "child_spec"
 
     cond do
       String.starts_with?(name, "__") or name in @default_functions ->
         item
 
-      origin === local_module and callback_callable? ->
-        Builder.set_sort_scope(item, SortScope.remote(deprecated?))
-
-      origin === local_module ->
-        Builder.set_sort_scope(item, SortScope.local(deprecated?))
+      origin === position_module ->
+        Builder.set_sort_scope(item, SortScope.local(deprecated?, callback?))
 
       origin === "Kernel" ->
         Builder.set_sort_scope(item, SortScope.global(deprecated?))
 
       true ->
-        Builder.set_sort_scope(item, SortScope.remote(deprecated?))
+        Builder.set_sort_scope(item, SortScope.remote(deprecated?, callback?))
     end
   end
 

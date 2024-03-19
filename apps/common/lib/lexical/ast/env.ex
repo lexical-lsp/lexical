@@ -23,7 +23,7 @@ defmodule Lexical.Ast.Env do
     :prefix,
     :suffix,
     :position,
-    :cursor_scopes,
+    :position_module,
     :zero_based_character
   ]
 
@@ -33,7 +33,7 @@ defmodule Lexical.Ast.Env do
           prefix: String.t(),
           suffix: String.t(),
           position: Position.t(),
-          cursor_scopes: [Scope.t()],
+          position_module: String.t(),
           zero_based_character: non_neg_integer()
         }
 
@@ -48,12 +48,20 @@ defmodule Lexical.Ast.Env do
 
         analysis = Ast.reanalyze_to(analysis, cursor_position)
 
+        cursor_module =
+          case Analysis.scopes_at(analysis, cursor_position) do
+            [%Scope{module: local_module} | _] ->
+              Enum.join(local_module, ".")
+            [] ->
+              ""
+          end
+
         env = %__MODULE__{
           analysis: analysis,
           document: analysis.document,
           line: line,
           position: cursor_position,
-          cursor_scopes: Analysis.scopes_at(analysis, cursor_position),
+          position_module: cursor_module,
           prefix: prefix,
           project: project,
           suffix: suffix,
@@ -137,19 +145,4 @@ defmodule Lexical.Ast.Env do
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
   end
-
-  # def cursor_scope(%__MODULE__{} = env) do
-  #   %__MODULE__{
-  #     analysis: %Analysis{
-  #       scopes: scopes
-  #     },
-  #     position: %Position{
-  #       character: character,
-  #       line: line
-  #     } = position
-  #   } = env
-  #
-  #   # find which exact scope the cursor's in?
-  #   Enum.max
-  # end
 end
