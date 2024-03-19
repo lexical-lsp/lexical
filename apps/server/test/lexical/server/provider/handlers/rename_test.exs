@@ -4,6 +4,7 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
   alias Lexical.Proto.Convert
   alias Lexical.Protocol.Requests.Rename
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.CodeMod.Rename.DocumentChanges
 
   alias Lexical.Server
   alias Lexical.Server.Provider.Env
@@ -79,28 +80,36 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
 
       patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name ->
         {:ok,
-         %{
-           "file:///path/to/file.ex" => [
-             %{
-               new_text: "new_text",
-               range: %{start: %{line: 1, character: 5}, end: %{line: 1, character: 10}}
-             }
-           ]
-         }}
+         [
+           DocumentChanges.new(
+             "file:///path/to/file.ex",
+             [
+               %{
+                 new_text: "new_text",
+                 range: %{start: %{line: 1, character: 5}, end: %{line: 1, character: 10}}
+               }
+             ],
+             {"file:///path/to/file.ex", "file:///path/to/new_text.ex"}
+           )
+         ]}
       end)
 
       {:ok, request} = build_request(uri, 1, 5)
 
       assert {:reply, response} = handle(request, project)
+      [edit, rename_file] = response.result.document_changes
 
-      assert response.result.changes == %{
-               "file:///path/to/file.ex" => [
-                 %{
-                   new_text: "new_text",
-                   range: %{end: %{character: 10, line: 1}, start: %{character: 5, line: 1}}
-                 }
-               ]
-             }
+      assert edit.edits == [
+               %{
+                 new_text: "new_text",
+                 range: %{end: %{character: 10, line: 1}, start: %{character: 5, line: 1}}
+               }
+             ]
+
+      assert edit.text_document.uri == "file:///path/to/file.ex"
+      assert edit.text_document.version == 0
+      assert rename_file.old_uri == "file:///path/to/file.ex"
+      assert rename_file.new_uri == "file:///path/to/new_text.ex"
     end
   end
 end
