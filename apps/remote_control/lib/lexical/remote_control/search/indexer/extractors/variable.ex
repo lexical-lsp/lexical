@@ -5,6 +5,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
   @defs [:def, :defmacro, :defp, :defmacrop]
+
+  def extract(
+        {def, _, [{:when, _, [{_fn_name, _, params} | when_args]}, body]},
+        %Reducer{} = reducer
+      )
+      when def in @defs do
+    entries = extract_definitions(params, reducer) ++ extract_references(when_args, reducer)
+    {:ok, entries, body}
+  end
+
   def extract({def, _, [{_fn_name, _, params}, body]}, %Reducer{} = reducer)
       when def in @defs do
     entries = extract_definitions(params, reducer)
@@ -90,6 +100,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
           {%Entry{} = entry, ast} ->
             {ast, [entry | acc]}
 
+          {entries, ast} when is_list(entries) ->
+            {ast, entries ++ acc}
+
           _ ->
             {ast, acc}
         end
@@ -112,6 +125,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     {reference, nil}
   end
 
+  # when clauses actually contain parameters and references
+  defp extract_definition({:when, _, when_args}, %Reducer{} = reducer, _current_app) do
+    {definitions, references} =
+      Enum.split_with(when_args, fn {_, _, context} -> is_atom(context) end)
+
+    definitions = extract_definitions(definitions, reducer)
+    references = extract_references(references, reducer)
+
+    {Enum.reverse(definitions ++ references), nil}
+  end
+
+  # This is an effect of string interpolation
   defp extract_definition({:binary, _metadata, nil}, _reducer, _current_app) do
     nil
   end
@@ -133,6 +158,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   end
 
   defp extract_definition(_, _reducer, _current_app), do: nil
+
+  defp extract_references(ast, reducer) do
+    current_app = get_current_app(reducer)
+
+    {_ast, entries} =
+      Macro.prewalk(ast, [], fn ast, acc ->
+        case extract_reference(ast, reducer, current_app) do
+          %Entry{} = entry ->
+            {ast, [entry | acc]}
+
+          _ ->
+            {ast, acc}
+        end
+      end)
+
+    Enum.reverse(entries)
+  end
 
   defp extract_reference({var_name, _metadata, nil} = ast, reducer, current_app) do
     if used_variable?(var_name) do

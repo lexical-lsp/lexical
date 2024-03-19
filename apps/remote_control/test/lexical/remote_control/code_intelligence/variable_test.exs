@@ -291,7 +291,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     end
 
     test "are constrained to a single arm of a case statement" do
-      {:ok, [range], doc} =
+      {:ok, [guard_range, usage_range], doc} =
         ~q[
           def something(param) do
             case param do
@@ -302,7 +302,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
         ]
         |> find_references()
 
-      assert decorate(doc, range) =~ "  param when is_number(param) -> «param» + 1"
+      assert decorate(doc, guard_range) =~ "  param when is_number(«param») -> param + 1"
+      assert decorate(doc, usage_range) =~ "  param when is_number(param) -> «param» + 1"
     end
 
     test "are found in a module body" do

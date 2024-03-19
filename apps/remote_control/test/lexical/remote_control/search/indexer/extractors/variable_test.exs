@@ -974,5 +974,42 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert_reference(elem_2_ref, :elem_2)
       assert decorate(doc, elem_2_ref.range) =~ "  {:ok, elem_1 + «elem_2»}"
     end
+
+    test "in guards in def functions" do
+      {:ok, [param_def, param_2_def, param_ref], doc} =
+        ~q[
+          def something(param, param_2) when param > 1 do
+          end
+        ]
+        |> index()
+
+      assert_definition(param_def, :param)
+      assert decorate(doc, param_def.range) =~ "def something(«param», param_2) when param > 1 do"
+
+      assert_definition(param_2_def, :param_2)
+
+      assert decorate(doc, param_2_def.range) =~
+               "def something(param, «param_2») when param > 1 do"
+
+      assert_reference(param_ref, :param)
+      assert decorate(doc, param_ref.range) =~ "def something(param, param_2) when «param» > 1 do"
+    end
+
+    test "in guards in anonymous functions" do
+      {:ok, [param_def, param_2_def, param_ref], doc} =
+        ~q[
+         fn param, param_2 when param > 1 -> :ok end
+        ]
+        |> index()
+
+      assert_definition(param_def, :param)
+      assert decorate(doc, param_def.range) =~ "fn «param», param_2 when param > 1 -> :ok end"
+
+      assert_definition(param_2_def, :param_2)
+      assert decorate(doc, param_2_def.range) =~ "fn param, «param_2» when param > 1 -> :ok end"
+
+      assert_reference(param_ref, :param)
+      assert decorate(doc, param_ref.range) =~ "fn param, param_2 when «param» > 1 -> :ok end"
+    end
   end
 end
