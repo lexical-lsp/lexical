@@ -23,14 +23,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   def extract({:<-, _, [left, right]}, %Reducer{} = reducer) do
     entries = extract_definitions(left, reducer)
 
-    {:ok, entries, right}
+    {:ok, entries, List.wrap(right)}
   end
 
   # Match operator left = right
   def extract({:=, _, [left, right]}, %Reducer{} = reducer) do
     definitions = extract_definitions(left, reducer)
 
-    {:ok, definitions, [right]}
+    {:ok, definitions, List.wrap(right)}
   end
 
   # String interpolations "#{foo}"

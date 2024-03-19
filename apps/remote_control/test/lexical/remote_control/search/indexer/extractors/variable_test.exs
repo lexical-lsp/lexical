@@ -472,6 +472,29 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
       assert decorate(doc, value.range) =~ "else «var» ->"
     end
 
+    test "from comprehensions" do
+      {:ok, [var, thing, field_1, field_2], doc} =
+        ~q[
+          for var <- things,
+              {:ok, thing} = var,
+              {:record, field_1, field_2} <- thing do
+          end
+        ]
+        |> index_definitions()
+
+      assert_definition(var, :var)
+      assert decorate(doc, var.range) =~ "for «var» <- things,"
+
+      assert_definition(thing, :thing)
+      assert decorate(doc, thing.range) =~ "{:ok, «thing»} = var,"
+
+      assert_definition(field_1, :field_1)
+      assert decorate(doc, field_1.range) =~ "{:record, «field_1», field_2} <- thing do"
+
+      assert_definition(field_2, :field_2)
+      assert decorate(doc, field_2.range) =~ "{:record, field_1, «field_2»} <- thing do"
+    end
+
     test "in an else block in a try" do
       {:ok, [value], doc} =
         ~q[
@@ -915,6 +938,41 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.VariableTest do
 
       assert_reference(var_ref, :var)
       assert decorate(doc, var_ref.range) =~ "  «var» + 1"
+    end
+
+    test "in a comprehension" do
+      {:ok, extracted, doc} =
+        ~q[
+          for {:ok, var} <- list,
+              {:record, elem_1, elem_2} <- var do
+            {:ok, elem_1 + elem_2}
+          end
+        ]
+        |> index()
+
+      assert [var_def, list_ref, elem_1_def, elem_2_def, var_ref, elem_1_ref, elem_2_ref] =
+               extracted
+
+      assert_definition(var_def, :var)
+      assert decorate(doc, var_def.range) =~ "for {:ok, «var»} <- list,"
+
+      assert_reference(list_ref, :list)
+      assert decorate(doc, list_ref.range) =~ "for {:ok, var} <- «list»,"
+
+      assert_definition(elem_1_def, :elem_1)
+      assert decorate(doc, elem_1_def.range) =~ "{:record, «elem_1», elem_2} <- var do"
+
+      assert_definition(elem_2_def, :elem_2)
+      assert decorate(doc, elem_2_def.range) =~ "{:record, elem_1, «elem_2»} <- var do"
+
+      assert_reference(var_ref, :var)
+      assert decorate(doc, var_ref.range) =~ "{:record, elem_1, elem_2} <- «var» do"
+
+      assert_reference(elem_1_ref, :elem_1)
+      assert decorate(doc, elem_1_ref.range) =~ "  {:ok, «elem_1» + elem_2}"
+
+      assert_reference(elem_2_ref, :elem_2)
+      assert decorate(doc, elem_2_ref.range) =~ "  {:ok, elem_1 + «elem_2»}"
     end
   end
 end
