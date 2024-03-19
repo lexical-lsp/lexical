@@ -1,6 +1,7 @@
 defmodule Lexical.Test.ExtractorCase do
   alias Lexical.Document
   alias Lexical.RemoteControl.Search.Indexer
+
   use ExUnit.CaseTemplate
   import Lexical.Test.CodeSigil
 
@@ -12,11 +13,13 @@ defmodule Lexical.Test.ExtractorCase do
     end
   end
 
-  def do_index(source, filter, extractors \\ nil) do
+  def do_index(source, filter, extractors \\ nil)
+
+  def do_index(source, filter, extractors) when is_binary(source) do
     path = "/foo/bar/baz.ex"
     doc = Document.new("file:///#{path}", source, 1)
 
-    case Indexer.Source.index("/foo/bar/baz.ex", source, extractors) do
+    case Indexer.Source.index(path, source, extractors) do
       {:ok, indexed_items} ->
         indexed_items = Enum.filter(indexed_items, filter)
         {:ok, indexed_items, doc}
@@ -24,6 +27,11 @@ defmodule Lexical.Test.ExtractorCase do
       error ->
         error
     end
+  end
+
+  def do_index(quoted_source, filter, extractors) do
+    source_string = Macro.to_string(quoted_source)
+    do_index(source_string, filter, extractors)
   end
 
   def in_a_module(code, module_name \\ "Parent") do

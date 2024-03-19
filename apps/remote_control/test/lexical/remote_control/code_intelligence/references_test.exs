@@ -61,7 +61,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert {:ok, [%Location{} = location]} = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
       assert decorate(code, location.range) =~ ~s[alias «ReferencedModule»]
     end
 
@@ -72,7 +72,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert {:ok, [%Location{} = location]} = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
       assert decorate(code, location.range) =~ ~s[@attr «ReferencedModule»]
     end
 
@@ -81,7 +81,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         some_module = ReferencedModule
       ]
 
-      assert {:ok, [%Location{} = location]} = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
       assert decorate(code, location.range) =~ ~s[some_module = «ReferencedModule»]
     end
 
@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert {:ok, [%Location{} = location]} = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
       assert decorate(code, location.range) =~ ~s[def some_fn(«ReferencedModule») do]
     end
 
@@ -100,7 +100,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         %ReferencedModule{} = something_else
       ]
 
-      assert {:ok, [%Location{} = location]} = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
       assert decorate(code, location.range) =~ ~s[%«ReferencedModule»{} = something_else]
     end
 
@@ -114,7 +114,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert {:ok, [location_1, location_2]} = references(project, "DefinedModule|", code, true)
+      assert [location_1, location_2] = references(project, "DefinedModule|", code, true)
       assert decorate(code, location_1.range) =~ ~s[defmodule «DefinedModule» do]
       assert decorate(code, location_2.range) =~ ~s[@attr «DefinedModule»]
     end
@@ -128,7 +128,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       end
       )
 
-      assert {:ok, [location]} = references(project, "%Struct|{}", code, true)
+      assert [location] = references(project, "%Struct|{}", code, true)
       assert decorate(code, location.range) =~ "«defstruct [:field]»"
     end
 
@@ -145,7 +145,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         defstruc|t [:name, :value]
       end
       )
-      assert {:ok, [location]} = references(project, selector, code)
+      assert [location] = references(project, selector, code)
       assert decorate(code, location.range) =~ "def something(«%Struct{}») do"
     end
 
@@ -156,7 +156,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       end
       )
 
-      assert {:ok, []} = references(project, "%Struct|{}", code)
+      assert [] = references(project, "%Struct|{}", code)
     end
   end
 
@@ -177,7 +177,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
       ]
 
-      assert {:ok, [reference]} = references(project, query, code)
+      assert [reference] = references(project, query, code)
       assert decorate(code, reference.range) =~ "  def fun(«@attr»), do: true"
     end
 
@@ -197,9 +197,43 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
       ]
 
-      assert {:ok, [definition, reference]} = references(project, query, code, true)
+      assert [definition, reference] = references(project, query, code, true)
       assert decorate(code, definition.range) =~ "«@attr 3»"
       assert decorate(code, reference.range) =~ "  def fun(«@attr»), do: true"
+    end
+  end
+
+  describe "variable references" do
+    test "are found in a function body", %{project: project} do
+      query = ~S[
+        def my_fun do
+          first| = 4
+          y = first * 2
+          z = y * 3 + first
+        end
+      ]
+
+      {_, code} = pop_cursor(query)
+
+      assert [ref_1, ref_2] = references(project, query, code)
+
+      assert decorate(code, ref_1.range) =~ "  y = «first» * 2"
+      assert decorate(code, ref_2.range) =~ "  z = y * 3 + «first»"
+    end
+
+    test "can include definitions", %{project: project} do
+      query = ~S[
+        def my_fun do
+          first = 4
+          y = first| * 2
+          z = y * 3 + first
+        end
+      ]
+
+      {_, code} = pop_cursor(query)
+
+      assert [definition, _ref_1, _ref_2] = references(project, query, code, true)
+      assert decorate(code, definition.range) =~ "  «first» = 4"
     end
   end
 

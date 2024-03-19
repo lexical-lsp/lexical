@@ -62,7 +62,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
           )
         ]
 
-        {:ok, locations}
+        locations
       end)
 
       {:ok, request} = build_request(uri, 5, 6)
@@ -73,7 +73,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
     end
 
     test "returns nothing if the entity can't resolve it", %{project: project, uri: uri} do
-      patch(RemoteControl.Api, :references, {:error, :not_found})
+      patch(RemoteControl.Api, :references, nil)
 
       {:ok, request} = build_request(uri, 1, 5)
 

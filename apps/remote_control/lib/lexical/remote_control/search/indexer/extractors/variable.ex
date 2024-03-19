@@ -5,6 +5,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
   @defs [:def, :defmacro, :defp, :defmacrop]
+
+  def extract(
+        {def, _, [{:when, _, [{_fn_name, _, params} | when_args]}, body]},
+        %Reducer{} = reducer
+      )
+      when def in @defs do
+    entries = extract_definitions(params, reducer) ++ extract_references(when_args, reducer)
+    {:ok, entries, body}
+  end
+
   def extract({def, _, [{_fn_name, _, params}, body]}, %Reducer{} = reducer)
       when def in @defs do
     entries = extract_definitions(params, reducer)
@@ -19,11 +29,44 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     {:ok, entries, List.wrap(body)}
   end
 
+  # with match operator. with {:ok, var} <- something()
+  def extract({:<-, _, [left, right]}, %Reducer{} = reducer) do
+    entries = extract_definitions(left, reducer)
+
+    {:ok, entries, List.wrap(right)}
+  end
+
   # Match operator left = right
   def extract({:=, _, [left, right]}, %Reducer{} = reducer) do
     definitions = extract_definitions(left, reducer)
-    references = extract_references(right, reducer)
-    {:ok, definitions ++ references, nil}
+
+    {:ok, definitions, List.wrap(right)}
+  end
+
+  # String interpolations "#{foo}"
+  def extract(
+        {:<<>>, _, [{:"::", _, [{{:., _, [Kernel, :to_string]}, _, body}, {:binary, _, _}]}]},
+        %Reducer{}
+      ) do
+    {:ok, [], body}
+  end
+
+  # Test declarations
+  def extract(
+        {:test, _metadata,
+         [
+           {:__block__, [delimiter: "\"", line: 3, column: 8], ["my test"]},
+           args,
+           body
+         ]},
+        %Reducer{} = reducer
+      ) do
+    entries = extract_definitions(args, reducer)
+    {:ok, entries, body}
+  end
+
+  def extract({:binary, _, _}, %Reducer{}) do
+    :ignored
   end
 
   # Generic variable reference
@@ -37,6 +80,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   # Pin operator ^pinned_variable
   def extract({:^, _, [reference]}, %Reducer{} = reducer) do
     reference = extract_reference(reference, reducer, get_current_app(reducer))
+
     {:ok, reference, nil}
   end
 
@@ -56,6 +100,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
           {%Entry{} = entry, ast} ->
             {ast, [entry | acc]}
 
+          {entries, ast} when is_list(entries) ->
+            {ast, entries ++ acc}
+
           _ ->
             {ast, acc}
         end
@@ -70,6 +117,28 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     reference = extract_reference(reference, reducer, current_app)
 
     {reference, nil}
+  end
+
+  # unquote(expression)
+  defp extract_definition({:unquote, _, [expr]}, %Reducer{} = reducer, current_app) do
+    reference = extract_reference(expr, reducer, current_app)
+    {reference, nil}
+  end
+
+  # when clauses actually contain parameters and references
+  defp extract_definition({:when, _, when_args}, %Reducer{} = reducer, _current_app) do
+    {definitions, references} =
+      Enum.split_with(when_args, fn {_, _, context} -> is_atom(context) end)
+
+    definitions = extract_definitions(definitions, reducer)
+    references = extract_references(references, reducer)
+
+    {Enum.reverse(definitions ++ references), nil}
+  end
+
+  # This is an effect of string interpolation
+  defp extract_definition({:binary, _metadata, nil}, _reducer, _current_app) do
+    nil
   end
 
   defp extract_definition({var_name, _metadata, nil} = ast, reducer, current_app) do
@@ -123,7 +192,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     end
   end
 
-  defp extract_reference(_, _, _), do: nil
+  defp extract_reference(_, _, _) do
+    nil
+  end
 
   # extracts definitions like e in SomeException ->
   defp extract_in_definitions(ast, %Reducer{} = reducer) do
