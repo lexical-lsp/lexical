@@ -50,9 +50,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
     env
     |> Builder.snippet(insert_text,
-      kind: kind,
       label: label(callable, env),
+      kind: kind,
+      detail: "(#{callable.type})",
       sort_text: sort_text(callable),
+      filter_text: "#{callable.name}",
+      documentation: build_docs(callable),
       tags: tags
     )
     |> maybe_boost(callable)
@@ -65,20 +68,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     complete_capture =
       env
       |> Builder.plain_text(name_and_arity,
-        detail: "(Capture)",
-        kind: :function,
         label: name_and_arity,
-        sort_text: sort_text(callable)
+        kind: :function,
+        detail: "(Capture)",
+        sort_text: sort_text(callable),
+        filter_text: "#{callable.name}",
+        documentation: build_docs(callable)
       )
       |> maybe_boost(callable, 4)
 
     call_capture =
       env
       |> Builder.snippet(callable_snippet(callable, env),
-        detail: "(Capture with arguments)",
-        kind: :function,
         label: label(callable, env),
-        sort_text: sort_text(callable)
+        kind: :function,
+        detail: "(Capture with arguments)",
+        sort_text: sort_text(callable),
+        filter_text: "#{callable.name}",
+        documentation: build_docs(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -135,5 +142,22 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> String.pad_leading(3, "0")
 
     "#{name}:#{normalized_arity}"
+  end
+
+  defp build_docs(%{summary: summary, spec: spec})
+       when is_binary(summary) and is_binary(spec) do
+    "#{summary}\n```elixir\n#{spec}\n```"
+  end
+
+  defp build_docs(%{summary: summary}) when is_binary(summary) do
+    summary
+  end
+
+  defp build_docs(%{spec: spec}) when is_binary(spec) do
+    "```elixir\n#{spec}\n```"
+  end
+
+  defp build_docs(_) do
+    ""
   end
 end

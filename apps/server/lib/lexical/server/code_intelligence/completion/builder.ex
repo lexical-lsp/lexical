@@ -18,6 +18,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Protocol.Types.Completion
+  alias Lexical.Protocol.Types.Markup.Content
 
   import Document.Line
 
@@ -50,6 +51,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     options
     |> Keyword.put(:text_edit, edits)
     |> Completion.Item.new()
+    |> markdown_docs()
     |> boost(0)
   end
 
@@ -70,6 +72,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     |> Keyword.put(:text_edit, edits)
     |> Keyword.put(:insert_text_format, :snippet)
     |> Completion.Item.new()
+    |> markdown_docs()
     |> boost(0)
   end
 
@@ -116,7 +119,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     case Code.Fragment.cursor_context(env.prefix) do
       {:alias, alias_charlist} ->
         alias_charlist
-        |> :string.split('.', :all)
+        |> :string.split(~c".", :all)
         |> List.last()
         |> length()
 
@@ -221,5 +224,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   @boost_re ~r/^[0-9_]+/
   defp strip_boost(sort_text) do
     String.replace(sort_text, @boost_re, "")
+  end
+
+  defp markdown_docs(%Completion.Item{} = item) do
+    case item.documentation do
+      doc when is_binary(doc) ->
+        %{item | documentation: %Content{kind: :markdown, value: doc}}
+
+      _ ->
+        item
+    end
   end
 end
