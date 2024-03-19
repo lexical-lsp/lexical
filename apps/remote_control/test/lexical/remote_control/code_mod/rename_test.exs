@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.Document
-  alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search
@@ -40,16 +39,6 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     {:ok, project: project}
   end
 
-  setup %{project: project} do
-    uri = subject_uri(project)
-
-    on_exit(fn ->
-      Document.Store.close(uri)
-    end)
-
-    %{uri: uri}
-  end
-
   describe "prepare/2" do
     test "returns the module name" do
       {:ok, result, _} =
@@ -71,7 +60,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result == "TopLevel.Foo"
     end
 
-    test "returns the whole module name even if the cusor is not at the end" do
+    test "returns the whole module name even if the cursor is not at the end" do
       {:ok, result, _} =
         ~q[
         defmodule Top|Level.Foo do
@@ -217,7 +206,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  describe "rename descendants" do
+  describe "rename module descendants" do
     test "rename the descendants" do
       {:ok, result} = ~q[
         defmodule TopLevel.|Module do
@@ -341,8 +330,86 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  defp rename(%Project{} = project \\ project(), source, new_name) do
-    uri = subject_uri(project)
+  describe "rename file" do
+    test "it shouldn't rename file if the module has parent module within that file" do
+      {:ok, {_applied, nil}} =
+        ~q[
+        defmodule FooServer do
+          defmodule |State do
+          end
+        end
+        ] |> rename("Renamed", "lib/foo_server.ex")
+    end
+
+    test "it shouldn't rename file if the module has any siblings within that file" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo do
+        end
+
+        defmodule Bar do
+        end
+        ] |> rename("Renamed", "lib/foo.ex")
+    end
+
+    test "it shouldn't rename file if the path doesn't match the any convensions" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo.Mix do
+        end
+        ] |> rename("Renamed", "mix.ex")
+    end
+
+    test "succeeds when the path matching the `lib/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |Foo do
+        end
+      ] |> rename("Renamed", "lib/foo.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "lib/renamed.ex")
+    end
+
+    test "succeeds when the path matching the `apps/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |FooApp.Bar do
+        end
+      ] |> rename("FooApp.Renamed", "apps/foo_app/lib/foo_app/bar.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "apps/foo_app/lib/foo_app/renamed.ex")
+    end
+
+    test "succeeds when the path matching the `apps/*` convension with nested folders", %{
+      project: project
+    } do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |Lexical.RemoteControl do
+        end
+      ] |> rename("Lexical.RemoteChaos", "apps/remote_control/lib/lexical/remote_control.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "apps/remote_control/lib/lexical/remote_chaos.ex")
+    end
+
+    test "succeeds when the path matching the `test/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |FooTest do
+        end
+      ] |> rename("RenamedTest", "test/foo_test.exs")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "test/renamed_test.exs")
+    end
+  end
+
+  defp rename(source, new_name, path \\ nil) do
+    project = project()
+    uri = subject_uri(project, path)
 
     with {position, text} <- pop_cursor(source),
          {:ok, document} <- open_document(uri, text),
@@ -350,12 +417,23 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
          {:ok, uri_with_changes} <- Rename.rename(analysis, position, new_name) do
-      changes = uri_with_changes |> Map.values() |> List.flatten()
-      {:ok, apply_edits(document, changes)}
+      changes = uri_with_changes |> Enum.map(& &1.edits) |> List.flatten()
+      applied = apply_edits(document, changes)
+
+      result =
+        if path do
+          rename_file = uri_with_changes |> Enum.map(& &1.rename_file) |> List.first()
+          {applied, rename_file}
+        else
+          applied
+        end
+
+      {:ok, result}
     end
   end
 
-  defp prepare(project \\ project(), code) do
+  defp prepare(code) do
+    project = project()
     uri = subject_uri(project)
 
     with {position, text} <- pop_cursor(code),
@@ -368,10 +446,19 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  defp subject_uri(project) do
-    project
-    |> file_path(Path.join("lib", "project.ex"))
-    |> Document.Path.ensure_uri()
+  defp subject_uri(project, path \\ nil) do
+    path = path || Path.join("wont_rename_file_folder", "project.ex")
+
+    uri =
+      project
+      |> file_path(path)
+      |> Document.Path.ensure_uri()
+
+    on_exit(fn ->
+      Document.Store.close(uri)
+    end)
+
+    uri
   end
 
   defp open_document(uri, content) do
