@@ -55,7 +55,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       detail: "(#{callable.type})",
       sort_text: sort_text(callable),
       filter_text: "#{callable.name}",
-      documentation: maybe_summary(callable),
+      documentation: build_docs(callable),
       tags: tags
     )
     |> maybe_boost(callable)
@@ -73,7 +73,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         detail: "(Capture)",
         sort_text: sort_text(callable),
         filter_text: "#{callable.name}",
-        documentation: maybe_summary(callable)
+        documentation: build_docs(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -85,7 +85,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         detail: "(Capture with arguments)",
         sort_text: sort_text(callable),
         filter_text: "#{callable.name}",
-        documentation: maybe_summary(callable)
+        documentation: build_docs(callable)
       )
       |> maybe_boost(callable, 4)
 
@@ -144,17 +144,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     "#{name}:#{normalized_arity}"
   end
 
-  defp maybe_summary(callable) do
-    summary =
-      if Map.has_key?(callable, :summary) do
-        callable.summary
-      end
+  defp build_docs(%{summary: summary, spec: spec})
+       when is_binary(summary) and is_binary(spec) do
+    "#{summary}\n```elixir\n#{spec}\n```"
+  end
 
-    spec =
-      if Map.has_key?(callable, :spec) do
-        "```elixir\n#{callable.spec}\n```"
-      end
+  defp build_docs(%{summary: summary}) when is_binary(summary) do
+    summary
+  end
 
-    "#{summary}\n#{spec}"
+  defp build_docs(%{spec: spec}) when is_binary(spec) do
+    "```elixir\n#{spec}\n```"
+  end
+
+  defp build_docs(_) do
+    ""
   end
 end
