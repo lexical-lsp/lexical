@@ -231,6 +231,41 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result =~ ~S[defmodule TopLevel.Renamed do]
     end
 
+    test "succeeds rename the descendants when expanding the module name" do
+      {:ok, result} = ~q[
+        defmodule TopLevel.|Module do
+          alias TopLevel.Module.Another
+        end
+
+        defmodule TopLevel.Module.Another do
+        end
+      ] |> rename("TopLevel.ModuleRenamed")
+
+      assert result =~ ~S[defmodule TopLevel.ModuleRenamed]
+      assert result =~ ~S[alias TopLevel.ModuleRenamed.Another]
+      assert result =~ ~S[defmodule TopLevel.ModuleRenamed.Another do]
+    end
+
+    test "succeeds when expanding the module name with multiple dots" do
+      {:ok, result} =
+        ~q[
+        defmodule TopLevel.|Bar do
+        end
+
+        defmodule TopLevel.Bar.Baz do
+        end
+
+        defmodule TopLevel.BarTest do
+          alias TopLevel.Bar
+          alias TopLevel.Bar.Baz
+        end
+      ] |> rename("TopLevel.Bar.Renamed")
+
+      assert result =~ ~S[defmodule TopLevel.Bar.Renamed do]
+      assert result =~ ~S[alias TopLevel.Bar.Renamed]
+      assert result =~ ~S[alias TopLevel.Bar.Renamed.Baz]
+    end
+
     test "succeeds when there are same module name is in the cursor neighborhood" do
       {:ok, result} =
         ~q[
