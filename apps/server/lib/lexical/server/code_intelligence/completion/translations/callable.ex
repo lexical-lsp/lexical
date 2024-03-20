@@ -130,6 +130,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp maybe_boost(item, callable, %Env{} = env) do
     position_module = env.position_module
+
     %_{
       name: name,
       origin: origin,
