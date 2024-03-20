@@ -16,6 +16,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
           | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
           | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
           | {:module_attribute, container_module :: module(), attribut_name :: atom()}
+          | {:variable, variable_name :: atom()}
 
   defguardp is_call(form) when Sourceror.Identifier.is_call(form) and elem(form, 0) != :.
 
@@ -84,11 +85,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
         case fetch_module_for_function(analysis, position, maybe_fun, arity) do
           {:ok, module} -> {:ok, {:call, module, maybe_fun, arity}, node_range}
-          _ -> {:error, :not_found}
+          _ -> {:ok, {:variable, List.to_atom(chars)}, node_range}
         end
 
       _ ->
-        {:error, :not_found}
+        {:ok, {:variable, List.to_atom(chars)}, node_range}
     end
   end
 

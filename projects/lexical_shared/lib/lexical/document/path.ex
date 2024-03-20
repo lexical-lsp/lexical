@@ -12,6 +12,8 @@ defmodule Lexical.Document.Path do
   @spec ensure_uri(uri_or_path()) :: Lexical.uri()
   def ensure_uri("file://" <> _ = uri), do: uri
 
+  def ensure_uri("untitled:" <> _ = uri), do: uri
+
   def ensure_uri(path), do: to_uri(path)
 
   @doc """
@@ -20,7 +22,7 @@ defmodule Lexical.Document.Path do
   @spec ensure_path(uri_or_path()) :: Lexical.path()
   def ensure_path("file://" <> _ = uri), do: from_uri(uri)
 
-  def ensure_path(path), do: path
+  def ensure_path(path) when is_binary(path), do: path
 
   @doc """
   Returns path from URI in a way that handles windows file:///c%3A/... URLs correctly
@@ -52,8 +54,13 @@ defmodule Lexical.Document.Path do
     convert_separators_to_native(path)
   end
 
+  # `untitled:` URIs are used for unsaved files in vscode.
+  def from_uri(%URI{scheme: "untitled"} = uri) when uri.path !== nil do
+    URI.to_string(uri)
+  end
+
   def from_uri(%URI{scheme: scheme}) do
-    raise ArgumentError, message: "unexpected URI scheme #{inspect(scheme)}"
+    raise ArgumentError, message: "unsupported URI scheme #{inspect(scheme)}"
   end
 
   def from_uri(uri) do
@@ -61,11 +68,7 @@ defmodule Lexical.Document.Path do
   end
 
   def absolute_from_uri(uri) do
-    uri |> from_uri |> Path.absname()
-  end
-
-  def to_uri("file://" <> _path = uri) do
-    uri
+    uri |> from_uri() |> Path.absname()
   end
 
   @doc """
