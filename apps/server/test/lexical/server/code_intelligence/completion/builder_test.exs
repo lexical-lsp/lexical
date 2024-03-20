@@ -36,7 +36,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
   end
 
   describe "sort scopes" do
-    test "scope order follows variable -> local -> remote -> global -> auto -> default" do
+    test "scope order follows module -> variable -> local -> remote -> global -> auto -> default" do
       i = set_sort_scope(item("g"), SortScope.module())
       ii = set_sort_scope(item("f"), SortScope.variable())
       iii = set_sort_scope(item("e"), SortScope.local())
