@@ -94,7 +94,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
 
     test "returns error when the entity is not found" do
-      assert {:error, :not_found} =
+      assert {:error, :unsupported_entity} =
                ~q[
           x = 1
           |x
