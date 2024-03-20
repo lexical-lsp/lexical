@@ -37,14 +37,15 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
 
   describe "sort scopes" do
     test "scope order follows variable -> local -> remote -> global -> auto -> default" do
-      i = set_sort_scope(item("f"), SortScope.variable())
-      ii = set_sort_scope(item("e"), SortScope.local())
-      iii = set_sort_scope(item("d"), SortScope.remote())
-      iv = set_sort_scope(item("c"), SortScope.global())
-      v = set_sort_scope(item("b"), SortScope.auto())
-      vi = set_sort_scope(item("a"), SortScope.default())
+      i = set_sort_scope(item("g"), SortScope.module())
+      ii = set_sort_scope(item("f"), SortScope.variable())
+      iii = set_sort_scope(item("e"), SortScope.local())
+      iv = set_sort_scope(item("d"), SortScope.remote())
+      v = set_sort_scope(item("c"), SortScope.global())
+      vi = set_sort_scope(item("b"), SortScope.auto())
+      vii = set_sort_scope(item("a"), SortScope.default())
 
-      assert [^i, ^ii, ^iii, ^iv, ^v, ^vi] = sort_items([vi, v, iv, iii, ii, i])
+      assert [^i, ^ii, ^iii, ^iv, ^v, ^vi, ^vii] = sort_items([vii, vi, v, iv, iii, ii, i])
     end
 
     test "low priority sorts items lower in their scope" do

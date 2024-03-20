@@ -12,10 +12,17 @@ defmodule Lexical.Completion.SortScope do
   """
 
   @doc """
+  Intended for module completions, such as `Lexical.` -> `Lexical.Completion`.
+  """
+  def module(local_priority \\ 1) do
+    "0" <> "0" <> local_priority(local_priority)
+  end
+
+  @doc """
   Intended for variables, which are always local in scope.
   """
   def variable(local_priority \\ 1) do
-    "0" <> "0" <> local_priority(local_priority)
+    "1" <> "0" <> local_priority(local_priority)
   end
 
   @doc """
@@ -23,7 +30,7 @@ defmodule Lexical.Completion.SortScope do
   module, or inherited from invoking `use`.
   """
   def local(deprecated? \\ false, local_priority \\ 1) do
-    "1" <> extra_order_fields(deprecated?, local_priority)
+    "2" <> extra_order_fields(deprecated?, local_priority)
   end
 
   @doc """
@@ -31,7 +38,7 @@ defmodule Lexical.Completion.SortScope do
   either from one's project, dependencies, or the standard library.
   """
   def remote(deprecated? \\ false, local_priority \\ 1) do
-    "2" <> extra_order_fields(deprecated?, local_priority)
+    "3" <> extra_order_fields(deprecated?, local_priority)
   end
 
   @doc """
@@ -39,7 +46,7 @@ defmodule Lexical.Completion.SortScope do
   `Kernel` and `Kernel.SpecialForms`.
   """
   def global(deprecated? \\ false, local_priority \\ 1) do
-    "3" <> extra_order_fields(deprecated?, local_priority)
+    "4" <> extra_order_fields(deprecated?, local_priority)
   end
 
   @doc """
@@ -47,7 +54,7 @@ defmodule Lexical.Completion.SortScope do
   immediate module (not yet a feature of Lexical).
   """
   def auto(deprecated? \\ false, local_priority \\ 1) do
-    "4" <> extra_order_fields(deprecated?, local_priority)
+    "5" <> extra_order_fields(deprecated?, local_priority)
   end
 
   @doc """
