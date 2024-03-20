@@ -144,6 +144,7 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       %Candidate.StructField{name: "#{name}-struct-field", origin: full_name},
       %Candidate.Typespec{
         name: "#{name}-typespec",
+        origin: full_name,
         argument_names: ["value"],
         arity: 1,
         metadata: %{}

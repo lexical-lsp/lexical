@@ -110,7 +110,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     env
     |> builder.plain_text(module_name, label: module_name, kind: :module, detail: detail)
-    |> builder.set_sort_scope(SortScope.remote())
+    |> builder.set_sort_scope(SortScope.local(false, 0))
   end
 
   defp local_module_name(parent_module, child_module, aliased_module) do
