@@ -88,7 +88,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   defp adjust_range_for_descendants(entries, entity, old_suffix) do
     for entry <- entries,
         range_text = range_text(entry.range),
-        matches = Regex.scan(~r"#{old_suffix}", range_text, return: :index),
+        matches = matches(range_text, old_suffix),
         result = resolve_module_range(entry, entity, matches),
         match?({:ok, _}, result) do
       {_, range} = result
@@ -129,6 +129,18 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
         resolve_module_range(entry, entity, tail)
       end
     end
+  end
+
+  defp matches(range_text, "") do
+    # When expanding a module, the old_suffix is an empty string,
+    # so we need to scan the module before the period
+    for [{start, length}] <- Regex.scan(~r/\w+(?=\.)/, range_text, return: :index) do
+      [{start + length, 0}]
+    end
+  end
+
+  defp matches(range_text, old_suffix) do
+    Regex.scan(~r/#{old_suffix}/, range_text, return: :index)
   end
 
   defp adjust_range_characters(%Range{} = range, {start, length} = _matched_old_suffix) do
