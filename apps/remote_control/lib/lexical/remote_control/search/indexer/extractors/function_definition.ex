@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Range
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.RemoteControl
@@ -13,9 +14,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   def extract({definition, metadata, [{fn_name, _, args}, body]} = ast, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
-    range = get_definition_range(reducer.analysis, metadata, body)
+    detail_range = detail_range(reducer.analysis, metadata, body)
 
-    {:ok, module} = RemoteControl.Analyzer.current_module(reducer.analysis, range.start)
+    {:ok, module} = RemoteControl.Analyzer.current_module(reducer.analysis, detail_range.start)
 
     arity =
       case args do
@@ -36,8 +37,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     %Block{} = block = Reducer.current_block(reducer)
     path = reducer.analysis.document.path
 
+    block_range = block_range(reducer.analysis, ast)
+
     entry =
-      Entry.block_definition(path, block, mfa, type, range, Application.get_application(module))
+      Entry.block_definition(
+        path,
+        block,
+        mfa,
+        type,
+        block_range,
+        detail_range,
+        Application.get_application(module)
+      )
 
     {:ok, entry, ast}
   end
@@ -46,7 +57,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     :ignored
   end
 
-  defp get_definition_range(%Analysis{} = analysis, def_metadata, block) do
+  defp detail_range(%Analysis{} = analysis, def_metadata, block) do
     {line, column} = Metadata.position(def_metadata)
 
     {do_line, do_column} =
@@ -65,5 +76,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     start_pos = Position.new(analysis.document, line, column)
     do_pos = Position.new(analysis.document, do_line, do_column)
     Range.new(start_pos, do_pos)
+  end
+
+  defp block_range(%Analysis{} = analysis, def_ast) do
+    case Lexical.Ast.Range.fetch(def_ast, analysis.document) do
+      {:ok, range} -> range
+      _ -> nil
+    end
   end
 end

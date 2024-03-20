@@ -3,12 +3,21 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
   alias Lexical.Formats
   alias Lexical.RemoteControl.Search.Indexer.Entry
 
-  defstruct [:name, :type, :range, :detail, children: []]
+  defstruct [:name, :type, :range, :detail_range, :detail, children: []]
 
   def from(%Document{} = document, %Entry{} = entry, children \\ []) do
     case name_and_type(entry.type, entry, document) do
       {name, type} ->
-        {:ok, %__MODULE__{name: name, type: type, range: entry.range, children: children}}
+        range = entry.block_range || entry.range
+
+        {:ok,
+         %__MODULE__{
+           name: name,
+           type: type,
+           range: range,
+           detail_range: entry.range,
+           children: children
+         }}
 
       _ ->
         :error

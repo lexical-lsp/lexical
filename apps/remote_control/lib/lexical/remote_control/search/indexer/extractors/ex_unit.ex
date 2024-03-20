@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
+  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -16,8 +17,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
     {:ok, module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
     arity = arity_for(args)
     subject = Formats.mfa(module, setup_fn, arity)
+    setup_type = :"ex_unit_#{setup_fn}"
 
-    entry = entry(reducer, setup, :"ex_unit_#{setup_fn}", subject)
+    entry =
+      case Metadata.location(setup) do
+        {:block, _, _, _} ->
+          block_entry(reducer, setup, setup_type, subject)
+
+        {:expression, _} ->
+          expression_entry(reducer, setup, setup_type, subject)
+      end
 
     {:ok, entry}
   end
@@ -29,7 +38,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
     module_name = Formats.module(module)
     subject = "#{module_name}.[\"#{test_name}\"]/#{arity}"
 
-    entry = entry(reducer, test, :ex_unit_test, subject)
+    entry =
+      case Metadata.location(test) do
+        {:block, _, _, _} ->
+          # a test with a body
+          block_entry(reducer, test, :ex_unit_test, subject)
+
+        {:expression, _} ->
+          # a pending test
+          expression_entry(reducer, test, :ex_unit_test, subject)
+      end
 
     {:ok, entry}
   end
@@ -41,7 +59,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
     module_name = Formats.module(module)
     subject = "#{module_name}[\"#{describe_name}\"]/#{arity}"
 
-    entry = entry(reducer, test, :ex_unit_describe, subject)
+    entry = block_entry(reducer, test, :ex_unit_describe, subject)
 
     {:ok, entry}
   end
@@ -50,17 +68,36 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
     :ignored
   end
 
-  defp entry(%Reducer{} = reducer, ast, type, subject) do
+  defp expression_entry(%Reducer{} = reducer, ast, type, subject) do
     path = reducer.analysis.document.path
     block = Reducer.current_block(reducer)
 
     {:ok, module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
     app = Application.get_application(module)
+    detail_range = detail_range(reducer.analysis, ast)
 
-    Entry.block_definition(path, block, subject, type, block_range(reducer.analysis, ast), app)
+    Entry.definition(path, block, subject, type, detail_range, app)
+  end
+
+  defp block_entry(%Reducer{} = reducer, ast, type, subject) do
+    path = reducer.analysis.document.path
+    block = Reducer.current_block(reducer)
+
+    {:ok, module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
+    app = Application.get_application(module)
+    detail_range = detail_range(reducer.analysis, ast)
+    block_range = block_range(reducer.analysis, ast)
+    Entry.block_definition(path, block, subject, type, block_range, detail_range, app)
   end
 
   defp block_range(%Analysis{} = analysis, ast) do
+    case Ast.Range.fetch(ast, analysis.document) do
+      {:ok, range} -> range
+      _ -> nil
+    end
+  end
+
+  defp detail_range(%Analysis{} = analysis, ast) do
     case Metadata.location(ast) do
       {:block, {start_line, start_column}, {do_line, do_column}, _} ->
         Range.new(

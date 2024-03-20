@@ -11,8 +11,11 @@ defmodule Lexical.Server.Provider.Handlers.DocumentSymbols do
   require SymbolKind
 
   def handle(%DocumentSymbols{} = request, %Env{} = env) do
-    symbols = Api.document_symbols(env.project, request.document)
-    symbols = Enum.map(symbols, &to_response(&1, request.document))
+    symbols =
+      env.project
+      |> Api.document_symbols(request.document)
+      |> Enum.map(&to_response(&1, request.document))
+
     response = Responses.DocumentSymbols.new(request.id, symbols)
 
     {:reply, response}
@@ -29,12 +32,12 @@ defmodule Lexical.Server.Provider.Handlers.DocumentSymbols do
       end
 
     Symbol.new(
-      name: root.name,
-      kind: to_kind(root.type),
-      range: root.range,
-      selection_range: root.range,
       children: children,
-      detail: root.detail
+      detail: root.detail,
+      kind: to_kind(root.type),
+      name: root.name,
+      range: root.range,
+      selection_range: root.detail_range
     )
   end
 
@@ -50,5 +53,6 @@ defmodule Lexical.Server.Provider.Handlers.DocumentSymbols do
   defp to_kind(:ex_unit_setup_all), do: :method
   defp to_kind(:type), do: :type_parameter
   defp to_kind(:spec), do: :interface
+  defp to_kind(:file), do: :file
   defp to_kind(_), do: :string
 end

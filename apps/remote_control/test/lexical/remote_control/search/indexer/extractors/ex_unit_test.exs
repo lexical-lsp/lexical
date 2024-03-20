@@ -39,6 +39,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert setup.type == :ex_unit_setup
       assert setup.subject == "SomeTest.setup/1"
       assert decorate(doc, setup.range) =~ "  «setup do»"
+      assert decorate(doc, setup.block_range) =~ "  «setup do\n    :ok\n  end»"
     end
 
     test "in blocks with an argument" do
@@ -55,6 +56,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert setup.type == :ex_unit_setup
       assert setup.subject == "SomeTest.setup/2"
       assert decorate(doc, setup.range) =~ "  «setup arg do»"
+      assert decorate(doc, setup.block_range) =~ "  «setup arg do\n    :ok\n  end»"
     end
 
     test "as an atom" do
@@ -68,6 +70,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup
       assert setup.subject == "SomeTest.setup/1"
+      refute setup.block_range
       assert decorate(doc, setup.range) =~ "  «setup :other_function»"
     end
 
@@ -82,6 +85,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup
       assert setup.subject == "SomeTest.setup/1"
+      refute setup.block_range
       assert decorate(doc, setup.range) =~ "  «setup [:other_function, :second_function]»"
     end
 
@@ -96,11 +100,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup
       assert setup.subject == "SomeTest.setup/1"
+      refute setup.block_range
       assert decorate(doc, setup.range) =~ "  «setup {OtherModule, :setup}»"
     end
 
     test "unless setup is a variable" do
-      {:ok, [test], doc} =
+      {:ok, [test], _doc} =
         ~q[
         defmodule SomeTest do
           test "something" do
@@ -110,6 +115,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
         end
         ]
         |> index_definitions()
+
+      assert test.type == :ex_unit_test
     end
   end
 
@@ -128,6 +135,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert setup.type == :ex_unit_setup_all
       assert setup.subject == "SomeTest.setup_all/1"
       assert decorate(doc, setup.range) =~ "  «setup_all do»"
+      assert decorate(doc, setup.block_range) =~ "  «setup_all do\n    :ok\n  end"
     end
 
     test "as a block with an argument" do
@@ -144,6 +152,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert setup.type == :ex_unit_setup_all
       assert setup.subject == "SomeTest.setup_all/2"
       assert decorate(doc, setup.range) =~ "  «setup_all arg do»"
+      assert decorate(doc, setup.block_range) =~ "  «setup_all arg do\n    :ok\n  end"
     end
 
     test "as an atom" do
@@ -157,6 +166,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup_all
       assert setup.subject == "SomeTest.setup_all/1"
+      refute setup.block_range
+
       assert decorate(doc, setup.range) =~ "  «setup_all :other_function»"
     end
 
@@ -171,6 +182,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup_all
       assert setup.subject == "SomeTest.setup_all/1"
+      refute setup.block_range
+
       assert decorate(doc, setup.range) =~ "  «setup_all [:other_function, :second_function]»"
     end
 
@@ -185,6 +198,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert setup.type == :ex_unit_setup_all
       assert setup.subject == "SomeTest.setup_all/1"
+      refute setup.block_range
+
       assert decorate(doc, setup.range) =~ "  «setup_all {OtherModule, :setup}»"
     end
   end
@@ -203,6 +218,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert describe.type == :ex_unit_describe
       assert describe.subtype == :definition
       assert decorate(doc, describe.range) =~ "  «describe \"something\" do»"
+      assert decorate(doc, describe.block_range) =~ "  «describe \"something\" do\n  end»"
     end
 
     test "with tests" do
@@ -220,6 +236,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
       assert describe.subtype == :definition
 
       assert decorate(doc, describe.range) =~ "  «describe \"something\" do»"
+
+      assert decorate(doc, describe.block_range) =~
+               "  «describe \"something\" do\n    test \"something\"\n  end»"
     end
   end
 
@@ -227,14 +246,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "when pending" do
       {:ok, [test], doc} =
         ~q[
-        defmodule SomeTest do
-          test "my test"
-        end
-        ]
+      defmodule SomeTest do
+        test "my test"
+      end
+      ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
       assert test.subject == "SomeTest.[\"my test\"]/1"
+      refute test.block_range
 
       assert decorate(doc, test.range) =~ ~s[  «test "my test"»]
     end
@@ -242,35 +262,38 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "when they only have a block" do
       {:ok, [test], doc} =
         ~q[
-        defmodule SomeTest do
-          test "my test" do
-          end
+      defmodule SomeTest do
+        test "my test" do
         end
-        ]
+      end
+      ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
       assert test.subject == "SomeTest.[\"my test\"]/2"
 
       assert decorate(doc, test.range) =~ ~s[  «test "my test" do»]
+      assert decorate(doc, test.block_range) =~ ~s[  «test "my test" do\n  end»]
     end
 
     test "when they have a block and a context" do
       {:ok, [test], doc} =
         ~q[
-        defmodule SomeTest do
-          test "my test", context do
-          end
+      defmodule SomeTest do
+        test "my test", context do
         end
-        ]
+      end
+      ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
       assert test.subject =~ "SomeTest.[\"my test\"]/3"
 
-      expected = "  «test \"my test\", context do»"
+      expected_detail = "  «test \"my test\", context do»"
+      assert decorate(doc, test.range) =~ expected_detail
 
-      assert decorate(doc, test.range) =~ expected
+      expected_block = "  «test \"my test\", context do\n  end»"
+      assert decorate(doc, test.block_range) =~ expected_block
     end
   end
 
@@ -281,7 +304,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
         defmodule SomeTexst do
           describe "outer" do
             test "my test", context do
-             end
+            end
           end
         end
         ]

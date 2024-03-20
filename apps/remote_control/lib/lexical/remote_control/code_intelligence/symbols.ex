@@ -24,14 +24,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
   ]
 
   def for_document(%Document{} = document) do
-    case Indexer.Source.index_document(document, @symbol_extractors) do
-      {:ok, entries} ->
-        definitions = Enum.filter(entries, &(&1.subtype == :definition))
-        to_symbols(document, definitions)
+    {:ok, entries} = Indexer.Source.index_document(document, @symbol_extractors)
 
-      _ ->
-        []
-    end
+    definitions = Enum.filter(entries, &(&1.subtype == :definition))
+    to_symbols(document, definitions)
   end
 
   defp to_symbols(%Document{} = document, entries) do
