@@ -87,7 +87,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
 
   def set_sort_scope(%Completion.Item{} = item, sort_scope)
       when is_binary(sort_scope) do
-
     stripped_sort_text =
       item.sort_text
       |> fallback(item.label)

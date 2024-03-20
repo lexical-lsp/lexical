@@ -52,6 +52,7 @@ defmodule Lexical.Ast.Env do
           case Analysis.scopes_at(analysis, cursor_position) do
             [%Scope{module: local_module} | _] ->
               Enum.join(local_module, ".")
+
             [] ->
               ""
           end
