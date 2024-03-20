@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
   alias Future.Code, as: Code
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
-  alias Lexical.Completion.SortScope
 
   defimpl Translatable, for: Candidate.StructField do
     def translate(field, builder, %Env{} = env) do

@@ -1,10 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.Project.Intelligence
-  alias Lexical.Completion.SortScope
 
   defimpl Translatable, for: Candidate.Module do
     def translate(module, builder, %Env{} = env) do

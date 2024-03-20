@@ -1,12 +1,12 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.Document
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Callable
   alias Lexical.Server.CodeIntelligence.Completion.Translations.Struct
-  alias Lexical.Completion.SortScope
 
   @snippet_macros ~w(def defp defmacro defmacrop defimpl defmodule defprotocol defguard defguardp defexception test use)
   @unhelpful_macros ~w(:: alias! in and or destructure)

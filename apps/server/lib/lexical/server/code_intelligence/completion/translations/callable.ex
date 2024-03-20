@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
-  alias Lexical.Completion.SortScope
 
   @callables [Candidate.Function, Candidate.Macro, Candidate.Callback, Candidate.Typespec]
 
@@ -122,22 +122,27 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     } = callable
 
     # elixir_sense suggests child_spec as a callback, though it's not formally one.
+    deprecated? = Map.has_key?(metadata, :deprecated)
+    dunder? = String.starts_with?(name, "__")
     callback? = Map.has_key?(metadata, :implementing) || name === "child_spec"
 
-    deprecated? = Map.has_key?(metadata, :deprecated)
+    local_priority =
+      cond do
+        dunder? -> 9
+        callback? -> 8
+        true -> 1
+      end
 
     cond do
-      String.starts_with?(name, "__") or name in @default_functions ->
-        item
+      origin === "Kernel" or origin === "Kernel.SpecialForms" or name in @default_functions ->
+        local_priority = if dunder?, do: 9, else: 1
+        Builder.set_sort_scope(item, SortScope.global(deprecated?, local_priority))
 
       origin === position_module ->
-        Builder.set_sort_scope(item, SortScope.local(deprecated?, callback?))
-
-      origin === "Kernel" ->
-        Builder.set_sort_scope(item, SortScope.global(deprecated?))
+        Builder.set_sort_scope(item, SortScope.local(deprecated?, local_priority))
 
       true ->
-        Builder.set_sort_scope(item, SortScope.remote(deprecated?, callback?))
+        Builder.set_sort_scope(item, SortScope.remote(deprecated?, local_priority))
     end
   end
 

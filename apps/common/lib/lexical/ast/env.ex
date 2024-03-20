@@ -7,13 +7,13 @@ defmodule Lexical.Ast.Env do
 
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Detection
   alias Lexical.Ast.Environment
   alias Lexical.Ast.Tokens
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Project
-  alias Lexical.Ast.Analysis.Scope
 
   defstruct [
     :project,

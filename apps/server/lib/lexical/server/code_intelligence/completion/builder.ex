@@ -13,12 +13,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   alias Future.Code, as: Code
   alias Lexical.Ast.Env
   alias Lexical.Completion.Builder
+  alias Lexical.Completion.SortScope
   alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Protocol.Types.Completion
-  alias Lexical.Completion.SortScope
 
   import Document.Line
 

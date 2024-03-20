@@ -1,6 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
   alias Lexical.Ast
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
 
   use ExUnit.Case, async: true
@@ -22,7 +23,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
     opts
     |> Keyword.merge(label: label)
     |> CompletionItem.new()
-    |> boost(0)
+    |> set_sort_scope(SortScope.default())
   end
 
   defp sort_items(items) do
@@ -34,41 +35,34 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
     :ok
   end
 
-  describe "boosting" do
-    test "default boost sorts things first" do
-      alpha_first = item("a")
-      alpha_last = "z" |> item() |> boost()
+  describe "sort scopes" do
+    test "scope order follows variable -> local -> remote -> global -> auto -> default" do
+      i = set_sort_scope(item("f"), SortScope.variable())
+      ii = set_sort_scope(item("e"), SortScope.local())
+      iii = set_sort_scope(item("d"), SortScope.remote())
+      iv = set_sort_scope(item("c"), SortScope.global())
+      v = set_sort_scope(item("b"), SortScope.auto())
+      vi = set_sort_scope(item("a"), SortScope.default())
 
-      assert [^alpha_last, ^alpha_first] = sort_items([alpha_first, alpha_last])
+      assert [^i, ^ii, ^iii, ^iv, ^v, ^vi] = sort_items([vi, v, iv, iii, ii, i])
     end
 
-    test "local boost allows you to specify the order" do
-      alpha_first = "a" |> item() |> boost(1)
-      alpha_second = "b" |> item() |> boost(2)
-      alpha_third = "c" |> item() |> boost(3)
+    test "low priority sorts items lower in their scope" do
+      alpha_first = set_sort_scope(item("a"), SortScope.remote(false, 2))
+      alpha_second = set_sort_scope(item("b"), SortScope.remote())
+      alpha_third = set_sort_scope(item("c"), SortScope.remote())
 
-      assert [^alpha_third, ^alpha_second, ^alpha_first] =
+      assert [^alpha_second, ^alpha_third, ^alpha_first] =
                sort_items([alpha_first, alpha_second, alpha_third])
     end
 
-    test "global boost overrides local boost" do
-      local_max = "a" |> item() |> boost(9)
-      global_min = "z" |> item() |> boost(0, 1)
+    test "deprecated items are gathered at the bottom of their scope" do
+      i_deprecated = set_sort_scope(item("a"), SortScope.remote(true))
+      i = set_sort_scope(item("a"), SortScope.remote())
+      ii = set_sort_scope(item("b"), SortScope.remote())
+      iii_low = set_sort_scope(item("c"), SortScope.remote(false, 2))
 
-      assert [^global_min, ^local_max] = sort_items([local_max, global_min])
-    end
-
-    test "items can have a global and local boost" do
-      group_b_min = "a" |> item() |> boost(1)
-      group_b_max = "b" |> item() |> boost(2)
-      group_a_min = "c" |> item |> boost(1, 1)
-      group_a_max = "c" |> item() |> boost(2, 1)
-      global_max = "d" |> item() |> boost(0, 2)
-
-      items = [group_b_min, group_b_max, group_a_min, group_a_max, global_max]
-
-      assert [^global_max, ^group_a_max, ^group_a_min, ^group_b_max, ^group_b_min] =
-               sort_items(items)
+      assert [^i, ^ii, ^iii_low, ^i_deprecated] = sort_items([i_deprecated, i, ii, iii_low])
     end
   end
 

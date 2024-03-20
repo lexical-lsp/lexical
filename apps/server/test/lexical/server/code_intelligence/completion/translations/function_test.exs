@@ -241,37 +241,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
   end
 
   describe "ordering" do
-    test "dunder functions aren't boosted", %{project: project} do
-      assert {:ok, completion} =
-               project
-               |> complete("Enum.|")
-               |> fetch_completion("__info__")
-
-      refute boosted?(completion)
-    end
-
-    test "dunder and default functions have lower completion priority", %{project: project} do
-      completions = complete(project, "GenServer.|")
-
-      defaults = ["module_info(", "behaviour_info("]
-
-      low_priority_completion? = fn fun ->
-        String.starts_with?(fun.label, "__") or
-          Enum.any?(defaults, &String.contains?(fun.label, &1))
-      end
-
-      {low_priority_completions, normal_completions} =
-        Enum.split_with(completions, low_priority_completion?)
-
-      for completion <- low_priority_completions do
-        refute boosted?(completion)
-      end
-
-      for completion <- normal_completions do
-        assert boosted?(completion)
-      end
-    end
-
     test "functions with lower arity have higher completion priority", %{project: project} do
       [arity_2, arity_3] =
         project
