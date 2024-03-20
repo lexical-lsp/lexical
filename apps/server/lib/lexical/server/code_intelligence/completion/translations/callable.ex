@@ -51,11 +51,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
           :function
       end
 
+    detail =
+      cond do
+        is_callback(callable) -> "(callback)"
+        true -> "(#{callable.type})"
+      end
+
     env
     |> Builder.snippet(insert_text,
       label: label(callable, env),
       kind: kind,
-      detail: "(#{callable.type})",
+      detail: detail,
       sort_text: sort_text(callable),
       filter_text: "#{callable.name}",
       documentation: build_docs(callable),
@@ -131,7 +137,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     # elixir_sense suggests child_spec as a callback, though it's not formally one.
     deprecated? = Map.has_key?(metadata, :deprecated)
     dunder? = String.starts_with?(name, "__")
-    callback? = Map.has_key?(metadata, :implementing) || name === "child_spec"
+    callback? = is_callback(callable)
 
     local_priority =
       cond do
@@ -186,5 +192,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp build_docs(_) do
     ""
+  end
+
+  defp is_callback(%_{name: name, metadata: metadata} = _callable) do
+    Map.has_key?(metadata, :implementing) || name === "child_spec"
   end
 end
