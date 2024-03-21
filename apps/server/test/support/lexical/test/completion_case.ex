@@ -114,22 +114,6 @@ defmodule Lexical.Test.Server.CompletionCase do
     end
   end
 
-  def boosted?(%CompletionItem{} = item, expected_amount \\ :any) do
-    case String.split(item.sort_text, "_") do
-      [boost | _rest] ->
-        actual_boost = String.to_integer(boost)
-
-        if expected_amount == :any do
-          actual_boost < 99
-        else
-          actual_boost == 99 - expected_amount
-        end
-
-      _ ->
-        false
-    end
-  end
-
   defp completion_items(%CompletionList{items: items}), do: items
   defp completion_items(items) when is_list(items), do: items
 end

@@ -13,6 +13,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   alias Future.Code, as: Code
   alias Lexical.Ast.Env
   alias Lexical.Completion.Builder
+  alias Lexical.Completion.SortScope
   alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
@@ -52,7 +53,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     |> Keyword.put(:text_edit, edits)
     |> Completion.Item.new()
     |> markdown_docs()
-    |> boost(0)
+    |> set_sort_scope(SortScope.default())
   end
 
   @impl Builder
@@ -73,7 +74,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     |> Keyword.put(:insert_text_format, :snippet)
     |> Completion.Item.new()
     |> markdown_docs()
-    |> boost(0)
+    |> set_sort_scope(SortScope.default())
   end
 
   @impl Builder
@@ -82,19 +83,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   def fallback(detail, _), do: detail
 
   @impl Builder
-  def boost(item, local_boost \\ 1, global_boost \\ 0)
+  def set_sort_scope(item, default \\ SortScope.default())
 
-  def boost(%Completion.Item{} = item, local_boost, global_boost)
-      when local_boost in 0..9 and global_boost in 0..9 do
-    global_boost = Integer.to_string(9 - global_boost)
-    local_boost = Integer.to_string(9 - local_boost)
-
+  def set_sort_scope(%Completion.Item{} = item, sort_scope)
+      when is_binary(sort_scope) do
     stripped_sort_text =
       item.sort_text
       |> fallback(item.label)
-      |> strip_boost()
+      |> strip_sort_text()
 
-    sort_text = "0#{global_boost}#{local_boost}_#{stripped_sort_text}"
+    sort_text = "0#{sort_scope}_#{stripped_sort_text}"
     %Completion.Item{item | sort_text: sort_text}
   end
 
@@ -221,9 +219,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     end
   end
 
-  @boost_re ~r/^[0-9_]+/
-  defp strip_boost(sort_text) do
-    String.replace(sort_text, @boost_re, "")
+  @sort_prefix_re ~r/^[0-9_]+/
+  defp strip_sort_text(sort_text) do
+    String.replace(sort_text, @sort_prefix_re, "")
   end
 
   defp markdown_docs(%Completion.Item{} = item) do

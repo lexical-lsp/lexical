@@ -5,7 +5,6 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
   alias Lexical.Document.Position
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl.Analyzer.Aliases
-  alias Lexical.RemoteControl.Analyzer.Scopes
   alias Lexical.RemoteControl.Module.Loader
 
   @kernel_imports [
@@ -15,7 +14,7 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
 
   @spec at(Analysis.t(), Position.t()) :: [Scope.import_mfa()]
   def at(%Analysis{} = analysis, %Position{} = position) do
-    case Scopes.at(analysis, position) do
+    case Analysis.scopes_at(analysis, position) do
       [%Scope{} = scope | _] ->
         imports(scope, position)
 

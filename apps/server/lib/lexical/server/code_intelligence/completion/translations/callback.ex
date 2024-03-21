@@ -1,8 +1,9 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate.Callback
-  alias Lexical.Server.CodeIntelligence.Completion
+  alias Lexical.Server.CodeIntelligence.Completion.Builder
 
   defimpl Translatable, for: Callback do
     def translate(callback, _builder, %Env{} = env) do
@@ -15,7 +16,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
       %Env{line: line} = env
 
       env
-      |> Completion.Builder.text_edit_snippet(
+      |> Builder.text_edit_snippet(
         insert_text(name, arg_names),
         line_range(line),
         label: label(name, arg_names),
@@ -25,7 +26,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
         filter_text: "def #{name}",
         documentation: summary
       )
-      |> Completion.Builder.boost(5)
+      |> Builder.set_sort_scope(SortScope.local())
     end
 
     defp insert_text(name, arg_names)

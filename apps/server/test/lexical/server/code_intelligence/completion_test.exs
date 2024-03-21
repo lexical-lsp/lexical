@@ -1,5 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
+  alias Lexical.Completion.SortScope
   alias Lexical.Protocol.Types.Completion
+  alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
   alias Lexical.RemoteControl.Completion.Candidate
 
   use Lexical.Test.Server.CompletionCase
@@ -76,23 +78,31 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     end
   end
 
-  describe "sorting" do
-    test "dunder functions aren't boosted", %{project: project} do
-      assert {:ok, completion} =
-               project
-               |> complete("Enum.|")
-               |> fetch_completion("__info__")
+  describe "sorting dunder function/macro completions" do
+    test "dunder functions are sorted last in their sort scope", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Enum.|")
+        |> fetch_completion("__info__")
 
-      refute boosted?(completion)
+      %CompletionItem{
+        sort_text: sort_text
+      } = completion
+
+      assert sort_text =~ SortScope.remote(false, 9)
     end
 
-    test "dunder macros aren't boosted", %{project: project} do
-      assert {:ok, completion} =
-               project
-               |> complete("Project.__dunder_macro__|")
-               |> fetch_completion("__dunder_macro__")
+    test "dunder macros are sorted last in their scope", %{project: project} do
+      {:ok, completion} =
+        project
+        |> complete("Project.__dunder_macro__|")
+        |> fetch_completion("__dunder_macro__")
 
-      refute boosted?(completion)
+      %CompletionItem{
+        sort_text: sort_text
+      } = completion
+
+      assert sort_text =~ SortScope.remote(false, 9)
     end
   end
 
@@ -134,6 +144,7 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       %Candidate.StructField{name: "#{name}-struct-field", origin: full_name},
       %Candidate.Typespec{
         name: "#{name}-typespec",
+        origin: full_name,
         argument_names: ["value"],
         arity: 1,
         metadata: %{}

@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehaviour do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
@@ -109,7 +110,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleOrBehavi
 
     env
     |> builder.plain_text(module_name, label: module_name, kind: :module, detail: detail)
-    |> builder.boost(0, 2)
+    |> builder.set_sort_scope(SortScope.module())
   end
 
   defp local_module_name(parent_module, child_module, aliased_module) do

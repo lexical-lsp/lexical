@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
 
@@ -24,6 +25,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     do_completion(callable, env)
   end
 
+  # for a callable to be local, it must be defined in the current scope,
+  # or be a callback.
   defp do_completion(callable, %Env{} = env) do
     add_args? = not String.contains?(env.suffix, "(")
 
@@ -48,17 +51,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
           :function
       end
 
+    detail =
+      if callback?(callable) do
+        "(callback)"
+      else
+        "(#{callable.type})"
+      end
+
     env
     |> Builder.snippet(insert_text,
       label: label(callable, env),
       kind: kind,
-      detail: "(#{callable.type})",
+      detail: detail,
       sort_text: sort_text(callable),
       filter_text: "#{callable.name}",
       documentation: build_docs(callable),
       tags: tags
     )
-    |> maybe_boost(callable)
+    |> maybe_boost(callable, env)
   end
 
   def capture_completions(%callable_module{} = callable, %Env{} = env)
@@ -75,7 +85,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
-      |> maybe_boost(callable, 4)
+      |> maybe_boost(callable, env)
 
     call_capture =
       env
@@ -87,7 +97,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
-      |> maybe_boost(callable, 4)
+      |> maybe_boost(callable, env)
 
     [complete_capture, call_capture]
   end
@@ -118,11 +128,37 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, %_{name: name}, default_boost \\ 5) do
-    if String.starts_with?(name, "__") or name in @default_functions do
-      item
-    else
-      Builder.boost(item, default_boost)
+  defp maybe_boost(item, callable, %Env{} = env) do
+    position_module = env.position_module
+
+    %_{
+      name: name,
+      origin: origin,
+      metadata: metadata
+    } = callable
+
+    # elixir_sense suggests child_spec as a callback, though it's not formally one.
+    deprecated? = Map.has_key?(metadata, :deprecated)
+    dunder? = String.starts_with?(name, "__")
+    callback? = callback?(callable)
+
+    local_priority =
+      cond do
+        dunder? -> 9
+        callback? -> 8
+        true -> 1
+      end
+
+    cond do
+      origin === "Kernel" or origin === "Kernel.SpecialForms" or name in @default_functions ->
+        local_priority = if dunder?, do: 9, else: 1
+        Builder.set_sort_scope(item, SortScope.global(deprecated?, local_priority))
+
+      origin === position_module ->
+        Builder.set_sort_scope(item, SortScope.local(deprecated?, local_priority))
+
+      true ->
+        Builder.set_sort_scope(item, SortScope.remote(deprecated?, local_priority))
     end
   end
 
@@ -159,5 +195,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp build_docs(_) do
     ""
+  end
+
+  defp callback?(%_{name: name, metadata: metadata} = _callable) do
+    Map.has_key?(metadata, :implementing) || name === "child_spec"
   end
 end

@@ -55,7 +55,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule Typespec do
     @moduledoc false
-    defstruct [:argument_names, :arity, :doc, :metadata, :type, :name, :signature, :spec]
+    defstruct [:argument_names, :arity, :doc, :metadata, :type, :name, :origin, :signature, :spec]
 
     def new(%{} = elixir_sense_map) do
       arg_names =
@@ -206,6 +206,11 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   def from_elixir_sense(%{type: :module, subtype: :task} = elixir_sense_map) do
     MixTask.new(elixir_sense_map)
+  end
+
+  # elixir_sense suggests test cases as functions, which need to be filtered.
+  def from_elixir_sense(%{type: :function, name: "test " <> _} = _elixir_sense_map) do
+    nil
   end
 
   def from_elixir_sense(%{type: :function} = elixir_sense_map) do

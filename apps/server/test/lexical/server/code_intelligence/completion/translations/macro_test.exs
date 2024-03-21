@@ -685,17 +685,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
     end
   end
 
-  describe "sort_text" do
-    test "dunder macros aren't boosted", %{project: project} do
-      assert {:ok, completion} =
-               project
-               |> complete("Project.__dunder_macro__|")
-               |> fetch_completion("__dunder_macro__")
-
-      refute boosted?(completion)
-    end
-  end
-
   test "test completion snippets", %{project: project} do
     assert {:ok, [stub, with_body, with_context | _ignored]} =
              project

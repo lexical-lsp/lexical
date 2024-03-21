@@ -1,5 +1,6 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOption do
   alias Lexical.Ast.Env
+  alias Lexical.Completion.SortScope
   alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Translations
@@ -19,6 +20,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOptio
       kind: :unit,
       label: option.name
     )
-    |> builder.boost(5)
+    |> builder.set_sort_scope(SortScope.global())
   end
 end

@@ -7,6 +7,7 @@ defmodule Lexical.Ast.Env do
 
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Detection
   alias Lexical.Ast.Environment
   alias Lexical.Ast.Tokens
@@ -22,6 +23,7 @@ defmodule Lexical.Ast.Env do
     :prefix,
     :suffix,
     :position,
+    :position_module,
     :zero_based_character
   ]
 
@@ -31,6 +33,7 @@ defmodule Lexical.Ast.Env do
           prefix: String.t(),
           suffix: String.t(),
           position: Position.t(),
+          position_module: String.t(),
           zero_based_character: non_neg_integer()
         }
 
@@ -43,11 +46,23 @@ defmodule Lexical.Ast.Env do
         prefix = String.slice(line, 0, zero_based_character)
         suffix = String.slice(line, zero_based_character..-1//1)
 
+        analysis = Ast.reanalyze_to(analysis, cursor_position)
+
+        cursor_module =
+          case Analysis.scopes_at(analysis, cursor_position) do
+            [%Scope{module: local_module} | _] ->
+              Enum.join(local_module, ".")
+
+            [] ->
+              ""
+          end
+
         env = %__MODULE__{
-          analysis: Ast.reanalyze_to(analysis, cursor_position),
+          analysis: analysis,
           document: analysis.document,
           line: line,
           position: cursor_position,
+          position_module: cursor_module,
           prefix: prefix,
           project: project,
           suffix: suffix,
