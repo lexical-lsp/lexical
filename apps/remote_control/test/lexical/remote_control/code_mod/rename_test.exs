@@ -405,6 +405,75 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert {_, to_uri} = rename_file
       assert to_uri == subject_uri(project, "test/renamed_test.exs")
     end
+
+    test "leaves the `components` folder as is when renaming the live view", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooComponents do
+        end
+      ] |> rename("DemoWeb.RenamedComponent", "lib/demo_web/components/foo_component.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "lib/demo_web/components/renamed_component.ex")
+    end
+
+    test "leaves the `components` folder as is when renaming a component", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.SomeContext.|FooComponent do
+        end
+      ]
+        |> rename(
+          "DemoWeb.SomeContext.RenamedComponent",
+          "lib/demo_web/components/some_context/foo_component.ex"
+        )
+
+      assert {_, to_uri} = rename_file
+
+      assert to_uri ==
+               subject_uri(project, "lib/demo_web/components/some_context/renamed_component.ex")
+    end
+
+    test "leaves the `controllers` folder as is when renaming the controller", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooController do
+        end
+      ] |> rename("DemoWeb.RenamedController", "lib/demo_web/controllers/foo_controller.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "lib/demo_web/controllers/renamed_controller.ex")
+    end
+
+    test "leaves the `controller` folder as is when renaming the `JSON` module", %{
+      project: project
+    } do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.FooController.|JSON do
+        end
+      ]
+        |> rename(
+          "DemoWeb.FooController.RenamedJSON",
+          "lib/demo_web/controllers/foo_controller/json.ex"
+        )
+
+      assert {_, to_uri} = rename_file
+
+      assert to_uri ==
+               subject_uri(project, "lib/demo_web/controllers/foo_controller/renamed_json.ex")
+    end
+
+    test "leaves the `live` folder as is when renaming the live view", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooLive do
+        end
+      ] |> rename("DemoWeb.RenamedLive", "lib/demo_web/live/foo_live.ex")
+
+      assert {_, to_uri} = rename_file
+      assert to_uri == subject_uri(project, "lib/demo_web/live/renamed_live.ex")
+    end
   end
 
   defp rename(source, new_name, path \\ nil) do
