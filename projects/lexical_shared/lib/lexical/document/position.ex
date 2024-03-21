@@ -15,7 +15,6 @@ defmodule Lexical.Document.Position do
   alias Lexical.Document
   alias Lexical.Document.Lines
 
-  @derive {Inspect, only: [:line, :character]}
   defstruct [
     :line,
     :character,
@@ -70,5 +69,21 @@ defmodule Lexical.Document.Position do
           starting_index: starting_index
         }
     end
+  end
+end
+
+defimpl Inspect, for: Lexical.Document.Position do
+  import Inspect.Algebra
+
+  def inspect(nil, _), do: "nil"
+
+  def inspect(pos, _) do
+    concat(["LxPos", to_string(pos)])
+  end
+end
+
+defimpl String.Chars, for: Lexical.Document.Position do
+  def to_string(pos) do
+    "<<#{pos.line}, #{pos.character}>>"
   end
 end
