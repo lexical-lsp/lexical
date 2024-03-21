@@ -32,10 +32,15 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     root_path = root_path()
     relative_path = relative_path(entry.path, root_path)
 
-    with {:ok, prefix} <- fetch_conventional_prefix(relative_path),
+    with {:ok, prefix, old_module_paths} <- fetch_conventional_prefix(relative_path),
          {:ok, new_name} <- fetch_new_name(entry, new_suffix) do
       extname = Path.extname(entry.path)
-      suffix = Macro.underscore(new_name)
+
+      suffix =
+        new_name
+        |> Macro.underscore()
+        |> maybe_insert_special_phoenix_folder(old_module_paths, new_name)
+
       new_path = Path.join([root_path, prefix, "#{suffix}#{extname}"])
 
       {Document.Path.ensure_uri(entry.path), Document.Path.ensure_uri(new_path)}
@@ -92,9 +97,69 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
       {_, []} ->
         :error
 
-      {_module_path, prefix} ->
+      {module_paths, prefix} ->
         prefix = prefix |> Enum.reverse() |> Enum.join("/")
-        {:ok, prefix}
+        {:ok, prefix, module_paths}
     end
+  end
+
+  defp maybe_insert_special_phoenix_folder(suffix, old_module_paths, new_name) do
+    web_app? = new_name |> String.split(".") |> hd() |> String.ends_with?("Web")
+
+    insertions =
+      cond do
+        not web_app? ->
+          ""
+
+        phoenix_component?(old_module_paths, new_name) ->
+          "components"
+
+        phoenix_controller?(old_module_paths, new_name) ->
+          "controllers"
+
+        phoenix_live_view?(old_module_paths, new_name) ->
+          "live"
+
+        true ->
+          ""
+      end
+
+    suffix
+    |> String.split("/")
+    |> List.insert_at(1, insertions)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join("/")
+  end
+
+  defp phoenix_component?(old_module_paths, new_name) do
+    under_components? = "components" in old_module_paths
+    component? = String.ends_with?(new_name, ["Components", "Layouts", "Component"])
+
+    under_components? and component?
+  end
+
+  defp phoenix_controller?(old_module_paths, new_name) do
+    under_controllers? = "controllers" in old_module_paths
+    controller? = String.ends_with?(new_name, ["Controller", "JSON", "HTML"])
+
+    under_controllers? and controller?
+  end
+
+  defp phoenix_live_view?(old_module_paths, new_name) do
+    under_live_views? = "live" in old_module_paths
+    new_name_list = String.split(new_name, ".")
+
+    live_view? =
+      if match?([_, _ | _], new_name_list) do
+        parent = Enum.at(new_name_list, -2)
+        local_module = Enum.at(new_name_list, -1)
+
+        # `LiveDemoWeb.SomeLive` or `LiveDemoWeb.SomeLive.Index`
+        String.ends_with?(parent, "Live") or String.ends_with?(local_module, "Live")
+      else
+        false
+      end
+
+    under_live_views? and live_view?
   end
 end
