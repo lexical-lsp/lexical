@@ -208,6 +208,11 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
     MixTask.new(elixir_sense_map)
   end
 
+  # elixir_sense suggests test cases as functions, which need to be filtered.
+  def from_elixir_sense(%{type: :function, name: "test " <> _} = _elixir_sense_map) do
+    nil
+  end
+
   def from_elixir_sense(%{type: :function} = elixir_sense_map) do
     Function.new(elixir_sense_map)
   end
