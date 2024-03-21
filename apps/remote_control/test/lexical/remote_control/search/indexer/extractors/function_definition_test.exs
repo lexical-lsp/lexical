@@ -7,6 +7,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
     end)
   end
 
+  def index_all(source) do
+    do_index(source, fn entry ->
+      entry.type in [:function, :public_function, :private_function]
+    end)
+  end
+
   describe "indexing public function definitions" do
     test "finds zero arity public functions (no parens)" do
       code =
@@ -128,6 +134,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [something], _} = index(code)
       assert "def something(name) do" = extract(code, something.range)
+    end
+
+    test "returns no references" do
+      {:ok, [function_definition], doc} =
+        ~q[
+        def my_fn(a, b) do
+        end
+        ]
+        |> in_a_module()
+        |> index_all()
+
+      assert function_definition.type == :public_function
+      assert function_definition.subtype == :definition
+      assert "def my_fn(a, b) do" = extract(doc, function_definition.range)
     end
   end
 
@@ -273,6 +293,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [something], _} = index(code)
       assert "defp something(name) do" = extract(code, something.range)
+    end
+
+    test "returns no references" do
+      {:ok, [function_definition], doc} =
+        ~q[
+        defp my_fn(a, b) do
+        end
+        ]
+        |> in_a_module()
+        |> index_all()
+
+      assert function_definition.type == :private_function
+      assert function_definition.subtype == :definition
+      assert "defp my_fn(a, b) do" = extract(doc, function_definition.range)
     end
   end
 end
