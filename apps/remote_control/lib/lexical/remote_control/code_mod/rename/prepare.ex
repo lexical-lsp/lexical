@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search.Store
@@ -14,10 +15,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
   def prepare(%Analysis{} = analysis, %Position{} = position) do
     case resolve(analysis, position) do
       {:ok, {:module, module}, range} ->
-        {:ok, inspect(module), range}
-
-      {:ok, {:call, {_m, f}}, range} ->
-        {:ok, to_string(f), range}
+        {:ok, Formats.module(module), range}
 
       {:error, error} ->
         {:error, error}
