@@ -55,3 +55,11 @@ defmodule Lexical.Document.Range do
     end
   end
 end
+
+defimpl Inspect, for: Lexical.Document.Range do
+  import Inspect.Algebra
+
+  def inspect(range, _) do
+    concat(["LxRange[", to_string(range.start), "...", to_string(range.end), "]"])
+  end
+end
