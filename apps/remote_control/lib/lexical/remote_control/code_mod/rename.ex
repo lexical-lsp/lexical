@@ -16,13 +16,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   @spec rename(Analysis.t(), Position.t(), String.t()) ::
           {:ok, %{Lexical.uri() => [Edit.t()]}} | {:error, term()}
   def rename(%Analysis{} = analysis, %Position{} = position, new_name) do
-    case Rename.Prepare.resolve(analysis, position) do
-      {:ok, {renamable, entity}, range} ->
+    with {:ok, renamable, entity, range} <- Rename.Prepare.resolve(analysis, position) do
         rename_module = @rename_mapping[renamable]
         {:ok, rename_module.rename(range, new_name, entity)}
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 end
