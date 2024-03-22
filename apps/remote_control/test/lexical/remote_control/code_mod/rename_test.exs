@@ -367,8 +367,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("Renamed", "lib/foo.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "lib/renamed.ex")
+      assert rename_file.new_uri == subject_uri(project, "lib/renamed.ex")
     end
 
     test "succeeds when the path matching the `apps/*` convension", %{project: project} do
@@ -378,8 +377,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("FooApp.Renamed", "apps/foo_app/lib/foo_app/bar.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "apps/foo_app/lib/foo_app/renamed.ex")
+      assert rename_file.new_uri == subject_uri(project, "apps/foo_app/lib/foo_app/renamed.ex")
     end
 
     test "succeeds when the path matching the `apps/*` convension with nested folders", %{
@@ -391,8 +389,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("Lexical.RemoteChaos", "apps/remote_control/lib/lexical/remote_control.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "apps/remote_control/lib/lexical/remote_chaos.ex")
+      assert rename_file.new_uri ==
+               subject_uri(project, "apps/remote_control/lib/lexical/remote_chaos.ex")
     end
 
     test "succeeds when the path matching the `test/*` convension", %{project: project} do
@@ -402,8 +400,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("RenamedTest", "test/foo_test.exs")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "test/renamed_test.exs")
+      assert rename_file.new_uri == subject_uri(project, "test/renamed_test.exs")
     end
 
     test "leaves the `components` folder as is when renaming the live view", %{project: project} do
@@ -413,8 +410,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("DemoWeb.RenamedComponent", "lib/demo_web/components/foo_component.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "lib/demo_web/components/renamed_component.ex")
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/components/renamed_component.ex")
     end
 
     test "leaves the `components` folder as is when renaming a component", %{project: project} do
@@ -428,9 +425,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
           "lib/demo_web/components/some_context/foo_component.ex"
         )
 
-      assert {_, to_uri} = rename_file
-
-      assert to_uri ==
+      assert rename_file.new_uri ==
                subject_uri(project, "lib/demo_web/components/some_context/renamed_component.ex")
     end
 
@@ -441,8 +436,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("DemoWeb.RenamedController", "lib/demo_web/controllers/foo_controller.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "lib/demo_web/controllers/renamed_controller.ex")
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/controllers/renamed_controller.ex")
     end
 
     test "leaves the `controller` folder as is when renaming the `JSON` module", %{
@@ -458,9 +453,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
           "lib/demo_web/controllers/foo_controller/json.ex"
         )
 
-      assert {_, to_uri} = rename_file
-
-      assert to_uri ==
+      assert rename_file.new_uri ==
                subject_uri(project, "lib/demo_web/controllers/foo_controller/renamed_json.ex")
     end
 
@@ -471,8 +464,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
         end
       ] |> rename("DemoWeb.RenamedLive", "lib/demo_web/live/foo_live.ex")
 
-      assert {_, to_uri} = rename_file
-      assert to_uri == subject_uri(project, "lib/demo_web/live/renamed_live.ex")
+      assert rename_file.new_uri == subject_uri(project, "lib/demo_web/live/renamed_live.ex")
     end
   end
 
@@ -485,13 +477,13 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
-         {:ok, uri_with_changes} <- Rename.rename(analysis, position, new_name) do
-      changes = uri_with_changes |> Enum.map(& &1.edits) |> List.flatten()
+         {:ok, document_changes} <- Rename.rename(analysis, position, new_name) do
+      changes = document_changes |> Enum.map(& &1.edits) |> List.flatten()
       applied = apply_edits(document, changes)
 
       result =
         if path do
-          rename_file = uri_with_changes |> Enum.map(& &1.rename_file) |> List.first()
+          rename_file = document_changes |> Enum.map(& &1.rename_file) |> List.first()
           {applied, rename_file}
         else
           applied

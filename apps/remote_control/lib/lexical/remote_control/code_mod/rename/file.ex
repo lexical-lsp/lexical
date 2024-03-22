@@ -1,30 +1,37 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   alias Lexical.Ast
   alias Lexical.Document
+  alias Lexical.ProcessCache
+  alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Search.Store
+  alias Lexical.RemoteControl.Search.Indexer
+  alias Lexical.RemoteControl.Search.Indexer.Entry
 
+  @spec maybe_rename(Entry.t(), String.t()) :: Document.Changes.rename_file()
   def maybe_rename(entry, new_suffix) do
-    with false <- has_parent?(entry),
-         false <- has_any_siblings?(entry) do
+    if root_module?(entry) do
       rename_file(entry, new_suffix)
-    else
-      _ -> nil
     end
   end
 
-  defp has_parent?(entry) do
-    case Store.parent(entry) do
-      {:ok, _} -> true
-      _ -> false
-    end
-  end
+  defp root_module?(entry) do
+    uri = Document.Path.ensure_uri(entry.path)
 
-  defp has_any_siblings?(entry) do
-    case Store.siblings(entry) do
-      {:ok, [_]} -> false
-      {:ok, [_ | _]} -> true
-      _ -> false
+    entries =
+      ProcessCache.trans("#{uri}-entries", 50, fn ->
+        with {:ok, document} <- Document.Store.open_temporary(uri),
+             {:ok, entries} <-
+               Indexer.Source.index_document(document, [Indexer.Extractors.Module]) do
+          entries
+        end
+      end)
+
+    case Enum.filter(entries, &(&1.block_id == :root)) do
+      [root_module] ->
+        root_module.subject == entry.subject and root_module.block_range == entry.block_range
+
+      _ ->
+        false
     end
   end
 
@@ -43,7 +50,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
 
       new_path = Path.join([root_path, prefix, "#{suffix}#{extname}"])
 
-      {Document.Path.ensure_uri(entry.path), Document.Path.ensure_uri(new_path)}
+      old_uri = Document.Path.ensure_uri(entry.path)
+      new_uri = Document.Path.ensure_uri(new_path)
+      Document.Changes.RenameFile.new(old_uri, new_uri)
     else
       _ -> nil
     end
@@ -54,9 +63,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   end
 
   defp root_path do
-    RemoteControl.get_project()
-    |> Map.get(:root_uri)
-    |> Document.Path.ensure_path()
+    Project.root_path(RemoteControl.get_project())
   end
 
   defp fetch_new_name(entry, new_suffix) do
