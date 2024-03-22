@@ -1,9 +1,12 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   alias Lexical.Ast
   alias Lexical.Document
+  alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
 
+  @spec maybe_rename(Entry.t(), String.t()) :: nil | {Lexical.uri(), Lexical.uri()}
   def maybe_rename(entry, new_suffix) do
     with false <- has_parent?(entry),
          false <- has_any_siblings?(entry) do
@@ -14,18 +17,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   end
 
   defp has_parent?(entry) do
-    case Store.parent(entry) do
-      {:ok, _} -> true
-      _ -> false
-    end
+    match?({:ok, _}, Store.parent(entry))
   end
 
   defp has_any_siblings?(entry) do
-    case Store.siblings(entry) do
-      {:ok, [_]} -> false
-      {:ok, [_ | _]} -> true
-      _ -> false
-    end
+    match?({:ok, [_, _ | _]}, Store.siblings(entry))
   end
 
   defp rename_file(entry, new_suffix) do
@@ -54,9 +50,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   end
 
   defp root_path do
-    RemoteControl.get_project()
-    |> Map.get(:root_uri)
-    |> Document.Path.ensure_path()
+    Project.root_path(RemoteControl.get_project())
   end
 
   defp fetch_new_name(entry, new_suffix) do
