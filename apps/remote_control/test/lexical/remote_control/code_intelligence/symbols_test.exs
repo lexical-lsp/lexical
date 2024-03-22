@@ -1,7 +1,11 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
   alias Lexical.Document
   alias Lexical.RemoteControl.CodeIntelligence.Symbols
+  alias Lexical.RemoteControl.Search.Indexer.Extractors
+  alias Lexical.RemoteControl.Search.Indexer.Source
+
   use ExUnit.Case
+  use Patch
 
   import Lexical.Test.CodeSigil
   import Lexical.Test.RangeSupport
@@ -9,6 +13,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
   def document_symbols(code) do
     doc = Document.new("file:///file.ex", code, 1)
     symbols = Symbols.for_document(doc)
+    {symbols, doc}
+  end
+
+  def workspace_symbols(code, query) do
+    doc = Document.new("file:///file.ex", code, 1)
+
+    {:ok, entries} =
+      Source.index_document(doc, [
+        Extractors.ExUnit,
+        Extractors.FunctionDefinition,
+        Extractors.FunctionReference,
+        Extractors.Module,
+        Extractors.ModuleAttribute,
+        Extractors.StructReference
+      ])
+
+    entries = Enum.reject(entries, &(&1.type == :metadata))
+    patch(Lexical.RemoteControl.Search.Store, :fuzzy, entries)
+    symbols = Symbols.for_workspace(query)
     {symbols, doc}
   end
 
@@ -32,17 +55,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert decorate(doc, module.detail_range) =~ "defmodule «MyModule» do"
       assert module.name == "MyModule"
       assert module.type == :module
+      assert module.children == []
     end
 
     test "multiple top-level modules are found" do
       {[first, second], doc} =
         ~q[
-       defmodule First do
-       end
+        defmodule First do
+        end
 
-       defmodule Second do
-       end
-       ]
+        defmodule Second do
+        end
+        ]
         |> document_symbols()
 
       assert decorate(doc, first.detail_range) =~ "defmodule «First» do"
@@ -123,12 +147,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     test "module attribute references are skipped" do
       {[module], _doc} =
         ~q[
-        defmodule Parent do
-         @attr 3
-         def my_fun() do
-          @attr
-         end
-        end
+         defmodule Parent do
+           @attr 3
+           def my_fun() do
+            @attr
+           end
+          end
         ]
         |> document_symbols()
 
@@ -202,7 +226,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     end
 
     test "variable references are skipped" do
-      {[module], _doc} =
+      {[module], doc} =
         ~q[
         defmodule Module do
           defp my_fn do
@@ -213,8 +237,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
         ]
         |> document_symbols()
 
-      assert [function] = module.children
-      assert [] = function.children
+      [fun] = module.children
+      assert decorate(doc, fun.detail_range) =~ "  defp «my_fn» do"
+      assert fun.type == :private_function
+      assert fun.name == "my_fn"
+      assert [] == fun.children
     end
 
     test "guards shown in the name" do
@@ -237,7 +264,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     test "types show only their name" do
       {[module], doc} =
         ~q[
-         @type something :: :ok
+        @type something :: :ok
         ]
         |> in_a_module()
         |> document_symbols()
@@ -259,6 +286,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
         |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
     end
 
     test "docs are ignored" do
@@ -272,6 +300,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
                |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
     end
 
     test "moduledocs are ignored" do
@@ -285,6 +314,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
                |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
     end
 
     test "derives are ignored" do
@@ -296,6 +326,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
                |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
     end
 
     test "impl declarations are ignored" do
@@ -307,6 +338,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
                |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
     end
 
     test "tags ignored" do
@@ -318,6 +350,56 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
                |> document_symbols()
 
       assert module.type == :module
+      assert module.children == []
+    end
+  end
+
+  describe "workspace symbols" do
+    test "converts a module entry" do
+      {[module], doc} =
+        ~q[
+          defmodule Parent.Child do
+          end
+        ]
+        |> workspace_symbols("hello")
+
+      assert module.type == :module
+      assert module.name == "Parent.Child"
+      assert module.link.uri == "file:///file.ex"
+      refute module.container_name
+
+      assert decorate(doc, module.link.range) =~ "«defmodule Parent.Child do\nend»"
+      assert decorate(doc, module.link.detail_range) =~ "defmodule «Parent.Child» do"
+    end
+
+    test "converts a function entry with zero args" do
+      {[_module, public_function, private_function], doc} =
+        ~q[
+          defmodule Parent.Child do
+            def my_fn do
+            end
+
+            defp private_fun(a, b) do
+            end
+        end
+        ]
+        |> workspace_symbols("hello")
+
+      assert public_function.type == :public_function
+      assert String.ends_with?(public_function.name, ".my_fn/0")
+      assert public_function.link.uri == "file:///file.ex"
+      refute public_function.container_name
+
+      assert decorate(doc, public_function.link.range) =~ "  «def my_fn do\n  end»"
+      assert decorate(doc, public_function.link.detail_range) =~ "  def «my_fn» do"
+
+      assert private_function.type == :private_function
+      assert private_function.name == "Child.private_fun/2"
+      assert private_function.link.uri == "file:///file.ex"
+      refute private_function.container_name
+
+      assert decorate(doc, private_function.link.range) =~ "  «defp private_fun(a, b) do\n  end»"
+      assert decorate(doc, private_function.link.detail_range) =~ "  defp «private_fun(a, b)» do"
     end
   end
 end

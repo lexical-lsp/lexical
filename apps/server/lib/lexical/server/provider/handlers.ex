@@ -32,6 +32,9 @@ defmodule Lexical.Server.Provider.Handlers do
       %Requests.DocumentSymbols{} ->
         {:ok, Handlers.DocumentSymbols}
 
+      %Requests.WorkspaceSymbol{} ->
+        {:ok, Handlers.WorkspaceSymbol}
+
       %request_module{} ->
         {:error, {:unhandled, request_module}}
     end
