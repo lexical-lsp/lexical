@@ -9,15 +9,17 @@ defmodule Lexical.Document.Changes do
   Using this struct allows efficient conversions at the language server border, as the document
   doesn't have to be looked up (and possibly read off the filesystem) by the language server.
   """
-  defstruct [:document, :edits]
+  defstruct [:document, :edits, :rename_file]
   alias Lexical.Document
 
   use Lexical.StructAccess
 
   @type edits :: Document.Edit.t() | [Document.Edit.t()]
+  @type rename_file :: nil | {Lexical.uri(), Lexical.uri()}
   @type t :: %__MODULE__{
           document: Document.t(),
-          edits: edits
+          edits: edits,
+          rename_file: rename_file()
         }
 
   @doc """
@@ -27,5 +29,10 @@ defmodule Lexical.Document.Changes do
   @spec new(Document.t(), edits()) :: t()
   def new(document, edits) do
     %__MODULE__{document: document, edits: edits}
+  end
+
+  @spec new(Document.t(), edits(), rename_file()) :: t()
+  def new(document, edits, rename_file) do
+    %__MODULE__{document: document, edits: edits, rename_file: rename_file}
   end
 end

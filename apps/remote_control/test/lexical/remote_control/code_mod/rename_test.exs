@@ -485,13 +485,13 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
-         {:ok, uri_with_changes} <- Rename.rename(analysis, position, new_name) do
-      changes = uri_with_changes |> Enum.map(& &1.edits) |> List.flatten()
+         {:ok, document_changes} <- Rename.rename(analysis, position, new_name) do
+      changes = document_changes |> Enum.map(& &1.edits) |> List.flatten()
       applied = apply_edits(document, changes)
 
       result =
         if path do
-          rename_file = uri_with_changes |> Enum.map(& &1.rename_file) |> List.first()
+          rename_file = document_changes |> Enum.map(& &1.rename_file) |> List.first()
           {applied, rename_file}
         else
           applied

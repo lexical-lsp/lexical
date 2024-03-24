@@ -7,7 +7,6 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
   alias Lexical.Protocol.Types.TextDocument
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl.Api
-  alias Lexical.RemoteControl.CodeMod.Rename.DocumentChanges
   alias Lexical.Server.Provider.Env
   require Logger
 
@@ -29,8 +28,8 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
 
       {:ok, results} ->
         text_document_edits =
-          Enum.map(results, fn %DocumentChanges{edits: edits, uri: uri} ->
-            new_text_document_edit(uri, edits)
+          Enum.map(results, fn %Document.Changes{edits: edits, document: document} ->
+            new_text_document_edit(document.uri, edits)
           end)
 
         rename_files =
