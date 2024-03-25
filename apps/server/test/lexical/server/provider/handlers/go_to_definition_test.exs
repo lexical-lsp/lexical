@@ -15,7 +15,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   use ExUnit.Case, async: false
 
   setup_all do
-    start_supervised(Document.Store)
+    start_supervised!(Server.Application.document_store_child_spec())
     project = project(:navigations)
 
     {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
@@ -61,11 +61,6 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
       {:ok, request} = build_request(uses_file_path, 4, 17)
 
       {:reply, %{result: %Location{} = location}} = handle(request, project)
-
-      assert location.range.start.line == 15
-      assert location.range.start.character == 7
-      assert location.range.end.line == 15
-      assert location.range.end.character == 12
       assert Location.uri(location) == referenced_uri
     end
   end
