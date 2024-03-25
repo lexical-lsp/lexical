@@ -11,7 +11,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   @function_definitions [:def, :defp]
 
-  def extract({definition, metadata, [{fn_name, _, args}, body]} = ast, %Reducer{} = reducer)
+  def extract({definition, metadata, [{fn_name, _, args}, body]}, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
     range = get_definition_range(reducer.analysis, metadata, body)
 
@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     entry =
       Entry.block_definition(path, block, mfa, type, range, Application.get_application(module))
 
-    {:ok, entry, ast}
+    {:ok, entry, [args, body]}
   end
 
   def extract(_ast, _reducer) do
