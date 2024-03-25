@@ -1,6 +1,8 @@
 defmodule MyDefinition do
   @type result :: String.t()
 
+  defstruct [:field, another_field: nil]
+
   defmacro __using__(_opts) do
     quote do
       import MyDefinition

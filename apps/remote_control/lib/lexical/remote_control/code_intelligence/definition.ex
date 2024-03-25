@@ -1,17 +1,39 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Future.Code, as: Code
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
+  alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
 
-  def definition(%Document{} = document, %Position{} = position) do
-    document
+  def definition(%Analysis{} = analysis, %Position{} = position) do
+    with {:ok, entity, _range} <- Entity.resolve(analysis, position) do
+      fetch_definition(entity, analysis, position)
+    end
+  end
+
+  defp fetch_definition({type, entity}, %Analysis{} = _analysis, %Position{} = _position)
+       when type in [:struct, :module] do
+    module = Formats.module(entity)
+
+    case Store.exact(module, type: type, subtype: :definition) do
+      [entity] ->
+        to_location(entity)
+
+      [] ->
+        {:ok, nil}
+    end
+  end
+
+  defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
+    analysis.document
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
-    |> parse_location(document)
+    |> parse_location(analysis.document)
   end
 
   defp parse_location(%ElixirSense.Location{} = location, document) do
@@ -70,6 +92,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
         column = if column == 1, do: Text.count_leading_spaces(text) + 1, else: column
         pos = {line, column}
         Entity.to_range(document, pos, pos)
+    end
+  end
+
+  defp to_location(entry) do
+    uri = Document.Path.ensure_uri(entry.path)
+
+    case Document.Store.open_temporary(uri) do
+      {:ok, document} ->
+        {:ok, Location.new(entry.range, document)}
+
+      _ ->
+        {:ok, nil}
     end
   end
 end

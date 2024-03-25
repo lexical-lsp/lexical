@@ -5,10 +5,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   alias Lexical.Document.Location
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.ProjectNodeSupervisor
+  alias Lexical.RemoteControl.Search
+  alias Lexical.RemoteControl.Search.Store.Backends
 
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
+  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
   import Lexical.Test.RangeSupport
 
@@ -38,8 +41,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   end
 
   setup_all do
-    start_supervised!(Lexical.Document.Store)
-
     project = project(:navigations)
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project)
@@ -47,6 +48,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     RemoteControl.Api.register_listener(project, self(), [:all])
     RemoteControl.Api.schedule_compile(project, true)
     assert_receive project_compiled(), 5000
+
+    # ETS
+    Backends.Ets.destroy_all(project)
+    RemoteControl.set_project(project)
+
+    start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
+
+    start_supervised!(RemoteControl.Dispatch)
+    start_supervised!(Backends.Ets)
+
+    start_supervised!(
+      {Search.Store, [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Backends.Ets]}
+    )
+
+    Search.Store.enable()
+    assert_eventually Search.Store.loaded?(), 1500
+
+    on_exit(fn ->
+      Backends.Ets.destroy_all(project)
+    end)
 
     %{project: project}
   end
@@ -89,8 +110,25 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
         end
       ]
 
-      assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
+      assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module, referenced_uri)
       assert definition_line == ~S[defmodule «MyDefinition» do]
+    end
+
+    test "find the definition of a struct", %{project: project, uri: referenced_uri} do
+      subject_module = ~q[
+        defmodule UsesRemoteStruct do
+          alias MyDefinition
+
+          def uses_struct() do
+            %|MyDefinition{}
+          end
+      end
+      ]
+
+      assert {:ok, ^referenced_uri, definition_line} =
+               definition(project, subject_module, referenced_uri)
+
+      assert definition_line == "  «defstruct [:field, another_field: nil]»"
     end
 
     test "find the macro definition", %{project: project, uri: referenced_uri} do
@@ -104,7 +142,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
         end
       ]
 
-      assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module)
+      assert {:ok, ^referenced_uri, definition_line} =
+               definition(project, subject_module, referenced_uri)
+
       assert definition_line == ~S[  defmacro «print_hello» do]
     end
 
@@ -310,12 +350,29 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
-  defp definition(project, code) do
+  defp definition(project, code, referenced_uri \\ nil) do
     with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
+         :ok <- index(document, referenced_uri),
+         analysis = Lexical.Ast.analyze(document),
          {:ok, %Location{} = location} <-
-           RemoteControl.Api.definition(project, document, position) do
+           RemoteControl.Api.definition(project, analysis, position) do
       {:ok, location.document.uri, decorate(location.document, location.range)}
+    end
+  end
+
+  defp index(document, referenced_uri) do
+    {path, text} =
+      if referenced_uri do
+        path = Document.Path.from_uri(referenced_uri)
+        text = File.read!(path)
+        {path, text}
+      else
+        {document.path, Document.to_string(document)}
+      end
+
+    with {:ok, entries} <- Search.Indexer.Source.index(path, text) do
+      Search.Store.replace(entries)
     end
   end
 end
