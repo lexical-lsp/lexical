@@ -87,8 +87,8 @@ defmodule Lexical.Server.Transport.StdIO do
     end
   end
 
-  defp read_body(device, amount) do
-    case IO.read(device, amount) do
+  defp read_body(device, byte_count) do
+    case IO.binread(device, byte_count) do
       data when is_binary(data) or is_list(data) ->
         # Ensure that incoming data is latin1 to prevent double-encoding to utf8 later
         # See https://github.com/lexical-lsp/lexical/issues/287 for context.
