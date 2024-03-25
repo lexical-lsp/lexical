@@ -35,7 +35,7 @@ defmodule Lexical.Server.Transport.StdIO do
   def write(io_device, payload) when is_binary(payload) do
     message =
       case io_device do
-        device when device in [:stdio, :standard_io] ->
+        device when device in [:stdio, :standard_io] or is_pid(device) ->
           {:ok, json_rpc} = JsonRpc.encode(payload)
           json_rpc
 
@@ -69,7 +69,7 @@ defmodule Lexical.Server.Transport.StdIO do
         loop([], device, callback)
 
       :eof ->
-        System.halt()
+        maybe_halt()
 
       line ->
         loop([line | buffer], device, callback)
@@ -109,5 +109,15 @@ defmodule Lexical.Server.Transport.StdIO do
       |> String.trim()
 
     {header_name, String.trim(value)}
+  end
+
+  if Mix.env() == :test do
+    defp maybe_halt do
+      :ok
+    end
+  else
+    defp maybe_halt do
+      System.halt()
+    end
   end
 end
