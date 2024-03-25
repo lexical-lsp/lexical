@@ -182,10 +182,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
   defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
-    module_string = module_before_position(charlist, column, position)
+    module_before_cursor = module_before_position(charlist, column, position)
 
-    with {:ok, module} <- expand_alias(module_string, analysis, position) do
-      end_column = column + String.length(module_string)
+    maybe_padded =
+      maybe_pad_phoenix_scope_module(module_before_cursor, charlist, analysis, position)
+
+    with {:ok, module} <- expand_alias(maybe_padded, analysis, position) do
+      end_column = column + String.length(module_before_cursor)
       {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
   end
@@ -197,6 +200,37 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     with {:ok, module} <- expand_alias(charlist, analysis, position) do
       {:ok, {:module, module}, node_range}
     end
+  end
+
+  defp maybe_pad_phoenix_scope_module(module_string, charlist, analysis, position) do
+    with true <- controller_module_at_cursor?(charlist),
+         scope_segments = phoenix_scope_segments(analysis, position),
+         false <- is_nil(scope_segments),
+         {:ok, module} <-
+           RemoteControl.Analyzer.expand_alias(scope_segments, analysis, position) do
+      [module, module_string] |> Module.concat() |> inspect()
+    else
+      _ ->
+        module_string
+    end
+  end
+
+  defp phoenix_scope_segments(analysis, position) do
+    path = Ast.path_at(analysis, position)
+    scope_path = Future.Macro.path(path, &match?({:scope, _, [_ | _]}, &1))
+
+    if scope_path do
+      {:scope, _, [_, {:__aliases__, _, segments} | _]} = hd(scope_path)
+      segments
+    end
+  end
+
+  defp controller_module_at_cursor?(charlist) do
+    charlist |> last_module_at_position() |> String.ends_with?("Controller")
+  end
+
+  defp last_module_at_position(charlist) do
+    charlist |> List.to_string() |> String.split(".") |> List.last()
   end
 
   # Take only the segments at and before the cursor, e.g.
