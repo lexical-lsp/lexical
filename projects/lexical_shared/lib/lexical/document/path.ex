@@ -1,9 +1,8 @@
 defmodule Lexical.Document.Path do
-  require Logger
-
   @moduledoc """
   A collection of functions dealing with converting filesystem paths to URIs and back
   """
+
   @file_scheme "file"
 
   @type uri_or_path :: Lexical.uri() | Lexical.path()
@@ -125,13 +124,6 @@ defmodule Lexical.Document.Path do
     else
       path
     end
-  end
-
-  @spec language_id_from_uri(Lexical.uri()) :: String.t()
-  def language_id_from_uri(uri) do
-    %URI{path: path} = URI.parse(uri)
-
-    language_id_from_path(path)
   end
 
   defp convert_separators_to_universal(path) do

@@ -16,6 +16,8 @@ defmodule Lexical.Document do
 
   import Lexical.Document.Line
 
+  require Logger
+
   alias __MODULE__.Path, as: DocumentPath
 
   @derive {Inspect, only: [:path, :version, :dirty?, :lines]}
@@ -233,6 +235,13 @@ defmodule Lexical.Document do
     document
     |> to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  @spec language_id_from_uri(Lexical.uri()) :: String.t()
+  def language_id_from_uri(uri) do
+    %URI{path: path} = URI.parse(uri)
+
+    language_id_from_path(path)
   end
 
   @spec language_id_from_path(Lexical.path()) :: String.t()

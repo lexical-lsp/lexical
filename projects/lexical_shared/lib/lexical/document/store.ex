@@ -259,7 +259,7 @@ defmodule Lexical.Document.Store do
 
   @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
   def open(uri, text, version) do
-    language_id = Document.Path.language_id_from_uri(uri)
+    language_id = Document.language_id_from_uri(uri)
 
     GenServer.call(name(), {:open, uri, text, language_id, version})
   end
