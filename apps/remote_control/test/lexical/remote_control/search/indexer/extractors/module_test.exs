@@ -172,6 +172,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert decorate(doc, module_ref.range) =~ "  «Some.Module».function()"
     end
 
+    test "can detect a module reference in a capture operator" do
+      {:ok, [_module, module_ref], doc} =
+        ~q[
+          defmodule Capture do
+            def my_fn do
+              &Some.Module.function/1
+            end
+          end
+        ]t
+        |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == Some.Module
+      assert decorate(doc, module_ref.range) =~ "  &«Some.Module».function/1"
+    end
+
     test "can detect a module reference in a function call's arguments" do
       {:ok, [_module, module_ref], doc} =
         ~q[
