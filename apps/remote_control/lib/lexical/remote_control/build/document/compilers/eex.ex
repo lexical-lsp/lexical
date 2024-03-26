@@ -10,14 +10,14 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.EEx do
 
   @behaviour Compiler
 
-  def recognizes?(%Document{} = document) do
-    Path.extname(document.path) == ".eex"
-  end
+  @impl true
+  def recognizes?(%Document{language_id: "eex"}), do: true
+  def recognizes?(_), do: false
 
-  def enabled? do
-    true
-  end
+  @impl true
+  def enabled?, do: true
 
+  @impl true
   def compile(%Document{} = document) do
     with {:ok, quoted} <- eex_to_quoted(document),
          :ok <- eval_quoted(document, quoted) do

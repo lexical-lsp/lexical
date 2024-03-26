@@ -1,4 +1,6 @@
 defmodule Lexical.Document.Path do
+  require Logger
+
   @moduledoc """
   A collection of functions dealing with converting filesystem paths to URIs and back
   """
@@ -123,6 +125,35 @@ defmodule Lexical.Document.Path do
     else
       path
     end
+  end
+
+  @spec language_id_from_path(Lexical.path()) :: String.t()
+  def language_id_from_path(path) do
+    case Path.extname(path) do
+      ".ex" ->
+        "elixir"
+
+      ".exs" ->
+        "elixir"
+
+      ".eex" ->
+        "eex"
+
+      ".heex" ->
+        "phoenix-heex"
+
+      extension ->
+        Logger.warning("can't infer lang ID for #{path}, ext: #{extension}.")
+
+        "unsupported (#{extension})"
+    end
+  end
+
+  @spec language_id_from_uri(Lexical.uri()) :: String.t()
+  def language_id_from_uri(uri) do
+    %URI{path: path} = URI.parse(uri)
+
+    language_id_from_path(path)
   end
 
   defp convert_separators_to_universal(path) do

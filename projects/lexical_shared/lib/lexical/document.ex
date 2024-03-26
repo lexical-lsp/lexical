@@ -20,12 +20,13 @@ defmodule Lexical.Document do
 
   @derive {Inspect, only: [:path, :version, :dirty?, :lines]}
 
-  defstruct [:uri, :path, :version, dirty?: false, lines: nil]
+  defstruct [:uri, :language_id, :path, :version, dirty?: false, lines: nil]
 
   @type version :: non_neg_integer()
   @type fragment_position :: Position.t() | Convertible.t()
   @type t :: %__MODULE__{
           uri: String.t(),
+          language_id: String.t(),
           version: version(),
           dirty?: boolean,
           lines: Lines.t(),
@@ -43,12 +44,27 @@ defmodule Lexical.Document do
   @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
   def new(maybe_uri, text, version) do
     uri = DocumentPath.ensure_uri(maybe_uri)
+    path = DocumentPath.from_uri(uri)
+    lang_id = DocumentPath.language_id_from_path(path)
 
     %__MODULE__{
       uri: uri,
       version: version,
       lines: Lines.new(text),
-      path: DocumentPath.from_uri(uri)
+      path: path,
+      language_id: lang_id
+    }
+  end
+
+  def new(maybe_uri, text, language_id, version) do
+    uri = DocumentPath.ensure_uri(maybe_uri)
+
+    %__MODULE__{
+      uri: uri,
+      version: version,
+      lines: Lines.new(text),
+      path: DocumentPath.from_uri(uri),
+      language_id: language_id
     }
   end
 

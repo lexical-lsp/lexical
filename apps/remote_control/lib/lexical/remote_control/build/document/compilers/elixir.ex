@@ -9,16 +9,15 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Elixir do
   alias Lexical.RemoteControl.Build.Document.Compilers
 
   @behaviour Build.Document.Compiler
-  @valid_extensions ~w(.ex .exs)
 
-  def recognizes?(%Document{} = doc) do
-    Path.extname(doc.path) in @valid_extensions
-  end
+  @impl true
+  def recognizes?(%Document{language_id: "elixir"}), do: true
+  def recognizes?(_), do: false
 
-  def enabled? do
-    true
-  end
+  @impl true
+  def enabled?, do: true
 
+  @impl true
   def compile(%Document{} = document) do
     case to_quoted(document) do
       {:ok, quoted} ->

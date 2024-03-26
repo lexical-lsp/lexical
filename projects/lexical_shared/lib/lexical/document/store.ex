@@ -91,24 +91,25 @@ defmodule Lexical.Document.Store do
       end
     end
 
-    @spec open(t, Lexical.uri(), String.t(), pos_integer()) :: {:ok, t} | {:error, :already_open}
-    def open(%__MODULE__{temporary_open_refs: refs} = store, uri, text, version)
+    @spec open(t, Lexical.uri(), String.t(), String.t(), pos_integer()) ::
+            {:ok, t} | {:error, :already_open}
+    def open(%__MODULE__{temporary_open_refs: refs} = store, uri, text, language_id, version)
         when is_map_key(refs, uri) do
       {_, store} =
         store
         |> maybe_cancel_ref(uri)
         |> pop_open_doc(uri)
 
-      open(store, uri, text, version)
+      open(store, uri, text, language_id, version)
     end
 
-    def open(%__MODULE__{} = store, uri, text, version) do
+    def open(%__MODULE__{} = store, uri, text, language_id, version) do
       case store.open do
         %{^uri => _} ->
           {:error, :already_open}
 
         _ ->
-          document = Document.new(uri, text, version)
+          document = Document.new(uri, text, language_id, version)
           store = put_open_doc(store, document)
           {:ok, store}
       end
@@ -258,7 +259,15 @@ defmodule Lexical.Document.Store do
 
   @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
   def open(uri, text, version) do
-    GenServer.call(name(), {:open, uri, text, version})
+    language_id = Document.Path.language_id_from_uri(uri)
+
+    GenServer.call(name(), {:open, uri, text, language_id, version})
+  end
+
+  @spec open(Lexical.uri(), String.t(), String.t(), pos_integer()) ::
+          :ok | {:error, :already_open}
+  def open(uri, text, language_id, version) do
+    GenServer.call(name(), {:open, uri, text, language_id, version})
   end
 
   @spec open_temporary(Lexical.uri() | Path.t()) ::
@@ -308,9 +317,9 @@ defmodule Lexical.Document.Store do
     {:reply, reply, new_state}
   end
 
-  def handle_call({:open, uri, text, version}, _from, %State{} = state) do
+  def handle_call({:open, uri, text, language_id, version}, _from, %State{} = state) do
     {reply, new_state} =
-      case State.open(state, uri, text, version) do
+      case State.open(state, uri, text, language_id, version) do
         {:ok, _} = success -> success
         error -> {error, state}
       end

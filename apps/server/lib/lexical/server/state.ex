@@ -170,11 +170,20 @@ defmodule Lexical.Server.State do
     end
   end
 
-  def apply(%__MODULE__{} = state, %DidOpen{lsp: event}) do
-    %TextDocument.Item{text: text, uri: uri, version: version} =
-      text_document = event.text_document
+  def apply(%__MODULE__{} = state, %DidOpen{} = did_open) do
+    %DidOpen{
+      lsp: %DidOpen.LSP{
+        text_document:
+          %TextDocument.Item{
+            text: text,
+            uri: uri,
+            version: version,
+            language_id: language_id
+          } = text_document
+      }
+    } = did_open
 
-    case Document.Store.open(uri, text, version) do
+    case Document.Store.open(uri, text, language_id, version) do
       :ok ->
         Logger.info("opened #{uri}")
         {:ok, state}
