@@ -69,7 +69,7 @@ defmodule Lexical.Server.Transport.StdIO do
         loop([], device, callback)
 
       :eof ->
-        maybe_halt()
+        maybe_stop()
 
       line ->
         loop([line | buffer], device, callback)
@@ -112,12 +112,12 @@ defmodule Lexical.Server.Transport.StdIO do
   end
 
   if Mix.env() == :test do
-    defp maybe_halt do
+    defp maybe_stop do
       :ok
     end
   else
-    defp maybe_halt do
-      System.halt()
+    defp maybe_stop do
+      System.stop()
     end
   end
 end
