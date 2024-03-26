@@ -45,7 +45,7 @@ defmodule Lexical.Document do
   def new(maybe_uri, text, version) do
     uri = DocumentPath.ensure_uri(maybe_uri)
     path = DocumentPath.from_uri(uri)
-    lang_id = DocumentPath.language_id_from_path(path)
+    lang_id = language_id_from_path(path)
 
     %__MODULE__{
       uri: uri,
@@ -233,6 +233,28 @@ defmodule Lexical.Document do
     document
     |> to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  @spec language_id_from_path(Lexical.path()) :: String.t()
+  def language_id_from_path(path) do
+    case Path.extname(path) do
+      ".ex" ->
+        "elixir"
+
+      ".exs" ->
+        "elixir"
+
+      ".eex" ->
+        "eex"
+
+      ".heex" ->
+        "phoenix-heex"
+
+      extension ->
+        Logger.warning("can't infer lang ID for #{path}, ext: #{extension}.")
+
+        "unsupported (#{extension})"
+    end
   end
 
   # private
