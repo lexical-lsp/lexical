@@ -44,28 +44,22 @@ defmodule Lexical.Document do
   as a binary and the vewrsion.
   """
   @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
-  def new(maybe_uri, text, version) do
+  def new(maybe_uri, text, version, language_id \\ nil) do
     uri = DocumentPath.ensure_uri(maybe_uri)
     path = DocumentPath.from_uri(uri)
-    lang_id = language_id_from_path(path)
+
+    language_id =
+      if language_id === nil do
+        language_id_from_path(path)
+      else
+        language_id
+      end
 
     %__MODULE__{
       uri: uri,
       version: version,
       lines: Lines.new(text),
       path: path,
-      language_id: lang_id
-    }
-  end
-
-  def new(maybe_uri, text, language_id, version) do
-    uri = DocumentPath.ensure_uri(maybe_uri)
-
-    %__MODULE__{
-      uri: uri,
-      version: version,
-      lines: Lines.new(text),
-      path: DocumentPath.from_uri(uri),
       language_id: language_id
     }
   end

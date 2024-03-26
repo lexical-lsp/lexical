@@ -178,7 +178,7 @@ defmodule Lexical.Server.State do
       language_id: language_id
     } = event.text_document
 
-    case Document.Store.open(uri, text, language_id, version) do
+    case Document.Store.open(uri, text, version, language_id) do
       :ok ->
         Logger.info("opened #{uri}")
         {:ok, state}
