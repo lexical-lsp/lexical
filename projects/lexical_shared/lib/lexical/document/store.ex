@@ -91,7 +91,7 @@ defmodule Lexical.Document.Store do
       end
     end
 
-    @spec open(t, Lexical.uri(), String.t(), String.t(), pos_integer()) ::
+    @spec open(t, Lexical.uri(), String.t(), pos_integer(), String.t()) ::
             {:ok, t} | {:error, :already_open}
     def open(store, uri, text, version, language_id \\ nil)
 
