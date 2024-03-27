@@ -35,7 +35,7 @@ defmodule Lexical.Server.Transport.StdIO do
   def write(io_device, payload) when is_binary(payload) do
     message =
       case io_device do
-        device when device in [:stdio, :standard_io] ->
+        device when device in [:stdio, :standard_io] or is_pid(device) ->
           {:ok, json_rpc} = JsonRpc.encode(payload)
           json_rpc
 
@@ -69,7 +69,7 @@ defmodule Lexical.Server.Transport.StdIO do
         loop([], device, callback)
 
       :eof ->
-        System.halt()
+        maybe_stop()
 
       line ->
         loop([line | buffer], device, callback)
@@ -87,8 +87,8 @@ defmodule Lexical.Server.Transport.StdIO do
     end
   end
 
-  defp read_body(device, amount) do
-    case IO.read(device, amount) do
+  defp read_body(device, byte_count) do
+    case IO.binread(device, byte_count) do
       data when is_binary(data) or is_list(data) ->
         # Ensure that incoming data is latin1 to prevent double-encoding to utf8 later
         # See https://github.com/lexical-lsp/lexical/issues/287 for context.
@@ -109,5 +109,15 @@ defmodule Lexical.Server.Transport.StdIO do
       |> String.trim()
 
     {header_name, String.trim(value)}
+  end
+
+  if Mix.env() == :test do
+    defp maybe_stop do
+      :ok
+    end
+  else
+    defp maybe_stop do
+      System.stop()
+    end
   end
 end
