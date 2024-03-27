@@ -93,8 +93,6 @@ defmodule Lexical.Document.Store do
 
     @spec open(t, Lexical.uri(), String.t(), pos_integer(), String.t()) ::
             {:ok, t} | {:error, :already_open}
-    def open(store, uri, text, version, language_id \\ nil)
-
     def open(%__MODULE__{temporary_open_refs: refs} = store, uri, text, version, language_id)
         when is_map_key(refs, uri) do
       {_, store} =
@@ -259,16 +257,9 @@ defmodule Lexical.Document.Store do
     GenServer.call(name(), {:open?, uri})
   end
 
-  @spec open(Lexical.uri(), String.t(), pos_integer()) :: :ok | {:error, :already_open}
-  def open(uri, text, version) do
-    language_id = Document.language_id_from_uri(uri)
-
-    GenServer.call(name(), {:open, uri, text, version, language_id})
-  end
-
-  @spec open(Lexical.uri(), String.t(), String.t(), pos_integer()) ::
+  @spec open(Lexical.uri(), String.t(), String.t(), pos_integer() | nil) ::
           :ok | {:error, :already_open}
-  def open(uri, text, version, language_id) do
+  def open(uri, text, version, language_id \\ nil) do
     GenServer.call(name(), {:open, uri, text, version, language_id})
   end
 

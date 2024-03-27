@@ -48,12 +48,7 @@ defmodule Lexical.Document do
     uri = DocumentPath.ensure_uri(maybe_uri)
     path = DocumentPath.from_uri(uri)
 
-    language_id =
-      if language_id === nil do
-        language_id_from_path(path)
-      else
-        language_id
-      end
+    language_id = language_id || language_id_from_path(path)
 
     %__MODULE__{
       uri: uri,
@@ -231,15 +226,8 @@ defmodule Lexical.Document do
     |> IO.iodata_to_binary()
   end
 
-  @spec language_id_from_uri(Lexical.uri()) :: String.t()
-  def language_id_from_uri(uri) do
-    %URI{path: path} = URI.parse(uri)
-
-    language_id_from_path(path)
-  end
-
   @spec language_id_from_path(Lexical.path()) :: String.t()
-  def language_id_from_path(path) do
+  defp language_id_from_path(path) do
     case Path.extname(path) do
       ".ex" ->
         "elixir"
