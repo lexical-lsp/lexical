@@ -23,7 +23,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     )
   end
 
-  @spec resolve(Analysis.t(), Position.t()) ::
+  @spec resolve(Analysis.t() | Lexical.path(), Position.t()) ::
           {:ok, {atom(), atom()}, Range.t()} | {:error, term()}
   def resolve(%Analysis{} = analysis, %Position{} = position) do
     case Entity.resolve(analysis, position) do
@@ -32,6 +32,15 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
 
       _ ->
         {:error, :not_a_module}
+    end
+  end
+
+  def resolve(path, %Position{} = position) do
+    uri = Document.Path.ensure_uri(path)
+
+    with {:ok, _} <- Document.Store.open_temporary(uri),
+         {:ok, _document, analysis} <- Document.Store.fetch(uri, :analysis) do
+      resolve(analysis, position)
     end
   end
 
@@ -105,9 +114,13 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     {:error, :not_found}
   end
 
-  defp resolve_module_range(entry, _entity, [[{start, length}]]) do
+  defp resolve_module_range(entry, entity, [[{start, length}]]) do
     range = adjust_range_characters(entry.range, {start, length})
-    {:ok, range}
+
+    with {:ok, {:module, result}, _} <- resolve(entry.path, range.start),
+         true <- entity == result do
+      {:ok, range}
+    end
   end
 
   defp resolve_module_range(entry, entity, [[{start, length}] | tail] = _matches) do
@@ -115,13 +128,10 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     # For example, if we have a module named `Foo.Bar.Foo.Bar` and we want to rename it to `Foo.Bar.Baz`
     # The `Foo.Bar` will be duplicated in the range text, so we need to resolve the correct range
     # and only rename the second occurrence of `Foo.Bar`
-    uri = Document.Path.ensure_uri(entry.path)
+    start_character = entry.range.start.character + start
+    position = %{entry.range.start | character: start_character}
 
-    with {:ok, _} <- Document.Store.open_temporary(uri),
-         {:ok, _document, analysis} <- Document.Store.fetch(uri, :analysis),
-         start_character = entry.range.start.character + start,
-         position = %{entry.range.start | character: start_character},
-         {:ok, {:module, result}, range} <- resolve(analysis, position) do
+    with {:ok, {:module, result}, range} <- resolve(entry.path, position) do
       if result == entity do
         range = adjust_range_characters(range, {start, length})
         {:ok, range}
