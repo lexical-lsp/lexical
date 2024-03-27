@@ -303,6 +303,22 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result =~ ~S[defmodule Foo do # skip this]
       assert result =~ ~S[alias TopLevel.Renamed.Foo]
     end
+
+    test "it shouldn't rename the descendant module if the module only contains old suffix" do
+      {:ok, result} =
+        ~q[
+        defmodule |TopLevel.Ast do
+        end
+
+        defmodule TopLevel.AnotherModule do
+          alias TopLevel.Ast.Detection
+
+          Detection.Bitstring.detected?() # Bitstring contains the old suffix: `st`
+        end
+      ] |> rename("TopLevel.AST")
+
+      refute result =~ ~S[Detection.BitSTring.detected?()]
+    end
   end
 
   describe "rename struct" do
