@@ -172,7 +172,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert decorate(doc, module_ref.range) =~ "  «Some.Module».function()"
     end
 
-    test "can detect a module reference in a capture operator" do
+    test "can detect a module reference in a remote captured function" do
       {:ok, [_module, module_ref], doc} =
         ~q[
           defmodule Capture do
