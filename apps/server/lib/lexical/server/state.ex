@@ -170,13 +170,13 @@ defmodule Lexical.Server.State do
     end
   end
 
-  def apply(%__MODULE__{} = state, %DidOpen{lsp: event}) do
+  def apply(%__MODULE__{} = state, %DidOpen{} = did_open) do
     %TextDocument.Item{
       text: text,
       uri: uri,
       version: version,
       language_id: language_id
-    } = event.text_document
+    } = did_open.lsp.text_document
 
     case Document.Store.open(uri, text, version, language_id) do
       :ok ->
