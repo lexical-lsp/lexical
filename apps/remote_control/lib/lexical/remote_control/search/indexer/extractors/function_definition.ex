@@ -12,7 +12,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   @function_definitions [:def, :defp]
 
-  def extract({definition, metadata, [{fn_name, _, args}, body]}, %Reducer{} = reducer)
+  def extract({definition, metadata, [{fn_name, _, args}, body]} = ast, %Reducer{} = reducer)
       when is_atom(fn_name) and definition in @function_definitions do
     detail_range = detail_range(reducer.analysis, metadata, body)
 
