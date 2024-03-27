@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 defmodule Lexical.Server.Provider.Handlers do
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Provider.Handlers
@@ -27,6 +28,9 @@ defmodule Lexical.Server.Provider.Handlers do
 
       %Requests.ExecuteCommand{} ->
         {:ok, Handlers.Commands}
+
+      %Requests.DocumentSymbols{} ->
+        {:ok, Handlers.DocumentSymbols}
 
       %request_module{} ->
         {:error, {:unhandled, request_module}}

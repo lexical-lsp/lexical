@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :application,
     :id,
     :block_id,
+    :block_range,
     :path,
     :range,
     :subject,
@@ -21,6 +22,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           application: module(),
           subject: subject(),
           block_id: block_id(),
+          block_range: Lexical.Document.Range.t() | nil,
           path: Path.t(),
           range: Lexical.Document.Range.t(),
           subtype: entry_subtype(),
@@ -55,16 +57,27 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     new(path, Identifier.next_global!(), block.id, subject, type, :definition, range, application)
   end
 
-  def block_definition(path, %Block{} = block, subject, type, range, application) do
-    definition(
-      path,
-      block.id,
-      block.parent_id,
-      subject,
-      type,
-      range,
-      application
-    )
+  def block_definition(
+        path,
+        %Block{} = block,
+        subject,
+        type,
+        block_range,
+        detail_range,
+        application
+      ) do
+    definition =
+      definition(
+        path,
+        block.id,
+        block.parent_id,
+        subject,
+        type,
+        detail_range,
+        application
+      )
+
+    %__MODULE__{definition | block_range: block_range}
   end
 
   defp definition(path, id, block_id, subject, type, range, application) do

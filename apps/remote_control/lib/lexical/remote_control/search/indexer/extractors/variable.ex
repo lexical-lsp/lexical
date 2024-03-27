@@ -69,6 +69,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
     :ignored
   end
 
+  def extract({:@, _, _}, %Reducer{}) do
+    {:ok, nil, nil}
+  end
+
   # Generic variable reference
   def extract({var_name, _, _} = ast, %Reducer{} = reducer) when is_atom(var_name) do
     case extract_reference(ast, reducer, get_current_app(reducer)) do
@@ -103,6 +107,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
           {entries, ast} when is_list(entries) ->
             {ast, entries ++ acc}
 
+          {_, ast} ->
+            {ast, acc}
+
           _ ->
             {ast, acc}
         end
@@ -123,6 +130,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Variable do
   defp extract_definition({:unquote, _, [expr]}, %Reducer{} = reducer, current_app) do
     reference = extract_reference(expr, reducer, current_app)
     {reference, nil}
+  end
+
+  defp extract_definition({:@, _, _}, %Reducer{}, _current_app) do
+    {nil, []}
   end
 
   # when clauses actually contain parameters and references

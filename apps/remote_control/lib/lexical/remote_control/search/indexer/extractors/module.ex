@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   # extract a module definition
   def extract(
         {:defmodule, defmodule_meta,
-         [{:__aliases__, module_name_meta, module_name}, module_block]},
+         [{:__aliases__, module_name_meta, module_name}, module_block]} = defmodule_ast,
         %Reducer{} = reducer
       ) do
     %Block{} = block = Reducer.current_block(reducer)
@@ -35,6 +35,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             block,
             Subject.module(aliased_module),
             :module,
+            block_range(reducer.analysis.document, defmodule_ast),
             range,
             Application.get_application(aliased_module)
           )
@@ -195,5 +196,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       Position.new(document, line, column),
       Position.new(document, line, column + module_length)
     )
+  end
+
+  defp block_range(document, ast) do
+    case Ast.Range.fetch(ast, document) do
+      {:ok, range} -> range
+      _ -> nil
+    end
   end
 end

@@ -130,4 +130,8 @@ defmodule Lexical.RemoteControl.Api do
   def struct_definitions(%Project{} = project) do
     RemoteControl.call(project, CodeIntelligence.Structs, :for_project, [])
   end
+
+  def document_symbols(%Project{} = project, %Document{} = document) do
+    RemoteControl.call(project, CodeIntelligence.Symbols, :for_document, [document])
+  end
 end
