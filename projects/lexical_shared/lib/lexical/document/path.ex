@@ -2,7 +2,6 @@ defmodule Lexical.Document.Path do
   @moduledoc """
   A collection of functions dealing with converting filesystem paths to URIs and back
   """
-
   @file_scheme "file"
 
   @type uri_or_path :: Lexical.uri() | Lexical.path()
