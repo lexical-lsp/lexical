@@ -41,7 +41,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
             reducer.analysis.document.path,
             block,
             Subject.module(aliased_module),
-            Map.get(@definition_mappings, definition, :module),
+            @definition_mappings[definition],
             block_range(reducer.analysis.document, defmodule_ast),
             detail_range,
             Application.get_application(aliased_module)
