@@ -82,6 +82,18 @@ defmodule Lexical.Protocol.Requests do
     defrequest "textDocument/documentSymbol", Types.Document.Symbol.Params
   end
 
+  defmodule PrepareRename do
+    use Proto
+
+    defrequest "textDocument/prepareRename", Types.PrepareRename.Params
+  end
+
+  defmodule Rename do
+    use Proto
+
+    defrequest "textDocument/rename", Types.Rename.Params
+  end
+
   # Server -> Client requests
 
   defmodule RegisterCapability do

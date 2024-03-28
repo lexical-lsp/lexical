@@ -47,6 +47,22 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, CodeAction, :for_range, [document, range, diagnostics, kinds])
   end
 
+  def prepare_rename(
+        %Project{} = project,
+        %Analysis{} = analysis,
+        %Position{} = position
+      ) do
+    RemoteControl.call(project, CodeMod.Rename, :prepare, [analysis, position])
+  end
+
+  def rename(%Project{} = project, %Analysis{} = analysis, %Position{} = position, new_name) do
+    RemoteControl.call(project, CodeMod.Rename, :rename, [
+      analysis,
+      position,
+      new_name
+    ])
+  end
+
   def complete(%Project{} = project, %Document{} = document, %Position{} = position) do
     document_string = Document.to_string(document)
     complete(project, document_string, position)
