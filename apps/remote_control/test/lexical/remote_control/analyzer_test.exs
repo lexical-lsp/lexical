@@ -29,13 +29,13 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
     test "works with @protocol in a protocol" do
       {position, document} =
         ~q[
-      defimpl MyProtocol, for: Atom do
+        defimpl MyProtocol, for: Atom do
 
-        def pack(atom) do
-          |
+          def pack(atom) do
+            |
+          end
         end
-      end
-      ]
+        ]
         |> pop_cursor(as: :document)
 
       analysis = Ast.analyze(document)
@@ -59,6 +59,22 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
                  analysis,
                  position
                )
+    end
+
+    test "identifies the module in a protocol implementation" do
+      {position, document} =
+        ~q[
+          defimpl MyProtocol, for: Atom do
+
+            def pack(atom) do
+              |
+            end
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert {:ok, MyProtocol.Atom} == Analyzer.current_module(analysis, position)
     end
   end
 
