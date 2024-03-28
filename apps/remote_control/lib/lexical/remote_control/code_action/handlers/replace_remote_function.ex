@@ -93,7 +93,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
     end
   end
 
-  @function_re ~r/(warning: )?([^\/]+)\/(.*) is undefined or private. Did you mean:.*/
+  @function_re ~r/(warning: |function )?([^\/]+)\/(.*) is undefined or private. Did you mean:.*/
   defp extract_function(message) do
     result =
       with [[_, _, module_and_function, arity]] <- Regex.scan(@function_re, message),

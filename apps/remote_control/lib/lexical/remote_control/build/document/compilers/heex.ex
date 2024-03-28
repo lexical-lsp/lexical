@@ -10,9 +10,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.HEEx do
 
   @behaviour Compiler
 
-  def recognizes?(%Document{} = document) do
-    Path.extname(document.path) == ".heex"
-  end
+  def recognizes?(%Document{language_id: "phoenix-heex"}), do: true
+  def recognizes?(%Document{language_id: "heex"}), do: true
+  def recognizes?(_), do: false
 
   def enabled? do
     true

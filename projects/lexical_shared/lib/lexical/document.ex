@@ -16,16 +16,19 @@ defmodule Lexical.Document do
 
   import Lexical.Document.Line
 
+  require Logger
+
   alias __MODULE__.Path, as: DocumentPath
 
   @derive {Inspect, only: [:path, :version, :dirty?, :lines]}
 
-  defstruct [:uri, :path, :version, dirty?: false, lines: nil]
+  defstruct [:uri, :language_id, :path, :version, dirty?: false, lines: nil]
 
   @type version :: non_neg_integer()
   @type fragment_position :: Position.t() | Convertible.t()
   @type t :: %__MODULE__{
           uri: String.t(),
+          language_id: String.t(),
           version: version(),
           dirty?: boolean,
           lines: Lines.t(),
@@ -41,14 +44,18 @@ defmodule Lexical.Document do
   as a binary and the vewrsion.
   """
   @spec new(Lexical.path() | Lexical.uri(), String.t(), version()) :: t
-  def new(maybe_uri, text, version) do
+  def new(maybe_uri, text, version, language_id \\ nil) do
     uri = DocumentPath.ensure_uri(maybe_uri)
+    path = DocumentPath.from_uri(uri)
+
+    language_id = language_id || language_id_from_path(path)
 
     %__MODULE__{
       uri: uri,
       version: version,
       lines: Lines.new(text),
-      path: DocumentPath.from_uri(uri)
+      path: path,
+      language_id: language_id
     }
   end
 
@@ -217,6 +224,28 @@ defmodule Lexical.Document do
     document
     |> to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  @spec language_id_from_path(Lexical.path()) :: String.t()
+  defp language_id_from_path(path) do
+    case Path.extname(path) do
+      ".ex" ->
+        "elixir"
+
+      ".exs" ->
+        "elixir"
+
+      ".eex" ->
+        "eex"
+
+      ".heex" ->
+        "phoenix-heex"
+
+      extension ->
+        Logger.warning("can't infer lang ID for #{path}, ext: #{extension}.")
+
+        "unsupported (#{extension})"
+    end
   end
 
   # private

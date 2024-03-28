@@ -170,17 +170,21 @@ defmodule Lexical.Server.State do
     end
   end
 
-  def apply(%__MODULE__{} = state, %DidOpen{lsp: event}) do
-    %TextDocument.Item{text: text, uri: uri, version: version} =
-      text_document = event.text_document
+  def apply(%__MODULE__{} = state, %DidOpen{} = did_open) do
+    %TextDocument.Item{
+      text: text,
+      uri: uri,
+      version: version,
+      language_id: language_id
+    } = did_open.text_document
 
-    case Document.Store.open(uri, text, version) do
+    case Document.Store.open(uri, text, version, language_id) do
       :ok ->
         Logger.info("opened #{uri}")
         {:ok, state}
 
       error ->
-        Logger.error("Could not open #{text_document.uri} #{inspect(error)}")
+        Logger.error("Could not open #{uri} #{inspect(error)}")
         error
     end
   end
