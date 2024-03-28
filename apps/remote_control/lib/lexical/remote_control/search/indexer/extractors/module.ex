@@ -105,6 +105,41 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
     end
   end
 
+  # Function capture with arity: &OtherModule.foo/3
+  def extract(
+        {:&, _,
+         [
+           {:/, _,
+            [
+              {{:., _, [{:__aliases__, start_metadata, maybe_module}, _function_name]}, _, []},
+              _
+            ]}
+         ]},
+        %Reducer{} = reducer
+      ) do
+    case module(reducer, maybe_module) do
+      {:ok, module} ->
+        start = Metadata.position(start_metadata)
+        range = to_range(reducer, maybe_module, start)
+        %Block{} = current_block = Reducer.current_block(reducer)
+
+        entry =
+          Entry.reference(
+            reducer.analysis.document.path,
+            current_block,
+            Subject.module(module),
+            :module,
+            range,
+            Application.get_application(module)
+          )
+
+        {:ok, entry}
+
+      _ ->
+        :ignored
+    end
+  end
+
   def extract(_, _) do
     :ignored
   end

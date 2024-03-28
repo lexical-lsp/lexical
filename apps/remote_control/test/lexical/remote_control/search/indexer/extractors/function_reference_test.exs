@@ -199,6 +199,38 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       assert expected == extract(code, reference.range)
     end
+
+    test "find a captured local private function" do
+      code = in_a_module(~q[
+          def public_fun(x), do: x
+          defp private_fun(x, y), do: {x, y}
+
+          def use_private_fun(_l), do: &private_fun(&1, 1)
+        ])
+
+      {:ok, [reference], _} = index(code)
+
+      assert reference.subject == "Parent.private_fun/2"
+      assert reference.type == :function
+      assert reference.subtype == :reference
+      assert "private_fun(&1, 1)" == extract(code, reference.range)
+    end
+
+    test "finds a captured local public function" do
+      code = in_a_module(~q[
+          def public_fun(x), do: x
+          defp private_fun(x, y), do: {x, y}
+
+          def use_public_fun(_l), do: &public_fun/1
+        ])
+
+      {:ok, [reference], _} = index(code)
+
+      assert reference.subject == "Parent.public_fun/1"
+      assert reference.type == :function
+      assert reference.subtype == :reference
+      assert "public_fun/1" == extract(code, reference.range)
+    end
   end
 
   describe "imported function references" do
