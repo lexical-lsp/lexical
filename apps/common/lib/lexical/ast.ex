@@ -101,6 +101,13 @@ defmodule Lexical.Ast do
   @type short_alias :: atom()
   @type alias_segments :: [short_alias]
 
+  @type comment_metadata :: %{
+          line: pos_integer(),
+          column: pos_integer(),
+          previous_eol_count: non_neg_integer(),
+          next_eol_count: non_neg_integer()
+        }
+
   @type position :: Position.t() | {Position.line(), Position.character()}
 
   @doc """
@@ -149,14 +156,22 @@ defmodule Lexical.Ast do
   Returns an AST generated from a valid document or string.
   """
   @spec from(Document.t() | Analysis.t() | String.t()) ::
-          {:ok, Macro.t()} | {:error, parse_error()}
+          {:ok, Macro.t(), comment_metadata()} | {:error, parse_error()}
   def from(%Document{} = document) do
     document
     |> Document.to_string()
     |> from()
   end
 
-  def from(%Analysis{valid?: true, ast: ast}), do: {:ok, ast}
+  def from(%Analysis{valid?: true} = analysis) do
+    comments =
+      analysis.comments_by_line
+      |> Map.values()
+      |> Enum.sort_by(& &1.line)
+
+    {:ok, analysis.ast, comments}
+  end
+
   def from(%Analysis{valid?: false, parse_error: error}), do: error
 
   def from(s) when is_binary(s) do
@@ -241,7 +256,7 @@ defmodule Lexical.Ast do
           {:ok, [Macro.t(), ...]} | {:error, :not_found | parse_error()}
   def path_at(%struct{} = document_or_analysis, %Position{} = position)
       when struct in [Document, Analysis] do
-    with {:ok, ast} <- from(document_or_analysis) do
+    with {:ok, ast, _} <- from(document_or_analysis) do
       path_at(ast, position)
     end
   end
@@ -290,7 +305,7 @@ defmodule Lexical.Ast do
   """
   @spec zipper_at(Document.t(), Position.t()) :: {:ok, Zipper.t()} | {:error, parse_error()}
   def zipper_at(%Document{} = document, %Position{} = position) do
-    with {:ok, ast} <- from(document) do
+    with {:ok, ast, _} <- from(document) do
       zipper_at_position(ast, position)
     end
   end
@@ -414,7 +429,7 @@ defmodule Lexical.Ast do
   # private
 
   defp do_string_to_quoted(string) when is_binary(string) do
-    Code.string_to_quoted(string,
+    Code.string_to_quoted_with_comments(string,
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
       columns: true,

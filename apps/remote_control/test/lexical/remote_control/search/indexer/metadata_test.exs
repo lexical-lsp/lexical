@@ -184,7 +184,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
 
   defp decorate_location(code) do
     document = Document.new("file:///file.ex", code, 1)
-    {:ok, ast} = Ast.from(document)
+    {:ok, ast, _} = Ast.from(document)
 
     case Metadata.location(ast) do
       {:block, _position, {start_line, start_char}, {end_line, end_char}} ->

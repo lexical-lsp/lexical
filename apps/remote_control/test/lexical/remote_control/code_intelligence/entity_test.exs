@@ -458,6 +458,21 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:call, Kernel, :defstruct, 1}, resolved_range} = resolve(code)
       assert resolved_range =~ "  «defstruct» foo: nil"
     end
+
+    test "comments are ignored" do
+      code = ~q[
+        defmodule Scratch do
+          def many_such_pipes() do
+            "pipe"
+            |> a_humble_pipe()
+            # |> another_|humble_pipe()
+            |> a_humble_pipe()
+          end
+        end
+      ]
+
+      assert {:error, :not_found} = resolve(code)
+    end
   end
 
   describe "local call" do

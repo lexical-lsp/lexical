@@ -320,8 +320,8 @@ defmodule Lexical.AstTest do
 
   defp ast(s) do
     case Ast.from(s) do
-      {:ok, {:__block__, _, [node]}} -> node
-      {:ok, node} -> node
+      {:ok, {:__block__, _, [node]}, _comments} -> node
+      {:ok, node, _comments} -> node
     end
   end
 
