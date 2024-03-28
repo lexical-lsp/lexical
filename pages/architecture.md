@@ -18,16 +18,16 @@ Since the `remote_control` app only depends on `common`, `path_glob` and `elixir
 
 ## Language Server
 
-The language server (the `server` app) is the entry point to Lexical. When started by the `start_lexical.sh` command, it sets up a [transport](`Lexical.Server.Transport`) that [reads JsonRPC from standard input and writes responses to standard output](`Lexical.Server.Transport.StdIO`).
+The language server (the `server` app) is the entry point to Lexical. When started by the `start_lexical.sh` command, it sets up a [transport](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server/transport.ex) that [reads JsonRPC from standard input and writes responses to standard output](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server/transport/std_io.ex).
 
-When a message is received, it is parsed into either a [LSP Request](`Lexical.Protocol.Requests`) or a [LSP Notification](`Lexical.Protocol.Notifications`) and then it's handed to the [language server](`Lexical.Server`) to process.
+When a message is received, it is parsed into either a [LSP Request](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/requests.ex) or a [LSP Notification](https://github.com/lexical-lsp/lexical/blob/main/apps/protocol/lib/lexical/protocol/notifications.ex) and then it's handed to the [language server](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server.ex) to process.
 
-The only messages the [lexical server process](`Lexical.Server`) handles directly are those related to the lifecycle of the language server itself:
+The only messages the [lexical server process](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server.ex) handles directly are those related to the lifecycle of the language server itself:
 
 - Synchronizing document states.
 - Processing LSP configuration changes.
 - Performing initialization and shutdown.
 
-All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](`Lexical.Server.Provider.Queue`). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
+All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server/provider/queue.ex). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
 
 A _Provider Handler_ is just a module that defines a function of arity 2 that takes the request to handle and a `Lexical.Server.Provider.Env`. These functions can reply to the request, ignore it, or do some other action.
