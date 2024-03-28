@@ -176,7 +176,7 @@ defmodule Lexical.Server.State do
       uri: uri,
       version: version,
       language_id: language_id
-    } = did_open.lsp.text_document
+    } = did_open.text_document
 
     case Document.Store.open(uri, text, version, language_id) do
       :ok ->
