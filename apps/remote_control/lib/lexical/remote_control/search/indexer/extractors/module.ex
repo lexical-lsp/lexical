@@ -16,27 +16,34 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
   require Logger
 
+  @definition_mappings %{
+    defmodule: :module,
+    defprotocol: :protocol
+  }
+  @module_definitions Map.keys(@definition_mappings)
+
   # extract a module definition
   def extract(
-        {:defmodule, defmodule_meta,
+        {definition, defmodule_meta,
          [{:__aliases__, module_name_meta, module_name}, module_block]} = defmodule_ast,
         %Reducer{} = reducer
-      ) do
+      )
+      when definition in @module_definitions do
     %Block{} = block = Reducer.current_block(reducer)
 
     case resolve_alias(reducer, module_name) do
       {:ok, aliased_module} ->
         module_position = Metadata.position(module_name_meta)
-        range = to_range(reducer, module_name, module_position)
+        detail_range = to_range(reducer, module_name, module_position)
 
         entry =
           Entry.block_definition(
             reducer.analysis.document.path,
             block,
             Subject.module(aliased_module),
-            :module,
+            Map.get(@definition_mappings, definition, :module),
             block_range(reducer.analysis.document, defmodule_ast),
-            range,
+            detail_range,
             Application.get_application(aliased_module)
           )
 
@@ -47,6 +54,41 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
            [{:__aliases__, module_name_meta, module_name}, module_block]}
 
         {:ok, entry, elem}
+
+      _ ->
+        :ignored
+    end
+  end
+
+  # defimpl MyProtocol, for: MyStruct do ...
+  def extract(
+        {:defimpl, _,
+         [
+           {:__aliases__, module_name_meta, module_name},
+           _for_block,
+           _impl_body
+         ]} = defimpl_ast,
+        %Reducer{} = reducer
+      ) do
+    %Block{} = block = Reducer.current_block(reducer)
+
+    case resolve_alias(reducer, module_name) do
+      {:ok, aliased_module} ->
+        module_position = Metadata.position(module_name_meta)
+        detail_range = to_range(reducer, module_name, module_position)
+
+        entry =
+          Entry.block_definition(
+            reducer.analysis.document.path,
+            block,
+            Subject.module(aliased_module),
+            :protocol_implementation,
+            block_range(reducer.analysis.document, defimpl_ast),
+            detail_range,
+            Application.get_application(aliased_module)
+          )
+
+        {:ok, entry}
 
       _ ->
         :ignored
