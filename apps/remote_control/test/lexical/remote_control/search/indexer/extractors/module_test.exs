@@ -188,6 +188,38 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert decorate(doc, module_ref.range) =~ "  &«Some.Module».function/1"
     end
 
+    test "can detect a module reference in a remote captured function with multiple arities" do
+      {:ok, [_module, module_ref], doc} =
+        ~q[
+          defmodule Capture do
+            def my_fn do
+              &Some.Module.function(&1, 1)
+            end
+          end
+        ]t
+        |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == Some.Module
+      assert decorate(doc, module_ref.range) =~ "  &«Some.Module».function(&1, 1)"
+    end
+
+    test "can detect a module reference in an aliased remote captured function" do
+      {:ok, [_module, _alias, _aliased, module_ref], doc} =
+        ~q[
+          defmodule Capture do
+            alias First.Second, as: Third
+            def my_fn do
+              &Third.function/1
+            end
+          end
+        ]t |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == First.Second
+      assert decorate(doc, module_ref.range) =~ "  &«Third».function/1"
+    end
+
     test "can detect a module reference in a function call's arguments" do
       {:ok, [_module, module_ref], doc} =
         ~q[
