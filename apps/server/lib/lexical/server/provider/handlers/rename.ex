@@ -3,7 +3,9 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
   alias Lexical.Document
   alias Lexical.Protocol.Requests.Rename
   alias Lexical.Protocol.Responses
-  alias Lexical.Protocol.Types.Workspace.Edit
+  alias Lexical.Protocol.Types.RenameFile
+  alias Lexical.Protocol.Types.TextDocument
+  alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.Provider.Env
   require Logger
@@ -21,12 +23,25 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
 
   defp rename(project, analysis, position, new_name, id) do
     case Api.rename(project, analysis, position, new_name) do
-      {:ok, results} when results == %{} ->
+      {:ok, []} ->
         {:reply, nil}
 
       {:ok, results} ->
-        edit = Edit.new(changes: results)
-        {:reply, Responses.Rename.new(id, edit)}
+        text_document_edits =
+          Enum.map(results, fn %Document.Changes{edits: edits, document: document} ->
+            new_text_document_edit(document.uri, edits)
+          end)
+
+        rename_files =
+          results
+          |> Stream.map(& &1.rename_file)
+          |> Stream.reject(&(&1 == nil))
+          |> Enum.map(&new_rename_file/1)
+
+        workspace_edit =
+          Workspace.Edit.new(document_changes: text_document_edits ++ rename_files)
+
+        {:reply, Responses.Rename.new(id, workspace_edit)}
 
       {:error, {:unsupported_entity, entity}} ->
         Logger.info("Unrenameable entity: #{inspect(entity)}")
@@ -35,5 +50,21 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
       {:error, reason} ->
         {:reply, Responses.Rename.error(id, :request_failed, inspect(reason))}
     end
+  end
+
+  defp new_text_document_edit(uri, edits) do
+    text_document = TextDocument.OptionalVersioned.Identifier.new(uri: uri, version: 0)
+    TextDocument.Edit.new(edits: edits, text_document: text_document)
+  end
+
+  defp new_rename_file({from_uri, to_uri}) do
+    options = RenameFile.Options.new(overwrite: true)
+
+    RenameFile.new(
+      kind: "rename",
+      new_uri: to_uri,
+      old_uri: from_uri,
+      options: options
+    )
   end
 end
