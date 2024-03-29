@@ -13,7 +13,7 @@ defmodule Lexical.Server.Transport.StdIO do
   end
 
   def init({callback, device}) do
-    :io.setopts([:binary, encoding: :latin1])
+    :io.setopts(binary: true, encoding: :latin1)
     loop([], device, callback)
   end
 
@@ -55,7 +55,7 @@ defmodule Lexical.Server.Transport.StdIO do
   # private
 
   defp loop(buffer, device, callback) do
-    case IO.read(device, :line) do
+    case IO.binread(device, :line) do
       "\n" ->
         headers = parse_headers(buffer)
 
@@ -90,9 +90,6 @@ defmodule Lexical.Server.Transport.StdIO do
   defp read_body(device, byte_count) do
     case IO.binread(device, byte_count) do
       data when is_binary(data) or is_list(data) ->
-        # Ensure that incoming data is latin1 to prevent double-encoding to utf8 later
-        # See https://github.com/lexical-lsp/lexical/issues/287 for context.
-        data = :unicode.characters_to_binary(data, :utf8, :latin1)
         {:ok, data}
 
       other ->
