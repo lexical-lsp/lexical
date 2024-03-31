@@ -354,9 +354,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
          :ok <- index(document, referenced_uri),
-         analysis = Lexical.Ast.analyze(document),
          {:ok, %Location{} = location} <-
-           RemoteControl.Api.definition(project, analysis, position) do
+           RemoteControl.Api.definition(project, document, position) do
       {:ok, location.document.uri, decorate(location.document, location.range)}
     end
   end
