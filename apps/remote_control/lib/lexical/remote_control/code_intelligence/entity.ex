@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Formats
   alias Lexical.RemoteControl
 
   require Logger
@@ -184,10 +185,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
     module_before_cursor = module_before_position(charlist, column, position)
 
-    maybe_padded =
-      maybe_pad_phoenix_scope_module(module_before_cursor, charlist, analysis, position)
+    maybe_prepended =
+      maybe_prepend_phoenix_scope_module(module_before_cursor, charlist, analysis, position)
 
-    with {:ok, module} <- expand_alias(maybe_padded, analysis, position) do
+    with {:ok, module} <- expand_alias(maybe_prepended, analysis, position) do
       end_column = column + String.length(module_before_cursor)
       {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
@@ -202,35 +203,36 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
-  defp maybe_pad_phoenix_scope_module(module_string, charlist, analysis, position) do
-    with true <- controller_module_at_cursor?(charlist),
-         scope_segments = phoenix_scope_segments(analysis, position),
-         false <- is_nil(scope_segments),
+  defp maybe_prepend_phoenix_scope_module(module_string, charlist, analysis, position) do
+    with true <- phoenix_controller_module?(charlist),
+         {:ok, scope_segments} <- fetch_phoenix_scope_alias_segments(analysis, position),
          {:ok, module} <-
            RemoteControl.Analyzer.expand_alias(scope_segments, analysis, position) do
-      [module, module_string] |> Module.concat() |> inspect()
+      [module, module_string] |> Module.concat() |> Formats.module()
     else
       _ ->
         module_string
     end
   end
 
-  defp phoenix_scope_segments(analysis, position) do
+  defp fetch_phoenix_scope_alias_segments(analysis, position) do
+    # fetch the alias segments from the `scope` macro
+    # e.g. `scope "/foo", FooWeb.Controllers`
+    # the alias module is `FooWeb.Controllers`, and the segments is `[:FooWeb, :Controllers]`
     path = Ast.path_at(analysis, position)
     scope_path = Future.Macro.path(path, &match?({:scope, _, [_ | _]}, &1))
 
-    if scope_path do
-      {:scope, _, [_, {:__aliases__, _, segments} | _]} = hd(scope_path)
-      segments
+    case scope_path do
+      [{:scope, _, [_, {:__aliases__, _, segments} | _]} | _] ->
+        {:ok, segments}
+
+      _ ->
+        :error
     end
   end
 
-  defp controller_module_at_cursor?(charlist) do
-    charlist |> last_module_at_position() |> String.ends_with?("Controller")
-  end
-
-  defp last_module_at_position(charlist) do
-    charlist |> List.to_string() |> String.split(".") |> List.last()
+  defp phoenix_controller_module?(charlist) do
+    charlist |> Ast.Module.local_name() |> String.ends_with?("Controller")
   end
 
   # Take only the segments at and before the cursor, e.g.
