@@ -365,6 +365,8 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
         names
       end
 
+    app_names = MapSet.put(app_names, nil)
+
     fn mapped(application: app, subtype: subtype) ->
       subtype == :definition and MapSet.member?(app_names, app)
     end

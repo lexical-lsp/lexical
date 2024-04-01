@@ -19,17 +19,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
       |> Document.Path.to_uri()
       |> Link.new(entry.block_range, entry.range)
 
-    {name, container} = name_and_container(entry.type, entry)
+    name = symbol_name(entry.type, entry)
 
     %__MODULE__{
       name: name,
       type: entry.type,
-      link: link,
-      container_name: container
+      link: link
     }
   end
 
-  defp name_and_container(fun, entry)
+  defp symbol_name(fun, entry)
        when fun in [:function, :public_function, :private_function] do
     [name_and_arity, local_module] =
       entry.subject
@@ -37,10 +36,20 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
       |> Enum.reverse()
       |> Enum.take(2)
 
-    {local_module <> "." <> name_and_arity, nil}
+    local_module <> "." <> name_and_arity
   end
 
-  defp name_and_container(:module, entry), do: {Formats.module(entry.subject), nil}
-  defp name_and_container(:struct, entry), do: {Formats.module(entry.subject), nil}
-  defp name_and_container(_, entry), do: {entry.subject, nil}
+  @module_types [
+    :struct,
+    :module,
+    :protocol,
+    :protocol_implementation
+  ]
+
+  defp symbol_name(type, entry) when type in @module_types do
+    Formats.module(entry.subject)
+  end
+
+  defp symbol_name(_, entry),
+    do: entry.subject
 end
