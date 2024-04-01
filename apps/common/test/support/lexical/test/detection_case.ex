@@ -1,4 +1,6 @@
 defmodule Lexical.Test.DetectionCase do
+  alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Tokens
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -61,10 +63,11 @@ defmodule Lexical.Test.DetectionCase do
 
   def refute_detected(context, code) do
     document = Document.new("file:///file.ex", code, 1)
+    analysis = Ast.analyze(document)
 
     for position <- position_stream(document) do
       try do
-        refute context.detected?(document, position)
+        refute context.detected?(analysis, position)
       rescue
         e in ExUnit.AssertionError ->
           flunk(error_for(document, position, context, e))
@@ -75,7 +78,8 @@ defmodule Lexical.Test.DetectionCase do
   def assert_detected(context, code) do
     {ranges, code} = pop_all_ranges(code)
     document = Document.new("file:///file.ex", code, 1)
-    assert_contexts_in_range(document, context, ranges)
+    analysis = Ast.analyze(document)
+    assert_contexts_in_range(analysis, context, ranges)
   end
 
   defp includes?(%Range{} = range, %Position{} = position) do
@@ -132,9 +136,9 @@ defmodule Lexical.Test.DetectionCase do
     end
   end
 
-  defp assert_contexts_in_range(%Document{} = document, context, ranges) do
+  defp assert_contexts_in_range(%Analysis{} = analysis, context, ranges) do
     positions_by_range =
-      document
+      analysis.document
       |> position_stream()
       |> Enum.group_by(fn position -> Enum.find(ranges, &includes?(&1, position)) end)
 
@@ -142,13 +146,13 @@ defmodule Lexical.Test.DetectionCase do
         position <- positions do
       try do
         if range do
-          assert context.detected?(document, position)
+          assert context.detected?(analysis, position)
         else
-          refute context.detected?(document, position)
+          refute context.detected?(analysis, position)
         end
       rescue
         e in ExUnit.AssertionError ->
-          document
+          analysis.document
           |> error_for(position, context, e)
           |> ExUnit.Assertions.flunk()
       end

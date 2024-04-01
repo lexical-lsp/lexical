@@ -1,7 +1,7 @@
 defmodule Lexical.Ast.Detection.Alias do
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Detection
   alias Lexical.Ast.Tokens
-  alias Lexical.Document
   alias Lexical.Document.Position
 
   use Detection
@@ -22,8 +22,8 @@ defmodule Lexical.Ast.Detection.Alias do
   we backtrack until we hit the alias keyword
   """
   @impl Detection
-  def detected?(%Document{} = document, %Position{} = position) do
-    document
+  def detected?(%Analysis{} = analysis, %Position{} = position) do
+    analysis.document
     |> Tokens.prefix_stream(position)
     |> Stream.with_index()
     |> Enum.to_list()

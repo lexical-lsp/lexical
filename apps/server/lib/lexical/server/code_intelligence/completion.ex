@@ -105,8 +105,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         local_length > 1 or has_surround_context?(env.prefix, 1, surround_begin)
 
       _ ->
-        true
+        not inside_comment?(env)
     end
+  end
+
+  defp inside_comment?(env) do
+    Env.in_context?(env, :comment)
   end
 
   defp has_surround_context?(fragment, line, column)

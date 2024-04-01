@@ -92,48 +92,51 @@ defmodule Lexical.Ast.Env do
   @impl Environment
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def in_context?(%__MODULE__{} = env, context_type) do
-    document = env.document
+    analysis = env.analysis
     position = env.position
 
     case context_type do
       :alias ->
-        Detection.Alias.detected?(document, position)
+        Detection.Alias.detected?(analysis, position)
 
       :bitstring ->
-        Detection.Bitstring.detected?(document, position)
+        Detection.Bitstring.detected?(analysis, position)
+
+      :comment ->
+        Detection.Comment.detected?(analysis, position)
 
       :function_capture ->
-        Detection.FunctionCapture.detected?(document, position)
+        Detection.FunctionCapture.detected?(analysis, position)
 
       :import ->
-        Detection.Import.detected?(document, position)
+        Detection.Import.detected?(analysis, position)
 
       :pipe ->
-        Detection.Pipe.detected?(document, position)
+        Detection.Pipe.detected?(analysis, position)
 
       :require ->
-        Detection.Require.detected?(document, position)
+        Detection.Require.detected?(analysis, position)
 
       :spec ->
-        Detection.Spec.detected?(document, position)
+        Detection.Spec.detected?(analysis, position)
 
       :struct_fields ->
-        Detection.StructFields.detected?(document, position)
+        Detection.StructFields.detected?(analysis, position)
 
       :struct_field_key ->
-        Detection.StructFieldKey.detected?(document, position)
+        Detection.StructFieldKey.detected?(analysis, position)
 
       :struct_field_value ->
-        Detection.StructFieldValue.detected?(document, position)
+        Detection.StructFieldValue.detected?(analysis, position)
 
       :struct_reference ->
-        Detection.StructReference.detected?(document, position)
+        Detection.StructReference.detected?(analysis, position)
 
       :type ->
-        Detection.Type.detected?(document, position)
+        Detection.Type.detected?(analysis, position)
 
       :use ->
-        Detection.Use.detected?(document, position)
+        Detection.Use.detected?(analysis, position)
     end
   end
 

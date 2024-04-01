@@ -40,6 +40,10 @@ defmodule Lexical.Test.DetectionCase.Suite do
            »>>
            ]
       ],
+      comment: [
+        start_of_line: "«# IO.puts»",
+        end_of_line: "IO.puts(thing) «# IO.puts»"
+      ],
       function_capture: [
         local_arity: ~q[&«my_fun/1»],
         local_argument: ~q[&«my_fun(arg, &1)»],
