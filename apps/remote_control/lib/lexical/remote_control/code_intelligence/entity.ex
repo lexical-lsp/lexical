@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Lexical.Document.Range
   alias Lexical.Formats
   alias Lexical.RemoteControl
+  alias Sourceror.Zipper
 
   require Logger
   require Sourceror.Identifier
@@ -219,15 +220,28 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     # fetch the alias segments from the `scope` macro
     # e.g. `scope "/foo", FooWeb.Controllers`
     # the alias module is `FooWeb.Controllers`, and the segments is `[:FooWeb, :Controllers]`
-    path = Ast.path_at(analysis, position)
-    scope_path = Future.Macro.path(path, &match?({:scope, _, [_ | _]}, &1))
+    path =
+      analysis
+      |> Ast.cursor_path(position)
+      |> Enum.filter(&match?({:scope, _, [_ | _]}, &1))
+      # There might be nested `scope` macros, we need the ancestor one
+      |> List.last()
 
-    case scope_path do
-      [{:scope, _, [_, {:__aliases__, _, segments} | _]} | _] ->
-        {:ok, segments}
+    if path do
+      {_, paths} =
+        path
+        |> Zipper.zip()
+        |> Zipper.traverse([], fn
+          %Zipper{node: {:scope, _, [_, {:__aliases__, _, segments} | _]}} = zipper, acc ->
+            {zipper, [segments | acc]}
 
-      _ ->
-        :error
+          zipper, acc ->
+            {zipper, acc}
+        end)
+
+      {:ok, paths |> Enum.reverse() |> List.flatten()}
+    else
+      :error
     end
   end
 

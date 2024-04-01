@@ -226,6 +226,19 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:module, FooWeb.Bar.FooController}, resolved_range} = resolve(code)
       assert resolved_range =~ ~S[get "/foo", «FooController», :index]
     end
+
+    test "succeeds in the nested scopes" do
+      code = ~q[
+        scope "/", FooWeb do
+          scope "/bar", Bar do
+            get "/foo", |FooController, :index
+          end
+        end
+      ]
+
+      assert {:ok, {:module, FooWeb.Bar.FooController}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[get "/foo", «FooController», :index]
+    end
   end
 
   describe "struct resolve/2" do
