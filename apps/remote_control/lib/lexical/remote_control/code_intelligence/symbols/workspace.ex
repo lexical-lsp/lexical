@@ -41,5 +41,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
   end
 
   defp name_and_container(:module, entry), do: {Formats.module(entry.subject), nil}
+  defp name_and_container(:struct, entry), do: {Formats.module(entry.subject), nil}
   defp name_and_container(_, entry), do: {entry.subject, nil}
 end

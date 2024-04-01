@@ -12,7 +12,8 @@ defmodule Lexical.Test.Entry.Builder do
       path: "/foo/bar/baz.ex",
       range: range(1, 1, 1, 5),
       subject: Module,
-      type: :module
+      type: :module,
+      application: :remote_control
     ]
 
     fields = Keyword.merge(defaults, fields)

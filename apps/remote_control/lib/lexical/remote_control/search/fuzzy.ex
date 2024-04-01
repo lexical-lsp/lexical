@@ -11,14 +11,25 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   returned.
   """
 
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Fuzzy.Scorer
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  import Record
 
   defstruct subject_to_values: %{},
             grouping_key_to_values: %{},
             preprocessed_subjects: %{},
             mapper: nil,
+            filter_fn: nil,
             subject_converter: nil
+
+  defrecordp :mapped,
+    application: nil,
+    grouping_key: nil,
+    subject: nil,
+    subtype: nil,
+    type: nil,
+    value: nil
 
   @type subject :: String.t()
   @type extracted_subject :: term()
@@ -38,16 +49,20 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
 
   @spec from_entries([Entry.t()]) :: t
   def from_entries(entries) do
-    mapper = fn %Entry{} = entry ->
-      {entry.subject, entry.path, entry.id}
-    end
+    mapper = default_mapper()
 
-    new(entries, mapper, &stringify/1)
+    new(entries, mapper, &stringify/1, true)
   end
 
   def from_backend(backend) do
     mapper = default_mapper()
-    mapped_items = backend.reduce([], fn entry, acc -> [mapper.(entry) | acc] end)
+
+    mapped_items =
+      backend.reduce([], fn
+        %Entry{subtype: :definition} = entry, acc -> [mapper.(entry) | acc]
+        _, acc -> acc
+      end)
+
     new(mapped_items, mapper, &stringify/1, false)
   end
 
@@ -58,22 +73,28 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   For each tuple returned, the first element will then have the subject converter applied.
   This will produce a subject, which is what the `match/2` function uses for fuzzy matching.
   """
-  @spec new(Enumerable.t(), mapper(), subject_converter()) :: t
-  def new(items, mapper, subject_converter, map_items? \\ true) do
-    subject_grouping_key_values =
+  @spec new(Enumerable.t(), mapper(), subject_converter(), boolean()) :: t
+  def new(items, mapper, subject_converter, map_items?) do
+    filter_fun = build_filter_fn()
+
+    mapped_items =
       if map_items? do
-        Enum.map(items, mapper)
-      else
         items
+        |> Stream.map(mapper)
+        |> Stream.filter(filter_fun)
+        |> Enum.to_list()
+      else
+        Enum.filter(items, filter_fun)
       end
 
-    extract_and_fix_subject = fn {subject, _, _} -> subject_converter.(subject) end
+    extract_and_fix_subject = fn mapped() = mapped -> subject_converter.(mapped) end
+    extract_value = fn mapped(value: value) -> value end
 
-    subject_to_values =
-      Enum.group_by(subject_grouping_key_values, extract_and_fix_subject, &elem(&1, 2))
+    subject_to_values = Enum.group_by(mapped_items, extract_and_fix_subject, extract_value)
 
-    grouping_key_to_values =
-      Enum.group_by(subject_grouping_key_values, &elem(&1, 1), &elem(&1, 2))
+    extract_grouping_key = fn mapped(grouping_key: grouping_key) -> grouping_key end
+
+    grouping_key_to_values = Enum.group_by(mapped_items, extract_grouping_key, extract_value)
 
     preprocessed_subjects =
       subject_to_values
@@ -81,11 +102,12 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
       |> Map.new(fn subject -> {subject, Scorer.preprocess(subject)} end)
 
     %__MODULE__{
-      subject_to_values: subject_to_values,
+      filter_fn: filter_fun,
       grouping_key_to_values: grouping_key_to_values,
-      preprocessed_subjects: preprocessed_subjects,
       mapper: mapper,
-      subject_converter: subject_converter
+      preprocessed_subjects: preprocessed_subjects,
+      subject_converter: subject_converter,
+      subject_to_values: subject_to_values
     }
   end
 
@@ -124,30 +146,36 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   end
 
   def add(%__MODULE__{} = fuzzy, item) do
-    {extracted_subject, grouping_key, value} = fuzzy.mapper.(item)
-    subject = fuzzy.subject_converter.(extracted_subject)
+    mapped_item = fuzzy.mapper.(item)
 
-    updated_grouping_key_to_values =
-      Map.update(fuzzy.grouping_key_to_values, grouping_key, [value], fn old_ids ->
-        [value | old_ids]
-      end)
+    if fuzzy.filter_fn.(mapped_item) do
+      subject = fuzzy.subject_converter.(mapped_item)
+      mapped(grouping_key: grouping_key, value: value) = mapped_item
 
-    updated_subject_to_values =
-      Map.update(fuzzy.subject_to_values, subject, [value], fn old_ids ->
-        [value | old_ids]
-      end)
+      updated_grouping_key_to_values =
+        Map.update(fuzzy.grouping_key_to_values, grouping_key, [value], fn old_ids ->
+          [value | old_ids]
+        end)
 
-    updated_preprocessed_subjects =
-      Map.put_new_lazy(fuzzy.preprocessed_subjects, subject, fn ->
-        Scorer.preprocess(subject)
-      end)
+      updated_subject_to_values =
+        Map.update(fuzzy.subject_to_values, subject, [value], fn old_ids ->
+          [value | old_ids]
+        end)
 
-    %__MODULE__{
+      updated_preprocessed_subjects =
+        Map.put_new_lazy(fuzzy.preprocessed_subjects, subject, fn ->
+          Scorer.preprocess(subject)
+        end)
+
+      %__MODULE__{
+        fuzzy
+        | grouping_key_to_values: updated_grouping_key_to_values,
+          subject_to_values: updated_subject_to_values,
+          preprocessed_subjects: updated_preprocessed_subjects
+      }
+    else
       fuzzy
-      | grouping_key_to_values: updated_grouping_key_to_values,
-        subject_to_values: updated_subject_to_values,
-        preprocessed_subjects: updated_preprocessed_subjects
-    }
+    end
   end
 
   @doc """
@@ -252,8 +280,48 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     end
   end
 
-  defp stringify(string) when is_binary(string) do
+  @function_types [:function, :public_function, :private_function]
+
+  defp stringify(mapped(type: type, subject: subject)) when type in @function_types do
+    subject
+    |> String.split(".")
+    |> List.last()
+    |> String.split("/")
+    |> List.first()
+  end
+
+  defp stringify(mapped(type: :module, subject: module_name)) do
+    Lexical.Formats.module(module_name)
+  end
+
+  defp stringify(mapped(subject: subject, type: :module_attribute)) do
+    [_module, attribute_name] = String.split(subject, "@")
+    attribute_name
+  end
+
+  defp stringify(mapped(subject: string)) when is_binary(string) do
     string
+  end
+
+  defp stringify(mapped(subject: thing)) do
+    inspect(thing)
+  end
+
+  defp stringify(thing) when is_binary(thing) do
+    thing
+  end
+
+  defp stringify(atom) when is_atom(atom) do
+    cond do
+      function_exported?(atom, :__info__, 1) ->
+        Lexical.Formats.module(atom)
+
+      function_exported?(atom, :module_info, 0) ->
+        Lexical.Formats.module(atom)
+
+      true ->
+        inspect(atom)
+    end
   end
 
   defp stringify(thing) do
@@ -262,7 +330,43 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
 
   defp default_mapper do
     fn %Entry{} = entry ->
-      {entry.subject, entry.path, entry.id}
+      mapped(
+        application: entry.application,
+        grouping_key: entry.path,
+        subject: entry.subject,
+        subtype: entry.subtype,
+        type: entry.type,
+        value: entry.id
+      )
+    end
+  end
+
+  defp build_filter_fn do
+    mix_app_names = fn ->
+      applications =
+        if Mix.Project.umbrella?() do
+          Map.keys(Mix.Project.apps_paths())
+        else
+          List.wrap(Mix.Project.config()[:app])
+        end
+
+      MapSet.new(applications)
+    end
+
+    app_names =
+      if Mix.Project.get() do
+        mix_app_names.()
+      else
+        {:ok, names} =
+          RemoteControl.Mix.in_project(fn _ ->
+            mix_app_names.()
+          end)
+
+        names
+      end
+
+    fn mapped(application: app, subtype: subtype) ->
+      subtype == :definition and MapSet.member?(app_names, app)
     end
   end
 end

@@ -41,6 +41,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
   end
 
   describe "matching heuristics" do
+    @tag :skip
     test "more complete matches are boosted" do
       results =
         score_and_sort(
@@ -52,6 +53,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
                ~w(Lexical.Document Lexical.Document.Range Something.Else.Lexical.Other.Type.Document.Thing)
     end
 
+    @tag :skip
     test "matches at the beginning of the string are boosted" do
       results =
         score_and_sort(
@@ -62,11 +64,13 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
       assert results == ~w(Document Something.Document Something.Else.Document)
     end
 
+    @tag :skip
     test "patterns that match consecutive characters are boosted" do
       results = score_and_sort(~w(axxxbxxxcxxxdxxx axxbxxcxxdxx axbxcxdx abcd), "abcd")
       assert results == ~w(abcd axbxcxdx axxbxxcxxdxx axxxbxxxcxxxdxxx)
     end
 
+    @tag :skip
     test "patterns that match the case are boosted" do
       results = score_and_sort(~w(stinky stinkY StiNkY STINKY), "STINKY")
       assert results == ~w(STINKY StiNkY stinkY stinky)

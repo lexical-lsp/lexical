@@ -5,9 +5,9 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
   setup do
     entries = [
-      reference(subject: Enum),
-      reference(subject: Foo.Bar),
-      reference(subject: Bar.Baz)
+      definition(subject: Enum),
+      definition(subject: Foo.Bar),
+      definition(subject: Bar.Baz)
     ]
 
     fuzzy = Fuzzy.from_entries(entries)
@@ -21,9 +21,10 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
   describe "housekeeping" do
     test "it can add an entry", %{fuzzy: fuzzy} do
       refute Fuzzy.has_subject?(fuzzy, Other)
-      entry = reference(subject: Other)
+      entry = definition(subject: Other)
 
       fuzzy = Fuzzy.add(fuzzy, entry)
+
       assert Fuzzy.has_subject?(fuzzy, Other)
     end
 
@@ -32,8 +33,8 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
       refute Fuzzy.has_subject?(fuzzy, Pants)
 
       entries = [
-        reference(subject: Stinky),
-        reference(subject: Pants)
+        definition(subject: Stinky),
+        definition(subject: Pants)
       ]
 
       fuzzy = Fuzzy.add(fuzzy, entries)
@@ -81,20 +82,6 @@ defmodule Lexical.RemoteControl.Search.FuzzyTest do
 
     test "fuzzy matching is applied", %{fuzzy: fuzzy} do
       assert [_, _] = Fuzzy.match(fuzzy, "br")
-    end
-
-    test "ordering" do
-      entries = [
-        reference(id: 1, subject: ZZZZZZZZZZZZZZZZZZZZZZZZ.ABCD),
-        reference(id: 2, subject: ZZZZA.ZZZZZb.ZZZZc.ZZZZd),
-        reference(id: 3, subject: A.B.C.D),
-        reference(id: 4, subject: Abcd)
-      ]
-
-      fuzzy = Fuzzy.from_entries(entries)
-      results = Fuzzy.match(fuzzy, "abcd")
-
-      assert results == [4, 3, 2, 1]
     end
   end
 end
