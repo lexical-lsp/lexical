@@ -32,7 +32,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnit do
   end
 
   # Test block test "test name" do ... or test "test name", arg do
-  def extract({:test, _, [{_, _, [test_name]} | _] = args} = test, %Reducer{} = reducer) do
+  def extract({:test, _, [{_, _, [test_name]} | _] = args} = test, %Reducer{} = reducer)
+      when is_binary(test_name) do
     {:ok, module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
     arity = arity_for(args)
     module_name = Formats.module(module)
