@@ -320,5 +320,17 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert function_definition.subtype == :definition
       assert "defp my_fn(a, b) do" = extract(doc, function_definition.range)
     end
+
+    test "handles macro calls that define functions" do
+      {:ok, [], _doc} =
+        ~q[
+          quote do
+            def rpc_call(pid, call = %Call{method: unquote(method_name)}),
+                do: GenServer.unquote(genserver_method)(pid, call)
+          end
+        ]x
+        |> in_a_module()
+        |> index()
+    end
   end
 end
