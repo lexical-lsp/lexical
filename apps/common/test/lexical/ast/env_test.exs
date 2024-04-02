@@ -164,4 +164,53 @@ defmodule Lexical.Ast.EnvTest do
              ] = tokens
     end
   end
+
+  describe "in_context?/2" do
+    test "can detect module attributes" do
+      env = new_env("@my_attr 3|")
+
+      assert in_context?(env, {:module_attribute, :my_attr})
+      refute in_context?(env, {:module_attribute, :other})
+    end
+
+    test "can detect behaviours" do
+      env = new_env("@behaviour Modul|e")
+
+      assert in_context?(env, :behaviour)
+    end
+
+    test "can detect behaviour implementations" do
+      env = new_env("@impl GenServer|")
+
+      assert in_context?(env, :impl)
+    end
+
+    test "can detect docstrings " do
+      env = new_env("@doc false|")
+      assert in_context?(env, :doc)
+
+      env = new_env(~S[@doc "hi"])
+      assert in_context?(env, :doc)
+
+      env = new_env(~S[@doc """
+      Multi - line
+      """|
+      ])
+      assert in_context?(env, :doc)
+    end
+
+    test "can detect moduledocs " do
+      env = new_env("@moduledoc false|")
+      assert in_context?(env, :moduledoc)
+
+      env = new_env(~S[@moduledoc "hi"])
+      assert in_context?(env, :moduledoc)
+
+      env = new_env(~S[@moduledoc """
+      Multi - line
+      """|
+      ])
+      assert in_context?(env, :moduledoc)
+    end
+  end
 end
