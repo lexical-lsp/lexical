@@ -80,7 +80,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp should_emit_completions?(%Env{} = env) do
-    always_emit_completions?() or has_meaningful_completions?(env)
+    if inside_comment?(env) do
+      false
+    else
+      always_emit_completions?() or has_meaningful_completions?(env)
+    end
   end
 
   defp always_emit_completions? do
@@ -105,7 +109,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         local_length > 1 or has_surround_context?(env.prefix, 1, surround_begin)
 
       _ ->
-        not inside_comment?(env)
+        true
     end
   end
 
