@@ -67,7 +67,7 @@ defmodule Lexical.Server.Transport.StdIO do
           callback.(message)
         else
           {:error, :empty_response} ->
-            nil
+            :noop
 
           {:error, reason} ->
             Logger.critical("read protocol message: #{inspect(reason)}")
@@ -97,9 +97,6 @@ defmodule Lexical.Server.Transport.StdIO do
     case IO.binread(device, byte_count) do
       data when is_binary(data) and byte_size(data) == byte_count ->
         {:ok, data}
-
-      data when is_binary(data) ->
-        raise "Tried reading #{byte_count} from #{inspect(device)}, got: #{byte_size(data)}."
 
       :eof ->
         {:error, :eof}
