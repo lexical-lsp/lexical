@@ -70,7 +70,7 @@ defmodule Lexical.Server.Transport.StdIO do
             nil
 
           {:error, reason} ->
-            Logger.critical("error reading protocol message: #{inspect(reason)}")
+            Logger.critical("read protocol message: #{inspect(reason)}")
         end
 
         loop([], device, callback)
