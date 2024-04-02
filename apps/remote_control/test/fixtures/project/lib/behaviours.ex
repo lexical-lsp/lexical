@@ -1,3 +1,3 @@
-defmodule Userlike do
-  @callback first_name(any()) :: String.t()
+defmodule Unary do
+  @callback ary(any()) :: :un
 end

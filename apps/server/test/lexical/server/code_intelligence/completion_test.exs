@@ -75,7 +75,7 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
 
     test "only modules that are behaviuors are completed in an @impl", %{project: project} do
       assert [behaviour] = complete(project, "@impl U|")
-      assert behaviour.label == "Userlike"
+      assert behaviour.label == "Unary"
       assert behaviour.kind == :module
     end
   end
