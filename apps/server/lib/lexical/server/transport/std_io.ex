@@ -111,7 +111,7 @@ defmodule Lexical.Server.Transport.StdIO do
   end
 
   defp parse_header(line) do
-    [name, value] = String.split(line, ":", parts: 2)
+    [name, value] = String.split(line, ":")
 
     header_name =
       name
