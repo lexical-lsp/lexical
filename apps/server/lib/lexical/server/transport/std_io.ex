@@ -95,41 +95,14 @@ defmodule Lexical.Server.Transport.StdIO do
 
   defp read_body(device, byte_count) do
     case IO.binread(device, byte_count) do
-      data when is_binary(data) and byte_size(data) === byte_count ->
+      data when is_binary(data) and byte_size(data) == byte_count ->
         {:ok, data}
-
-      data when is_binary(data) ->
-        read_more(device, byte_count - byte_size(data), data)
-
-      data when is_list(data) ->
-        if Enum.count(data) === byte_count do
-          {:ok, data}
-        else
-          remaining_bytes = byte_count - byte_size(data)
-          read_more(device, remaining_bytes, data)
-        end
 
       :eof ->
         {:error, :eof}
 
       {:error, reason} ->
         {:error, reason}
-    end
-  end
-
-  # give editor an extra ms if there's not enough bytes.
-  defp read_more(device, byte_count, data) do
-    :timer.sleep(1)
-
-    case IO.binread(device, byte_count) do
-      rest when is_binary(rest) or is_list(rest) ->
-        [data | rest]
-
-      :eof ->
-        {:error, :eof}
-
-      error ->
-        error
     end
   end
 
