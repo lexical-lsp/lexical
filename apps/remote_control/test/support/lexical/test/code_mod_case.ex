@@ -28,7 +28,10 @@ defmodule Lexical.Test.CodeMod.Case do
         alias Lexical.Ast
 
         if Keyword.get(options, :convert_to_ast, unquote(convert_to_ast?)) do
-          Ast.from(code)
+          case Ast.from(code) do
+            {:ok, ast, _comments} -> {:ok, ast}
+            other -> other
+          end
         else
           {:ok, nil}
         end

@@ -9,13 +9,13 @@ defmodule Lexical.Ast.Detection do
   """
 
   alias Lexical.Ast
-  alias Lexical.Document
+  alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
 
   @doc """
   Returns true if the given position is detected by the current module
   """
-  @callback detected?(Document.t(), Position.t()) :: boolean()
+  @callback detected?(Analysis.t(), Position.t()) :: boolean()
 
   defmacro __using__(_) do
     quote do
@@ -24,8 +24,8 @@ defmodule Lexical.Ast.Detection do
     end
   end
 
-  def ancestor_is_def?(%Document{} = document, %Position{} = position) do
-    document
+  def ancestor_is_def?(%Analysis{} = analysis, %Position{} = position) do
+    analysis
     |> Ast.cursor_path(position)
     |> Enum.any?(fn
       {:def, _, _} ->
@@ -40,8 +40,8 @@ defmodule Lexical.Ast.Detection do
   end
 
   @type_keys [:type, :typep, :opaque]
-  def ancestor_is_type?(%Document{} = document, %Position{} = position) do
-    document
+  def ancestor_is_type?(%Analysis{} = analysis, %Position{} = position) do
+    analysis
     |> Ast.cursor_path(position)
     |> Enum.any?(fn
       {:@, metadata, [{type_key, _, _}]} when type_key in @type_keys ->
@@ -58,8 +58,8 @@ defmodule Lexical.Ast.Detection do
     end)
   end
 
-  def ancestor_is_spec?(%Document{} = document, %Position{} = position) do
-    document
+  def ancestor_is_spec?(%Analysis{} = analysis, %Position{} = position) do
+    analysis
     |> Ast.cursor_path(position)
     |> Enum.any?(fn
       {:@, metadata, [{:spec, _, _}]} ->

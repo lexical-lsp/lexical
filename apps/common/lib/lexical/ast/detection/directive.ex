@@ -1,10 +1,10 @@
 defmodule Lexical.Ast.Detection.Directive do
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Tokens
-  alias Lexical.Document
   alias Lexical.Document.Position
 
-  def detected?(%Document{} = document, %Position{} = position, directive_type) do
-    document
+  def detected?(%Analysis{} = analysis, %Position{} = position, directive_type) do
+    analysis.document
     |> Tokens.prefix_stream(position)
     |> Enum.to_list()
     |> Enum.reduce_while(false, fn

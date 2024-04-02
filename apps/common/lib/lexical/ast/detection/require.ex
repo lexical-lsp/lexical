@@ -1,13 +1,13 @@
 defmodule Lexical.Ast.Detection.Require do
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Detection
   alias Lexical.Ast.Detection.Directive
-  alias Lexical.Document
   alias Lexical.Document.Position
 
   use Detection
 
   @impl Detection
-  def detected?(%Document{} = document, %Position{} = position) do
-    Directive.detected?(document, position, 'require')
+  def detected?(%Analysis{} = analysis, %Position{} = position) do
+    Directive.detected?(analysis, position, 'require')
   end
 end

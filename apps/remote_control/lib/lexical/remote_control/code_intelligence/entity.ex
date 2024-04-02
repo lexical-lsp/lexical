@@ -29,7 +29,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   def resolve(%Analysis{} = analysis, %Position{} = position) do
     analysis = Ast.reanalyze_to(analysis, position)
 
-    with {:ok, surround_context} <- Ast.surround_context(analysis, position),
+    with :ok <- check_commented(analysis, position),
+         {:ok, surround_context} <- Ast.surround_context(analysis, position),
          {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, analysis, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
@@ -46,6 +47,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       Position.new(document, begin_line, begin_column),
       Position.new(document, end_line, end_column)
     )
+  end
+
+  defp check_commented(%Analysis{} = analysis, %Position{} = position) do
+    if Analysis.commented?(analysis, position) do
+      :error
+    else
+      :ok
+    end
   end
 
   defp resolve(%{context: context, begin: begin_pos, end: end_pos}, analysis, position) do

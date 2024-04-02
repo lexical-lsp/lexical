@@ -60,6 +60,20 @@ defmodule Lexical.AstTest do
       Ast.path_at(document, position)
     end
 
+    defp end_location({_, metadata, _}), do: end_location(metadata)
+
+    defp end_location(metadata) when is_list(metadata) do
+      case metadata do
+        [line: line, column: column] ->
+          {line, column}
+
+        metadata ->
+          [end_line: line, end_column: column] = Keyword.take(metadata, [:end_line, :end_column])
+
+          {line, column}
+      end
+    end
+
     test "returns an error if the cursor cannot be found in any node" do
       code = ~q[
         |
@@ -75,7 +89,8 @@ defmodule Lexical.AstTest do
         defmodule |Foo do
       ]
 
-      assert {:error, {[line: 2, column: 1], "missing terminator: end" <> _, ""}} = path_at(code)
+      assert {:error, {metadata, "missing terminator: end" <> _, ""}} = path_at(code)
+      assert end_location(metadata) == {2, 1}
     end
 
     test "returns a path to the innermost leaf at position" do
@@ -320,8 +335,8 @@ defmodule Lexical.AstTest do
 
   defp ast(s) do
     case Ast.from(s) do
-      {:ok, {:__block__, _, [node]}} -> node
-      {:ok, node} -> node
+      {:ok, {:__block__, _, [node]}, _comments} -> node
+      {:ok, node, _comments} -> node
     end
   end
 

@@ -16,7 +16,7 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Identifier
   alias Sourceror.Zipper
 
-  defstruct [:ast, :document, :parse_error, scopes: [], valid?: true]
+  defstruct [:ast, :document, :parse_error, scopes: [], comments_by_line: %{}, valid?: true]
 
   @type t :: %__MODULE__{}
   @scope_id :_scope_id
@@ -28,12 +28,18 @@ defmodule Lexical.Ast.Analysis do
   def new(parse_result, document)
 
   def new({:ok, ast}, %Document{} = document) do
+    new({:ok, ast, []}, document)
+  end
+
+  def new({:ok, ast, comments}, %Document{} = document) do
     scopes = traverse(ast, document)
+    comments_by_line = Map.new(comments, fn comment -> {comment.line, comment} end)
 
     %__MODULE__{
       ast: ast,
       document: document,
-      scopes: scopes
+      scopes: scopes,
+      comments_by_line: comments_by_line
     }
   end
 
@@ -77,6 +83,13 @@ defmodule Lexical.Ast.Analysis do
 
   def scope_id(_) do
     nil
+  end
+
+  def commented?(%__MODULE__{} = analysis, %Position{} = position) do
+    case Map.fetch(analysis.comments_by_line, position.line) do
+      {:ok, comment} -> position.character > comment[:column]
+      _ -> false
+    end
   end
 
   defp traverse(quoted, %Document{} = document) do

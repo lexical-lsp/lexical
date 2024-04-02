@@ -64,6 +64,14 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert %Completion.List{is_incomplete: true, items: []} =
                complete(project, " ", as_list: false)
     end
+
+    test "returns no completions in a comment at the beginning of a line", %{project: project} do
+      assert [] == complete(project, "# IO.in|")
+    end
+
+    test "returns no completions in a comment at the end of a line", %{project: project} do
+      assert [] == complete(project, "IO.inspe # IO.in|")
+    end
   end
 
   describe "do/end" do

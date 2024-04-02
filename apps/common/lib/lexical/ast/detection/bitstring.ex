@@ -1,4 +1,5 @@
 defmodule Lexical.Ast.Detection.Bitstring do
+  alias Lexical.Ast.Analysis
   alias Lexical.Ast.Detection
   alias Lexical.Ast.Tokens
   alias Lexical.Document
@@ -7,7 +8,8 @@ defmodule Lexical.Ast.Detection.Bitstring do
   use Detection
 
   @impl Detection
-  def detected?(%Document{} = document, %Position{} = position) do
+  def detected?(%Analysis{} = analysis, %Position{} = position) do
+    document = analysis.document
     Document.fragment(document, Position.new(document, position.line, 1), position)
 
     document
