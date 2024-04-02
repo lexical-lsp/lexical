@@ -246,10 +246,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "when pending" do
       {:ok, [test], doc} =
         ~q[
-      defmodule SomeTest do
-        test "my test"
-      end
-      ]
+        defmodule SomeTest do
+          test "my test"
+        end
+        ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
@@ -262,11 +262,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "when they only have a block" do
       {:ok, [test], doc} =
         ~q[
-      defmodule SomeTest do
-        test "my test" do
+        defmodule SomeTest do
+          test "my test" do
+          end
         end
-      end
-      ]
+        ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
@@ -279,11 +279,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "when they have a block and a context" do
       {:ok, [test], doc} =
         ~q[
-      defmodule SomeTest do
-        test "my test", context do
+        defmodule SomeTest do
+          test "my test", context do
+          end
         end
-      end
-      ]
+        ]
         |> index_definitions()
 
       assert test.type == :ex_unit_test
@@ -301,12 +301,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
     test "describe contains tests" do
       {:ok, [module, describe, test], _} =
         ~q[
-        defmodule SomeTexst do
-          describe "outer" do
-            test "my test", context do
-            end
-          end
-        end
+         defmodule SomeTexst do
+           describe "outer" do
+             test "my test", context do
+             end
+           end
+         end
         ]
         |> index_with_structure()
 
@@ -318,6 +318,20 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ExUnitTest do
 
       assert test.type == :ex_unit_test
       assert test.block_id == describe.id
+    end
+  end
+
+  describe "things that it will miss" do
+    test "quoted test cases" do
+      {:ok, [], _} =
+        ~q[
+        quote do
+         test unquote(test_name) do
+         end
+        end
+        ]
+        |> in_a_module()
+        |> index_definitions()
     end
   end
 end
