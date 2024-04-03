@@ -157,10 +157,6 @@ defmodule Lexical.Server.Provider.Queue do
 
           Transport.write(%{id: response.id, error: response_error})
       end
-
-      with {:ok, lsp_response} <- Convert.to_lsp(response) do
-        Transport.write(lsp_response)
-      end
     end
   end
 
