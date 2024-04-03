@@ -76,6 +76,7 @@ defmodule Lexical.Server.Transport.StdIO do
         loop([], device, callback)
 
       :eof ->
+        Logger.critical("stdio received :eof, server will stop.")
         maybe_stop()
 
       line ->
@@ -99,7 +100,8 @@ defmodule Lexical.Server.Transport.StdIO do
         {:ok, data}
 
       :eof ->
-        {:error, :eof}
+        Logger.critical("stdio received :eof, server will stop.")
+        maybe_stop()
 
       {:error, reason} ->
         {:error, reason}
