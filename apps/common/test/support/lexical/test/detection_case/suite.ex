@@ -40,9 +40,41 @@ defmodule Lexical.Test.DetectionCase.Suite do
            »>>
            ]
       ],
+      callbacks: [
+        callback: [
+          zero_arg: "@«callback my_cb() :: boolean()»",
+          one_arg: "@«callback my_cb(foo :: integer) :: String.t()»",
+          multiple_args: "@«callback my_cb(foo :: integer, bar:: String.t()) :: [pos_integer()]»",
+          multiple_line: """
+          @«callback my_cb(
+              foo :: String.t(),
+              bar :: pos_integer()) :: pos_integer()»
+          """
+        ],
+        macrocallback: [
+          zero_arg: "@«macrocallback my_cb() :: boolean()»",
+          one_arg: "@«macrocallback my_cb(foo :: integer) :: String.t()»",
+          multiple_args:
+            "@«macrocallback my_cb(foo :: integer, bar:: String.t()) :: [pos_integer()]»",
+          multiple_line: """
+          @«macrocallback my_cb(
+              foo :: String.t(),
+              bar :: pos_integer()) :: pos_integer()»
+          """
+        ]
+      ],
       comment: [
         start_of_line: "«# IO.puts»",
         end_of_line: "IO.puts(thing) «# IO.puts»"
+      ],
+      doc: [
+        empty: ~S[@«doc ""»],
+        false: "@«doc false»",
+        single_line: ~S[@«doc "this is my doc»"],
+        multi_line: ~S[@«doc """
+        This is the doc
+        """»
+        ]
       ],
       function_capture: [
         local_arity: ~q[&«my_fun/1»],
@@ -84,6 +116,30 @@ defmodule Lexical.Test.DetectionCase.Suite do
       map: [
         single_line:
           ~q(%{«string: "value", atom: :value2, int: 6 float: 2.0, list: [1, 2], tuple: {3, 4}}»)
+      ],
+      module_doc: [
+        empty: ~S[@«moduledoc ""»],
+        false: "@«moduledoc false»",
+        single_line: ~S[@«moduledoc "this is my moduledoc»"],
+        multi_line: ~S[@«moduledoc """
+        This is the moduledoc
+        """»
+        ]
+      ],
+      module_attribute: [
+        single_line: "@«attr 45»",
+        multi_line_pipe: """
+        @«attr other_thing»
+          |> «Enum.shuffle()»
+          |> «Enum.max()»
+        """,
+        multi_line_list: """
+        @«attrs [»
+          «:foo»,
+          «:bar»,
+          «:baz»
+        ]
+        """
       ],
       pipe: [
         one_line: ~q[foo |> «bar»() |> «RemoteCall.fun»() |> «:remote_erlang.call»()],

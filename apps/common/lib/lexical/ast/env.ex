@@ -99,17 +99,41 @@ defmodule Lexical.Ast.Env do
       :alias ->
         Detection.Alias.detected?(analysis, position)
 
+      :behaviour ->
+        Detection.ModuleAttribute.detected?(analysis, position, :behaviour)
+
       :bitstring ->
         Detection.Bitstring.detected?(analysis, position)
+
+      :callback ->
+        Detection.ModuleAttribute.detected?(analysis, position, :callback)
 
       :comment ->
         Detection.Comment.detected?(analysis, position)
 
+      :doc ->
+        Detection.ModuleAttribute.detected?(analysis, position, :doc)
+
       :function_capture ->
         Detection.FunctionCapture.detected?(analysis, position)
 
+      :impl ->
+        Detection.ModuleAttribute.detected?(analysis, position, :impl)
+
       :import ->
         Detection.Import.detected?(analysis, position)
+
+      :module_attribute ->
+        Detection.ModuleAttribute.detected?(analysis, position)
+
+      {:module_attribute, name} ->
+        Detection.ModuleAttribute.detected?(analysis, position, name)
+
+      :macrocallback ->
+        Detection.ModuleAttribute.detected?(analysis, position, :macrocallback)
+
+      :moduledoc ->
+        Detection.ModuleAttribute.detected?(analysis, position, :moduledoc)
 
       :pipe ->
         Detection.Pipe.detected?(analysis, position)

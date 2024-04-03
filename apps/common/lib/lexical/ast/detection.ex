@@ -41,34 +41,24 @@ defmodule Lexical.Ast.Detection do
 
   @type_keys [:type, :typep, :opaque]
   def ancestor_is_type?(%Analysis{} = analysis, %Position{} = position) do
-    analysis
-    |> Ast.cursor_path(position)
-    |> Enum.any?(fn
-      {:@, metadata, [{type_key, _, _}]} when type_key in @type_keys ->
-        # single line type
-        cursor_in_range?(position, metadata)
-
-      {:__block__, _, [{:@, metadata, [{type_key, _, _}]}, _]}
-      when type_key in @type_keys ->
-        # multi-line type
-        cursor_in_range?(position, metadata)
-
-      _ ->
-        false
-    end)
+    ancestor_is_attribute?(analysis, position, @type_keys)
   end
 
   def ancestor_is_spec?(%Analysis{} = analysis, %Position{} = position) do
+    ancestor_is_attribute?(analysis, position, :spec)
+  end
+
+  def ancestor_is_attribute?(%Analysis{} = analysis, %Position{} = position, attr_name \\ nil) do
     analysis
     |> Ast.cursor_path(position)
     |> Enum.any?(fn
-      {:@, metadata, [{:spec, _, _}]} ->
-        # single line spec
-        cursor_in_range?(position, metadata)
+      {:@, metadata, [{found_name, _, _}]} ->
+        # single line attribute
+        attribute_names_match?(attr_name, found_name) and cursor_in_range?(position, metadata)
 
-      {:__block__, _, [{:@, metadata, [{:spec, _, _}]}, _]} ->
-        # multi-line spec
-        cursor_in_range?(position, metadata)
+      {:__block__, _, [{:@, metadata, [{found_name, _, _}]}, _]} ->
+        # multi-line attribute
+        attribute_names_match?(attr_name, found_name) and cursor_in_range?(position, metadata)
 
       _ ->
         false
@@ -87,4 +77,12 @@ defmodule Lexical.Ast.Detection do
       cursor_line < expression_end_line
     end
   end
+
+  defp attribute_names_match?(expected_names, actual_name)
+       when is_list(expected_names),
+       do: actual_name in expected_names
+
+  defp attribute_names_match?(nil, _), do: true
+  defp attribute_names_match?(same, same), do: true
+  defp attribute_names_match?(_, _), do: false
 end
