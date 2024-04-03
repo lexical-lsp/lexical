@@ -38,7 +38,7 @@
 
             text = ''
               nix --extra-experimental-features 'nix-command flakes' \
-                build --no-link "${self}#__fodHashGen" 2>&1 | gawk '/got:/ { print $2 }'
+                build --no-link "${self}#__fodHashGen" 2>&1 | gawk '/got:/ { print $2 }' || true
             '';
           };
         in {
