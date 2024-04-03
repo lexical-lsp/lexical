@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       |> document_symbols()
 
     assert [function] = module.children
-    assert decorate(doc, function.detail_range) =~ " «def my_fn do»"
+    assert decorate(doc, function.detail_range) =~ " def «my_fn» do"
   end
 
   test "private function definitions are found" do
@@ -132,7 +132,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       |> document_symbols()
 
     assert [function] = module.children
-    assert decorate(doc, function.detail_range) =~ " «defp my_fn do»"
+    assert decorate(doc, function.detail_range) =~ " defp «my_fn» do"
     assert function.name == "my_fn"
   end
 
@@ -199,7 +199,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       |> document_symbols()
 
     [fun] = module.children
-    assert decorate(doc, fun.detail_range) =~ "  «def my_fun(x) when x > 0 do»"
+    assert decorate(doc, fun.detail_range) =~ "  def «my_fun(x) when x > 0» do"
     assert fun.type == :public_function
     assert fun.name == "my_fun(x) when x > 0"
     assert [] == fun.children
