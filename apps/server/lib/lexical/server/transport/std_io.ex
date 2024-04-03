@@ -93,10 +93,19 @@ defmodule Lexical.Server.Transport.StdIO do
     end
   end
 
-  defp read_body(device, byte_count) do
-    case IO.binread(device, byte_count) do
-      data when is_binary(data) and byte_size(data) == byte_count ->
-        {:ok, data}
+  # `IO.binread/2` won't block if there aren't enough bytes in stdin to read.
+  # In exceptional circumstances Lexical may outpace the LSP client, so an extra
+  # read (or two) may be needed to receive the full message.
+  defp read_body(_device, remaining_bytes, acc \\ [])
+
+  defp read_body(_device, 0, acc) do
+    {:ok, IO.iodata_to_binary(acc)}
+  end
+
+  defp read_body(device, remaining_bytes, acc) do
+    case IO.binread(device, remaining_bytes) do
+      data when is_binary(data) ->
+        read_body(device, remaining_bytes - byte_size(data), [acc, data])
 
       :eof ->
         {:error, :eof}
