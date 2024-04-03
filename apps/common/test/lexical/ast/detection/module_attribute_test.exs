@@ -5,6 +5,7 @@ defmodule Lexical.Ast.Detection.ModuleAttributeTest do
     for: Detection.ModuleAttribute,
     assertions: [
       [:module_attribute, :*],
+      [:callbacks, :*],
       [:doc, :*],
       [:module_doc, :*]
     ],

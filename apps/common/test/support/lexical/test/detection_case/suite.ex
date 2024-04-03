@@ -40,6 +40,29 @@ defmodule Lexical.Test.DetectionCase.Suite do
            »>>
            ]
       ],
+      callbacks: [
+        callback: [
+          zero_arg: "@«callback my_cb() :: boolean()»",
+          one_arg: "@«callback my_cb(foo :: integer) :: String.t()»",
+          multiple_args: "@«callback my_cb(foo :: integer, bar:: String.t()) :: [pos_integer()]»",
+          multiple_line: """
+          @«callback my_cb(
+              foo :: String.t(),
+              bar :: pos_integer()) :: pos_integer()»
+          """
+        ],
+        macrocallback: [
+          zero_arg: "@«macrocallback my_cb() :: boolean()»",
+          one_arg: "@«macrocallback my_cb(foo :: integer) :: String.t()»",
+          multiple_args:
+            "@«macrocallback my_cb(foo :: integer, bar:: String.t()) :: [pos_integer()]»",
+          multiple_line: """
+          @«macrocallback my_cb(
+              foo :: String.t(),
+              bar :: pos_integer()) :: pos_integer()»
+          """
+        ]
+      ],
       comment: [
         start_of_line: "«# IO.puts»",
         end_of_line: "IO.puts(thing) «# IO.puts»"

@@ -105,6 +105,9 @@ defmodule Lexical.Ast.Env do
       :bitstring ->
         Detection.Bitstring.detected?(analysis, position)
 
+      :callback ->
+        Detection.ModuleAttribute.detected?(analysis, position, :callback)
+
       :comment ->
         Detection.Comment.detected?(analysis, position)
 
@@ -125,6 +128,9 @@ defmodule Lexical.Ast.Env do
 
       {:module_attribute, name} ->
         Detection.ModuleAttribute.detected?(analysis, position, name)
+
+      :macrocallback ->
+        Detection.ModuleAttribute.detected?(analysis, position, :macrocallback)
 
       :moduledoc ->
         Detection.ModuleAttribute.detected?(analysis, position, :moduledoc)

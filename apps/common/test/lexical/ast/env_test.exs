@@ -212,5 +212,15 @@ defmodule Lexical.Ast.EnvTest do
       ])
       assert in_context?(env, :moduledoc)
     end
+
+    test "can detect callbacks" do
+      env = new_env("@callback do_stuff|(integer(), map()) :: any()")
+      assert in_context?(env, :callback)
+    end
+
+    test "can detect macro callbacks" do
+      env = new_env("@macrocallback write_code(integer(), map(|)) :: any()")
+      assert in_context?(env, :macrocallback)
+    end
   end
 end
