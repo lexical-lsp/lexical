@@ -2,6 +2,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
   defmodule Link do
     defstruct [:uri, :range, :detail_range]
 
+    @type t :: %__MODULE__{
+            uri: Lexical.uri(),
+            range: Lexical.Document.Range.t(),
+            detail_range: Lexical.Document.Range.t()
+          }
+
     def new(uri, range, detail_range \\ nil) do
       %__MODULE__{uri: uri, range: range, detail_range: detail_range}
     end
@@ -12,6 +18,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
   alias Lexical.RemoteControl.Search.Indexer.Entry
 
   defstruct [:name, :type, :link, container_name: nil]
+
+  @type t :: %__MODULE__{
+          container_name: String.t() | nil,
+          link: Link.t(),
+          name: String.t(),
+          type: atom()
+        }
 
   def from_entry(%Entry{} = entry) do
     link =
@@ -26,17 +39,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
       type: entry.type,
       link: link
     }
-  end
-
-  defp symbol_name(fun, entry)
-       when fun in [:function, :public_function, :private_function] do
-    [name_and_arity, local_module] =
-      entry.subject
-      |> String.split(".")
-      |> Enum.reverse()
-      |> Enum.take(2)
-
-    local_module <> "." <> name_and_arity
   end
 
   @module_types [

@@ -81,8 +81,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
       if map_items? do
         items
         |> Stream.map(mapper)
-        |> Stream.filter(filter_fun)
-        |> Enum.to_list()
+        |> Enum.filter(filter_fun)
       else
         Enum.filter(items, filter_fun)
       end

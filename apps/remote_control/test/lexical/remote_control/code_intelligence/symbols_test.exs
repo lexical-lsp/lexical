@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     {symbols, doc}
   end
 
-  def workspace_symbols(code, query) do
+  def workspace_symbols(code) do
     doc = Document.new("file:///file.ex", code, 1)
 
     {:ok, entries} =
@@ -31,7 +31,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
 
     entries = Enum.reject(entries, &(&1.type == :metadata))
     patch(Lexical.RemoteControl.Search.Store, :fuzzy, entries)
-    symbols = Symbols.for_workspace(query)
+    symbols = Symbols.for_workspace("")
     {symbols, doc}
   end
 
@@ -361,7 +361,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
           defmodule Parent.Child do
           end
         ]
-        |> workspace_symbols("hello")
+        |> workspace_symbols()
 
       assert module.type == :module
       assert module.name == "Parent.Child"
@@ -383,7 +383,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
             end
         end
         ]
-        |> workspace_symbols("hello")
+        |> workspace_symbols()
 
       assert public_function.type == :public_function
       assert String.ends_with?(public_function.name, ".my_fn/0")
@@ -394,12 +394,56 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert decorate(doc, public_function.link.detail_range) =~ "  def «my_fn» do"
 
       assert private_function.type == :private_function
-      assert private_function.name == "Child.private_fun/2"
+      assert private_function.name == "Parent.Child.private_fun/2"
       assert private_function.link.uri == "file:///file.ex"
       refute private_function.container_name
 
       assert decorate(doc, private_function.link.range) =~ "  «defp private_fun(a, b) do\n  end»"
       assert decorate(doc, private_function.link.detail_range) =~ "  defp «private_fun(a, b)» do"
+    end
+
+    test "converts protocol implementations" do
+      {symbols, _doc} =
+        ~q[
+        defimpl SomeProtocol, for: Atom do
+          def do_stuff(atom, opts) do
+          end
+        end
+        ]
+        |> workspace_symbols()
+
+      [proto_impl, defined_module, protocol_module, proto_target, function] = symbols
+
+      assert proto_impl.type == :protocol_implementation
+      assert proto_impl.name == "SomeProtocol"
+
+      assert defined_module.type == :module
+      assert defined_module.name == "SomeProtocol.Atom"
+
+      assert protocol_module.type == :module
+      assert protocol_module.name == "SomeProtocol"
+
+      assert proto_target.type == :module
+      assert proto_target.name == "Atom"
+
+      assert function.type == :public_function
+      assert function.name == "SomeProtocol.Atom.do_stuff/2"
+    end
+
+    test "converts protocol definitions" do
+      {[protocol, function], _doc} =
+        ~q[
+          defprotocol MyProto do
+             def do_stuff(something, other)
+          end
+        ]
+        |> workspace_symbols()
+
+      assert protocol.type == :protocol
+      assert protocol.name == "MyProto"
+
+      assert function.type == :function
+      assert function.name == "MyProto.do_stuff/2"
     end
   end
 end
