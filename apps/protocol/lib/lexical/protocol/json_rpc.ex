@@ -2,6 +2,8 @@ defmodule Lexical.Protocol.JsonRpc do
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
 
+  require Logger
+
   @crlf "\r\n"
 
   def decode(message_string) do
@@ -30,8 +32,10 @@ defmodule Lexical.Protocol.JsonRpc do
     {:ok, json_rpc}
   end
 
+  # These messages appear to be empty Responses (per LSP spec) sent to
+  # aknowledge Requests sent from the language server to the client.
   defp do_decode(%{"id" => _id, "result" => nil}) do
-    :error
+    {:error, :empty_response}
   end
 
   defp do_decode(%{"method" => method, "id" => _id} = request) do

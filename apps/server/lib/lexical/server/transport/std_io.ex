@@ -1,6 +1,8 @@
 defmodule Lexical.Server.Transport.StdIO do
   alias Lexical.Protocol.JsonRpc
 
+  require Logger
+
   @behaviour Lexical.Server.Transport
 
   def start_link(device, callback) do
@@ -59,11 +61,16 @@ defmodule Lexical.Server.Transport.StdIO do
       "\n" ->
         headers = parse_headers(buffer)
 
-        with {:ok, content_length} <-
-               header_value(headers, "content-length", &String.to_integer/1),
+        with {:ok, content_length} <- content_length(headers),
              {:ok, data} <- read_body(device, content_length),
              {:ok, message} <- JsonRpc.decode(data) do
           callback.(message)
+        else
+          {:error, :empty_response} ->
+            :noop
+
+          {:error, reason} ->
+            Logger.critical("read protocol message: #{inspect(reason)}")
         end
 
         loop([], device, callback)
@@ -76,25 +83,31 @@ defmodule Lexical.Server.Transport.StdIO do
     end
   end
 
-  defp parse_headers(headers) do
-    Enum.map(headers, &parse_header/1)
-  end
+  defp content_length(headers) do
+    case List.keyfind(headers, "content-length", 0) do
+      {_, len_str} ->
+        {:ok, String.to_integer(len_str)}
 
-  defp header_value(headers, header_name, converter) do
-    case List.keyfind(headers, header_name, 0) do
-      nil -> :error
-      {_, value} -> {:ok, converter.(value)}
+      nil ->
+        {:error, :no_content_length_header}
     end
   end
 
   defp read_body(device, byte_count) do
     case IO.binread(device, byte_count) do
-      data when is_binary(data) or is_list(data) ->
+      data when is_binary(data) ->
         {:ok, data}
 
-      other ->
-        other
+      :eof ->
+        {:error, :eof}
+
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  defp parse_headers(headers) do
+    Enum.map(headers, &parse_header/1)
   end
 
   defp parse_header(line) do
