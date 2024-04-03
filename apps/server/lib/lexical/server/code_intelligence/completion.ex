@@ -213,26 +213,57 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         ]
 
       Env.in_context?(env, :use) ->
-        case result do
-          %{full_name: full_name} ->
-            with_prefix =
-              RemoteControl.Api.modules_with_prefix(
-                env.project,
-                full_name,
-                predicate(&macro_exported?(&1, :__using__, 1))
-              )
+        # only allow modules that define __using__ in a use statement
+        usable?(env, result)
 
-            not Enum.empty?(with_prefix)
-
-          _ ->
-            false
-        end
+      Env.in_context?(env, :impl) ->
+        # only allow behaviour modules after @impl
+        behaviour?(env, result)
 
       Env.in_context?(env, :spec) or Env.in_context?(env, :type) ->
         typespec_or_type_candidate?(result, env)
 
       true ->
         struct_module != Candidate.Typespec
+    end
+  end
+
+  defp usable?(%Env{} = env, completion) do
+    # returns true if the given completion is or is a parent of
+    # a module that defines __using__
+    case completion do
+      %{full_name: full_name} ->
+        with_prefix =
+          RemoteControl.Api.modules_with_prefix(
+            env.project,
+            full_name,
+            predicate(&macro_exported?(&1, :__using__, 1))
+          )
+
+        not Enum.empty?(with_prefix)
+
+      _ ->
+        false
+    end
+  end
+
+  defp behaviour?(%Env{} = env, completion) do
+    # returns true if the given completion is or is a parent of
+    # a module that is a behaviour
+
+    case completion do
+      %{full_name: full_name} ->
+        with_prefix =
+          RemoteControl.Api.modules_with_prefix(
+            env.project,
+            full_name,
+            predicate(&function_exported?(&1, :behaviour_info, 1))
+          )
+
+        not Enum.empty?(with_prefix)
+
+      _ ->
+        false
     end
   end
 

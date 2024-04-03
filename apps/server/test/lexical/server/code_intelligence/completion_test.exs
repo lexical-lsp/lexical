@@ -72,6 +72,12 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
     test "returns no completions in a comment at the end of a line", %{project: project} do
       assert [] == complete(project, "IO.inspe # IO.in|")
     end
+
+    test "only modules that are behaviuors are completed in an @impl", %{project: project} do
+      assert [behaviour] = complete(project, "@impl U|")
+      assert behaviour.label == "Unary"
+      assert behaviour.kind == :module
+    end
   end
 
   describe "do/end" do
