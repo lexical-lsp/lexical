@@ -85,12 +85,22 @@ defmodule Lexical.Server.Transport.StdIO do
   end
 
   defp content_length(headers) do
-    case List.keyfind(headers, "content-length", 0) do
-      {_, len_str} ->
-        {:ok, String.to_integer(len_str)}
+    with {:ok, len_str} <- find_header(headers, "content-length") do
+      parse_length(len_str)
+    end
+  end
 
-      nil ->
-        {:error, :no_content_length_header}
+  defp find_header(headers, name) do
+    case List.keyfind(headers, name, 0) do
+      {_, len_str} -> {:ok, len_str}
+      nil -> {:error, {:header_not_found, name}}
+    end
+  end
+
+  defp parse_length(len_str) when is_binary(len_str) do
+    case Integer.parse(len_str) do
+      {int, ""} -> {:ok, int}
+      :error -> {:error, {:cant_parse_length, len_str}}
     end
   end
 
