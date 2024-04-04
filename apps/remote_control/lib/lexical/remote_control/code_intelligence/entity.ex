@@ -187,7 +187,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     module_before_cursor = module_before_position(charlist, column, position)
 
     maybe_prepended =
-      maybe_prepend_phoenix_scope_module(module_before_cursor, charlist, analysis, position)
+      maybe_prepend_phoenix_scope_module(module_before_cursor, analysis, position)
 
     with {:ok, module} <- expand_alias(maybe_prepended, analysis, position) do
       end_column = column + String.length(module_before_cursor)
@@ -204,12 +204,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
-  defp maybe_prepend_phoenix_scope_module(module_string, charlist, analysis, position) do
-    with true <- phoenix_controller_module?(charlist),
-         {:ok, scope_segments} <- fetch_phoenix_scope_alias_segments(analysis, position),
-         {:ok, module} <-
-           RemoteControl.Analyzer.expand_alias(scope_segments, analysis, position) do
-      [module, module_string] |> Module.concat() |> Formats.module()
+  defp maybe_prepend_phoenix_scope_module(module_string, analysis, position) do
+    with {:ok, scope_segments} <- fetch_phoenix_scope_alias_segments(analysis, position),
+         {:ok, scope_module} <-
+           RemoteControl.Analyzer.expand_alias(scope_segments, analysis, position),
+         cursor_module = Module.concat(scope_module, module_string),
+         true <-
+           phoenix_controller_module?(cursor_module) or phoenix_liveview_module?(cursor_module) do
+      Formats.module(cursor_module)
     else
       _ ->
         module_string
@@ -245,8 +247,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
-  defp phoenix_controller_module?(charlist) do
-    charlist |> Ast.Module.local_name() |> String.ends_with?("Controller")
+  defp phoenix_controller_module?(module) do
+    function_exported_check?(module, :call, 2) and function_exported_check?(module, :action, 2)
+  end
+
+  defp phoenix_liveview_module?(module) do
+    function_exported_check?(module, :mount, 3) and function_exported_check?(module, :render, 1)
   end
 
   # Take only the segments at and before the cursor, e.g.
@@ -446,5 +452,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     else
       _ -> :error
     end
+  end
+
+  defp function_exported_check?(module, function, arity) do
+    Kernel.function_exported?(module, function, arity)
   end
 end
