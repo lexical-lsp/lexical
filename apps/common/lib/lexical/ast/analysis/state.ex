@@ -94,16 +94,43 @@ defmodule Lexical.Ast.Analysis.State do
     end)
   end
 
-  defp get_range(quoted, %Document{} = document) do
-    case Sourceror.get_range(quoted) do
-      %{start: start_pos, end: end_pos} ->
+  # if there is no code after a stab operator, then the end position
+  # it gives us can be in the middle of the line, as it's derived from
+  # the start of some entity on the last line. So we increment the line
+  # by one, and that should be the end of the stab block
+  defp get_range({:->, _, _} = quoted, %Document{} = document) do
+    start_pos = get_start_position(quoted)
+
+    case Sourceror.get_end_position(quoted, line: -1, column: -1) do
+      [line: -1, column: -1] ->
+        nil
+
+      [line: line, column: 1] ->
         Range.new(
           Position.new(document, start_pos[:line], start_pos[:column]),
-          Position.new(document, end_pos[:line], end_pos[:column])
+          Position.new(document, line + 1, 1)
         )
 
-      nil ->
+      [line: line, column: _] ->
+        Range.new(
+          Position.new(document, start_pos[:line], start_pos[:column]),
+          Position.new(document, line + 1, 1)
+        )
+    end
+  end
+
+  defp get_range(quoted, %Document{} = document) do
+    start_pos = get_start_position(quoted)
+
+    case Sourceror.get_end_position(quoted, line: -1, column: -1) do
+      [line: -1, column: -1] ->
         nil
+
+      [line: end_line, column: end_column] ->
+        Range.new(
+          Position.new(document, start_pos[:line], start_pos[:column]),
+          Position.new(document, end_line, end_column)
+        )
     end
   end
 
@@ -114,5 +141,26 @@ defmodule Lexical.Ast.Analysis.State do
       Position.new(document, 1, 1),
       Position.new(document, num_lines + 1, 1)
     )
+  end
+
+  defp get_start_position({_, metadata, _} = ast) do
+    case Keyword.fetch(metadata, :do) do
+      {:ok, [line: line, column: column]} ->
+        # add 2 to position us after the do keyword
+        [line: line, column: column + 2]
+
+      _ ->
+        Sourceror.get_start_position(ast)
+    end
+  end
+
+  defp get_start_position({block_meta, _rest}) do
+    case Sourceror.get_start_position(block_meta) do
+      [line: line, column: column] ->
+        [line: line, column: column + 2]
+
+      other ->
+        other
+    end
   end
 end

@@ -13,6 +13,10 @@ defmodule Lexical.Test.ExtractorCase do
     end
   end
 
+  def index_everything(source) do
+    do_index(source, fn entry -> entry.type != :metadata end)
+  end
+
   def do_index(source, filter, extractors \\ nil)
 
   def do_index(source, filter, extractors) when is_binary(source) do

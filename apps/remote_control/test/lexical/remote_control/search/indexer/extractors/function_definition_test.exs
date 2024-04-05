@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
     end)
   end
 
-  def index_all(source) do
+  def index_functions(source) do
     do_index(source, fn entry ->
       entry.type in [:function, :public_function, :private_function]
     end)
@@ -170,7 +170,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         end
         ]
         |> in_a_module()
-        |> index_all()
+        |> index_functions()
 
       assert function_definition.type == :public_function
       assert function_definition.subtype == :definition
@@ -357,7 +357,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         end
         ]
         |> in_a_module()
-        |> index_all()
+        |> index_functions()
 
       assert function_definition.type == :private_function
       assert function_definition.subtype == :definition

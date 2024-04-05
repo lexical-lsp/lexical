@@ -12,25 +12,27 @@ defmodule Lexical.RemoteControl.Search.Indexer.StructureTest do
     test "when multiple blocks end at once" do
       {:ok, results} =
         ~q[
-          def function_1 do
-            case something() do
-              :ok -> :yep
-              _ -> :nope
+          defmodule Parent do
+            def function_1 do
+              case something() do
+                :ok -> :yep
+                _ -> :nope
+              end
             end
-          end
 
-          defp function_2 do
+            defp function_2 do
+            end
           end
         ]
         |> index()
 
-      [public_function, private_function] =
+      [module, public_function, private_function] =
         Enum.filter(results, fn entry ->
           entry.subtype == :definition
         end)
 
-      assert public_function.block_id == :root
-      assert private_function.block_id == :root
+      assert public_function.block_id == module.id
+      assert private_function.block_id == module.id
     end
 
     test "when an expression occurs after a block" do

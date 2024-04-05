@@ -40,6 +40,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   defguard is_structure(entry) when entry.type == :metadata and entry.subtype == :block_structure
   defguard is_block(entry) when entry.id == entry.block_id
 
+  def copy(%__MODULE__{} = orig, overrides) do
+    %__MODULE__{orig | id: Identifier.next_global!()}
+    |> Map.merge(overrides)
+  end
+
   def block_structure(path, structure) do
     %__MODULE__{
       path: path,

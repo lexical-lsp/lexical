@@ -12,6 +12,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     {symbols, doc}
   end
 
+  defp in_a_module(code) do
+    """
+    defmodule Parent do
+      #{code}
+    end
+    """
+  end
+
   test "a top level module is found" do
     {[%Symbols.Document{} = module], doc} =
       ~q[
@@ -227,66 +235,88 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
   end
 
   test "types show only their name" do
-    {[type], doc} =
+    {[module], doc} =
       ~q[
        @type something :: :ok
       ]
+      |> in_a_module()
       |> document_symbols()
 
+    assert module.type == :module
+
+    [type] = module.children
     assert decorate(doc, type.detail_range) =~ "«@type something :: :ok»"
     assert type.name == "@type something"
     assert type.type == :type
   end
 
   test "specs are ignored" do
-    {[], _doc} =
+    {[module], _doc} =
       ~q[
       @spec my_fun(integer()) :: :ok
       ]
+      |> in_a_module()
       |> document_symbols()
+
+    assert module.type == :module
   end
 
   test "docs are ignored" do
-    assert {[], _doc} =
+    assert {[module], _doc} =
              ~q[
                 @doc """
                  Hello
                 """
              ]
+             |> in_a_module()
              |> document_symbols()
+
+    assert module.type == :module
   end
 
   test "moduledocs are ignored" do
-    assert {[], _doc} =
+    assert {[module], _doc} =
              ~q[
                 @moduledoc """
                  Hello
                 """
              ]
+             |> in_a_module()
              |> document_symbols()
+
+    assert module.type == :module
   end
 
   test "derives are ignored" do
-    assert {[], _doc} =
+    assert {[module], _doc} =
              ~q[
                @derive {Something, other}
              ]
+             |> in_a_module()
              |> document_symbols()
+
+    assert module.type == :module
   end
 
   test "impl declarations are ignored" do
-    assert {[], _doc} =
+    assert {[module], _doc} =
              ~q[
               @impl GenServer
              ]
+             |> in_a_module()
              |> document_symbols()
+
+    assert module.type == :module
   end
 
   test "tags ignored" do
-    assert {[], _doc} =
+    assert {[module], _doc} =
              ~q[
               @tag :skip
              ]
+             |> in_a_module()
              |> document_symbols()
+
+    assert module.type == :module
   end
 end

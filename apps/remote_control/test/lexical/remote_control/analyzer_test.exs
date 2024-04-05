@@ -8,6 +8,72 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
 
   use ExUnit.Case, async: true
 
+  describe "current_module/2" do
+    test "fails if there is not __MODULE__ defined" do
+      {position, document} =
+        ~q[x
+          |defmodule Outer do
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert :error = Analyzer.current_module(analysis, position)
+    end
+
+    test "fails in a defmodule call if there is no containing module" do
+      {position, document} =
+        ~q[
+          defmodule| Outer do
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert :error = Analyzer.current_module(analysis, position)
+    end
+
+    test "reutrns the current module right after the do" do
+      {position, document} =
+        ~q[
+          defmodule Outer do|
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert {:ok, Outer} = Analyzer.current_module(analysis, position)
+    end
+
+    test "returns the parent module in the child's defmodule" do
+      {position, document} =
+        ~q[
+          defmodule Parent do
+            defmodule Child| do
+            end
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert {:ok, Parent} = Analyzer.current_module(analysis, position)
+    end
+
+    test "returns a nested module in the child's module" do
+      {position, document} =
+        ~q[
+          defmodule Parent do
+            defmodule Child do|
+            end
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert {:ok, Parent.Child} = Analyzer.current_module(analysis, position)
+    end
+  end
+
   describe "expand_alias/4" do
     test "works with __MODULE__ aliases" do
       {position, document} =
