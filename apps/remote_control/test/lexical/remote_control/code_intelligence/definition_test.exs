@@ -23,6 +23,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       |> file_path(Path.join("lib", "my_definition.ex"))
       |> Document.Path.ensure_uri()
 
+    {:ok, _document} = Document.Store.open_temporary(uri)
+
+    on_exit(fn ->
+      :ok = Document.Store.close(uri)
+    end)
+
     %{uri: uri}
   end
 
@@ -110,7 +116,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
         end
       ]
 
-      assert {:ok, ^referenced_uri, definition_line} = definition(project, subject_module, referenced_uri)
+      assert {:ok, ^referenced_uri, definition_line} =
+               definition(project, subject_module, referenced_uri)
+
       assert definition_line == ~S[defmodule «MyDefinition» do]
     end
 
@@ -363,9 +371,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   defp index(document, referenced_uri) do
     {path, text} =
       if referenced_uri do
-        path = Document.Path.from_uri(referenced_uri)
-        text = File.read!(path)
-        {path, text}
+        {:ok, referenced_document} = Document.Store.fetch(referenced_uri)
+        {referenced_document.path, Document.to_string(referenced_document)}
       else
         {document.path, Document.to_string(document)}
       end
