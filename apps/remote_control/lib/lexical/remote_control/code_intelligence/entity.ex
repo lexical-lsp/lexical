@@ -226,7 +226,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       analysis
       |> Ast.cursor_path(position)
       |> Enum.filter(&match?({:scope, _, [_ | _]}, &1))
-      # There might be nested `scope` macros, we need the ancestor one
+      # There might be nested `scope` macros, we need the immediate ancestor
       |> List.last()
 
     if path do
