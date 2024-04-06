@@ -15,6 +15,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
 
   defrecord :file_changed, uri: nil, from_version: nil, to_version: nil, open?: false
 
+  defrecord :file_opened, uri: nil, version: nil
+
   defrecord :file_compile_requested, project: nil, build_number: 0, uri: nil
 
   defrecord :file_compiled,

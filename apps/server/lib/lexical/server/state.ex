@@ -181,6 +181,8 @@ defmodule Lexical.Server.State do
     case Document.Store.open(uri, text, version, language_id) do
       :ok ->
         Logger.info("opened #{uri}")
+        project = state.configuration.project
+        Api.broadcast(project, file_opened(uri: uri, version: version))
         {:ok, state}
 
       error ->
