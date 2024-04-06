@@ -248,11 +248,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   end
 
   defp phoenix_controller_module?(module) do
-    function_exported_check?(module, :call, 2) and function_exported_check?(module, :action, 2)
+    function_exists?(module, :call, 2) and function_exists?(module, :action, 2)
   end
 
   defp phoenix_liveview_module?(module) do
-    function_exported_check?(module, :mount, 3) and function_exported_check?(module, :render, 1)
+    function_exists?(module, :mount, 3) and function_exists?(module, :render, 1)
   end
 
   # Take only the segments at and before the cursor, e.g.
@@ -454,7 +454,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     end
   end
 
-  defp function_exported_check?(module, function, arity) do
-    Kernel.function_exported?(module, function, arity)
+  defp function_exists?(module, function, arity) do
+    # Wrap the `function_exported?` from `Kernel` to simplify testing.
+    function_exported?(module, function, arity)
   end
 end

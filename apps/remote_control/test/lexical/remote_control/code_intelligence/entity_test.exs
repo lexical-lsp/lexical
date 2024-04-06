@@ -196,7 +196,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
   describe "controller module resolve/2 in the phoenix router" do
     setup do
-      patch(Entity, :function_exported_check?, fn
+      patch(Entity, :function_exists?, fn
         FooWeb.FooController, :call, 2 -> true
         FooWeb.FooController, :action, 2 -> true
       end)
@@ -227,7 +227,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     end
 
     test "succeeds even the scope module has multiple dots" do
-      patch(Entity, :function_exported_check?, fn
+      patch(Entity, :function_exists?, fn
         FooWeb.Bar.FooController, :call, 2 -> true
         FooWeb.Bar.FooController, :action, 2 -> true
       end)
@@ -243,7 +243,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     end
 
     test "succeeds in the nested scopes" do
-      patch(Entity, :function_exported_check?, fn
+      patch(Entity, :function_exists?, fn
         FooWeb.Bar.FooController, :call, 2 -> true
         FooWeb.Bar.FooController, :action, 2 -> true
       end)
@@ -263,7 +263,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
   describe "liveview module resolve in the router" do
     test "succeeds in the `live` block" do
-      patch(Entity, :function_exported_check?, fn
+      patch(Entity, :function_exists?, fn
         FooWeb.FooLive, :mount, 2 -> true
         FooWeb.FooLive, :render, 1 -> true
       end)
