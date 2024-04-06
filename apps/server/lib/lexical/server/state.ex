@@ -162,7 +162,7 @@ defmodule Lexical.Server.State do
           )
 
         Api.broadcast(project, updated_message)
-        Api.compile_document(state.configuration.project, updated_source)
+        Api.maybe_compile_document(state.configuration.project, updated_source)
         {:ok, state}
 
       error ->
@@ -194,6 +194,7 @@ defmodule Lexical.Server.State do
 
     case Document.Store.close(uri) do
       :ok ->
+        Api.maybe_mark_closed(state.configuration.project, uri)
         {:ok, state}
 
       error ->
@@ -210,7 +211,7 @@ defmodule Lexical.Server.State do
 
     case Document.Store.save(uri) do
       :ok ->
-        Api.schedule_compile(state.configuration.project, false)
+        Api.maybe_schedule_compile(state.configuration.project, uri)
         {:ok, state}
 
       error ->

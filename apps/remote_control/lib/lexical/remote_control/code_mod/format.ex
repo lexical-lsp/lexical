@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.Commands.Rename
   alias Lexical.RemoteControl.CodeMod.Diff
 
   require Logger
@@ -12,10 +13,19 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
   def edits(%Project{} = project, %Document{} = document) do
-    with :ok <- Build.compile_document(project, document),
+    with :ok <- ensure_not_in_rename_process(),
+         :ok <- Build.compile_document(project, document),
          {:ok, formatted} <- do_format(project, document) do
       edits = Diff.diff(document, formatted)
       {:ok, Changes.new(document, edits)}
+    end
+  end
+
+  defp ensure_not_in_rename_process do
+    if Rename.in_progress?() do
+      {:error, "Cannot format while renaming"}
+    else
+      :ok
     end
   end
 
