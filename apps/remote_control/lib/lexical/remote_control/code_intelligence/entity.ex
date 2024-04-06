@@ -5,7 +5,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Formats
   alias Lexical.RemoteControl
+  alias Sourceror.Zipper
 
   require Logger
   require Sourceror.Identifier
@@ -182,10 +184,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
   # Modules on a single line, e.g. "Foo.Bar.Baz"
   defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
-    module_string = module_before_position(charlist, column, position)
+    module_before_cursor = module_before_position(charlist, column, position)
 
-    with {:ok, module} <- expand_alias(module_string, analysis, position) do
-      end_column = column + String.length(module_string)
+    maybe_prepended =
+      maybe_prepend_phoenix_scope_module(module_before_cursor, analysis, position)
+
+    with {:ok, module} <- expand_alias(maybe_prepended, analysis, position) do
+      end_column = column + String.length(module_before_cursor)
       {:ok, {:module, module}, {{line, column}, {line, end_column}}}
     end
   end
@@ -197,6 +202,57 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     with {:ok, module} <- expand_alias(charlist, analysis, position) do
       {:ok, {:module, module}, node_range}
     end
+  end
+
+  defp maybe_prepend_phoenix_scope_module(module_string, analysis, position) do
+    with {:ok, scope_segments} <- fetch_phoenix_scope_alias_segments(analysis, position),
+         {:ok, scope_module} <-
+           RemoteControl.Analyzer.expand_alias(scope_segments, analysis, position),
+         cursor_module = Module.concat(scope_module, module_string),
+         true <-
+           phoenix_controller_module?(cursor_module) or phoenix_liveview_module?(cursor_module) do
+      Formats.module(cursor_module)
+    else
+      _ ->
+        module_string
+    end
+  end
+
+  defp fetch_phoenix_scope_alias_segments(analysis, position) do
+    # fetch the alias segments from the `scope` macro
+    # e.g. `scope "/foo", FooWeb.Controllers`
+    # the alias module is `FooWeb.Controllers`, and the segments is `[:FooWeb, :Controllers]`
+    path =
+      analysis
+      |> Ast.cursor_path(position)
+      |> Enum.filter(&match?({:scope, _, [_ | _]}, &1))
+      # There might be nested `scope` macros, we need the immediate ancestor
+      |> List.last()
+
+    if path do
+      {_, paths} =
+        path
+        |> Zipper.zip()
+        |> Zipper.traverse([], fn
+          %Zipper{node: {:scope, _, [_, {:__aliases__, _, segments} | _]}} = zipper, acc ->
+            {zipper, [segments | acc]}
+
+          zipper, acc ->
+            {zipper, acc}
+        end)
+
+      {:ok, paths |> Enum.reverse() |> List.flatten()}
+    else
+      :error
+    end
+  end
+
+  defp phoenix_controller_module?(module) do
+    function_exists?(module, :call, 2) and function_exists?(module, :action, 2)
+  end
+
+  defp phoenix_liveview_module?(module) do
+    function_exists?(module, :mount, 3) and function_exists?(module, :render, 1)
   end
 
   # Take only the segments at and before the cursor, e.g.
@@ -396,5 +452,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     else
       _ -> :error
     end
+  end
+
+  defp function_exists?(module, function, arity) do
+    # Wrap the `function_exported?` from `Kernel` to simplify testing.
+    function_exported?(module, function, arity)
   end
 end
