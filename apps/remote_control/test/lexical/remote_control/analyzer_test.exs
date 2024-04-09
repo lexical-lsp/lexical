@@ -72,6 +72,19 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
       analysis = Ast.analyze(document)
       assert {:ok, Parent.Child} = Analyzer.current_module(analysis, position)
     end
+
+    test "works in a protocol definition" do
+      {position, document} =
+        ~q[
+          defprotocol MyProtocol do
+            def something(data)|
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+      assert {:ok, MyProtocol} = Analyzer.current_module(analysis, position)
+    end
   end
 
   describe "expand_alias/4" do

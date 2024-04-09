@@ -235,8 +235,10 @@ defmodule Lexical.Ast.Analysis do
 
   defp skipped?(_), do: false
 
-  # defmodule Foo do
-  defp analyze_node({:defmodule, meta, [{:__aliases__, _, segments} | _]} = quoted, state) do
+  @module_defining_forms [:defmodule, :defprotocol]
+  # defmodule Foo do or defprotocol MyProtocol do
+  defp analyze_node({form, meta, [{:__aliases__, _, segments} | _]} = quoted, state)
+       when form in @module_defining_forms do
     module =
       case State.current_module(state) do
         [] -> segments
