@@ -79,9 +79,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     |> adjust_range_for_descendants(entity, old_suffix)
   end
 
-  defp maybe_rename_file(entries, new_suffix) do
+  defp maybe_rename_file(document, entries, new_suffix) do
     entries
-    |> Enum.map(&Rename.File.maybe_rename(&1, new_suffix))
+    |> Enum.map(&Rename.File.maybe_rename(document, &1, new_suffix))
     # every group should have only one `rename_file`
     |> Enum.find(&(not is_nil(&1)))
   end
@@ -173,9 +173,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
 
   defp to_document_changes(uri, entries, new_suffix) do
     edits = Enum.map(entries, &Edit.new(new_suffix, &1.range))
-    rename_file = maybe_rename_file(entries, new_suffix)
 
     with {:ok, document} <- Document.Store.open_temporary(uri) do
+      rename_file = maybe_rename_file(document, entries, new_suffix)
       {:ok, Document.Changes.new(document, edits, rename_file)}
     end
   end

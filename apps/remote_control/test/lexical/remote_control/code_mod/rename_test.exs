@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Store.Backends
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.Test.CodeSigil
   alias Lexical.Test.CursorSupport
   alias Lexical.Test.Fixtures
@@ -14,6 +15,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   import Fixtures
 
   use ExUnit.Case
+  use Patch
 
   setup_all do
     project = project()
@@ -331,6 +333,11 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   end
 
   describe "rename file" do
+    setup do
+      patch(Entity, :function_exists?, false)
+      :ok
+    end
+
     test "it shouldn't rename file if the module has parent module within that file" do
       {:ok, {_applied, nil}} =
         ~q[
@@ -404,9 +411,11 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
 
     test "leaves the `components` folder as is when renaming the live view", %{project: project} do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.FooComponent -> true end)
+
       {:ok, {_applied, rename_file}} =
         ~q[
-        defmodule DemoWeb.|FooComponents do
+        defmodule DemoWeb.|FooComponent do
         end
       ] |> rename("DemoWeb.RenamedComponent", "lib/demo_web/components/foo_component.ex")
 
@@ -415,6 +424,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
 
     test "leaves the `components` folder as is when renaming a component", %{project: project} do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.SomeContext.FooComponent -> true end)
+
       {:ok, {_applied, rename_file}} =
         ~q[
         defmodule DemoWeb.SomeContext.|FooComponent do
@@ -429,7 +440,25 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
                subject_uri(project, "lib/demo_web/components/some_context/renamed_component.ex")
     end
 
+    test "leaves the `components` folder as is when the user prefers to include the `Components` in the module name",
+         %{
+           project: project
+         } do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.Components.Icons -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.Components.|Icons do
+        end
+      ] |> rename("DemoWeb.Components.RenamedIcons", "lib/demo_web/components/icons.ex")
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/components/renamed_icons.ex")
+    end
+
     test "leaves the `controllers` folder as is when renaming the controller", %{project: project} do
+      patch(Entity, :phoenix_controller_module?, fn DemoWeb.FooController -> true end)
+
       {:ok, {_applied, rename_file}} =
         ~q[
         defmodule DemoWeb.|FooController do
@@ -443,6 +472,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     test "leaves the `controller` folder as is when renaming the `JSON` module", %{
       project: project
     } do
+      patch(Entity, :phoenix_controller_module?, fn DemoWeb.FooController.JSON -> true end)
+
       {:ok, {_applied, rename_file}} =
         ~q[
         defmodule DemoWeb.FooController.|JSON do
@@ -458,6 +489,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
 
     test "leaves the `live` folder as is when renaming the live view", %{project: project} do
+      patch(Entity, :phoenix_liveview_module?, fn DemoWeb.FooLive -> true end)
+
       {:ok, {_applied, rename_file}} =
         ~q[
         defmodule DemoWeb.|FooLive do
@@ -477,7 +510,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
-         {:ok, document_changes} <- Rename.rename(analysis, position, new_name) do
+         {:ok, document_changes} <- Rename.rename(analysis, position, new_name, nil) do
       changes = document_changes |> Enum.map(& &1.edits) |> List.flatten()
       applied = apply_edits(document, changes)
 
