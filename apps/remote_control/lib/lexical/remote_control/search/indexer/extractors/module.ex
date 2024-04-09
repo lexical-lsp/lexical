@@ -84,7 +84,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           Application.get_application(aliased_module)
         )
 
-      module_entry = Entry.copy(implementation_entry, %{type: :module})
+      module_entry = Entry.copy(implementation_entry, type: :module)
       {:ok, [implementation_entry, module_entry]}
     else
       _ ->
