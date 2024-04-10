@@ -90,6 +90,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
     assert second.name == "@second"
   end
 
+  test "in-progress module attributes are skipped" do
+    {[module], doc} =
+      ~q[
+      defmodule Module do
+        @
+        @callback foo() :: :ok
+      end
+      ]
+      |> document_symbols()
+
+    assert module.type == :module
+    assert module.name == "Module"
+
+    [callback] = module.children
+
+    assert callback.type == :module_attribute
+    assert callback.name == "@callback"
+    assert callback.range == callback.detail_range
+    assert decorate(doc, callback.range) =~ "«@callback foo() :: :ok»"
+  end
+
   test "module attribute references are skipped" do
     {[module], _doc} =
       ~q[

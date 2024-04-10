@@ -31,6 +31,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
     {:ok, reference}
   end
 
+  # an attribute being typed above an already existing attribute will have the name `@`, which we ignore
+  # example:
+  # @|
+  # @callback foo() :: :ok
+  def extract({:@, _, [{:@, _, _attr_value}]}, %Reducer{}) do
+    :ignored
+  end
+
   # Finds module attribute definitions @foo 3
   def extract({:@, _, [{attr_name, _, _attr_value}]} = attr, %Reducer{} = reducer) do
     block = Reducer.current_block(reducer)
