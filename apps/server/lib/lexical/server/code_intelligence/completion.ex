@@ -172,8 +172,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   defp displayable?(%Project{} = project, result) do
     suggested_module =
       case result do
-        %_{full_name: full_name} -> full_name
-        %_{origin: origin} -> origin
+        %_{full_name: full_name} when is_binary(full_name) -> full_name
+        %_{origin: origin} when is_binary(origin) -> origin
         _ -> ""
       end
 

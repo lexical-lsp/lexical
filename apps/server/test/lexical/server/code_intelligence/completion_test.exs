@@ -118,6 +118,29 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
 
       assert sort_text =~ SortScope.remote(false, 9)
     end
+
+    test "typespecs with no origin are completed", %{project: project} do
+      candidate = %Candidate.Typespec{
+        argument_names: [],
+        metadata: %{builtin: true},
+        arity: 0,
+        name: "any",
+        origin: nil
+      }
+
+      patch(Lexical.RemoteControl.Api, :complete, [candidate])
+
+      [completion] = complete(project, " @type a|")
+      assert completion.label == "any()"
+    end
+
+    test "typespecs with no full_name are completed", %{project: project} do
+      candidate = %Candidate.Struct{full_name: nil, metadata: %{}, name: "Struct"}
+      patch(Lexical.RemoteControl.Api, :complete, [candidate])
+
+      [completion] = complete(project, " %Stru|")
+      assert completion.label == "Struct"
+    end
   end
 
   def with_all_completion_candidates(_) do
