@@ -267,15 +267,15 @@ defmodule Lexical.Ast.Analysis do
           ]} = quoted,
          state
        ) do
-    module = protocol_segments ++ for_segments
     line = meta[:line]
+    expanded_for = expand_alias(for_segments, state)
+    module = expand_alias(protocol_segments ++ expanded_for, state)
     current_module_alias = Alias.new(module, :__MODULE__, line)
-    for_alias = Alias.new(for_segments, :"@for", line)
+    for_alias = Alias.new(expanded_for, :"@for", line)
     protocol_alias = Alias.new(protocol_segments, :"@protocol", line)
 
     new_state =
       state
-      |> maybe_push_implicit_alias(protocol_segments, line)
       |> State.push_scope_for(quoted, module)
       |> State.push_alias(current_module_alias)
       |> State.push_alias(for_alias)

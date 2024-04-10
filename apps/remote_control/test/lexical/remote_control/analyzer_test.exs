@@ -88,6 +88,68 @@ defmodule Lexical.RemoteControl.AnalyzerTest do
   end
 
   describe "expand_alias/4" do
+    test "works with aliased modules" do
+      {position, document} =
+        ~q[
+          defmodule Parent do
+            alias Foo.Bar.Something
+            |
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+
+      assert {:ok, Foo.Bar.Something.Baz} =
+               Analyzer.expand_alias([:Something, :Baz], analysis, position)
+    end
+
+    test "works with protocol definitions nested in a module" do
+      {position, document} =
+        ~q[
+          defmodule Parent do
+            alias Foo.Bar.Something
+            alias Foo.Bar.Protocol
+            defimpl  |Protocol, for: Something do
+            end
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+
+      assert {:ok, Foo.Bar.Protocol} = Analyzer.expand_alias([:Protocol], analysis, position)
+      assert {:ok, Foo.Bar.Something} = Analyzer.expand_alias([:Something], analysis, position)
+      assert {:ok, Parent} = Analyzer.expand_alias([:__MODULE__], analysis, position)
+    end
+
+    test "works with protocol with aliased protocol and target" do
+      {position, document} =
+        ~q[
+          alias Foo.Bar.Something
+          alias Foo.Bar.Protocol
+          defimpl Protocol, for: Something do
+            @test true|
+          end
+        ]
+        |> pop_cursor(as: :document)
+
+      analysis = Ast.analyze(document)
+
+      assert {:ok, Foo.Bar.Protocol} = Analyzer.expand_alias([:Protocol], analysis, position)
+
+      assert {:ok, Foo.Bar.Protocol} =
+               Analyzer.expand_alias(quote(do: [@protocol]), analysis, position)
+
+      assert {:ok, Foo.Bar.Something} = Analyzer.expand_alias([:Something], analysis, position)
+
+      assert {:ok, Foo.Bar.Something} =
+               Analyzer.expand_alias(quote(do: [@for]), analysis, position)
+
+      assert {:ok, Foo.Bar.Protocol.Foo.Bar.Something} =
+               Analyzer.expand_alias([:__MODULE__], analysis, position)
+    end
+
     test "works with __MODULE__ aliases" do
       {position, document} =
         ~q[
