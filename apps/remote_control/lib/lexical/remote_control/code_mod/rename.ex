@@ -24,8 +24,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   end
 
   defp set_rename_progress(document_changes_list, client_name) do
-    uri_with_operation_counts = uri_with_operation_counts(client_name, document_changes_list)
-    Commands.Rename.set_rename_progress(uri_with_operation_counts)
+    client_name
+    |> uri_with_operation_counts(document_changes_list)
+    |> Commands.Rename.set_rename_progress()
   end
 
   defp uri_with_operation_counts("Visual Studio Code", document_changes_list) do

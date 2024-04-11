@@ -13,34 +13,32 @@ defmodule Lexical.RemoteControl.Api do
 
   require Logger
 
-  @spec maybe_schedule_compile(Project.t(), Lexical.uri()) :: :ok
   def maybe_schedule_compile(project, triggered_file_uri) do
-    if in_rename_progress?(project) do
+    if rename_running?(project) do
       RemoteControl.call(project, Commands.Rename, :mark_saved, [triggered_file_uri])
     else
       schedule_compile(project, false)
     end
   end
 
-  @spec maybe_compile_document(Project.t(), Lexical.uri()) :: :ok
   def maybe_compile_document(project, document) do
-    if in_rename_progress?(project) do
+    if rename_running?(project) do
       RemoteControl.call(project, Commands.Rename, :mark_changed, [document.uri])
     else
       compile_document(project, document)
     end
   end
 
-  @spec maybe_mark_closed(Project.t(), Lexical.uri()) :: :ok
-  def maybe_mark_closed(%Project{} = project, uri) do
-    if in_rename_progress?(project) do
+  @spec mark_rename_file_closed(Project.t(), Lexical.uri()) :: :ok
+  def mark_rename_file_closed(%Project{} = project, uri) do
+    if rename_running?(project) do
       RemoteControl.call(project, Commands.Rename, :mark_closed, [uri])
     else
       :ok
     end
   end
 
-  defp in_rename_progress?(%Project{} = project) do
+  defp rename_running?(%Project{} = project) do
     RemoteControl.call(project, Commands.Rename, :in_progress?, [])
   end
 

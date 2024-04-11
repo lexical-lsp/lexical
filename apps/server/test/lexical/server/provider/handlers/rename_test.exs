@@ -62,7 +62,7 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name ->
+      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
         {:ok, []}
       end)
 
@@ -79,7 +79,7 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name ->
+      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
         {:ok,
          [
            Document.Changes.new(

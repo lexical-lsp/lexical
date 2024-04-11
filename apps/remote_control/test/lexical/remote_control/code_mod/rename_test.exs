@@ -1,10 +1,10 @@
 defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.Document
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Store.Backends
-  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.Test.CodeSigil
   alias Lexical.Test.CursorSupport
   alias Lexical.Test.Fixtures
