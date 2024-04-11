@@ -25,6 +25,18 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttributeTest do
       assert decorate(doc, attr.range) =~ "«@attribute 32»"
     end
 
+    test "in-progress module attributes are ignored" do
+      {:ok, [latter_attribute], _doc} =
+        ~q[
+        defmodule Root do
+          @
+          @callback foo() :: :ok
+        end
+        ]
+        |> index()
+      assert latter_attribute.subject == "Root@callback"
+    end
+
     test "finds multiple definitions of the same attribute" do
       {:ok, [first, second, third], doc} =
         ~q[

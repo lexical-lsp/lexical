@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.Search.Subject do
   end
 
   def module_attribute(module, attribute_name) do
-    "#{module}@#{attribute_name}"
+    Formats.module(module) <> "@" <> to_string(attribute_name)
   end
 
   def mfa(module, function, arity) do
