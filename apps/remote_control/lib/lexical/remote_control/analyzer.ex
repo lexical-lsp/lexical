@@ -92,10 +92,19 @@ defmodule Lexical.RemoteControl.Analyzer do
       {:ok, Module.concat(resolved)}
     else
       _ ->
-        if Enum.all?(segments, &is_atom/1) do
-          {:ok, Module.concat(segments)}
-        else
-          :error
+        case segments do
+          [:__MODULE__] ->
+            # we've had a request for the current module, but none was found
+            # so we've failed. This can happen if we're resolving the current
+            # module in a script, or inside the defmodule call.
+            :error
+
+          _ ->
+            if Enum.all?(segments, &is_atom/1) do
+              {:ok, Module.concat(segments)}
+            else
+              :error
+            end
         end
     end
   end

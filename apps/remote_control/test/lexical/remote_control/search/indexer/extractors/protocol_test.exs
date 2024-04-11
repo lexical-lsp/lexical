@@ -44,7 +44,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
 
       assert protocol.type == :protocol_implementation
       assert protocol.subtype == :definition
-      assert protocol.subject == Something
+      assert protocol.subject == Something.Atom
 
       expected_block =
         ~q[
@@ -56,8 +56,91 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
         ]t
         |> String.trim_trailing()
 
-      assert decorate(doc, protocol.range) == "defimpl «Something», for: Atom do"
+      assert decorate(doc, protocol.range) == "«defimpl Something, for: Atom do»"
       assert decorate(doc, protocol.block_range) == expected_block
     end
+  end
+
+  test "__MODULE__ is correct in implementations" do
+    {:ok, [protocol], doc} =
+      ~q[
+       defimpl Something, for: Atom do
+         def something(atom) do
+           __MODULE__
+         end
+       end
+      ]
+      |> index()
+
+    assert protocol.type == :protocol_implementation
+    assert protocol.subtype == :definition
+    assert protocol.subject == Something.Atom
+
+    expected_block = ~q[
+      «defimpl Something, for: Atom do
+        def something(atom) do
+          __MODULE__
+        end
+      end»
+      ]t
+
+    assert decorate(doc, protocol.range) == "«defimpl Something, for: Atom do»"
+    assert decorate(doc, protocol.block_range) == expected_block
+  end
+
+  test "indexes all parts of a protocol" do
+    {:ok, extracted, doc} =
+      ~q[
+       defimpl Protocol, for: Target do
+         def function(arg) do
+            __MODULE__
+         end
+       end
+      ]
+      |> index_everything()
+
+    [
+      protocol_impl_def,
+      module_def,
+      protocol_ref,
+      target_ref,
+      function_def,
+      proto_module_ref
+    ] = extracted
+
+    expected_block = ~q[
+     «defimpl Protocol, for: Target do
+       def function(arg) do
+          __MODULE__
+       end
+     end»
+    ]t
+
+    assert protocol_impl_def.type == :protocol_implementation
+    assert protocol_impl_def.subtype == :definition
+    assert protocol_impl_def.subject == Protocol.Target
+    assert decorate(doc, protocol_impl_def.range) =~ "«defimpl Protocol, for: Target do»"
+    assert decorate(doc, protocol_impl_def.block_range) =~ expected_block
+
+    assert module_def.type == :module
+    assert module_def.subtype == :definition
+    assert module_def.subject == Protocol.Target
+    assert decorate(doc, module_def.range) =~ "«defimpl Protocol, for: Target do»"
+    assert decorate(doc, module_def.block_range) =~ expected_block
+
+    assert protocol_ref.type == :module
+    assert protocol_ref.subtype == :reference
+    assert protocol_ref.subject == Protocol
+    assert decorate(doc, protocol_ref.range) =~ "defimpl «Protocol», "
+
+    assert target_ref.type == :module
+    assert target_ref.subtype == :reference
+    assert target_ref.subject == Target
+    assert decorate(doc, target_ref.range) =~ "defimpl Protocol, for: «Target» do"
+
+    assert function_def.type == :public_function
+
+    assert proto_module_ref.type == :module
+    assert proto_module_ref.subject == Protocol.Target
   end
 end

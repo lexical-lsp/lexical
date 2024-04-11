@@ -100,7 +100,13 @@ defmodule Lexical.Ast.Analysis do
         quoted,
         State.new(document),
         fn quoted, state ->
-          {quoted, analyze_node(quoted, state)}
+          case analyze_node(quoted, state) do
+            {new_quoted, new_state} ->
+              {new_quoted, new_state}
+
+            new_state ->
+              {quoted, new_state}
+          end
         end,
         fn quoted, state ->
           case {scope_id(quoted), State.current_scope(state)} do
@@ -186,8 +192,53 @@ defmodule Lexical.Ast.Analysis do
     quoted
   end
 
-  # defmodule Foo do
-  defp analyze_node({:defmodule, meta, [{:__aliases__, _, segments} | _]} = quoted, state) do
+  @skip :skipped?
+
+  defp skip_leading_do({_, meta, _} = root_ast) do
+    # Marks the first do block after the passed in node. This is because
+    # that do block doesn't have accurate ending information, and if we build
+    # a scope around it, it won't end properly, which will cause information
+    # contained in scopes to leak out of them.
+
+    case Keyword.fetch(meta, :do) do
+      {:ok, [line: line, column: column]} ->
+        Macro.prewalk(root_ast, fn
+          {:__block__, _meta, [:do]} = block_ast ->
+            case Sourceror.get_start_position(block_ast) do
+              [line: ^line, column: ^column] ->
+                skip(block_ast)
+
+              _ ->
+                block_ast
+            end
+
+          other ->
+            other
+        end)
+
+      _ ->
+        root_ast
+    end
+  end
+
+  defp skip({_, _, _} = quoted) do
+    Macro.update_meta(quoted, &Keyword.put(&1, @skip, true))
+  end
+
+  defp skipped?({_, meta, _}) when is_list(meta) do
+    skipped?(meta)
+  end
+
+  defp skipped?(meta) when is_list(meta) do
+    Keyword.get(meta, @skip, false)
+  end
+
+  defp skipped?(_), do: false
+
+  @module_defining_forms [:defmodule, :defprotocol]
+  # defmodule Foo do or defprotocol MyProtocol do
+  defp analyze_node({form, meta, [{:__aliases__, _, segments} | _]} = quoted, state)
+       when form in @module_defining_forms do
     module =
       case State.current_module(state) do
         [] -> segments
@@ -196,12 +247,15 @@ defmodule Lexical.Ast.Analysis do
 
     current_module_alias = Alias.new(module, :__MODULE__, meta[:line])
 
-    state
-    # implicit alias belongs to the current scope
-    |> maybe_push_implicit_alias(segments, meta[:line])
-    # new __MODULE__ alias belongs to the new scope
-    |> State.push_scope_for(quoted, module)
-    |> State.push_alias(current_module_alias)
+    new_state =
+      state
+      # implicit alias belongs to the current scope
+      |> maybe_push_implicit_alias(segments, meta[:line])
+      # new __MODULE__ alias belongs to the new scope
+      |> State.push_scope_for(quoted, module)
+      |> State.push_alias(current_module_alias)
+
+    {skip_leading_do(quoted), new_state}
   end
 
   # defimpl Foo, for: SomeProtocol do
@@ -213,18 +267,21 @@ defmodule Lexical.Ast.Analysis do
           ]} = quoted,
          state
        ) do
-    module = protocol_segments ++ for_segments
     line = meta[:line]
+    expanded_for = expand_alias(for_segments, state)
+    module = expand_alias(protocol_segments ++ expanded_for, state)
     current_module_alias = Alias.new(module, :__MODULE__, line)
-    for_alias = Alias.new(for_segments, :"@for", line)
+    for_alias = Alias.new(expanded_for, :"@for", line)
     protocol_alias = Alias.new(protocol_segments, :"@protocol", line)
 
-    state
-    |> maybe_push_implicit_alias(protocol_segments, line)
-    |> State.push_scope_for(quoted, module)
-    |> State.push_alias(current_module_alias)
-    |> State.push_alias(for_alias)
-    |> State.push_alias(protocol_alias)
+    new_state =
+      state
+      |> State.push_scope_for(quoted, module)
+      |> State.push_alias(current_module_alias)
+      |> State.push_alias(for_alias)
+      |> State.push_alias(protocol_alias)
+
+    {skip_leading_do(quoted), new_state}
   end
 
   # alias Foo.{Bar, Baz, Buzz.Qux}
@@ -276,15 +333,19 @@ defmodule Lexical.Ast.Analysis do
     State.push_import(state, Import.new(module, meta[:line]))
   end
 
-  # clauses: ->
+  # stab clauses: ->
   defp analyze_node({clause, _, _} = quoted, state) when clause in @clauses do
-    State.maybe_push_scope_for(state, quoted)
+    maybe_push_scope_for(state, quoted)
   end
 
   # blocks: do, else, etc.
-  defp analyze_node({{:__block__, _, [block]}, _} = quoted, state)
+  defp analyze_node({{:__block__, meta, [block]}, _} = quoted, state)
        when block in @block_keywords do
-    State.maybe_push_scope_for(state, quoted)
+    if skipped?(meta) do
+      state
+    else
+      maybe_push_scope_for(state, quoted)
+    end
   end
 
   # catch-all
@@ -405,5 +466,13 @@ defmodule Lexical.Ast.Analysis do
   # When the `as` section is incomplete, like: `alias Foo, a`
   defp fetch_alias_as(_) do
     :error
+  end
+
+  defp maybe_push_scope_for(%State{} = state, ast) do
+    if skipped?(ast) do
+      state
+    else
+      State.maybe_push_scope_for(state, ast)
+    end
   end
 end

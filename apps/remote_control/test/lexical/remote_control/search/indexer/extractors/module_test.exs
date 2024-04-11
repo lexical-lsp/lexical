@@ -90,6 +90,22 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert decorate(doc, attribute.range) =~ "  @attr «Some.Other.Module»"
     end
 
+    test "can detect __MODULE__ in a function" do
+      {:ok, [_module_def, module_ref], doc} =
+        ~q[
+        defmodule Root do
+          def something do
+           __MODULE__
+          end
+        end
+        ]
+        |> index()
+
+      assert module_ref.type == :module
+      assert module_ref.subject == Root
+      assert decorate(doc, module_ref.range) =~ "   «__MODULE__»"
+    end
+
     test "can detect a module reference on the left side of a pattern match" do
       {:ok, [_module_def, module_ref], doc} =
         ~q[
@@ -205,8 +221,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
     end
 
     test "can detect a module reference in an aliased remote captured function" do
-      {:ok, [_module, _alias, _aliased, module_ref], doc} =
-        ~q[
+      {:ok, [_module, _alias, _aliased, module_ref], doc} = ~q[
           defmodule Capture do
             alias First.Second, as: Third
             def my_fn do
@@ -323,7 +338,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
     end
 
     test "can detect a @protocol module reference" do
-      {:ok, [protocol_ref, for_ref, proto_module_attr], doc} =
+      {:ok, [protocol_def, protocol_ref, for_ref, proto_module_attr], doc} =
         ~q[
           defimpl MyProtocol, for: Atom do
             def something do
@@ -332,6 +347,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
           end
         ]
         |> index()
+
+      assert protocol_def.type == :module
+      assert protocol_def.subtype == :definition
+      assert protocol_def.subject == MyProtocol.Atom
+      assert decorate(doc, protocol_def.range) == "«defimpl MyProtocol, for: Atom do»"
 
       assert protocol_ref.type == :module
       assert protocol_ref.subtype == :reference
@@ -350,7 +370,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
     end
 
     test "can detect an @for module reference" do
-      {:ok, [_, _, for_module_attr], doc} =
+      {:ok, [_, _, _, for_module_attr], doc} =
         ~q[
           defimpl MyProtocol, for: DataStructure do
             def something do

@@ -433,6 +433,104 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
       refute aliases[InDsl]
     end
 
+    test "an alias defined in an if statement" do
+      aliases =
+        ~q[
+        if test() do
+          alias Foo.Something
+          |
+        end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Something]
+    end
+
+    test "an alias defined in an if statement does not leak" do
+      aliases =
+        ~q[
+        if test() do
+          alias Foo.Something
+        end
+        |
+        ]
+        |> aliases_at_cursor()
+
+      refute aliases[:Something]
+    end
+
+    test "an alias defined in an cond statement" do
+      aliases =
+        ~q[
+        cond do
+          something() ->
+            alias Foo.Something
+            |Else
+          true ->
+            :ok
+        end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Something]
+    end
+
+    test "an alias defined in an cond statement shouldn't leak" do
+      aliases =
+        ~q[
+        cond do
+          something() ->
+            alias Foo.Something
+          true ->
+            |
+            :ok
+        end
+        ]
+        |> aliases_at_cursor()
+
+      refute aliases[:Something]
+
+      aliases =
+        ~q[
+        cond do
+          something() ->
+            alias Foo.Something
+          true ->
+            :ok
+        end
+        |
+        ]
+        |> aliases_at_cursor()
+
+      refute aliases[:Something]
+    end
+
+    test "an alias defined in an with statement" do
+      aliases =
+        ~q[
+        with {:ok, val} <- some_function() do
+        alias Foo.Something
+        |
+        end
+        ]
+        |> aliases_at_cursor()
+
+      assert aliases[:Something]
+    end
+
+    test "an alias defined in an with statement shouldn't leak" do
+      aliases =
+        ~q[
+        with {:ok, val} <- some_function() do
+        alias Foo.Something
+        end
+        |
+        ]
+        |> aliases_at_cursor()
+
+      refute aliases[:Something]
+    end
+
     test "sibling modules with nested blocks" do
       aliases =
         ~q[
@@ -460,7 +558,7 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
         ~q[
           fn x ->
             alias Foo.Bar
-            |Bar
+            Bar|
           end
         ]
         |> aliases_at_cursor()

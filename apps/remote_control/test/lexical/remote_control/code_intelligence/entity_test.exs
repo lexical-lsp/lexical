@@ -362,7 +362,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
             defstruct []
           end
 
-          %|Inner{}
+         def make do
+           %|Inner{}
+         end
         end
       >
 

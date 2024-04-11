@@ -40,6 +40,19 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
   defguard is_structure(entry) when entry.type == :metadata and entry.subtype == :block_structure
   defguard is_block(entry) when entry.id == entry.block_id
 
+  @doc """
+  Creates a new entry by copying the passed-in entry.
+
+  The returned entry will have the same fields set as the one passed in,
+  but a different id.
+  You can also pass in a keyword list of overrides, which will overwrit values in
+  the returned struct.
+  """
+  def copy(%__MODULE__{} = orig, overrides \\ []) when is_list(overrides) do
+    %__MODULE__{orig | id: Identifier.next_global!()}
+    |> struct(overrides)
+  end
+
   def block_structure(path, structure) do
     %__MODULE__{
       path: path,

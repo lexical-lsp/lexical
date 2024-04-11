@@ -16,19 +16,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
   def extract({:@, _, [{attr_name, _, nil}]}, %Reducer{} = reducer) do
     block = Reducer.current_block(reducer)
 
-    {:ok, current_module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
+    case Analyzer.current_module(reducer.analysis, Reducer.position(reducer)) do
+      {:ok, current_module} ->
+        reference =
+          Entry.reference(
+            reducer.analysis.document.path,
+            block,
+            Subject.module_attribute(current_module, attr_name),
+            :module_attribute,
+            reference_range(reducer, attr_name),
+            Application.get_application(current_module)
+          )
 
-    reference =
-      Entry.reference(
-        reducer.analysis.document.path,
-        block,
-        Subject.module_attribute(current_module, attr_name),
-        :module_attribute,
-        reference_range(reducer, attr_name),
-        Application.get_application(current_module)
-      )
+        {:ok, reference}
 
-    {:ok, reference}
+      :error ->
+        :ignored
+    end
   end
 
   # an attribute being typed above an already existing attribute will have the name `@`, which we ignore
@@ -43,19 +47,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttribute do
   def extract({:@, _, [{attr_name, _, _attr_value}]} = attr, %Reducer{} = reducer) do
     block = Reducer.current_block(reducer)
 
-    {:ok, current_module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
+    case Analyzer.current_module(reducer.analysis, Reducer.position(reducer)) do
+      {:ok, current_module} ->
+        definition =
+          Entry.definition(
+            reducer.analysis.document.path,
+            block,
+            Subject.module_attribute(current_module, attr_name),
+            :module_attribute,
+            definition_range(reducer, attr),
+            Application.get_application(current_module)
+          )
 
-    definition =
-      Entry.definition(
-        reducer.analysis.document.path,
-        block,
-        Subject.module_attribute(current_module, attr_name),
-        :module_attribute,
-        definition_range(reducer, attr),
-        Application.get_application(current_module)
-      )
+        {:ok, definition}
 
-    {:ok, definition}
+      _ ->
+        :ignored
+    end
   end
 
   def extract(_, _) do

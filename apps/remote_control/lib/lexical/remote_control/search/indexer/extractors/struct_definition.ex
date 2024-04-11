@@ -7,20 +7,26 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.StructDefinition do
   def extract({:defstruct, _, [_fields]} = definition, %Reducer{} = reducer) do
     document = reducer.analysis.document
     block = Reducer.current_block(reducer)
-    {:ok, current_module} = Analyzer.current_module(reducer.analysis, Reducer.position(reducer))
-    range = Ast.Range.fetch!(definition, document)
 
-    entry =
-      Entry.definition(
-        document.path,
-        block,
-        current_module,
-        :struct,
-        range,
-        Application.get_application(current_module)
-      )
+    case Analyzer.current_module(reducer.analysis, Reducer.position(reducer)) do
+      {:ok, current_module} ->
+        range = Ast.Range.fetch!(definition, document)
 
-    {:ok, entry}
+        entry =
+          Entry.definition(
+            document.path,
+            block,
+            current_module,
+            :struct,
+            range,
+            Application.get_application(current_module)
+          )
+
+        {:ok, entry}
+
+      _ ->
+        :ignored
+    end
   end
 
   def extract(_, _) do
