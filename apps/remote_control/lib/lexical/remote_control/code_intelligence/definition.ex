@@ -21,8 +21,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
        when type in [:struct, :module] do
     module = Formats.module(entity)
 
-    with [entry] <- Store.exact(module, type: type, subtype: :definition) do
-      to_location(entry)
+    case Store.exact(module, type: type, subtype: :definition) do
+      [entry] -> to_location(entry)
+      _other -> :error
     end
   end
 
