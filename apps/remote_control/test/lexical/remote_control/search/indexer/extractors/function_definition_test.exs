@@ -160,7 +160,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       assert function.type == :public_function
       assert function.subject == "MyProtocol.Structs.Mystruct.do_proto/2"
-      assert decorate(doc, function.range) =~ "def «do_proto(a, b)» do"
+      assert "do_proto(a, b)" = extract(doc, function.range)
       assert decorate(doc, function.block_range) =~ "«def do_proto(a, b) do\n    a + b\n  end»"
     end
 
