@@ -293,11 +293,6 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     Lexical.Formats.module(module_name)
   end
 
-  defp stringify(mapped(subject: subject, type: :module_attribute)) do
-    [_module, attribute_name] = String.split(subject, "@")
-    attribute_name
-  end
-
   defp stringify(mapped(subject: string)) when is_binary(string) do
     string
   end
@@ -363,8 +358,6 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
 
         names
       end
-
-    app_names = MapSet.put(app_names, nil)
 
     fn mapped(application: app, subtype: subtype) ->
       subtype == :definition and MapSet.member?(app_names, app)
