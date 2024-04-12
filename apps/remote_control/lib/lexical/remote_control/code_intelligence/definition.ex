@@ -1,17 +1,52 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Future.Code, as: Code
   alias Lexical.Ast
+  alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
+  alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
 
+  @spec definition(Document.t(), Position.t()) :: {:ok, [Location.t()]} | {:error, String.t()}
   def definition(%Document{} = document, %Position{} = position) do
-    document
+    with {:ok, _, analysis} <- Document.Store.fetch(document.uri, :analysis),
+         {:ok, entity, _range} <- Entity.resolve(analysis, position) do
+      fetch_definition(entity, analysis, position)
+    end
+  end
+
+  defp fetch_definition({type, entity}, %Analysis{} = _analysis, %Position{} = _position)
+       when type in [:struct, :module] do
+    module = Formats.module(entity)
+
+    locations =
+      for entry <- Store.exact(module, type: type, subtype: :definition),
+          result = to_location(entry),
+          match?({:ok, _}, result) do
+        {:ok, location} = result
+        location
+      end
+
+    case locations do
+      [] ->
+        {:error, "No definition found for #{inspect(module)}"}
+
+      [location] ->
+        {:ok, location}
+
+      _ ->
+        {:ok, locations}
+    end
+  end
+
+  defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
+    analysis.document
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
-    |> parse_location(document)
+    |> parse_location(analysis.document)
   end
 
   defp parse_location(%ElixirSense.Location{} = location, document) do
@@ -70,6 +105,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
         column = if column == 1, do: Text.count_leading_spaces(text) + 1, else: column
         pos = {line, column}
         Entity.to_range(document, pos, pos)
+    end
+  end
+
+  defp to_location(entry) do
+    uri = Document.Path.ensure_uri(entry.path)
+
+    case Document.Store.open_temporary(uri) do
+      {:ok, document} ->
+        {:ok, Location.new(entry.range, document)}
+
+      _ ->
+        :error
     end
   end
 end

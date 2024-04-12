@@ -12,7 +12,7 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinition do
 
       {:error, reason} ->
         Logger.error("GoToDefinition failed: #{inspect(reason)}")
-        {:error, Responses.GoToDefinition.error(request.id, :request_failed, inspect(reason))}
+        {:reply, Responses.GoToDefinition.error(request.id, :request_failed, inspect(reason))}
     end
   end
 end
