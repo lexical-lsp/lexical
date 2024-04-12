@@ -73,6 +73,27 @@ defmodule Lexical.Server.CodeIntelligence.CompletionTest do
       assert [] == complete(project, "IO.inspe # IO.in|")
     end
 
+    test "returns no completions in double quoted strings", %{project: project} do
+      assert [] = complete(project, ~S/"IO.in|"/)
+    end
+
+    test "returns no completions inside heredocs", %{project: project} do
+      assert [] = complete(project, ~S/
+      """
+      This is my heredoc
+      It does not IO.in|
+      """
+     /)
+    end
+
+    test "returns no completions inside ~s", %{project: project} do
+      assert [] = complete(project, ~S/~s[ IO.in|]/)
+    end
+
+    test "returns no completions inside ~S", %{project: project} do
+      assert [] = complete(project, ~S/ ~S[ IO.in|] /)
+    end
+
     test "only modules that are behaviuors are completed in an @impl", %{project: project} do
       assert [behaviour] = complete(project, "@impl U|")
       assert behaviour.label == "Unary"

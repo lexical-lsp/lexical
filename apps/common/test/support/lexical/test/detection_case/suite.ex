@@ -26,7 +26,7 @@ defmodule Lexical.Test.DetectionCase.Suite do
                Second,
                Third»
              }
-           ),
+        ),
         as: ~q[alias M«yModule.Submodule, as: Alias»],
         # Note: we need the token after the alias for the test, since
         # we can't place a range on an empty space
@@ -176,10 +176,59 @@ defmodule Lexical.Test.DetectionCase.Suite do
         ],
         multi_line: [
           simple: ~q[
-            %User{«
-                  first_name: "Name",
-                  last_name: "Last"»
+            %Struct{«
+                  amount: 1,
+                  kind: :tomatoes»
                  }
+          ]
+        ]
+      ],
+      strings: [
+        literal: ~q["«this is a string»"],
+        interpolation: [
+          variable: ~S["«before »#{interp}« after»"],
+          math: ~S["«before »#{3 + 1}« after»"],
+          function_call: ~S["«before »#{my_fun(arg)}« after»"],
+          multiple: ~S["«before »#{first}« middle »#{second}« after»"]
+        ],
+        heredocs: [
+          simple: ~S[
+        """
+        «This is in the heredoc
+        It's multiple lines»
+        """
+        ],
+          interpolation: ~S[
+          """
+          «This is the heredoc
+          #{something} is interpolated»
+          """
+          ]
+        ],
+        sigils: [
+          s: [
+            single_line: ~S[
+         ~s/«this is a string»/
+          ],
+            multi_line: ~S[
+             ~s/«
+              this is a string
+              that spans
+              many lines
+            »/
+            ]
+          ],
+          S: [
+            single_line: ~S[
+         ~S/«this is a string»/
+          ],
+            multi_line: ~S[
+           ~S/«
+            this is a string
+            that spans
+            many lines
+          »/
+          ]
           ]
         ]
       ],
@@ -206,11 +255,11 @@ defmodule Lexical.Test.DetectionCase.Suite do
       use: [
         simple: ~q(use« SomeModule»),
         params: [
-          single_line: ~q(use« SomeModule, param: "nice", other_param: "doggy"»),
+          single_line: ~q(use« SomeModule, param: 3, other_param: :doggy»),
           multi_line: ~q(
-             use «SomeMoudle, »[
-               with: "features",
-               that_are: "Great"
+             use «SomeModule, »[
+               with: :features,
+               that_are: :great
              ]
            )
         ]

@@ -94,7 +94,7 @@ defmodule Lexical.Ast.Tokens do
         {:string, string_value, to_position(context)}
 
       {:bin_string, context, interpolated} ->
-        {:interpolated_string, interpolated, to_position(context)}
+        {:interpolated_string, interpolation_ranges(interpolated), to_position(context)}
 
       {:capture_op, context, value} ->
         {:operator, value, to_position(context)}
@@ -145,4 +145,26 @@ defmodule Lexical.Ast.Tokens do
   defp normalize_type(:flt), do: :float
   defp normalize_type(:bin_string), do: :string
   defp normalize_type(type), do: type
+
+  defp interpolation_ranges(interpolations) do
+    {_, ranges} =
+      Enum.reduce(interpolations, {{1, 1}, []}, fn
+        literal, {{line, column}, acc} when is_binary(literal) ->
+          end_pos = {line, column + String.length(literal)}
+
+          range = {{line, column}, end_pos}
+          {end_pos, [{:literal, literal, range} | acc]}
+
+        {_, {end_line, end_column, _}, interp}, {_, acc} ->
+          start_pos = get_start_pos(interp)
+          range = {start_pos, {end_line, end_column}}
+          {{end_line, end_column}, [{:interpolation, interp, range} | acc]}
+      end)
+
+    Enum.reverse(ranges)
+  end
+
+  defp get_start_pos([{_, {start_line, start_column, _}, _} | _]) do
+    {start_line, start_column}
+  end
 end

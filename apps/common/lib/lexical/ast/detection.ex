@@ -11,6 +11,7 @@ defmodule Lexical.Ast.Detection do
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
 
   @doc """
   Returns true if the given position is detected by the current module
@@ -63,6 +64,20 @@ defmodule Lexical.Ast.Detection do
       _ ->
         false
     end)
+  end
+
+  def ast_to_range(ast) do
+    ast_to_range(ast, 0, 0)
+  end
+
+  def ast_to_range(ast, start_offset, end_offset) do
+    %{start: [line: start_line, column: start_col], end: [line: end_line, column: end_col]} =
+      Sourceror.get_range(ast)
+
+    Range.new(
+      %Position{line: start_line, character: start_col + start_offset},
+      %Position{line: end_line, character: end_col + end_offset}
+    )
   end
 
   defp cursor_in_range?(position, metadata) do

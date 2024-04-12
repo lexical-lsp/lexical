@@ -77,6 +77,7 @@ defmodule Lexical.Test.DetectionCase do
 
   def assert_detected(context, code) do
     {ranges, code} = pop_all_ranges(code)
+
     document = Document.new("file:///file.ex", code, 1)
     analysis = Ast.analyze(document)
     assert_contexts_in_range(analysis, context, ranges)
@@ -283,10 +284,15 @@ defmodule Lexical.Test.DetectionCase do
                 _ ->
                   false
               end)
-              |> Enum.to_list()
               |> Enum.reduce(
                 [],
                 fn
+                  {:string, contents, position}, acc ->
+                    string_literal_positions(document, contents, position) ++ acc
+
+                  {:interpolated_string, interpolations, _}, acc ->
+                    interpolation_positions(document, interpolations) ++ acc
+
                   {_token_type, _token, {_line, character}}, acc ->
                     pos = Position.new(document, line_number, character)
                     [pos | acc]
@@ -301,6 +307,31 @@ defmodule Lexical.Test.DetectionCase do
     end
 
     finalize = fn _ -> :ok end
+
     Stream.resource(init_fn, next_fn, finalize)
+  end
+
+  defp string_literal_positions(%Document{} = document, string_contents, {line, column}) do
+    # add two for the quotes
+    string_length = String.length(string_contents) + 2
+    before_pos = Position.new(document, line, column + 1)
+    after_pos = Position.new(document, line, column + string_length)
+
+    [after_pos, before_pos]
+  end
+
+  defp interpolation_positions(%Document{} = document, interpolations) do
+    interpolations
+    |> Enum.flat_map(fn {_, _, {{start_line, start_col}, {_end_line, end_col}}} ->
+      in_between_positions =
+        Enum.map(start_col..end_col, fn column ->
+          Position.new(document, start_line, column)
+        end)
+
+      start_pos = Position.new(document, start_line, start_col)
+
+      [start_pos | in_between_positions]
+    end)
+    |> Enum.uniq()
   end
 end
