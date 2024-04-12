@@ -2,7 +2,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   use ExUnit.Case, async: true
 
   alias Lexical.Document
-  alias Lexical.Document.Location
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.RemoteControl.Search
@@ -269,6 +268,29 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   end
 
   describe "definition/2 when making local call" do
+    test "find multiple locations when the module is defined in multiple places", %{
+      project: project,
+      subject_uri: subject_uri
+    } do
+      subject_module = ~q[
+        defmodule MyModule do # line 1
+        end
+
+        defmodule MyModule do # line 4
+        end
+
+        defmodule UsesMyModule do
+          |MyModule
+        end
+      ]
+
+      {:ok, [{_, definition_line1}, {_, definition_line4}]} =
+        definition(project, subject_module, subject_uri)
+
+      assert definition_line1 == ~S[defmodule «MyModule» do # line 1]
+      assert definition_line4 == ~S[defmodule «MyModule» do # line 4]
+    end
+
     test "find the function definition", %{project: project, subject_uri: subject_uri} do
       subject_module = ~q[
         defmodule UsesOwnFunction do
@@ -381,9 +403,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
          :ok <- index(referenced_uri),
-         {:ok, %Location{} = location} <-
+         {:ok, location} <-
            RemoteControl.Api.definition(project, document, position) do
-      {:ok, location.document.uri, decorate(location.document, location.range)}
+      if is_list(location) do
+        {:ok, Enum.map(location, &{&1.document.uri, decorate(&1.document, &1.range)})}
+      else
+        {:ok, location.document.uri, decorate(location.document, location.range)}
+      end
     end
   end
 

@@ -10,6 +10,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
 
+  @spec definition(Document.t(), Position.t()) :: {:ok, [Location.t()]} | {:error, String.t()}
   def definition(%Document{} = document, %Position{} = position) do
     with {:ok, _, analysis} <- Document.Store.fetch(document.uri, :analysis),
          {:ok, entity, _range} <- Entity.resolve(analysis, position) do
@@ -21,9 +22,23 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
        when type in [:struct, :module] do
     module = Formats.module(entity)
 
-    case Store.exact(module, type: type, subtype: :definition) do
-      [entry] -> to_location(entry)
-      _other -> :error
+    locations =
+      for entry <- Store.exact(module, type: type, subtype: :definition),
+          result = to_location(entry),
+          match?({:ok, _}, result) do
+        {:ok, location} = result
+        location
+      end
+
+    case locations do
+      [] ->
+        {:error, "No definition found for #{inspect(module)}"}
+
+      [location] ->
+        {:ok, location}
+
+      _ ->
+        {:ok, locations}
     end
   end
 
