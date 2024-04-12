@@ -94,7 +94,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
     case do_score(normalized_subject, normalized_pattern, %__MODULE__{}) do
       %__MODULE__{match?: true, matched_character_positions: [pos | _]} = score ->
-        subject_substring = String.slice(normalized_subject, (pos + 1)..-1)
+        subject_substring = String.slice(normalized_subject, (pos + 1)..-1//1)
         collect_scores(subject_substring, normalized_pattern, [score | acc])
 
       _ ->

@@ -34,7 +34,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleAttributeTest do
         end
         ]
         |> index()
-      assert latter_attribute.subject == "Root@callback"
+
+      assert latter_attribute.subject == "@callback"
     end
 
     test "finds multiple definitions of the same attribute" do
