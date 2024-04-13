@@ -1,16 +1,12 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
-  use ExUnit.Case, async: true
-
   alias Lexical.Document
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.ProjectNodeSupervisor
   alias Lexical.RemoteControl.Search
-  alias Lexical.RemoteControl.Search.Store.Backends
 
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.CodeSigil
   import Lexical.Test.CursorSupport
-  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
   import Lexical.Test.RangeSupport
 
@@ -47,32 +43,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
   setup_all do
     project = project(:navigations)
+    start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
     {:ok, _} = start_supervised({ProjectNodeSupervisor, project})
     {:ok, _, _} = RemoteControl.start_link(project)
 
     RemoteControl.Api.register_listener(project, self(), [:all])
     RemoteControl.Api.schedule_compile(project, true)
+
     assert_receive project_compiled(), 5000
-
-    # ETS
-    Backends.Ets.destroy_all(project)
-    RemoteControl.set_project(project)
-
-    start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
-
-    start_supervised!(RemoteControl.Dispatch)
-    start_supervised!(Backends.Ets)
-
-    start_supervised!(
-      {Search.Store, [project, fn _ -> {:ok, []} end, fn _, _ -> {:ok, [], []} end, Backends.Ets]}
-    )
-
-    Search.Store.enable()
-    assert_eventually Search.Store.loaded?(), 1500
-
-    on_exit(fn ->
-      Backends.Ets.destroy_all(project)
-    end)
+    assert_receive project_index_ready(), 5000
 
     %{project: project}
   end
@@ -402,7 +381,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   defp definition(project, code, referenced_uri) do
     with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
-         :ok <- index(referenced_uri),
+         :ok <- index(project, referenced_uri),
          {:ok, location} <-
            RemoteControl.Api.definition(project, document, position) do
       if is_list(location) do
@@ -413,11 +392,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
-  defp index(referenced_uri) do
+  defp index(project, referenced_uri) do
     with {:ok, document} <- Document.Store.fetch(referenced_uri),
          {:ok, entries} <-
            Search.Indexer.Source.index(document.path, Document.to_string(document)) do
-      Search.Store.replace(entries)
+      RemoteControl.call(project, Search.Store, :replace, [entries])
     end
   end
 end
