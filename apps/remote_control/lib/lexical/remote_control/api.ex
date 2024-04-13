@@ -29,15 +29,6 @@ defmodule Lexical.RemoteControl.Api do
     end
   end
 
-  @spec mark_rename_file_closed(Project.t(), Lexical.uri()) :: :ok
-  def mark_rename_file_closed(%Project{} = project, uri) do
-    if rename_running?(project) do
-      RemoteControl.call(project, Commands.Rename, :mark_closed, [uri])
-    else
-      :ok
-    end
-  end
-
   defp rename_running?(%Project{} = project) do
     RemoteControl.call(project, Commands.Rename, :in_progress?, [])
   end

@@ -26,13 +26,6 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       %__MODULE__{state | uri_with_operation_counts: new_uri_with_operation_counts}
     end
 
-    def mark_closed(%__MODULE__{} = state, uri) do
-      new_uri_with_operation_counts =
-        delete_key_or_reduce_counts(state.uri_with_operation_counts, uri)
-
-      %__MODULE__{state | uri_with_operation_counts: new_uri_with_operation_counts}
-    end
-
     def in_progress?(%__MODULE__{} = state) do
       state.uri_with_operation_counts != %{}
     end
@@ -66,13 +59,6 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
   def mark_changed(uri) do
     GenServer.cast(__MODULE__, {:mark_changed, uri})
-  end
-
-  @doc """
-  When a rename is completed, the old file will be closed.
-  """
-  def mark_closed(uri) do
-    GenServer.cast(__MODULE__, {:mark_closed, uri})
   end
 
   @doc """

@@ -16,11 +16,10 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
 
   test "it should mark the `in_progress` as false when a rename is done" do
     file_uri = "file://file.ex"
-    Rename.set_rename_progress(%{file_uri => 3})
+    Rename.set_rename_progress(%{file_uri => 2})
 
     Rename.mark_changed(file_uri)
     Rename.mark_saved(file_uri)
-    Rename.mark_closed(file_uri)
 
     refute Rename.in_progress?()
   end

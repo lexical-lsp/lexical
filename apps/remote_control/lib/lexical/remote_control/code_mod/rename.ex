@@ -34,12 +34,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
         # first operation is for `DidChange` in the old file,
-        # second operation is for `DidClose` in the old file
         # Note: `DidSave` won't be received for the old file
-        # third operation is for `DidSave` in the new file
-        [{rename_file.old_uri, 2}, {rename_file.new_uri, 1}]
+        # second operation is for `DidSave` in the new file
+        [{rename_file.old_uri, 1}, {rename_file.new_uri, 1}]
       else
-        [{document.uri, 3}]
+        [{document.uri, 2}]
       end
     end)
     |> Map.new()
@@ -51,8 +50,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
       if rename_file do
         # first operation is for `DidChange`
         # second operation is for `DidSave`
-        # third operation is for `DidClose`
-        [{document.uri, 3}]
+        [{document.uri, 2}]
       else
         # when the file is not renamed, we'll only received `DidChange` for the old file
         [{document.uri, 1}]

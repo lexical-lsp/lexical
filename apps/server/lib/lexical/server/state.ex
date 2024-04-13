@@ -196,7 +196,6 @@ defmodule Lexical.Server.State do
 
     case Document.Store.close(uri) do
       :ok ->
-        Api.mark_rename_file_closed(state.configuration.project, uri)
         {:ok, state}
 
       error ->
