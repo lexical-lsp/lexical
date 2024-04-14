@@ -28,7 +28,7 @@ defmodule Lexical.RemoteControl.Build do
 
   def compile_document(%Project{} = project, %Document{} = document) do
     with false <- Path.absname(document.path) == "mix.exs",
-         false <- HEEx.recognizes?(document.language_id) do
+         false <- HEEx.recognizes?(document) do
       RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, document}])
     end
 
@@ -38,7 +38,7 @@ defmodule Lexical.RemoteControl.Build do
   # this is for testing
   def force_compile_document(%Project{} = project, %Document{} = document) do
     with false <- Path.absname(document.path) == "mix.exs",
-         false <- HEEx.recognizes?(document.language_id) do
+         false <- HEEx.recognizes?(document) do
       RemoteControl.call(project, GenServer, :call, [
         __MODULE__,
         {:force_compile_file, document}
