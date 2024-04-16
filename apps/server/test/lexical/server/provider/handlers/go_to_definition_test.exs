@@ -56,12 +56,34 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   describe "go to definition" do
     setup [:with_referenced_file]
 
-    test "find the function defintion", %{project: project, uri: referenced_uri} do
+    test "finds user-defined functions", %{project: project, uri: referenced_uri} do
       uses_file_path = file_path(project, Path.join("lib", "uses.ex"))
       {:ok, request} = build_request(uses_file_path, 4, 17)
 
       {:reply, %{result: %Location{} = location}} = handle(request, project)
       assert Location.uri(location) == referenced_uri
+    end
+
+    test "finds user-defined modules", %{project: project, uri: referenced_uri} do
+      uses_file_path = file_path(project, Path.join("lib", "uses.ex"))
+      {:ok, request} = build_request(uses_file_path, 4, 4)
+
+      {:reply, %{result: %Location{} = location}} = handle(request, project)
+      assert Location.uri(location) == referenced_uri
+    end
+
+    test "does not find built-in functions", %{project: project} do
+      uses_file_path = file_path(project, Path.join("lib", "uses.ex"))
+      {:ok, request} = build_request(uses_file_path, 8, 7)
+
+      {:reply, %{result: nil}} = handle(request, project)
+    end
+
+    test "does not find built-in modules", %{project: project} do
+      uses_file_path = file_path(project, Path.join("lib", "uses.ex"))
+      {:ok, request} = build_request(uses_file_path, 8, 4)
+
+      {:reply, %{result: nil}} = handle(request, project)
     end
   end
 end
