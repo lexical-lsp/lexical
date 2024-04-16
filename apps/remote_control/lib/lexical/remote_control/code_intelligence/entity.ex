@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   require Sourceror.Identifier
 
   @type resolved ::
-          {:module, module()}
+          {:module, module() | nil}
           | {:struct, module()}
           | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
           | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
@@ -80,7 +80,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
     case Ast.path_at(analysis, position) do
       {:ok, [{^maybe_fun, _, nil} = local, {def, _, [local | _]} | _]}
-      when def in [:def, :defp] ->
+      when def in [:def, :defp, :defmacro, :defmacrop] ->
         # This case handles resolving calls that come from zero-arg definitions in
         # a module, like hovering in `def my_fun| do`
         {:ok, module} = RemoteControl.Analyzer.current_module(analysis, position)
@@ -141,7 +141,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       {:ok, {:call, module, fun, arity}, node_range}
     else
       _ ->
-        {:ok, module} = RemoteControl.Analyzer.current_module(analysis, position)
+        module = current_module(analysis, position)
         {:ok, {:call, module, fun, 0}, node_range}
     end
   end
@@ -154,7 +154,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   end
 
   defp resolve({:module_attribute, attr_name}, node_range, analysis, position) do
-    {:ok, current_module} = RemoteControl.Analyzer.current_module(analysis, position)
+    current_module = current_module(analysis, position)
 
     {:ok, {:module_attribute, current_module, List.to_atom(attr_name)}, node_range}
   end
@@ -186,8 +186,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve_module(charlist, {{line, column}, {line, _}}, analysis, %Position{} = position) do
     module_before_cursor = module_before_position(charlist, column, position)
 
-    maybe_prepended =
-      maybe_prepend_phoenix_scope_module(module_before_cursor, analysis, position)
+    maybe_prepended = maybe_prepend_phoenix_scope_module(module_before_cursor, analysis, position)
 
     with {:ok, module} <- expand_alias(maybe_prepended, analysis, position) do
       end_column = column + String.length(module_before_cursor)
@@ -457,5 +456,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp function_exists?(module, function, arity) do
     # Wrap the `function_exported?` from `Kernel` to simplify testing.
     function_exported?(module, function, arity)
+  end
+
+  defp current_module(%Analysis{} = analysis, %Position{} = position) do
+    case RemoteControl.Analyzer.current_module(analysis, position) do
+      {:ok, module} -> module
+      _ -> nil
+    end
   end
 end
