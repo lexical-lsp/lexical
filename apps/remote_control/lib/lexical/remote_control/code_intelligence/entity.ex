@@ -12,12 +12,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   require Logger
   require Sourceror.Identifier
 
+  @type maybe_module :: module() | nil
   @type resolved ::
-          {:module, module() | nil}
-          | {:struct, module()}
-          | {:call, module(), fun_name :: atom(), arity :: non_neg_integer()}
-          | {:type, module(), type_name :: atom(), arity :: non_neg_integer()}
-          | {:module_attribute, container_module :: module(), attribut_name :: atom()}
+          {:module, maybe_module()}
+          | {:struct, maybe_module()}
+          | {:call, maybe_module(), fun_name :: atom(), arity :: non_neg_integer()}
+          | {:type, maybe_module(), type_name :: atom(), arity :: non_neg_integer()}
+          | {:module_attribute, container_module :: maybe_module(), attribut_name :: atom()}
           | {:variable, variable_name :: atom()}
 
   defguardp is_call(form) when Sourceror.Identifier.is_call(form) and elem(form, 0) != :.
