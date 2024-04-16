@@ -58,7 +58,7 @@ defmodule Lexical.Ast.Detection.Alias do
 
     case result do
       b when is_boolean(b) -> b
-      _ -> false
+      :eol -> false
     end
   end
 end

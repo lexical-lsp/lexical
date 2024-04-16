@@ -151,7 +151,6 @@ defmodule Lexical.Ast.Tokens do
       Enum.reduce(interpolations, {{1, 1}, []}, fn
         literal, {{line, column}, acc} when is_binary(literal) ->
           end_pos = {line, column + String.length(literal)}
-
           range = {{line, column}, end_pos}
           {end_pos, [{:literal, literal, range} | acc]}
 
