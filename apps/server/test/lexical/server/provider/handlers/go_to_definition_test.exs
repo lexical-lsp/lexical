@@ -15,17 +15,20 @@ defmodule Lexical.Server.Provider.Handlers.GoToDefinitionTest do
   use ExUnit.Case, async: false
 
   setup_all do
-    start_supervised!(Server.Application.document_store_child_spec())
     project = project(:navigations)
 
-    {:ok, _} = start_supervised({DynamicSupervisor, Server.Project.Supervisor.options()})
+    start_supervised!(Server.Application.document_store_child_spec())
+    start_supervised!({DynamicSupervisor, Server.Project.Supervisor.options()})
+    start_supervised!({Server.Project.Supervisor, project})
 
-    {:ok, _} = start_supervised({Server.Project.Supervisor, project})
+    RemoteControl.Api.register_listener(project, self(), [
+      project_compiled(),
+      project_index_ready()
+    ])
 
-    RemoteControl.Api.register_listener(project, self(), [project_compiled()])
     RemoteControl.Api.schedule_compile(project, true)
-
     assert_receive project_compiled(), 5000
+    assert_receive project_index_ready(), 5000
 
     {:ok, project: project}
   end
