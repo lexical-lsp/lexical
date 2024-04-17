@@ -82,6 +82,12 @@ defmodule Lexical.Protocol.Requests do
     defrequest "textDocument/documentSymbol", Types.Document.Symbol.Params
   end
 
+  defmodule WorkspaceSymbol do
+    use Proto
+
+    defrequest "workspace/symbol", Types.Workspace.Symbol.Params
+  end
+
   # Server -> Client requests
 
   defmodule RegisterCapability do

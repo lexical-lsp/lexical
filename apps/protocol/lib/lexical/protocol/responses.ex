@@ -56,6 +56,12 @@ defmodule Lexical.Protocol.Responses do
     defresponse optional(list_of(Types.Document.Symbol))
   end
 
+  defmodule WorkspaceSymbol do
+    use Proto
+
+    defresponse optional(list_of(Types.Workspace.Symbol))
+  end
+
   defmodule Shutdown do
     use Proto
     # yeah, this is odd... it has no params

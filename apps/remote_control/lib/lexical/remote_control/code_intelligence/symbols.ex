@@ -1,6 +1,7 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
   alias Lexical.Document
   alias Lexical.RemoteControl.CodeIntelligence.Symbols
+  alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Indexer
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Indexer.Extractors
@@ -28,6 +29,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
 
     definitions = Enum.filter(entries, &(&1.subtype == :definition))
     to_symbols(document, definitions)
+  end
+
+  def for_workspace(query) do
+    query
+    |> Search.Store.fuzzy([])
+    |> Enum.map(&Symbols.Workspace.from_entry/1)
   end
 
   defp to_symbols(%Document{} = document, entries) do

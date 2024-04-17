@@ -44,7 +44,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
 
       assert protocol.type == :protocol_implementation
       assert protocol.subtype == :definition
-      assert protocol.subject == Something.Atom
+      assert protocol.subject == Something
 
       expected_block =
         ~q[
@@ -74,7 +74,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
 
     assert protocol.type == :protocol_implementation
     assert protocol.subtype == :definition
-    assert protocol.subject == Something.Atom
+    assert protocol.subject == Something
 
     expected_block = ~q[
       «defimpl Something, for: Atom do
@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
 
     assert protocol_impl_def.type == :protocol_implementation
     assert protocol_impl_def.subtype == :definition
-    assert protocol_impl_def.subject == Protocol.Target
+    assert protocol_impl_def.subject == Protocol
     assert decorate(doc, protocol_impl_def.range) =~ "«defimpl Protocol, for: Target do»"
     assert decorate(doc, protocol_impl_def.block_range) =~ expected_block
 

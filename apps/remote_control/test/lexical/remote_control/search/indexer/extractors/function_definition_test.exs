@@ -147,6 +147,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert expected == extract(code, multi_line.range)
     end
 
+    test "finds functions defined in protocol implementations" do
+      {:ok, [function], doc} =
+        ~q[
+          defimpl MyProtocol, for: Structs.Mystruct do
+            def do_proto(a, b) do
+              a + b
+            end
+          end
+        ]
+        |> index_functions()
+
+      assert function.type == :public_function
+      assert function.subject == "MyProtocol.Structs.Mystruct.do_proto/2"
+      assert "do_proto(a, b)" = extract(doc, function.range)
+      assert decorate(doc, function.block_range) =~ "«def do_proto(a, b) do\n    a + b\n  end»"
+    end
+
     test "skips public functions defined in quote blocks" do
       code =
         ~q[

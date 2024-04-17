@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def replace(%__MODULE__{} = state, entries) do
     with :ok <- state.backend.replace_all(entries),
          :ok <- maybe_sync(state) do
-      {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_entries(entries)}}
+      {:ok, %__MODULE__{state | fuzzy: Fuzzy.from_backend(state.backend)}}
     end
   end
 
@@ -231,7 +231,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   end
 
   defp initialize_fuzzy(%__MODULE__{} = state) do
-    fuzzy = Fuzzy.from_entries([])
+    fuzzy = Fuzzy.from_backend(state.backend)
 
     %__MODULE__{state | fuzzy: fuzzy}
   end

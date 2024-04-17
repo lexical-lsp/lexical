@@ -1,5 +1,17 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Entry do
-  @type entry_type :: :module
+  @type entry_type ::
+          :ex_unit_describe
+          | :ex_unit_test
+          | :function
+          | :module
+          | :module_attribute
+          | :private_function
+          | :protocol
+          | :protocol_implementation
+          | :public_function
+          | :struct
+          | :variable
+
   @type subject :: String.t()
   @type entry_subtype :: :reference | :definition
   @type version :: String.t()

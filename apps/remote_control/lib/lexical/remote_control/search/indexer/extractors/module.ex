@@ -67,11 +67,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
       ) do
     %Block{} = block = Reducer.current_block(reducer)
 
-    with {:ok, aliased_module} <- resolve_alias(reducer, module_name),
+    with {:ok, protocol_module} <- resolve_alias(reducer, module_name),
          {:ok, for_target} <- resolve_for_block(reducer, for_block) do
-      protocol_module = Module.concat(aliased_module, for_target)
-
       detail_range = defimpl_range(reducer, defimpl_ast)
+      implemented_module = Module.concat(protocol_module, for_target)
 
       implementation_entry =
         Entry.block_definition(
@@ -81,10 +80,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           :protocol_implementation,
           block_range(reducer.analysis.document, defimpl_ast),
           detail_range,
-          Application.get_application(aliased_module)
+          Application.get_application(protocol_module)
         )
 
-      module_entry = Entry.copy(implementation_entry, type: :module)
+      module_entry =
+        Entry.copy(implementation_entry,
+          subject: Subject.module(implemented_module),
+          type: :module
+        )
+
       {:ok, [implementation_entry, module_entry]}
     else
       _ ->

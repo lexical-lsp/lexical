@@ -31,7 +31,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   @type pattern :: String.t()
   @type preprocessed ::
           record(:subject, graphemes: tuple(), normalized: String.t())
-  @non_match_score -500
+  @non_match_score -5000
 
   @doc """
   Pre-processes a subject into separate parts that will be helpful during the search phase.
@@ -69,23 +69,54 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   def score(subject(normalized: normalized) = subject, pattern) do
-    %__MODULE__{} =
-      score =
-      normalized
-      |> do_score(normalize(pattern), %__MODULE__{})
-      |> Map.update!(:matched_character_positions, &Enum.reverse/1)
+    normalized_pattern = normalize(pattern)
 
-    {score.match?, calculate_score(score, subject, pattern)}
+    case collect_scores(normalized, normalized_pattern) do
+      [] ->
+        {false, @non_match_score}
+
+      elems ->
+        max_score =
+          elems
+          |> Enum.map(&calculate_score(&1, subject, pattern))
+          |> Enum.max()
+
+        {true, max_score}
+    end
+  end
+
+  defp collect_scores(normalized, normalized_pattern, acc \\ [])
+
+  defp collect_scores(normalized_subject, normalized_pattern, acc) do
+    # we collect scores because it's possible that a better match occurs later
+    # in the subject, and if we start peeling off characters greedily, we'll miss
+    # it. This is more expensive, but it's still pretty quick.
+
+    case do_score(normalized_subject, normalized_pattern, %__MODULE__{}) do
+      %__MODULE__{match?: true, matched_character_positions: [pos | _]} = score ->
+        subject_substring = String.slice(normalized_subject, (pos + 1)..-1//1)
+        collect_scores(subject_substring, normalized_pattern, [score | acc])
+
+      _ ->
+        acc
+    end
   end
 
   # out of pattern, we have a match.
   defp do_score(_, <<>>, %__MODULE__{} = score) do
-    %__MODULE__{score | match?: true}
+    %__MODULE__{
+      score
+      | match?: true,
+        matched_character_positions: Enum.reverse(score.matched_character_positions)
+    }
   end
 
   # we're out of subject, but we still have pattern, no match
   defp do_score(<<>>, _, %__MODULE__{} = score) do
-    score
+    %__MODULE__{
+      score
+      | matched_character_positions: Enum.reverse(score.matched_character_positions)
+    }
   end
 
   defp do_score(
@@ -120,45 +151,66 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   defp calculate_score(%__MODULE__{} = score, subject() = subject, pattern) do
-    subject(graphemes: graphemes) = subject
-    match_amount_boost = 0 - (tuple_size(graphemes) - length(score.matched_character_positions))
+    pattern_length = String.length(pattern)
+
+    {consecutive_count, consecutive_bonus} =
+      consecutive_match_bonus(score.matched_character_positions)
+
+    match_amount_boost = consecutive_count * pattern_length * 10
 
     [first_match_position | _] = score.matched_character_positions
 
-    pattern_length_boost = String.length(pattern)
-
-    consecutive_bonus = consecutive_match_bonus(score.matched_character_positions)
+    pattern_length_boost = pattern_length
 
     # penalize first matches further in the string by making them negative.
-    first_match_bonus = 0 - first_match_position
+    first_match_bonus = max(0 - first_match_position, 10)
 
     case_match_boost = case_match_boost(pattern, score.matched_character_positions, subject)
 
+    mismatched_penalty = mismatched_penalty(score.matched_character_positions)
+
     pattern_length_boost + consecutive_bonus + first_match_bonus + case_match_boost +
-      match_amount_boost
+      match_amount_boost - mismatched_penalty
   end
 
   defp normalize(string) do
     String.downcase(string)
   end
 
-  @consecutive_character_bonus 5
+  @consecutive_character_bonus 15
 
-  defp consecutive_match_bonus(matched_positions) do
+  def consecutive_match_bonus(matched_positions) do
     # This function checks for consecutive matched characters, and
     # makes matches with more consecutive matched characters worth more.
     # This means if I type En, it will match Enum more than it will match
     # Something
 
-    matched_positions
-    |> Enum.chunk_every(2, 1)
-    |> Enum.reduce(0, fn
-      [last, current], acc when current == last + 1 ->
-        acc + @consecutive_character_bonus
+    max_streak =
+      matched_positions
+      |> Enum.reduce([[]], fn
+        current, [[last | streak] | rest] when last == current - 1 ->
+          [[current, last | streak] | rest]
 
-      _, acc ->
-        acc
-    end)
+        current, acc ->
+          [[current] | acc]
+      end)
+      |> Enum.max_by(&length/1)
+
+    streak_length = length(max_streak)
+    {streak_length, @consecutive_character_bonus * streak_length}
+  end
+
+  @mismatched_chracter_penalty 5
+
+  def mismatched_penalty(matched_positions) do
+    {penalty, _} =
+      matched_positions
+      |> Enum.reduce({0, -1}, fn matched_position, {penalty, last_match} ->
+        distance = matched_position - last_match
+        {penalty + distance * @mismatched_chracter_penalty, matched_position}
+      end)
+
+    penalty
   end
 
   defp case_match_boost(pattern, matched_positions, subject(graphemes: graphemes)) do

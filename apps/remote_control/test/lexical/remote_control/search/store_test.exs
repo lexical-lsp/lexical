@@ -104,8 +104,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 3, subject: Foo.Bar.Baz)
         ])
 
-        assert [entry1, entry3] =
-                 Store.prefix("Foo.Bar", type: :module, subtype: :definition)
+        assert [entry1, entry3] = Store.prefix("Foo.Bar", type: :module, subtype: :definition)
 
         assert entry1.subject == Foo.Bar
         assert entry3.subject == Foo.Bar.Baz
@@ -121,8 +120,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 3, subject: Bad.Times.Now)
         ])
 
-        assert [entry_1, entry_2] =
-                 Store.fuzzy("Foo.Bar.B", type: :module, subtype: :definition)
+        assert [entry_1, entry_2] = Store.fuzzy("Foo.Bar.B", type: :module, subtype: :definition)
 
         assert entry_1.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
         assert entry_2.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
@@ -177,14 +175,14 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         path = "/path/to/ex.ex"
 
         Store.replace([
-          reference(id: 1, subject: Should.Be.Replaced, path: path)
+          definition(id: 1, subject: Should.Be.Replaced, path: path)
         ])
 
         Store.update(path, [
-          reference(id: 2, subject: Present, path: path)
+          definition(id: 2, subject: Present, path: path)
         ])
 
-        assert_eventually [found] = Store.fuzzy("Pres", type: :module, subtype: :reference)
+        assert_eventually [found] = Store.fuzzy("Pres", type: :module, subtype: :definition)
         assert found.id == 2
         assert found.subject == Present
       end

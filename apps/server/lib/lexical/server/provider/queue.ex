@@ -136,9 +136,26 @@ defmodule Lexical.Server.Provider.Queue do
       Queue.Supervisor.run_in_task(handler)
     end
 
+    alias Lexical.Protocol.Types.ErrorCodes
+    require ErrorCodes
+
     defp write_reply(response) do
-      with {:ok, lsp_response} <- Convert.to_lsp(response) do
-        Transport.write(lsp_response)
+      case Convert.to_lsp(response) do
+        {:ok, lsp_response} ->
+          Transport.write(lsp_response)
+
+        error ->
+          Logger.critical(
+            "Failed to convert into a response #{inspect(error)}  #{inspect(response)}"
+          )
+
+          response_error =
+            ResponseError.new(
+              code: :internal_error,
+              message: "Failed to convert #{response.__struct__} due to #{inspect(error)}"
+            )
+
+          Transport.write(%{id: response.id, error: response_error})
       end
     end
   end

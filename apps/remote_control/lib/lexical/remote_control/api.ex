@@ -134,4 +134,8 @@ defmodule Lexical.RemoteControl.Api do
   def document_symbols(%Project{} = project, %Document{} = document) do
     RemoteControl.call(project, CodeIntelligence.Symbols, :for_document, [document])
   end
+
+  def workspace_symbols(%Project{} = project, query) do
+    RemoteControl.call(project, CodeIntelligence.Symbols, :for_workspace, [query])
+  end
 end
