@@ -41,9 +41,10 @@ defmodule Lexical.Ast.Detection.String do
   # a string literal
   defp do_detect({:__block__, _, [literal]} = ast, %Position{} = position)
        when is_binary(literal) do
-    ast
-    |> ast_to_range(0, -1)
-    |> Range.contains?(position)
+    case fetch_range(ast, 0, -1) do
+      {:ok, range} -> Range.contains?(range, position)
+      :error -> false
+    end
   end
 
   # a possible string with interpolation
@@ -55,9 +56,10 @@ defmodule Lexical.Ast.Detection.String do
   # String sigils
   defp do_detect({sigil, _, _} = ast, %Position{} = position)
        when sigil in @string_sigils do
-    ast
-    |> ast_to_range(0, 0)
-    |> Range.contains?(position)
+    case fetch_range(ast, 0, 0) do
+      {:ok, range} -> Range.contains?(range, position)
+      _ -> false
+    end
   end
 
   defp do_detect(_, _),
@@ -73,25 +75,35 @@ defmodule Lexical.Ast.Detection.String do
       |> Keyword.get(:delimiter, "\"")
       |> String.length()
 
-    string_range = ast_to_range(ast, delimiter_length, -1)
-    interpolation_ranges = collect_interpolation_ranges(interpolations)
-
-    Range.contains?(string_range, position) and
-      not Enum.any?(interpolation_ranges, &Range.contains?(&1, position))
+    with {:ok, string_range} <- fetch_range(ast, delimiter_length, -1),
+         {:ok, interpolation_ranges} <- collect_interpolation_ranges(interpolations) do
+      Range.contains?(string_range, position) and
+        not Enum.any?(interpolation_ranges, &Range.contains?(&1, position))
+    else
+      _ ->
+        false
+    end
   end
 
   defp collect_interpolation_ranges(interpolations) do
-    {_, acc} =
-      Macro.prewalk(interpolations, [], fn
-        {:"::", _, _} = interpolation, acc ->
-          range = ast_to_range(interpolation, 1, -1)
+    {_, result} =
+      Macro.prewalk(interpolations, {:ok, []}, fn
+        ast, :error ->
+          {ast, :error}
 
-          {interpolation, [range | acc]}
+        {:"::", _, _} = interpolation, {:ok, acc} ->
+          case fetch_range(interpolation, 1, -1) do
+            {:ok, range} ->
+              {interpolation, {:ok, [range | acc]}}
+
+            :error ->
+              {interpolation, :error}
+          end
 
         ast, acc ->
           {ast, acc}
       end)
 
-    acc
+    result
   end
 end

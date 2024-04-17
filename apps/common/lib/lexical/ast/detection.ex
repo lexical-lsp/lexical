@@ -66,18 +66,24 @@ defmodule Lexical.Ast.Detection do
     end)
   end
 
-  def ast_to_range(ast) do
-    ast_to_range(ast, 0, 0)
+  def fetch_range(ast) do
+    fetch_range(ast, 0, 0)
   end
 
-  def ast_to_range(ast, start_offset, end_offset) do
-    %{start: [line: start_line, column: start_col], end: [line: end_line, column: end_col]} =
-      Sourceror.get_range(ast)
+  def fetch_range(ast, start_offset, end_offset) do
+    case Sourceror.get_range(ast) do
+      %{start: [line: start_line, column: start_col], end: [line: end_line, column: end_col]} ->
+        range =
+          Range.new(
+            %Position{line: start_line, character: start_col + start_offset},
+            %Position{line: end_line, character: end_col + end_offset}
+          )
 
-    Range.new(
-      %Position{line: start_line, character: start_col + start_offset},
-      %Position{line: end_line, character: end_col + end_offset}
-    )
+        {:ok, range}
+
+      nil ->
+        :error
+    end
   end
 
   defp cursor_in_range?(position, metadata) do
