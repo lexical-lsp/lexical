@@ -695,6 +695,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert {:ok, {:call, Parent, :local_call, 1}, resolved_range} = resolve(code)
       assert resolved_range =~ ~S[   |> «local_call»()]
     end
+
+    test "returns a nil module when outside of a module" do
+      code = ~q[
+        local_call|()
+      ]
+      assert {:ok, {:call, nil, :local_call, 0}, resolved_range} = resolve(code)
+      assert resolved_range =~ ~S[«local_call»()]
+    end
   end
 
   describe "imported call" do
@@ -842,6 +850,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
       assert {:ok, {:module_attribute, Parent, :foo}, resolved_range} = resolve(code)
       assert resolved_range =~ "%{foo: «@foo»}"
+    end
+
+    test "returns nil module you're not in a module context" do
+      code = ~q[
+       @fo|o 3
+      ]
+
+      assert {:ok, {:module_attribute, nil, :foo}, resolved_range} = resolve(code)
+      assert resolved_range =~ "«@foo» 3"
     end
   end
 
