@@ -144,6 +144,9 @@ defmodule Lexical.Ast.Env do
       :spec ->
         Detection.Spec.detected?(analysis, position)
 
+      :string ->
+        Detection.String.detected?(analysis, position)
+
       :struct_fields ->
         Detection.StructFields.detected?(analysis, position)
 

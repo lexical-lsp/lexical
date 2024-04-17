@@ -23,37 +23,42 @@ defmodule Lexical.Ast.Detection.Alias do
   """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
-    analysis.document
-    |> Tokens.prefix_stream(position)
-    |> Stream.with_index()
-    |> Enum.to_list()
-    |> Enum.reduce_while(false, fn
-      {{:curly, :"{", _}, _index}, :eol ->
-        {:cont, false}
+    result =
+      analysis.document
+      |> Tokens.prefix_stream(position)
+      |> Stream.with_index()
+      |> Enum.reduce_while(false, fn
+        {{:curly, :"{", _}, _index}, :eol ->
+          {:cont, false}
 
-      {{:comma, _, _}, _index}, :eol ->
-        {:cont, false}
+        {{:comma, _, _}, _index}, :eol ->
+          {:cont, false}
 
-      {{:eol, _, _}, _index}, _acc ->
-        {:cont, :eol}
+        {{:eol, _, _}, _index}, _acc ->
+          {:cont, :eol}
 
-      {{_, _, _}, _}, :eol ->
-        {:halt, false}
+        {{_, _, _}, _}, :eol ->
+          {:halt, false}
 
-      {{:curly, :"}", _}, _index}, _ ->
-        {:halt, false}
+        {{:curly, :"}", _}, _index}, _ ->
+          {:halt, false}
 
-      {{:identifier, ~c"alias", _}, 0}, _ ->
-        # there is nothing after the alias directive, so we're not
-        # inside the context *yet*
+        {{:identifier, ~c"alias", _}, 0}, _ ->
+          # there is nothing after the alias directive, so we're not
+          # inside the context *yet*
 
-        {:halt, false}
+          {:halt, false}
 
-      {{:identifier, ~c"alias", _}, _index}, _ ->
-        {:halt, true}
+        {{:identifier, ~c"alias", _}, _index}, _ ->
+          {:halt, true}
 
-      _, _ ->
-        {:cont, false}
-    end)
+        _, _ ->
+          {:cont, false}
+      end)
+
+    case result do
+      b when is_boolean(b) -> b
+      :eol -> false
+    end
   end
 end

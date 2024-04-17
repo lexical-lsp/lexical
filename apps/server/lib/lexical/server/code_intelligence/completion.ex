@@ -80,7 +80,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   end
 
   defp should_emit_completions?(%Env{} = env) do
-    if inside_comment?(env) do
+    if inside_comment?(env) or inside_string?(env) do
       false
     else
       always_emit_completions?() or has_meaningful_completions?(env)
@@ -115,6 +115,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
   defp inside_comment?(env) do
     Env.in_context?(env, :comment)
+  end
+
+  defp inside_string?(env) do
+    Env.in_context?(env, :string)
   end
 
   defp has_surround_context?(fragment, line, column)

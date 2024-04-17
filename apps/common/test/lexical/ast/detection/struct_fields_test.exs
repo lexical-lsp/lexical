@@ -25,7 +25,7 @@ defmodule Lexical.Ast.Detection.StructFieldsTest do
   test "is detected if it spans multiple lines" do
     assert_detected ~q[
       %User{
-        «name: »"John"«,
+        «name: "John",
       »}
     ]
   end

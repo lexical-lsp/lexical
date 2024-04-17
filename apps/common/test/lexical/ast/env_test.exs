@@ -47,7 +47,12 @@ defmodule Lexical.Ast.EnvTest do
         |> new_env()
         |> prefix_tokens(1)
 
-      assert [{:interpolated_string, ["hello" | _], _}] = tokens
+      assert [{:interpolated_string, interpolations, {1, 1}}] = tokens
+
+      assert interpolations == [
+               {:literal, "hello", {{1, 1}, {1, 6}}},
+               {:interpolation, [{:identifier, {1, 9, 'a'}, :a}], {{1, 9}, {1, 10}}}
+             ]
     end
 
     test "works with maps with atom keys" do
@@ -167,7 +172,7 @@ defmodule Lexical.Ast.EnvTest do
 
   describe "in_context?/2" do
     test "can detect module attributes" do
-      env = new_env("@my_attr 3|")
+      env = new_env("@my_attr 3")
 
       assert in_context?(env, {:module_attribute, :my_attr})
       refute in_context?(env, {:module_attribute, :other})
@@ -221,6 +226,11 @@ defmodule Lexical.Ast.EnvTest do
     test "can detect macro callbacks" do
       env = new_env("@macrocallback write_code(integer(), map(|)) :: any()")
       assert in_context?(env, :macrocallback)
+    end
+
+    test "can detect strings" do
+      env = new_env(~s/var = "in |a string"/)
+      assert in_context?(env, :string)
     end
   end
 end

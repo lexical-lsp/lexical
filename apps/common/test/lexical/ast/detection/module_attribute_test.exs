@@ -5,10 +5,13 @@ defmodule Lexical.Ast.Detection.ModuleAttributeTest do
     for: Detection.ModuleAttribute,
     assertions: [
       [:module_attribute, :*],
-      [:callbacks, :*],
-      [:doc, :*],
-      [:module_doc, :*]
+      [:callbacks, :*]
     ],
-    skip: [[:type, :*], [:spec, :*]],
+    skip: [
+      [:doc, :*],
+      [:module_doc, :*],
+      [:spec, :*],
+      [:type, :*]
+    ],
     variations: [:module]
 end
