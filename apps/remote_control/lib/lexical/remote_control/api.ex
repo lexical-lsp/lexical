@@ -13,28 +13,16 @@ defmodule Lexical.RemoteControl.Api do
 
   require Logger
 
+  defdelegate schedule_compile(project, force?), to: Build
+  defdelegate compile_document(project, document), to: Build
+
   def maybe_schedule_compile(project, triggered_file_uri) do
-    if rename_running?(project) do
-      RemoteControl.call(project, Commands.Rename, :mark_saved, [triggered_file_uri])
-    else
-      schedule_compile(project, false)
-    end
+    RemoteControl.call(project, Build, :maybe_schedule_compile, [triggered_file_uri])
   end
 
   def maybe_compile_document(project, document) do
-    if rename_running?(project) do
-      RemoteControl.call(project, Commands.Rename, :mark_changed, [document.uri])
-    else
-      compile_document(project, document)
-    end
+    RemoteControl.call(project, Build, :maybe_compile_document, [project, document])
   end
-
-  defp rename_running?(%Project{} = project) do
-    RemoteControl.call(project, Commands.Rename, :in_progress?, [])
-  end
-
-  defdelegate schedule_compile(project, force?), to: Build
-  defdelegate compile_document(project, document), to: Build
 
   def expand_alias(
         %Project{} = project,

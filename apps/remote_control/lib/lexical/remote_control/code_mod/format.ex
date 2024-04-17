@@ -23,7 +23,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   defp ensure_not_renaming do
     if Rename.in_progress?() do
-      {:error, "Cannot format while renaming"}
+      {:error, :rename_in_progress}
     else
       :ok
     end

@@ -53,6 +53,7 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     {:ok, state}
   end
 
+  @spec set_rename_progress(%{Lexical.uri() => integer()}) :: :ok
   def set_rename_progress(uri_with_operation_counts) do
     GenServer.cast(__MODULE__, {:set_rename_progress, uri_with_operation_counts})
   end
@@ -61,9 +62,6 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     GenServer.cast(__MODULE__, {:mark_changed, uri})
   end
 
-  @doc """
-  When a rename is completed, the new file will be saved.
-  """
   def mark_saved(uri) do
     GenServer.cast(__MODULE__, {:mark_saved, uri})
   end

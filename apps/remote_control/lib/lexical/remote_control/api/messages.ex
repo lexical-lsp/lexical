@@ -81,6 +81,12 @@ defmodule Lexical.RemoteControl.Api.Messages do
             open?: boolean()
           )
 
+  @type file_opened ::
+          record(:file_opened,
+            uri: Lexical.uri(),
+            version: non_neg_integer()
+          )
+
   @type file_compile_requested ::
           record(:file_compile_requested,
             project: Lexical.Project.t(),
