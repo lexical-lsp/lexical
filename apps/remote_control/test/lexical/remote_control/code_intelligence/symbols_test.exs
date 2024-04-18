@@ -186,7 +186,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
 
       assert [function] = module.children
       assert decorate(doc, function.detail_range) =~ " defp «my_fn» do"
-      assert function.name == "my_fn"
+      assert function.name == "defp my_fn"
     end
 
     test "struct definitions are found" do
@@ -240,7 +240,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       [fun] = module.children
       assert decorate(doc, fun.detail_range) =~ "  defp «my_fn» do"
       assert fun.type == :private_function
-      assert fun.name == "my_fn"
+      assert fun.name == "defp my_fn"
       assert [] == fun.children
     end
 
@@ -257,7 +257,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       [fun] = module.children
       assert decorate(doc, fun.detail_range) =~ "  def «my_fun(x) when x > 0» do"
       assert fun.type == :public_function
-      assert fun.name == "my_fun(x) when x > 0"
+      assert fun.name == "def my_fun(x) when x > 0"
       assert [] == fun.children
     end
 

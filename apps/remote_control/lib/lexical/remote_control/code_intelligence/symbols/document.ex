@@ -24,19 +24,20 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
     end
   end
 
-  @def_regex ~r/def\w*\s+/
   @do_regex ~r/\s*do\s*$/
 
   defp name_and_type(function, %Entry{} = entry, %Document{} = document)
        when function in [:public_function, :private_function] do
     fragment = Document.fragment(document, entry.range.start, entry.range.end)
 
-    name =
-      fragment
-      |> String.replace(@def_regex, "")
-      |> String.replace(@do_regex, "")
+    prefix =
+      if function == :public_function do
+        "def "
+      else
+        "defp "
+      end
 
-    {name, function}
+    {prefix <> fragment, function}
   end
 
   @ignored_attributes ~w[spec doc moduledoc derive impl tag]
