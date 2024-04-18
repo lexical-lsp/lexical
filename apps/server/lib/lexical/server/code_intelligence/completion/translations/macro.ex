@@ -614,11 +614,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
           false
 
         element, {type, elements} ->
-          camelized =
-            element
-            |> Path.rootname()
-            |> String.split(".")
-            |> Enum.map_join(".", &Macro.camelize/1)
+          camelized = camelize_file_name(element)
 
           {type, [camelized | elements]}
       end)
@@ -632,9 +628,14 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
       false ->
         document.path
         |> Path.basename()
-        |> Path.rootname()
-        |> String.split(".")
-        |> Enum.map_join(".", &Macro.camelize/1)
+        |> camelize_file_name()
     end
+  end
+
+  defp camelize_file_name(file_name_with_extension) do
+    file_name_with_extension
+    |> Path.rootname()
+    |> String.split(".")
+    |> Enum.map_join(".", &Macro.camelize/1)
   end
 end
