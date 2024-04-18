@@ -189,6 +189,40 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
              """
     end
 
+    test "defmodule for filenames with multiple periods", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "/lib/path/to/my.module.test.ex")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert apply_completion(completion) == """
+             defmodule ${1:Path.To.My.Module.Test} do
+               $0
+             end\
+             """
+    end
+
+    test "defmodule for filenames with multiple periods in another path", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "/this/is/another/path/to/my.module.test.ex")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert apply_completion(completion) == """
+             defmodule ${1:My.Module.Test} do
+               $0
+             end\
+             """
+    end
+
     test "defprotocol only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project

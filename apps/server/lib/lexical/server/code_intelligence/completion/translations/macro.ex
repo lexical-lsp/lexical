@@ -617,7 +617,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
           camelized =
             element
             |> Path.rootname()
-            |> Macro.camelize()
+            |> String.split(".")
+            |> Enum.map_join(".", &Macro.camelize/1)
 
           {type, [camelized | elements]}
       end)
@@ -632,7 +633,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
         document.path
         |> Path.basename()
         |> Path.rootname()
-        |> Macro.camelize()
+        |> String.split(".")
+        |> Enum.map_join(".", &Macro.camelize/1)
     end
   end
 end
