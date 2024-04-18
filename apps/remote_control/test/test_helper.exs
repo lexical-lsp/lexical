@@ -11,8 +11,8 @@ ExUnit.configure(assert_receive_timeout: 1000)
 
 ExUnit.start(exclude: [:skip])
 
-# if Version.match?(System.version(), ">= 1.15.0") do
-#   Logger.configure(level: :none)
-# else
-#   Logger.remove_backend(:console)
-# end
+if Version.match?(System.version(), ">= 1.15.0") do
+  Logger.configure(level: :none)
+else
+  Logger.remove_backend(:console)
+end
