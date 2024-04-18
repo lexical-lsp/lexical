@@ -359,8 +359,26 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
         names
       end
 
-    fn mapped(application: app, subtype: subtype) ->
-      subtype == :definition and MapSet.member?(app_names, app)
+    # we do the path thing to ensure that
+    # we get a valid OS-specifc path component
+    # so we can do `String.contains?` on a path
+    deps_part =
+      [" ", "deps", " "]
+      |> Path.join()
+      |> String.trim()
+
+    fn
+      mapped(application: nil, subtype: :definition, grouping_key: path) ->
+        # if we don't have an app name, just make sure we're not
+        # in what looks like a deps directory
+
+        not String.contains?(path, deps_part)
+
+      mapped(application: app, subtype: :definition) ->
+        MapSet.member?(app_names, app)
+
+      _ ->
+        false
     end
   end
 end
