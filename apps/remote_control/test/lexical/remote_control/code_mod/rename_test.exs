@@ -377,6 +377,14 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert rename_file.new_uri == subject_uri(project, "lib/renamed.ex")
     end
 
+    test "it shouldn't rename file if just uppercased the module name" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo do
+        end
+        ] |> rename("FOO", "lib/foo.ex")
+    end
+
     test "succeeds when the path matching the `apps/*` convension", %{project: project} do
       {:ok, {_applied, rename_file}} =
         ~q[

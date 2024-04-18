@@ -48,7 +48,10 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
 
       new_path = Path.join([root_path, prefix, "#{suffix}#{extname}"])
       new_uri = Document.Path.ensure_uri(new_path)
-      Document.Changes.RenameFile.new(document.uri, new_uri)
+
+      if document.uri != new_uri do
+        Document.Changes.RenameFile.new(document.uri, new_uri)
+      end
     else
       _ -> nil
     end
