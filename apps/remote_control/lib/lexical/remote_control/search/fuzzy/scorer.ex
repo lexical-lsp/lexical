@@ -13,6 +13,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     2. Patterns that match more consecutive characters
     3. Patterns that match the beginning of the subject
     4. Patterns that match the case of the subject
+    5. Patterns that match after the last period
 
   Based loosely on https://medium.com/@Srekel/implementing-a-fuzzy-search-algorithm-for-the-debuginator-cacc349e6c55
   """
@@ -22,7 +23,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
   import Record
 
-  defrecord :subject, graphemes: nil, normalized: nil
+  defrecord :subject, graphemes: nil, normalized: nil, last_period_position: nil
 
   @typedoc "A match score. Higher numbers mean a more relevant match."
   @type score :: integer
@@ -45,7 +46,14 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
       |> String.graphemes()
       |> List.to_tuple()
 
-    subject(graphemes: graphemes, normalized: normalize(subject))
+    normalized = normalize(subject)
+    last_period = last_period_position(normalized)
+
+    subject(
+      graphemes: graphemes,
+      normalized: normalized,
+      last_period_position: last_period
+    )
   end
 
   def preprocess(subject) do
@@ -85,20 +93,25 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     end
   end
 
-  defp collect_scores(normalized, normalized_pattern, acc \\ [])
+  defp collect_scores(normalized, normalized_pattern, starting_index \\ 0, acc \\ [])
 
-  defp collect_scores(normalized_subject, normalized_pattern, acc) do
+  defp collect_scores(normalized_subject, normalized_pattern, starting_index, scores) do
     # we collect scores because it's possible that a better match occurs later
     # in the subject, and if we start peeling off characters greedily, we'll miss
     # it. This is more expensive, but it's still pretty quick.
 
-    case do_score(normalized_subject, normalized_pattern, %__MODULE__{}) do
+    initial_score = %__MODULE__{index: starting_index}
+
+    case do_score(normalized_subject, normalized_pattern, initial_score) do
       %__MODULE__{match?: true, matched_character_positions: [pos | _]} = score ->
-        subject_substring = String.slice(normalized_subject, (pos + 1)..-1//1)
-        collect_scores(subject_substring, normalized_pattern, [score | acc])
+        slice_start = pos + 1
+        next_index = starting_index + slice_start
+        subject_substring = String.slice(normalized_subject, slice_start..-1//1)
+        scores = [score | scores]
+        collect_scores(subject_substring, normalized_pattern, next_index, scores)
 
       _ ->
-        acc
+        scores
     end
   end
 
@@ -150,31 +163,52 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     @non_match_score
   end
 
-  defp calculate_score(%__MODULE__{} = score, subject() = subject, pattern) do
+  defp calculate_score(%__MODULE__{} = score, subject(graphemes: graphemes) = subject, pattern) do
     pattern_length = String.length(pattern)
 
     {consecutive_count, consecutive_bonus} =
       consecutive_match_bonus(score.matched_character_positions)
 
-    match_amount_boost = consecutive_count * pattern_length * 10
-
-    [first_match_position | _] = score.matched_character_positions
+    match_amount_boost = consecutive_count * pattern_length
 
     pattern_length_boost = pattern_length
 
-    # penalize first matches further in the string by making them negative.
-    first_match_bonus = max(0 - first_match_position, 10)
+    match_bonus = match_bonus(score, subject)
 
     case_match_boost = case_match_boost(pattern, score.matched_character_positions, subject)
 
     mismatched_penalty = mismatched_penalty(score.matched_character_positions)
 
-    pattern_length_boost + consecutive_bonus + first_match_bonus + case_match_boost +
-      match_amount_boost - mismatched_penalty
+    incompleteness_penalty = tuple_size(graphemes) - pattern_length
+
+    result =
+      pattern_length_boost + consecutive_bonus + match_bonus + case_match_boost +
+        match_amount_boost - mismatched_penalty - incompleteness_penalty
+
+    result
   end
 
   defp normalize(string) do
     String.downcase(string)
+  end
+
+  @last_period_boost 15
+  @max_match_bonus_boost 10
+  defp match_bonus(%__MODULE__{} = score, subject(last_period_position: nil)) do
+    # penalize first matches further in the string by making them negative.
+    [first_match_position | _] = score.matched_character_positions
+    max(0 - first_match_position, @max_match_bonus_boost)
+  end
+
+  defp match_bonus(%__MODULE__{} = score, subject(last_period_position: last_period)) do
+    [first_match_position | _] = score.matched_character_positions
+
+    if first_match_position == last_period + 1 do
+      @last_period_boost
+    else
+      # penalize first matches further in the string by making them negative.
+      max(0 - first_match_position, @max_match_bonus_boost)
+    end
   end
 
   @consecutive_character_bonus 15
@@ -205,9 +239,16 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   def mismatched_penalty(matched_positions) do
     {penalty, _} =
       matched_positions
-      |> Enum.reduce({0, -1}, fn matched_position, {penalty, last_match} ->
-        distance = matched_position - last_match
-        {penalty + distance * @mismatched_chracter_penalty, matched_position}
+      |> Enum.reduce({0, -1}, fn
+        matched_position, {0, _} ->
+          # only start counting the penalty after the first match,
+          # otherwise we will inadvertently penalize matches deeper in the string
+          {0, matched_position}
+
+        matched_position, {penalty, last_match} ->
+          distance = matched_position - last_match
+
+          {penalty + distance * @mismatched_chracter_penalty, matched_position}
       end)
 
     penalty
@@ -236,5 +277,19 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     <<c::utf8>> = elem(graphemes, position)
 
     c
+  end
+
+  defp last_period_position(string) do
+    last_period_position(string, 0, nil)
+  end
+
+  defp last_period_position(<<>>, _, position), do: position
+
+  defp last_period_position(<<".", rest::binary>>, position, _) do
+    last_period_position(rest, position + 1, position)
+  end
+
+  defp last_period_position(<<_::utf8, rest::binary>>, position, last_found) do
+    last_period_position(rest, position + 1, last_found)
   end
 end
