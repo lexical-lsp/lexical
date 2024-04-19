@@ -9,6 +9,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
+  require Logger
 
   @spec definition(Document.t(), Position.t()) :: {:ok, [Location.t()]} | {:error, String.t()}
   def definition(%Document{} = document, %Position{} = position) do
@@ -18,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp fetch_definition({type, entity}, %Analysis{} = _analysis, %Position{} = _position)
+  defp fetch_definition({type, entity}, %Analysis{} = analysis, %Position{} = position)
        when type in [:struct, :module] do
     module = Formats.module(entity)
 
@@ -32,7 +33,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
     case locations do
       [] ->
-        {:error, "No definition found for #{inspect(module)}"}
+        Logger.error("No definition found for #{inspect(module)} with Indexer.")
+        fall_back_to_elixir_sense(analysis, position)
 
       [location] ->
         {:ok, location}
@@ -43,6 +45,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   end
 
   defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
+    fall_back_to_elixir_sense(analysis, position)
+  end
+
+  defp fall_back_to_elixir_sense(%Analysis{} = analysis, %Position{} = position) do
     analysis.document
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
