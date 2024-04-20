@@ -33,8 +33,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
     case locations do
       [] ->
-        Logger.error("No definition found for #{inspect(module)} with Indexer.")
-        fall_back_to_elixir_sense(analysis, position)
+        Logger.info(
+          "No definition found for #{to_string(type)}: #{inspect(module)} with Indexer."
+        )
+
+        elixir_sense_definition(analysis, position)
 
       [location] ->
         {:ok, location}
@@ -45,10 +48,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   end
 
   defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
-    fall_back_to_elixir_sense(analysis, position)
+    elixir_sense_definition(analysis, position)
   end
 
-  defp fall_back_to_elixir_sense(%Analysis{} = analysis, %Position{} = position) do
+  defp elixir_sense_definition(%Analysis{} = analysis, %Position{} = position) do
     analysis.document
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
