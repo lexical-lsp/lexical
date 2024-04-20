@@ -6,39 +6,28 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   Therefore, we need this module to make some markings to determine whether it is currently in the process of renaming.
   """
   defmodule State do
-    defstruct uri_with_operation_counts: %{}
+    defstruct uri_with_expected_operation: %{}
 
-    def new(uri_with_operation_counts) do
-      %__MODULE__{uri_with_operation_counts: uri_with_operation_counts}
+    def new(uri_with_expected_operation) do
+      %__MODULE__{uri_with_expected_operation: uri_with_expected_operation}
     end
 
-    def mark_changed(%__MODULE__{} = state, uri) do
-      new_uri_with_operation_counts =
-        delete_key_or_reduce_counts(state.uri_with_operation_counts, uri)
+    def update_progress(%__MODULE__{} = state, uri, operation_message) do
+      new_uri_with_expected_operation =
+        maybe_pop_expected_operation(state.uri_with_expected_operation, uri, operation_message)
 
-      %__MODULE__{state | uri_with_operation_counts: new_uri_with_operation_counts}
-    end
-
-    def mark_saved(%__MODULE__{} = state, uri) do
-      new_uri_with_operation_counts =
-        delete_key_or_reduce_counts(state.uri_with_operation_counts, uri)
-
-      %__MODULE__{state | uri_with_operation_counts: new_uri_with_operation_counts}
+      %__MODULE__{state | uri_with_expected_operation: new_uri_with_expected_operation}
     end
 
     def in_progress?(%__MODULE__{} = state) do
-      state.uri_with_operation_counts != %{}
+      state.uri_with_expected_operation != %{}
     end
 
-    defp delete_key_or_reduce_counts(uri_with_operation_counts, uri) do
-      {_, new_map} =
-        Map.get_and_update(uri_with_operation_counts, uri, fn
-          nil -> :pop
-          current_counts when current_counts <= 1 -> :pop
-          current_counts -> {current_counts, current_counts - 1}
-        end)
-
-      new_map
+    def maybe_pop_expected_operation(uri_to_operation, uri, %operation{}) do
+      case uri_to_operation do
+        %{^uri => ^operation} -> Map.delete(uri_to_operation, uri)
+        _ -> uri_to_operation
+      end
     end
   end
 
@@ -53,17 +42,13 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     {:ok, state}
   end
 
-  @spec set_rename_progress(%{Lexical.uri() => integer()}) :: :ok
-  def set_rename_progress(uri_with_operation_counts) do
-    GenServer.cast(__MODULE__, {:set_rename_progress, uri_with_operation_counts})
+  @spec set_rename_progress(%{Lexical.uri() => atom()}) :: :ok
+  def set_rename_progress(uri_with_expected_operation) do
+    GenServer.cast(__MODULE__, {:set_rename_progress, uri_with_expected_operation})
   end
 
-  def mark_changed(uri) do
-    GenServer.cast(__MODULE__, {:mark_changed, uri})
-  end
-
-  def mark_saved(uri) do
-    GenServer.cast(__MODULE__, {:mark_saved, uri})
+  def update_progress(uri, operation_message) do
+    GenServer.cast(__MODULE__, {:update_progress, uri, operation_message})
   end
 
   def in_progress? do
@@ -76,26 +61,14 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   end
 
   @impl true
-  def handle_cast({:set_rename_progress, uri_with_operation_counts}, _state) do
-    new_state = State.new(uri_with_operation_counts)
+  def handle_cast({:set_rename_progress, uri_with_expected_operation}, _state) do
+    new_state = State.new(uri_with_expected_operation)
     {:noreply, new_state}
   end
 
   @impl true
-  def handle_cast({:mark_changed, uri}, %State{} = state) do
-    new_state = State.mark_changed(state, uri)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast({:mark_saved, uri}, %State{} = state) do
-    new_state = State.mark_saved(state, uri)
-    {:noreply, new_state}
-  end
-
-  @impl true
-  def handle_cast({:mark_closed, uri}, %State{} = state) do
-    new_state = State.mark_closed(state, uri)
+  def handle_cast({:update_progress, uri, message}, state) do
+    new_state = State.update_progress(state, uri, message)
     {:noreply, new_state}
   end
 end

@@ -3,7 +3,10 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.Protocol.Notifications.DidChange
+  alias Lexical.Protocol.Notifications.DidSave
   alias Lexical.RemoteControl.Commands
+
   alias __MODULE__
 
   @spec prepare(Analysis.t(), Position.t()) ::
@@ -25,35 +28,33 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
 
   defp set_rename_progress(document_changes_list, client_name) do
     client_name
-    |> uri_with_operation_counts(document_changes_list)
+    |> uri_with_expected_operation(document_changes_list)
     |> Commands.Rename.set_rename_progress()
   end
 
-  defp uri_with_operation_counts("Visual Studio Code", document_changes_list) do
+  defp uri_with_expected_operation(client_name, document_changes_list)
+       when client_name in ["Visual Studio Code", "emacs"] do
     document_changes_list
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
-        # first operation is for `DidChange` in the old file,
-        # Note: `DidSave` won't be received for the old file
-        # second operation is for `DidSave` in the new file
-        [{rename_file.old_uri, 1}, {rename_file.new_uri, 1}]
+        # when the file is renamed, we won't receive `DidSave` for the old file
+        [{rename_file.old_uri, DidChange}, {rename_file.new_uri, DidSave}]
       else
-        [{document.uri, 2}]
+        [{document.uri, DidSave}]
       end
     end)
     |> Map.new()
   end
 
-  defp uri_with_operation_counts(_, document_changes_list) do
+  defp uri_with_expected_operation(_, document_changes_list) do
     document_changes_list
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
-        # first operation is for `DidChange`
-        # second operation is for `DidSave`
-        [{document.uri, 2}]
+        [{document.uri, DidSave}]
       else
+        # Some editors do not directly save the file after renaming, such as *neovim*.
         # when the file is not renamed, we'll only received `DidChange` for the old file
-        [{document.uri, 1}]
+        [{document.uri, DidChange}]
       end
     end)
     |> Map.new()
