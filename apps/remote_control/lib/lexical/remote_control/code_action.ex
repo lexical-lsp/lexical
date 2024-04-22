@@ -25,7 +25,11 @@ defmodule Lexical.RemoteControl.CodeAction do
           uri: Lexical.uri()
         }
 
-  @handlers [Handlers.ReplaceRemoteFunction, Handlers.ReplaceWithUnderscore]
+  @handlers [
+    Handlers.ReplaceRemoteFunction,
+    Handlers.ReplaceWithUnderscore,
+    Handlers.OrganizeAliases
+  ]
 
   @spec new(Lexical.uri(), String.t(), code_action_kind(), Changes.t()) :: t()
   def new(uri, title, kind, changes) do
