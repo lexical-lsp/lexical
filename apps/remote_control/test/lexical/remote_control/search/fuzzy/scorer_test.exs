@@ -67,9 +67,14 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
       assert results == ~w(abcd axbxcxdx axxbxxcxxdxx axxxbxxxcxxxdxxx)
     end
 
-    test "patterns that match the case are boosted" do
-      results = score_and_sort(~w(stinky stinkY StiNkY STINKY), "STINKY")
-      assert results == ~w(STINKY StiNkY stinkY stinky)
+    test "patterns that match camel case are boosted" do
+      results =
+        score_and_sort(
+          ~w(lotsofcamelcase LotsofcamelCase LotsofCamelCase LotsOfCamelCase),
+          "LotsOfCamelCase"
+        )
+
+      assert results == ~w(LotsOfCamelCase LotsofCamelCase LotsofcamelCase lotsofcamelcase)
     end
 
     test "matches at the end of a module are boosted" do
@@ -80,6 +85,12 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
         )
 
       assert ["First.Second.Third" | _] = results
+    end
+
+    test "modules are boosted" do
+      results = score_and_sort(~w(create_user save_user Demo.Accounts.User), "User")
+
+      assert ["Demo.Accounts.User" | _] = results
     end
   end
 end

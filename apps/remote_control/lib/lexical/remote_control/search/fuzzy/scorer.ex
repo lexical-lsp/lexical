@@ -167,25 +167,20 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     pattern_length = String.length(pattern)
 
     {consecutive_count, consecutive_bonus} =
-      consecutive_match_bonus(score.matched_character_positions)
+      consecutive_match_boost(score.matched_character_positions)
 
     match_amount_boost = consecutive_count * pattern_length
 
-    pattern_length_boost = pattern_length
+    match_boost = match_boost(score, subject)
 
-    match_bonus = match_bonus(score, subject)
-
-    case_match_boost = case_match_boost(pattern, score.matched_character_positions, subject)
+    camel_case_boost = camel_case_boost(score.matched_character_positions, subject)
 
     mismatched_penalty = mismatched_penalty(score.matched_character_positions)
 
-    incompleteness_penalty = tuple_size(graphemes) - pattern_length
+    incompleteness_penalty = tuple_size(graphemes) - length(score.matched_character_positions)
 
-    result =
-      pattern_length_boost + consecutive_bonus + match_bonus + case_match_boost +
-        match_amount_boost - mismatched_penalty - incompleteness_penalty
-
-    result
+    consecutive_bonus + match_boost + camel_case_boost +
+      match_amount_boost - mismatched_penalty - incompleteness_penalty
   end
 
   defp normalize(string) do
@@ -193,27 +188,27 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   @last_period_boost 15
-  @max_match_bonus_boost 10
-  defp match_bonus(%__MODULE__{} = score, subject(last_period_position: nil)) do
+  @max_match_boost_boost 10
+  defp match_boost(%__MODULE__{} = score, subject(last_period_position: nil)) do
     # penalize first matches further in the string by making them negative.
     [first_match_position | _] = score.matched_character_positions
-    max(0 - first_match_position, @max_match_bonus_boost)
+    max(0 - first_match_position, @max_match_boost_boost)
   end
 
-  defp match_bonus(%__MODULE__{} = score, subject(last_period_position: last_period)) do
+  defp match_boost(%__MODULE__{} = score, subject(last_period_position: last_period)) do
     [first_match_position | _] = score.matched_character_positions
 
     if first_match_position == last_period + 1 do
       @last_period_boost
     else
       # penalize first matches further in the string by making them negative.
-      max(0 - first_match_position, @max_match_bonus_boost)
+      max(0 - first_match_position, @max_match_boost_boost)
     end
   end
 
   @consecutive_character_bonus 15
 
-  def consecutive_match_bonus(matched_positions) do
+  def consecutive_match_boost(matched_positions) do
     # This function checks for consecutive matched characters, and
     # makes matches with more consecutive matched characters worth more.
     # This means if I type En, it will match Enum more than it will match
@@ -254,29 +249,48 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     penalty
   end
 
-  defp case_match_boost(pattern, matched_positions, subject(graphemes: graphemes)) do
-    do_case_match_boost(pattern, matched_positions, graphemes, 0)
-  end
-
-  # iterate over the matches, find the character in the subject with that index, and compare it
-  # to the one in the pattern, boost if they're the same.
-  defp do_case_match_boost(_, [], _, boost), do: boost
-
-  defp do_case_match_boost(<<char::utf8, pattern_rest::binary>>, [index | rest], graphemes, boost) do
-    boost =
-      if grapheme_to_utf8(graphemes, index) == char do
-        boost + 1
+  @camel_case_boost 5
+  defp camel_case_boost(matched_positions, subject(graphemes: graphemes)) do
+    graphemes
+    |> Tuple.to_list()
+    |> camel_positions()
+    |> Enum.reduce(0, fn position, score ->
+      if position in matched_positions do
+        score + @camel_case_boost
       else
-        boost
+        score
       end
-
-    do_case_match_boost(pattern_rest, rest, graphemes, boost)
+    end)
   end
 
-  defp grapheme_to_utf8(graphemes, position) do
-    <<c::utf8>> = elem(graphemes, position)
+  defp camel_positions(graphemes) do
+    camel_positions(graphemes, {nil, :lower}, 0, [])
+  end
 
-    c
+  defp camel_positions([], _, _, positions) do
+    Enum.reverse(positions)
+  end
+
+  defp camel_positions([grapheme | rest], {_last_char, :lower}, position, positions) do
+    case case_of(grapheme) do
+      :lower ->
+        camel_positions(rest, {grapheme, :lower}, position + 1, positions)
+
+      :upper ->
+        camel_positions(rest, {grapheme, :upper}, position + 1, [position | positions])
+    end
+  end
+
+  defp camel_positions([grapheme | rest], {_last_char, :upper}, position, positions) do
+    camel_positions(rest, {grapheme, case_of(grapheme)}, position + 1, positions)
+  end
+
+  defp case_of(grapheme) do
+    if String.downcase(grapheme) == grapheme do
+      :lower
+    else
+      :upper
+    end
   end
 
   defp last_period_position(string) do
