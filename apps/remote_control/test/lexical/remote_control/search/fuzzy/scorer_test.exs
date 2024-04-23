@@ -87,10 +87,11 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.ScorerTest do
       assert ["First.Second.Third" | _] = results
     end
 
-    test "modules are boosted" do
-      results = score_and_sort(~w(create_user save_user Demo.Accounts.User), "User")
+    test "tail matches are boosted" do
+      results =
+        score_and_sort(~w(create_user save_user Foo.Bar.Baz.Demo.Accounts.LiveDemo.User), "User")
 
-      assert ["Demo.Accounts.User" | _] = results
+      assert ["Foo.Bar.Baz.Demo.Accounts.LiveDemo.User" | _] = results
     end
   end
 end

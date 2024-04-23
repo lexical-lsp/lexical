@@ -23,7 +23,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
   import Record
 
-  defrecord :subject, graphemes: nil, normalized: nil, last_period_position: nil
+  defrecord :subject, graphemes: nil, normalized: nil, period_positions: [-1]
 
   @typedoc "A match score. Higher numbers mean a more relevant match."
   @type score :: integer
@@ -47,12 +47,11 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
       |> List.to_tuple()
 
     normalized = normalize(subject)
-    last_period = last_period_position(normalized)
 
     subject(
       graphemes: graphemes,
       normalized: normalized,
-      last_period_position: last_period
+      period_positions: period_positions(normalized)
     )
   end
 
@@ -171,7 +170,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
     match_amount_boost = consecutive_count * pattern_length
 
-    match_boost = match_boost(score, subject)
+    match_boost = match_boost(score, subject, pattern_length)
 
     camel_case_boost = camel_case_boost(score.matched_character_positions, subject)
 
@@ -187,19 +186,23 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     String.downcase(string)
   end
 
-  @last_period_boost 15
+  @tail_match_boost 55
   @max_match_boost_boost 10
-  defp match_boost(%__MODULE__{} = score, subject(last_period_position: nil)) do
-    # penalize first matches further in the string by making them negative.
-    [first_match_position | _] = score.matched_character_positions
-    max(0 - first_match_position, @max_match_boost_boost)
-  end
 
-  defp match_boost(%__MODULE__{} = score, subject(last_period_position: last_period)) do
+  defp match_boost(
+         %__MODULE__{} = score,
+         subject(graphemes: graphemes, period_positions: period_positions),
+         pattern_length
+       ) do
     [first_match_position | _] = score.matched_character_positions
 
-    if first_match_position == last_period + 1 do
-      @last_period_boost
+    match_end = first_match_position + pattern_length
+    subject_length = tuple_size(graphemes)
+
+    if MapSet.member?(period_positions, first_match_position - 1) and match_end == subject_length do
+      # reward a complete match at the end of the last period. This is likely a module
+      # and the pattern matches the most local parts
+      @tail_match_boost
     else
       # penalize first matches further in the string by making them negative.
       max(0 - first_match_position, @max_match_boost_boost)
@@ -293,17 +296,17 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     end
   end
 
-  defp last_period_position(string) do
-    last_period_position(string, 0, nil)
+  defp period_positions(string) do
+    period_positions(string, 0, [-1])
   end
 
-  defp last_period_position(<<>>, _, position), do: position
+  defp period_positions(<<>>, _, positions), do: MapSet.new(positions)
 
-  defp last_period_position(<<".", rest::binary>>, position, _) do
-    last_period_position(rest, position + 1, position)
+  defp period_positions(<<".", rest::binary>>, position, positions) do
+    period_positions(rest, position + 1, [position | positions])
   end
 
-  defp last_period_position(<<_::utf8, rest::binary>>, position, last_found) do
-    last_period_position(rest, position + 1, last_found)
+  defp period_positions(<<_::utf8, rest::binary>>, position, positions) do
+    period_positions(rest, position + 1, positions)
   end
 end
