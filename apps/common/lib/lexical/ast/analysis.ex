@@ -324,15 +324,15 @@ defmodule Lexical.Ast.Analysis do
 
   # import with selector import MyModule, only: :functions
   defp analyze_node(
-         {:import, meta, [{:__aliases__, _aliases, module}, selector]},
+         {:import, _meta, [{:__aliases__, _aliases, module}, selector]} = quoted,
          state
        ) do
-    State.push_import(state, Import.new(module, selector, meta[:line]))
+    State.push_import(state, Import.new(state.document, quoted, module, selector))
   end
 
   # wholesale import import MyModule
-  defp analyze_node({:import, meta, [{:__aliases__, _aliases, module}]}, state) do
-    State.push_import(state, Import.new(module, meta[:line]))
+  defp analyze_node({:import, _meta, [{:__aliases__, _aliases, module}]} = quoted, state) do
+    State.push_import(state, Import.new(state.document, quoted, module))
   end
 
   # stab clauses: ->
