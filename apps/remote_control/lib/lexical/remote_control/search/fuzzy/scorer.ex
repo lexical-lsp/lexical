@@ -13,7 +13,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
     2. Patterns that match more consecutive characters
     3. Patterns that match the beginning of the subject
     4. Patterns that match the case of the subject
-    5. Patterns that match after the last period
+    5. Patterns that match the tail of a subject starting at the last period
 
   Based loosely on https://medium.com/@Srekel/implementing-a-fuzzy-search-algorithm-for-the-debuginator-cacc349e6c55
   """
@@ -170,7 +170,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
 
     match_amount_boost = consecutive_count * pattern_length
 
-    match_boost = match_boost(score, subject, pattern_length)
+    match_boost = tail_match_boost(score, subject, pattern_length)
 
     camel_case_boost = camel_case_boost(score.matched_character_positions, subject)
 
@@ -187,9 +187,8 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
   end
 
   @tail_match_boost 55
-  @max_match_boost_boost 10
 
-  defp match_boost(
+  defp tail_match_boost(
          %__MODULE__{} = score,
          subject(graphemes: graphemes, period_positions: period_positions),
          pattern_length
@@ -204,8 +203,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy.Scorer do
       # and the pattern matches the most local parts
       @tail_match_boost
     else
-      # penalize first matches further in the string by making them negative.
-      max(0 - first_match_position, @max_match_boost_boost)
+      0
     end
   end
 
