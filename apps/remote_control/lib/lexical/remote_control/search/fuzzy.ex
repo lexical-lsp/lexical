@@ -370,27 +370,16 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     # and lexical won't understand this. This was done because loading
     # each sub-project is expensive and changes our global directory.
 
-    root_deps_path = Mix.Project.deps_path()
-    {root_deps_path, Project.mix_exs_path(project)}
-
     [Project.root_path(project), "**", "mix.exs"]
     |> Path.join()
     |> Path.wildcard()
-    |> Enum.map(&Path.absname/1)
-    |> Enum.reduce([], fn mix_exs_path, deps_paths ->
-      deps_dir =
-        mix_exs_path
-        |> Path.dirname()
-        |> Path.join("deps")
-
-      if File.exists?(deps_dir) do
-        [deps_dir | deps_paths]
-      else
-        deps_paths
-      end
+    |> Enum.map(fn relative_mix_path ->
+      relative_mix_path
+      |> Path.absname()
+      |> Path.dirname()
+      |> Path.join("deps")
     end)
-    |> Enum.reverse()
-    |> Enum.uniq()
+    |> Enum.filter(&File.exists?/1)
   end
 
   defp deps_roots(_) do
