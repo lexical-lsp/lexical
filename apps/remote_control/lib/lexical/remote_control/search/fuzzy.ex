@@ -11,6 +11,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   returned.
   """
 
+  alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Fuzzy.Scorer
   alias Lexical.RemoteControl.Search.Indexer.Entry
@@ -336,31 +337,52 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
   end
 
   defp build_filter_fn do
-    mix_app_names = fn ->
-      applications =
-        if Mix.Project.umbrella?() do
-          Map.keys(Mix.Project.apps_paths())
-        else
-          List.wrap(Mix.Project.config()[:app])
-        end
-
-      MapSet.new(applications)
-    end
-
-    app_names =
+    deps_directories =
       if Mix.Project.get() do
-        mix_app_names.()
+        deps_roots()
       else
-        {:ok, names} =
+        {:ok, deps_roots} =
           RemoteControl.Mix.in_project(fn _ ->
-            mix_app_names.()
+            deps_roots()
           end)
 
-        names
+        deps_roots
       end
 
-    fn mapped(application: app, subtype: subtype) ->
-      subtype == :definition and MapSet.member?(app_names, app)
+    fn
+      mapped(subtype: :definition, grouping_key: path) ->
+        # if we don't have an app name, just make sure we're not
+        # in what looks like a deps directory
+        not Enum.any?(deps_directories, &String.starts_with?(path, &1))
+
+      _ ->
+        false
     end
+  end
+
+  defp deps_roots do
+    deps_roots(RemoteControl.get_project())
+  end
+
+  defp deps_roots(%Project{mix_project?: true} = project) do
+    # Note: This function assumes that the deps directories for all
+    # found projects is `deps`. Projects may override this directory
+    # and lexical won't understand this. This was done because loading
+    # each sub-project is expensive and changes our global directory.
+
+    [Project.root_path(project), "**", "mix.exs"]
+    |> Path.join()
+    |> Path.wildcard()
+    |> Enum.map(fn relative_mix_path ->
+      relative_mix_path
+      |> Path.absname()
+      |> Path.dirname()
+      |> Path.join("deps")
+    end)
+    |> Enum.filter(&File.exists?/1)
+  end
+
+  defp deps_roots(_) do
+    []
   end
 end
