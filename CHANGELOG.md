@@ -3,14 +3,14 @@ After multiple people asked, both document and workspace symbols have been imple
 Both make heavy use of our indexing infrastructure, which provides extremely fast and 
 accurate results.
 
-We've also fixed a number of small inconsistencies and crashes in the indexer, making it more robust and accurate. When you update to this release, we strongly recommend re-indexing your project's source code by opening the project's `mix.exs` file and 
+We've also fixed a number of small inconsistencies and crashes in the indexer, making it more robust and accurate. I especially want to call out the fix that @lukad made, that improved indexing performance by 3600x on his large codebase. 
+When you update to this release, we strongly recommend re-indexing your project's source code by opening the project's `mix.exs` file and 
 running the `Rebuild <your project>'s code search index` code action.
 
 In addition, we've improved support for completions in phoenix controllers, stopped completions inside strings and have changed how we sort completions. The new sorting scheme is a big improvement for usability, and sorts things by how "close" they are to what you're working on. Give it a shot, we think you'll like it. 
 
 I'd like to thank all our new contributors, and especially our core team of 
 @scottming, @zachallaun, @moosieus and @blond. You've all gone above and beyond.
-
 
 ## What's Changed
 * Add Sublime Text instructions to docs by @distefam in https://github.com/lexical-lsp/lexical/pull/633
