@@ -14,7 +14,7 @@ defmodule Lexical.Server.Provider.Handlers.WorkspaceSymbol do
 
   def handle(%WorkspaceSymbol{} = request, %Env{} = env) do
     symbols =
-      if String.length(request.query) > 3 do
+      if String.length(request.query) > 1 do
         env.project
         |> Api.workspace_symbols(request.query)
         |> tap(fn symbols -> Logger.info("syms #{inspect(Enum.take(symbols, 5))}") end)
