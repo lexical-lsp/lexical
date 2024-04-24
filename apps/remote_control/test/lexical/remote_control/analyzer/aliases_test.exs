@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
+  import Lexical.Test.RangeSupport
 
   use ExUnit.Case
 
@@ -13,6 +14,19 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
     document
     |> Ast.analyze()
     |> Analyzer.aliases_at(position)
+  end
+
+  defp scope_aliases(text) do
+    {position, document} = pop_cursor(text, as: :document)
+
+    aliases =
+      document
+      |> Ast.analyze()
+      |> Ast.Analysis.scopes_at(position)
+      |> Enum.flat_map(& &1.aliases)
+      |> Map.new(&{&1.as, &1})
+
+    {aliases, document}
   end
 
   describe "top level aliases" do
@@ -244,6 +258,56 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
 
       assert aliases[:"@protocol"] == MyProtocol
       assert aliases[:"@for"] == Atom
+    end
+  end
+
+  describe "alias ranges" do
+    test "for a simple alias" do
+      {aliases, doc} =
+        ~q[
+          defmodule Parent do
+            alias Foo.Bar.Baz|
+          end
+        ]
+        |> scope_aliases()
+
+      assert decorate(doc, aliases[:Baz].range) =~ "  «alias Foo.Bar.Baz»"
+    end
+
+    test "for a multiple alias on one line" do
+      {aliases, doc} =
+        ~q[
+            defmodule Parent do
+              alias Foo.Bar.{Baz, Quux}|
+            end
+        ]
+        |> scope_aliases()
+
+      assert decorate(doc, aliases[:Baz].range) =~ "  «alias Foo.Bar.{Baz, Quux}»"
+      assert decorate(doc, aliases[:Quux].range) =~ "  «alias Foo.Bar.{Baz, Quux}»"
+    end
+
+    test "for a multiple alias on multiple lines" do
+      {aliases, doc} =
+        ~q[
+            defmodule Parent do
+              alias Foo.Bar.{
+                Baz,
+                Quux,
+                Other
+            }|
+            end
+        ]
+        |> scope_aliases()
+
+      assert decorate(doc, aliases[:Baz].range) =~
+               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
+
+      assert decorate(doc, aliases[:Quux].range) =~
+               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
+
+      assert decorate(doc, aliases[:Other].range) =~
+               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
     end
   end
 

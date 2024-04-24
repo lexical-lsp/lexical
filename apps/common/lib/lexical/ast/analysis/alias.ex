@@ -26,8 +26,8 @@ defmodule Lexical.Ast.Analysis.Alias do
     range_for_implicit_alias(document, ast)
   end
 
-  defp range_for_ast(document, ast, alias, as) do
-    if List.last(alias) == as do
+  defp range_for_ast(document, ast, alias, _as) do
+    if List.last(alias) == alias do
       range_for_implicit_alias(document, ast)
     else
       range_for_explicit_alias(document, ast)
@@ -36,8 +36,11 @@ defmodule Lexical.Ast.Analysis.Alias do
 
   defp range_for_explicit_alias(%Document{} = document, ast) do
     case Ast.Range.fetch(ast, document) do
-      {:ok, range} -> range
-      _ -> nil
+      {:ok, %Range{end: end_pos} = range} ->
+        %Range{range | end: %Position{end_pos | character: end_pos.character}}
+
+      _ ->
+        nil
     end
   end
 
