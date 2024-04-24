@@ -1,3 +1,5 @@
+## Unreleased 
+
 ## v0.6.0 `24 April, 2024`
 After multiple people asked, both document and workspace symbols have been implemented. 
 Both make heavy use of our indexing infrastructure, which provides extremely fast and 
