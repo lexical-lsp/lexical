@@ -6,15 +6,30 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   Therefore, we need this module to make some markings to determine whether it is currently in the process of renaming.
   """
   defmodule State do
-    defstruct uri_with_expected_operation: %{}
+    defstruct uri_with_expected_operation: %{}, on_update_progess: nil, on_complete: nil
 
-    def new(uri_with_expected_operation) do
-      %__MODULE__{uri_with_expected_operation: uri_with_expected_operation}
+    def new(uri_with_expected_operation, progress_functions) do
+      {on_update_progess, on_complete} = progress_functions
+
+      %__MODULE__{
+        uri_with_expected_operation: uri_with_expected_operation,
+        on_update_progess: on_update_progess,
+        on_complete: on_complete
+      }
     end
 
     def update_progress(%__MODULE__{} = state, uri, operation_message) do
       new_uri_with_expected_operation =
-        maybe_pop_expected_operation(state.uri_with_expected_operation, uri, operation_message)
+        maybe_pop_expected_operation(
+          state.uri_with_expected_operation,
+          uri,
+          operation_message,
+          state.on_update_progess
+        )
+
+      if new_uri_with_expected_operation == %{} do
+        state.on_complete.()
+      end
 
       %__MODULE__{state | uri_with_expected_operation: new_uri_with_expected_operation}
     end
@@ -23,10 +38,14 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       state.uri_with_expected_operation != %{}
     end
 
-    def maybe_pop_expected_operation(uri_to_operation, uri, %operation{}) do
+    def maybe_pop_expected_operation(uri_to_operation, uri, %operation{}, on_update_progess) do
       case uri_to_operation do
-        %{^uri => ^operation} -> Map.delete(uri_to_operation, uri)
-        _ -> uri_to_operation
+        %{^uri => ^operation} ->
+          on_update_progess.(1, "Renaming")
+          Map.delete(uri_to_operation, uri)
+
+        _ ->
+          uri_to_operation
       end
     end
   end
@@ -42,9 +61,12 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     {:ok, state}
   end
 
-  @spec set_rename_progress(%{Lexical.uri() => atom()}) :: :ok
-  def set_rename_progress(uri_with_expected_operation) do
-    GenServer.cast(__MODULE__, {:set_rename_progress, uri_with_expected_operation})
+  @spec set_rename_progress(%{Lexical.uri() => atom()}, tuple()) :: :ok
+  def set_rename_progress(uri_with_expected_operation, progress_functions) do
+    GenServer.cast(
+      __MODULE__,
+      {:set_rename_progress, uri_with_expected_operation, progress_functions}
+    )
   end
 
   def update_progress(uri, operation_message) do
@@ -61,8 +83,8 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   end
 
   @impl true
-  def handle_cast({:set_rename_progress, uri_with_expected_operation}, _state) do
-    new_state = State.new(uri_with_expected_operation)
+  def handle_cast({:set_rename_progress, uri_with_expected_operation, progress_functions}, _state) do
+    new_state = State.new(uri_with_expected_operation, progress_functions)
     {:noreply, new_state}
   end
 

@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   alias Lexical.Protocol.Notifications.DidChange
   alias Lexical.Protocol.Notifications.DidSave
   alias Lexical.RemoteControl.Commands
+  alias Lexical.RemoteControl.Progress
 
   alias __MODULE__
 
@@ -27,9 +28,16 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   end
 
   defp set_rename_progress(document_changes_list, client_name) do
-    client_name
-    |> uri_with_expected_operation(document_changes_list)
-    |> Commands.Rename.set_rename_progress()
+    uri_with_expected_operation =
+      uri_with_expected_operation(client_name, document_changes_list)
+
+    progress_notification_functions =
+      Progress.begin_percent("Renaming", Enum.count(uri_with_expected_operation))
+
+    Commands.Rename.set_rename_progress(
+      uri_with_expected_operation,
+      progress_notification_functions
+    )
   end
 
   defp uri_with_expected_operation(client_name, document_changes_list)
