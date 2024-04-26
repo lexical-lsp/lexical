@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Diff
+  alias Lexical.RemoteControl.Commands.Rename
 
   require Logger
 
@@ -99,10 +100,19 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   def edits(%Document{} = document) do
     project = RemoteControl.get_project()
 
-    with :ok <- Build.compile_document(project, document),
+    with :ok <- ensure_not_renaming(),
+         :ok <- Build.compile_document(project, document),
          {:ok, formatted} <- do_format(project, document) do
       edits = Diff.diff(document, formatted)
       {:ok, Changes.new(document, edits)}
+    end
+  end
+
+  defp ensure_not_renaming do
+    if Rename.in_progress?() do
+      {:error, :rename_in_progress}
+    else
+      :ok
     end
   end
 
