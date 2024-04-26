@@ -19,14 +19,14 @@ defmodule Lexical.Ast.Analysis.Import do
           line: non_neg_integer()
         }
   def new(%Document{} = document, ast, module) do
-    %__MODULE__{module: module, range: range_for_import(document, ast)}
+    %__MODULE__{module: module, range: Ast.Range.get(ast, document)}
   end
 
   def new(%Document{} = document, ast, module, selector) do
     %__MODULE__{
       module: module,
       selector: expand_selector(selector),
-      range: range_for_import(document, ast)
+      range: Ast.Range.get(ast, document)
     }
   end
 
@@ -89,14 +89,4 @@ defmodule Lexical.Ast.Analysis.Import do
 
   defp expand_function_keywords(_ignored, acc),
     do: acc
-
-  defp range_for_import(%Document{} = document, quoted) do
-    case Ast.Range.fetch(quoted, document) do
-      {:ok, range} ->
-        range
-
-      :error ->
-        nil
-    end
-  end
 end

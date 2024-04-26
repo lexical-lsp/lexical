@@ -45,11 +45,7 @@ defmodule Lexical.Ast.Analysis.Scope do
     |> Enum.take_while(fn %Alias{range: range} ->
       case position do
         %Position{} = pos ->
-          if range.start.line == pos.line do
-            pos.character >= range.start.character
-          else
-            pos.line >= range.start.line
-          end
+          pos.line >= range.end.line
 
         line when is_integer(line) ->
           line >= range.end.line

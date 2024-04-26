@@ -245,7 +245,7 @@ defmodule Lexical.Ast.Analysis do
         current_module -> reify_alias(current_module, segments)
       end
 
-    current_module_alias = Alias.new(state.document, quoted, module, :__MODULE__)
+    current_module_alias = Alias.implicit(state.document, quoted, module, :__MODULE__)
 
     new_state =
       state
@@ -269,9 +269,9 @@ defmodule Lexical.Ast.Analysis do
        ) do
     expanded_for = expand_alias(for_segments, state)
     module = expand_alias(protocol_segments ++ expanded_for, state)
-    current_module_alias = Alias.new(state.document, quoted, module, :__MODULE__)
-    for_alias = Alias.new(state.document, quoted, expanded_for, :"@for")
-    protocol_alias = Alias.new(state.document, quoted, protocol_segments, :"@protocol")
+    current_module_alias = Alias.implicit(state.document, quoted, module, :__MODULE__)
+    for_alias = Alias.implicit(state.document, quoted, expanded_for, :"@for")
+    protocol_alias = Alias.implicit(state.document, quoted, protocol_segments, :"@protocol")
 
     new_state =
       state
@@ -291,7 +291,9 @@ defmodule Lexical.Ast.Analysis do
     base_segments = expand_alias(aliases, state)
 
     Enum.reduce(aliases_nodes, state, fn {:__aliases__, _, segments}, state ->
-      alias = Alias.new(state.document, quoted, base_segments ++ segments, List.last(segments))
+      alias =
+        Alias.explicit(state.document, quoted, base_segments ++ segments, List.last(segments))
+
       State.push_alias(state, alias)
     end)
   end
@@ -302,7 +304,7 @@ defmodule Lexical.Ast.Analysis do
   defp analyze_node({:alias, _meta, [aliases]} = quoted, state) do
     case expand_alias(aliases, state) do
       [_ | _] = segments ->
-        alias = Alias.new(state.document, quoted, segments, List.last(segments))
+        alias = Alias.explicit(state.document, quoted, segments, List.last(segments))
         State.push_alias(state, alias)
 
       [] ->
@@ -314,7 +316,7 @@ defmodule Lexical.Ast.Analysis do
   defp analyze_node({:alias, meta, [aliases, options]} = quoted, state) do
     with {:ok, alias_as} <- fetch_alias_as(options),
          [_ | _] = segments <- expand_alias(aliases, state) do
-      alias = Alias.new(state.document, quoted, segments, alias_as)
+      alias = Alias.explicit(state.document, quoted, segments, alias_as)
       State.push_alias(state, alias)
     else
       _ ->
@@ -369,7 +371,7 @@ defmodule Lexical.Ast.Analysis do
           current_module ++ [first_segment]
       end
 
-    implicit_alias = Alias.new(document, quoted, segments, first_segment)
+    implicit_alias = Alias.implicit(document, quoted, segments, first_segment)
     State.push_alias(state, implicit_alias)
   end
 
