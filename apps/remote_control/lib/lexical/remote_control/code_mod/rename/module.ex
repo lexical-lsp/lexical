@@ -6,21 +6,23 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search.Store
   require Logger
 
   import Line
 
-  @spec rename(Range.t(), String.t(), atom()) :: %{Lexical.uri() => [Edit.t()]}
+  @spec rename(Range.t(), String.t(), atom()) :: [Document.Changes.t()]
   def rename(%Range{} = old_range, new_name, entity) do
     {old_suffix, new_suffix} = old_range |> range_text() |> diff(new_name)
     results = exacts(entity, old_suffix) ++ descendants(entity, old_suffix)
 
-    Enum.group_by(
-      results,
-      &Document.Path.ensure_uri(&1.path),
-      &Edit.new(new_suffix, &1.range)
-    )
+    for {uri, entries} <- Enum.group_by(results, &Document.Path.ensure_uri(&1.path)),
+        result = to_document_changes(uri, entries, new_suffix),
+        match?({:ok, _}, result) do
+      {:ok, document_changes} = result
+      document_changes
+    end
   end
 
   @spec resolve(Analysis.t() | Lexical.path(), Position.t()) ::
@@ -181,5 +183,14 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     range
     |> put_in([:start, :character], start_character)
     |> put_in([:end, :character], end_character)
+  end
+
+  defp to_document_changes(uri, entries, new_suffix) do
+    edits = Enum.map(entries, &Edit.new(new_suffix, &1.range))
+
+    with {:ok, document} <- Document.Store.open_temporary(uri) do
+      rename_file = maybe_rename_file(document, entries, new_suffix)
+      {:ok, Document.Changes.new(document, edits, rename_file)}
+    end
   end
 end

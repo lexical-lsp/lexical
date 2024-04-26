@@ -8,9 +8,20 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.Indexing do
   require Logger
   import Messages
 
-  use Dispatch.Handler, [file_compile_requested(), filesystem_event()]
+  use Dispatch.Handler, [filesystem_event(), file_changed(), file_opened()]
 
-  def on_event(file_compile_requested(uri: uri), state) do
+  def on_event(file_changed(uri: uri, open?: true), state) do
+    reindex(uri)
+    {:ok, state}
+  end
+
+  def on_event(file_changed(), state) do
+    {:ok, state}
+  end
+
+  def on_event(file_opened(uri: uri), state) do
+    # When renaming occurs, new files are only *opened* and *closed*,
+    # so we need to index the new files.
     reindex(uri)
     {:ok, state}
   end

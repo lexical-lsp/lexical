@@ -8,10 +8,11 @@ defmodule Lexical.Server.Provider.Env do
   alias Lexical.Project
   alias Lexical.Server.Configuration
 
-  defstruct [:project]
+  defstruct [:project, :client_name]
 
   @type t :: %__MODULE__{
-          project: Project.t()
+          project: Project.t(),
+          client_name: String.t() | nil
         }
 
   def new do
@@ -19,7 +20,7 @@ defmodule Lexical.Server.Provider.Env do
   end
 
   def from_configuration(%Configuration{} = config) do
-    %__MODULE__{project: config.project}
+    %__MODULE__{project: config.project, client_name: config.client_name}
   end
 
   def project_name(%__MODULE__{} = env) do

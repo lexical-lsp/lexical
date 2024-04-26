@@ -18,6 +18,21 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl, :compile_document, [document])
   end
 
+  def maybe_schedule_compile(project, triggered_file_uri, triggered_message) do
+    RemoteControl.call(project, Build, :maybe_schedule_compile, [
+      triggered_file_uri,
+      triggered_message
+    ])
+  end
+
+  def maybe_compile_document(project, document, triggered_message) do
+    RemoteControl.call(project, Build, :maybe_compile_document, [
+      project,
+      document,
+      triggered_message
+    ])
+  end
+
   def expand_alias(
         %Project{} = project,
         segments_or_module,
@@ -51,6 +66,29 @@ defmodule Lexical.RemoteControl.Api do
       range,
       diagnostics,
       kinds
+    ])
+  end
+
+  def prepare_rename(
+        %Project{} = project,
+        %Analysis{} = analysis,
+        %Position{} = position
+      ) do
+    RemoteControl.call(project, CodeMod.Rename, :prepare, [analysis, position])
+  end
+
+  def rename(
+        %Project{} = project,
+        %Analysis{} = analysis,
+        %Position{} = position,
+        new_name,
+        client_name
+      ) do
+    RemoteControl.call(project, CodeMod.Rename, :rename, [
+      analysis,
+      position,
+      new_name,
+      client_name
     ])
   end
 
