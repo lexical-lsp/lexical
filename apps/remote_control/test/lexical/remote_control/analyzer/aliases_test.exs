@@ -301,14 +301,10 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
         ]
         |> scope_aliases()
 
-      assert decorate(doc, aliases[:Baz].range) =~
-               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
-
-      assert decorate(doc, aliases[:Quux].range) =~
-               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
-
-      assert decorate(doc, aliases[:Other].range) =~
-               "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
+      for name <- [:Baz, :Quux, :Other] do
+        assert decorate(doc, aliases[name].range) =~
+                 "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
+      end
     end
 
     def column_after_do(%Document{} = doc, line) do
