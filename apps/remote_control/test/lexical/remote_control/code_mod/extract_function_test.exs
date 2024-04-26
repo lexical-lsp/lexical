@@ -3,13 +3,13 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
 
     use ExUnit.Case
     alias Sourceror.Zipper, as: Z
-  
+
     setup ctx do
       if Map.has_key?(ctx, :no_setup) do
         {:ok, []}
       else
         no = Map.get(ctx, :no, "")
-  
+
         {:ok,
          quoted:
            """
@@ -21,11 +21,11 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                IO.inspect(three)
                four = 4
                IO.inspect(three)
-  
+
                IO.inspect(four: four,
                  force_format_on_new_line_with_really_long_atom: true
                )
-  
+
                # comment
              end
            end
@@ -33,13 +33,13 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
            |> Sourceror.parse_string!()}
       end
     end
-  
+
     describe "extract_function" do
       @tag no: 1
       test "extract one line to function", %{quoted: quoted} do
         zipper = ExtractFunction.extract_function(Z.zip(quoted), 3, 3, "bar")
         source = Sourceror.to_string(zipper)
-  
+
         assert [
                  "defmodule Baz1 do",
                  "  def foo(one, two) do",
@@ -65,15 +65,15 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "end"
                ] ==
                  source |> String.split("\n")
-  
+
         Code.eval_string(source)
       end
-  
+
       @tag no: 2
       test "extract multiple lines to function", %{quoted: quoted} do
         zipper = ExtractFunction.extract_function(Z.zip(quoted), 3, 4, :bar)
         source = Sourceror.to_string(zipper)
-  
+
         assert [
                  "defmodule Baz2 do",
                  "  def foo(one, two) do",
@@ -99,15 +99,15 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "end"
                ] ==
                  source |> String.split("\n")
-  
+
         Code.eval_string(source)
       end
-  
+
       @tag no: 3
       test "extract multiple lines with multiple returns to function", %{quoted: quoted} do
         zipper = ExtractFunction.extract_function(Z.zip(quoted), 3, 7, :bar)
         source = Sourceror.to_string(zipper)
-  
+
         assert [
                  "defmodule Baz3 do",
                  "  def foo(one, two) do",
@@ -133,15 +133,15 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "end"
                ] ==
                  source |> String.split("\n")
-  
+
         Code.eval_string(source)
       end
-  
+
       @tag no: 4
       test "extract multiple lines with single return value to function", %{quoted: quoted} do
         zipper = ExtractFunction.extract_function(Z.zip(quoted), 3, 8, :bar)
         source = Sourceror.to_string(zipper)
-  
+
         assert [
                  "defmodule Baz4 do",
                  "  def foo(one, two) do",
@@ -168,15 +168,15 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "end"
                ] ==
                  source |> String.split("\n")
-  
+
         Code.eval_string(source)
       end
-  
+
       @tag no: 5
       test "extracts when extract partial function call", %{quoted: quoted} do
         zipper = ExtractFunction.extract_function(Z.zip(quoted), 10, 10, :bar)
         source = Sourceror.to_string(zipper)
-  
+
         assert [
                  "defmodule Baz5 do",
                  "  def foo(one, two) do",
@@ -201,25 +201,25 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "end"
                ] ==
                  source |> String.split("\n")
-  
+
         Code.eval_string(source)
       end
-  
+
       @tag no: 6
       test "errors when extract on second line of multi-line function call", %{quoted: quoted} do
         {:error, :not_extractable} =
           ExtractFunction.extract_function(Z.zip(quoted), 11, 11, :bar)
       end
     end
-  
+
     describe "extract_lines/3" do
       @tag no: 20
       test "extract one line to function", %{quoted: quoted} do
         {zipper, lines} = ExtractFunction.extract_lines(Z.zip(quoted), 3, 3)
-  
+
         assert "defmodule Baz20 do\n  def foo(one, two) do\n    IO.inspect(one)\n    IO.inspect(two)\n    IO.inspect(three)\n    four = 4\n    IO.inspect(three)\n\n    IO.inspect(\n      four: four,\n      force_format_on_new_line_with_really_long_atom: true\n    )\n\n    # comment\n  end\nend" ==
                  Sourceror.to_string(zipper)
-  
+
         assert [
                  "{:def, :foo}",
                  "{:def_end, 15}",
@@ -228,14 +228,14 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "{:vars, [:one, :two, :three, :four]}"
                ] = lines |> Enum.map(&Sourceror.to_string(&1))
       end
-  
+
       @tag no: 21
       test "extract multiple lines to function", %{quoted: quoted} do
         {zipper, lines} = ExtractFunction.extract_lines(Z.zip(quoted), 3, 4)
-  
+
         assert "defmodule Baz21 do\n  def foo(one, two) do\n    IO.inspect(two)\n    IO.inspect(three)\n    four = 4\n    IO.inspect(three)\n\n    IO.inspect(\n      four: four,\n      force_format_on_new_line_with_really_long_atom: true\n    )\n\n    # comment\n  end\nend" =
                  Sourceror.to_string(zipper)
-  
+
         assert [
                  "{:def, :foo}",
                  "{:def_end, 15}",
@@ -244,14 +244,14 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "{:vars, [:two, :three, :four]}"
                ] = lines |> Enum.map(&Sourceror.to_string(&1))
       end
-  
+
       @tag no: 22
       test "extract multi-line function call to function", %{quoted: quoted} do
         {zipper, lines} = ExtractFunction.extract_lines(Z.zip(quoted), 10, 10)
-  
+
         assert "defmodule Baz22 do\n  def foo(one, two) do\n    three = 3\n    IO.inspect(one)\n    IO.inspect(two)\n    IO.inspect(three)\n    four = 4\n    IO.inspect(three)\n\n    # comment\n  end\nend" =
                  Sourceror.to_string(zipper)
-  
+
         assert [
                  "{:def, :foo}",
                  "{:def_end, 15}",
@@ -260,14 +260,14 @@ defmodule Lexical.RemoteControl.CodeMod.ExtractFunctionTest do
                  "{:vars, []}"
                ] = lines |> Enum.map(&Sourceror.to_string(&1))
       end
-  
+
       @tag no: 23
       test "noop when second line of multi-line function call", %{quoted: quoted} do
         {zipper, lines} = ExtractFunction.extract_lines(Z.zip(quoted), 11, 11)
-  
+
         assert "defmodule Baz23 do\n  def foo(one, two) do\n    three = 3\n    IO.inspect(one)\n    IO.inspect(two)\n    IO.inspect(three)\n    four = 4\n    IO.inspect(three)\n\n    IO.inspect(\n      four: four,\n      force_format_on_new_line_with_really_long_atom: true\n    )\n\n    # comment\n  end\nend" =
                  Sourceror.to_string(zipper)
-  
+
         assert [
                  "{:def, :foo}",
                  "{:def_end, 15}",
