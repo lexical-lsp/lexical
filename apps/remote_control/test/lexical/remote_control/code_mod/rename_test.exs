@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.Document
-  alias Lexical.Project
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Store.Backends
@@ -15,6 +15,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   import Fixtures
 
   use ExUnit.Case
+  use Patch
 
   setup_all do
     project = project()
@@ -40,16 +41,6 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     {:ok, project: project}
   end
 
-  setup %{project: project} do
-    uri = subject_uri(project)
-
-    on_exit(fn ->
-      Document.Store.close(uri)
-    end)
-
-    %{uri: uri}
-  end
-
   describe "prepare/2" do
     test "returns the module name" do
       {:ok, result, _} =
@@ -71,7 +62,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result == "TopLevel.Foo"
     end
 
-    test "returns the whole module name even if the cusor is not at the end" do
+    test "returns the whole module name even if the cursor is not at the end" do
       {:ok, result, _} =
         ~q[
         defmodule Top|Level.Foo do
@@ -217,7 +208,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  describe "rename descendants" do
+  describe "rename module descendants" do
     test "rename the descendants" do
       {:ok, result} = ~q[
         defmodule TopLevel.|Module do
@@ -341,21 +332,210 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  defp rename(%Project{} = project \\ project(), source, new_name) do
-    uri = subject_uri(project)
+  describe "rename file" do
+    setup do
+      patch(Entity, :function_exists?, false)
+      :ok
+    end
+
+    test "it shouldn't rename file if the module has parent module within that file" do
+      {:ok, {_applied, nil}} =
+        ~q[
+        defmodule FooServer do
+          defmodule |State do
+          end
+        end
+        ] |> rename("Renamed", "lib/foo_server.ex")
+    end
+
+    test "it shouldn't rename file if the module has any siblings within that file" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo do
+        end
+
+        defmodule Bar do
+        end
+        ] |> rename("Renamed", "lib/foo.ex")
+    end
+
+    test "it shouldn't rename file if the path doesn't match the any convensions" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo.Mix do
+        end
+        ] |> rename("Renamed", "mix.ex")
+    end
+
+    test "succeeds when the path matching the `lib/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |Foo do
+        end
+      ] |> rename("Renamed", "lib/foo.ex")
+
+      assert rename_file.new_uri == subject_uri(project, "lib/renamed.ex")
+    end
+
+    test "it shouldn't rename file if just uppercased the module name" do
+      assert {:ok, {_applied, nil}} =
+               ~q[
+        defmodule |Foo do
+        end
+        ] |> rename("FOO", "lib/foo.ex")
+    end
+
+    test "succeeds when the path matching the `apps/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |FooApp.Bar do
+        end
+      ] |> rename("FooApp.Renamed", "apps/foo_app/lib/foo_app/bar.ex")
+
+      assert rename_file.new_uri == subject_uri(project, "apps/foo_app/lib/foo_app/renamed.ex")
+    end
+
+    test "succeeds when the path matching the `apps/*` convension with nested folders", %{
+      project: project
+    } do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |Lexical.RemoteControl do
+        end
+      ] |> rename("Lexical.RemoteChaos", "apps/remote_control/lib/lexical/remote_control.ex")
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "apps/remote_control/lib/lexical/remote_chaos.ex")
+    end
+
+    test "succeeds when the path matching the `test/*` convension", %{project: project} do
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule |FooTest do
+        end
+      ] |> rename("RenamedTest", "test/foo_test.exs")
+
+      assert rename_file.new_uri == subject_uri(project, "test/renamed_test.exs")
+    end
+
+    test "leaves the `components` folder as is when renaming the live view", %{project: project} do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.FooComponent -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooComponent do
+        end
+      ] |> rename("DemoWeb.RenamedComponent", "lib/demo_web/components/foo_component.ex")
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/components/renamed_component.ex")
+    end
+
+    test "leaves the `components` folder as is when renaming a component", %{project: project} do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.SomeContext.FooComponent -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.SomeContext.|FooComponent do
+        end
+      ]
+        |> rename(
+          "DemoWeb.SomeContext.RenamedComponent",
+          "lib/demo_web/components/some_context/foo_component.ex"
+        )
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/components/some_context/renamed_component.ex")
+    end
+
+    test "leaves the `components` folder as is when the user prefers to include the `Components` in the module name",
+         %{
+           project: project
+         } do
+      patch(Entity, :phoenix_component_module?, fn DemoWeb.Components.Icons -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.Components.|Icons do
+        end
+      ] |> rename("DemoWeb.Components.RenamedIcons", "lib/demo_web/components/icons.ex")
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/components/renamed_icons.ex")
+    end
+
+    test "leaves the `controllers` folder as is when renaming the controller", %{project: project} do
+      patch(Entity, :phoenix_controller_module?, fn DemoWeb.FooController -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooController do
+        end
+      ] |> rename("DemoWeb.RenamedController", "lib/demo_web/controllers/foo_controller.ex")
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/controllers/renamed_controller.ex")
+    end
+
+    test "leaves the `controller` folder as is when renaming the `JSON` module", %{
+      project: project
+    } do
+      patch(Entity, :phoenix_controller_module?, fn DemoWeb.FooController.JSON -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.FooController.|JSON do
+        end
+      ]
+        |> rename(
+          "DemoWeb.FooController.RenamedJSON",
+          "lib/demo_web/controllers/foo_controller/json.ex"
+        )
+
+      assert rename_file.new_uri ==
+               subject_uri(project, "lib/demo_web/controllers/foo_controller/renamed_json.ex")
+    end
+
+    test "leaves the `live` folder as is when renaming the live view", %{project: project} do
+      patch(Entity, :phoenix_liveview_module?, fn DemoWeb.FooLive -> true end)
+
+      {:ok, {_applied, rename_file}} =
+        ~q[
+        defmodule DemoWeb.|FooLive do
+        end
+      ] |> rename("DemoWeb.RenamedLive", "lib/demo_web/live/foo_live.ex")
+
+      assert rename_file.new_uri == subject_uri(project, "lib/demo_web/live/renamed_live.ex")
+    end
+  end
+
+  defp rename(source, new_name, path \\ nil) do
+    project = project()
+    uri = subject_uri(project, path)
 
     with {position, text} <- pop_cursor(source),
          {:ok, document} <- open_document(uri, text),
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
          :ok <- Search.Store.replace(entries),
          analysis = Lexical.Ast.analyze(document),
-         {:ok, uri_with_changes} <- Rename.rename(analysis, position, new_name) do
-      changes = uri_with_changes |> Map.values() |> List.flatten()
-      {:ok, apply_edits(document, changes)}
+         {:ok, document_changes} <- Rename.rename(analysis, position, new_name, nil) do
+      changes = document_changes |> Enum.map(& &1.edits) |> List.flatten()
+      applied = apply_edits(document, changes)
+
+      result =
+        if path do
+          rename_file = document_changes |> Enum.map(& &1.rename_file) |> List.first()
+          {applied, rename_file}
+        else
+          applied
+        end
+
+      {:ok, result}
     end
   end
 
-  defp prepare(project \\ project(), code) do
+  defp prepare(code) do
+    project = project()
     uri = subject_uri(project)
 
     with {position, text} <- pop_cursor(code),
@@ -368,10 +548,19 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
   end
 
-  defp subject_uri(project) do
-    project
-    |> file_path(Path.join("lib", "project.ex"))
-    |> Document.Path.ensure_uri()
+  defp subject_uri(project, path \\ nil) do
+    path = path || Path.join("wont_rename_file_folder", "project.ex")
+
+    uri =
+      project
+      |> file_path(path)
+      |> Document.Path.ensure_uri()
+
+    on_exit(fn ->
+      Document.Store.close(uri)
+    end)
+
+    uri
   end
 
   defp open_document(uri, content) do

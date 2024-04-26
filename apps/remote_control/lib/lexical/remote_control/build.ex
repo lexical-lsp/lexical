@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Build do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build.Document.Compilers.HEEx
   alias Lexical.RemoteControl.Build.State
+  alias Lexical.RemoteControl.Commands.Rename
   alias Lexical.VM.Versions
 
   require Logger
@@ -33,6 +34,22 @@ defmodule Lexical.RemoteControl.Build do
     end
 
     :ok
+  end
+
+  def maybe_schedule_compile(triggered_file_uri, message) do
+    if Rename.in_progress?() do
+      Rename.update_progress(triggered_file_uri, message)
+    else
+      GenServer.cast(__MODULE__, {:compile, false})
+    end
+  end
+
+  def maybe_compile_document(%Project{} = project, %Document{} = document, message) do
+    if Rename.in_progress?() do
+      Rename.update_progress(document.uri, message)
+    else
+      compile_document(project, document)
+    end
   end
 
   # this is for testing

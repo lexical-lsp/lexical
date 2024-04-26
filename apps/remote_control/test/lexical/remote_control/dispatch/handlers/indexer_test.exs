@@ -60,7 +60,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
         ]
         |> set_document!()
 
-      assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
+      assert {:ok, _} = Indexing.on_event(file_changed(uri: uri, open?: true), state)
 
       assert_eventually [entry] = Search.Store.exact("NewModule", [])
 
@@ -84,7 +84,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
         ]
         |> set_document!()
 
-      assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
+      assert {:ok, _} = Indexing.on_event(file_changed(uri: uri, open?: true), state)
 
       assert_eventually [entry] = Search.Store.exact("UpdatedModule", [])
       assert entry.subject == UpdatedModule
@@ -102,7 +102,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
         ]
         |> set_document!()
 
-      assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
+      assert {:ok, _} = Indexing.on_event(file_changed(uri: uri, open?: true), state)
       assert [] = Search.Store.exact("Stale", [])
     end
   end
