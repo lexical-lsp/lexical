@@ -62,26 +62,17 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
   @renamable_modules [Rename.Module]
 
   defp do_resolve(%Analysis{} = analysis, %Position{} = position) do
-    result =
-      Enum.find_value(@renamable_modules, fn module ->
-        result = module.resolve(analysis, position)
-
-        if match?({:ok, _, _}, result) do
-          result
-        end
-      end)
-
-    if is_nil(result) do
-      case Entity.resolve(analysis, position) do
-        {:ok, other, _} ->
-          Logger.info("Unsupported entity for renaming: #{inspect(other)}")
-          {:error, :unsupported_entity}
-
-        {:error, reason} ->
-          {:error, reason}
+    apply_resolve = fn module ->
+      case module.resolve(analysis, position) do
+        {:ok, _, _} = result -> result
+        _ -> false
       end
-    else
-      result
+    end
+
+    with :error <- Enum.find_value(@renamable_modules, :error, apply_resolve),
+         {:ok, other, _} <- Entity.resolve(analysis, position) do
+      Logger.info("Unsupported entity for renaming: #{inspect(other)}")
+      {:error, :unsupported_entity}
     end
   end
 end

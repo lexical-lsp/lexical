@@ -62,8 +62,8 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name ->
-        {:ok, %{}}
+      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
+        {:ok, []}
       end)
 
       {:ok, request} = build_request(uri, 1, 5)
@@ -73,34 +73,47 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
     end
 
     test "returns edit when there are changes", %{project: project, uri: uri} do
+      document = %Document{uri: uri, version: 0}
+
       patch(Document.Store, :fetch, fn ^uri, :analysis ->
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name ->
+      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
         {:ok,
-         %{
-           "file:///path/to/file.ex" => [
-             %{
-               new_text: "new_text",
-               range: %{start: %{line: 1, character: 5}, end: %{line: 1, character: 10}}
-             }
-           ]
-         }}
+         [
+           Document.Changes.new(
+             document,
+             [
+               %{
+                 new_text: "new_text",
+                 range: %{start: %{line: 1, character: 5}, end: %{line: 1, character: 10}}
+               }
+             ],
+             Document.Changes.RenameFile.new(
+               document.uri,
+               "file:///path/to/new_text.ex"
+             )
+           )
+         ]}
       end)
 
       {:ok, request} = build_request(uri, 1, 5)
 
       assert {:reply, response} = handle(request, project)
+      [edit, rename_file] = response.result.document_changes
 
-      assert response.result.changes == %{
-               "file:///path/to/file.ex" => [
-                 %{
-                   new_text: "new_text",
-                   range: %{end: %{character: 10, line: 1}, start: %{character: 5, line: 1}}
-                 }
-               ]
-             }
+      assert edit.edits == [
+               %{
+                 new_text: "new_text",
+                 range: %{end: %{character: 10, line: 1}, start: %{character: 5, line: 1}}
+               }
+             ]
+
+      assert edit.text_document.uri == document.uri
+      assert edit.text_document.version == 0
+      assert rename_file.old_uri == document.uri
+      assert rename_file.new_uri == "file:///path/to/new_text.ex"
     end
   end
 end
