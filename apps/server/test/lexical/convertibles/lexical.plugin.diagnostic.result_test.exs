@@ -73,7 +73,7 @@ defmodule Lexical.Convertibles.Lexical.Plugin.V1.Diagnostic.ResultTest do
     test "it can translate a diagnostic that starts after an emoji", %{uri: uri} do
       assert {:ok, %Types.Diagnostic{} = converted} = to_lsp(plugin_diagnostic(uri, {6, 10}), uri)
 
-      assert converted.range == range(:lsp, position(:lsp, 5, 7), position(:lsp, 6, 0))
+      assert converted.range == range(:lsp, position(:lsp, 5, 10), position(:lsp, 6, 0))
     end
 
     test "it converts lexical positions", %{uri: uri, document: document} do
