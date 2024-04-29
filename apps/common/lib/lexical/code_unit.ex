@@ -16,9 +16,9 @@ defmodule Lexical.CodeUnit do
   @doc """
   Converts a 0-based UTF-8 character position to a UTF-16 code unit offset.
   """
-  @spec utf8_char_to_utf16_offset(String.t(), utf8_character_position()) ::
+  @spec utf8_position_to_utf16_offset(String.t(), utf8_character_position()) ::
           utf16_code_unit_offset()
-  def utf8_char_to_utf16_offset(binary, character_position) do
+  def utf8_position_to_utf16_offset(binary, character_position) do
     binary
     |> String.slice(0, character_position)
     |> :unicode.characters_to_binary(:utf8, :utf16)

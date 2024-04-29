@@ -5,34 +5,34 @@ defmodule Lexical.CodeUnitTest do
 
   import CodeUnit
 
-  describe "utf8_char_to_utf16_offset/2" do
+  describe "utf8_position_to_utf16_offset/2" do
     test "handles single-byte characters" do
       s = "do"
-      assert 0 == utf8_char_to_utf16_offset(s, 0)
-      assert 1 == utf8_char_to_utf16_offset(s, 1)
-      assert 2 == utf8_char_to_utf16_offset(s, 2)
-      assert 2 == utf8_char_to_utf16_offset(s, 3)
-      assert 2 == utf8_char_to_utf16_offset(s, 4)
+      assert 0 == utf8_position_to_utf16_offset(s, 0)
+      assert 1 == utf8_position_to_utf16_offset(s, 1)
+      assert 2 == utf8_position_to_utf16_offset(s, 2)
+      assert 2 == utf8_position_to_utf16_offset(s, 3)
+      assert 2 == utf8_position_to_utf16_offset(s, 4)
     end
 
     test "caps offsets at the end of the string and beyond" do
       line = "🎸"
-      assert 2 == utf8_char_to_utf16_offset(line, 1)
-      assert 2 == utf8_char_to_utf16_offset(line, 2)
-      assert 2 == utf8_char_to_utf16_offset(line, 3)
-      assert 2 == utf8_char_to_utf16_offset(line, 4)
+      assert 2 == utf8_position_to_utf16_offset(line, 1)
+      assert 2 == utf8_position_to_utf16_offset(line, 2)
+      assert 2 == utf8_position_to_utf16_offset(line, 3)
+      assert 2 == utf8_position_to_utf16_offset(line, 4)
     end
 
     test "handles multi-byte characters properly" do
       # guitar is 2 code units in utf16 but 4 in utf8
       line = "b🎸abc"
-      assert 0 == utf8_char_to_utf16_offset(line, 0)
-      assert 1 == utf8_char_to_utf16_offset(line, 1)
-      assert 3 == utf8_char_to_utf16_offset(line, 2)
-      assert 4 == utf8_char_to_utf16_offset(line, 3)
-      assert 5 == utf8_char_to_utf16_offset(line, 4)
-      assert 6 == utf8_char_to_utf16_offset(line, 5)
-      assert 6 == utf8_char_to_utf16_offset(line, 6)
+      assert 0 == utf8_position_to_utf16_offset(line, 0)
+      assert 1 == utf8_position_to_utf16_offset(line, 1)
+      assert 3 == utf8_position_to_utf16_offset(line, 2)
+      assert 4 == utf8_position_to_utf16_offset(line, 3)
+      assert 5 == utf8_position_to_utf16_offset(line, 4)
+      assert 6 == utf8_position_to_utf16_offset(line, 5)
+      assert 6 == utf8_position_to_utf16_offset(line, 6)
     end
   end
 
