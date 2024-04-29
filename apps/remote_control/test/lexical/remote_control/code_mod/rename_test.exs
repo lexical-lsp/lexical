@@ -706,13 +706,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result =~ ~S[renamed(1, 2)]
     end
 
-    @tag :skip
-    @doc """
-    # We need to find a method to distinguish
-    # whether the `resolved function` is dependencies or from our own source code repository,
-    # as the functions provided by `Mix.Project` don't seem to offer this distinction.
-    """
-    test "fails when the cursor is at the reference for a deps qualified call" do
+    test "it should shouldn't rename when the cursor is at the reference for a deps qualified call" do
       assert {:error, :unsupported_entity} =
                ~q[
         defmodule Foo do

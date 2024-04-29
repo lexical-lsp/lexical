@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Callable do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
 
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Subject
@@ -16,9 +17,13 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Callable do
   @spec resolve(Analysis.t(), Position.t()) ::
           {:ok, {atom(), String.t()}, Range.t()} | {:error, atom()}
   def resolve(%Analysis{} = analysis, %Position{} = position) do
+    # `nil` means that the function from a script or a test file
+    independent_apps = [nil | independent_apps()]
+
     with {:ok, {callable, module, local_name, _arity}, range} when callable in [:call] <-
            Entity.resolve(analysis, position),
-         {:ok, name_range} <- Callable.fetch_name_range(analysis, range.start, local_name) do
+         {:ok, name_range} <- Callable.fetch_name_range(analysis, range.start, local_name),
+         true <- Application.get_application(module) in independent_apps do
       {:ok, {:call, {module, local_name}}, name_range}
     else
       _ ->
@@ -65,6 +70,22 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Callable do
 
     with {:ok, document} <- Document.Store.fetch(uri) do
       {:ok, Document.Changes.new(document, edits, nil)}
+    end
+  end
+
+  defp independent_apps do
+    get_apps =
+      fn _ ->
+        if Mix.Project.umbrella?() do
+          Map.keys(Mix.Project.apps_paths())
+        else
+          [Mix.Project.config()[:app]]
+        end
+      end
+
+    case RemoteControl.Mix.in_project(get_apps) do
+      {:ok, apps} -> apps
+      _ -> []
     end
   end
 end
