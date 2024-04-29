@@ -19,7 +19,11 @@ defmodule Lexical.CodeUnit do
   @spec utf8_char_to_utf16_offset(String.t(), utf8_character_position()) ::
           utf16_code_unit_offset()
   def utf8_char_to_utf16_offset(binary, character_position) do
-    do_utf16_offset(binary, character_position, 0)
+    binary
+    |> String.slice(0, character_position)
+    |> :unicode.characters_to_binary(:utf8, :utf16)
+    |> byte_size()
+    |> div(2)
   end
 
   @doc """
@@ -70,25 +74,6 @@ defmodule Lexical.CodeUnit do
   defp do_count_utf8(<<c::utf8, rest::binary>>, count) do
     increment = code_unit_size(c, :utf8)
     do_count_utf8(rest, count + increment)
-  end
-
-  defp do_utf16_offset(_, 0, offset) do
-    offset
-  end
-
-  defp do_utf16_offset(<<>>, _, offset) do
-    # this clause pegs the offset at the end of the string
-    # no matter the character index
-    offset
-  end
-
-  defp do_utf16_offset(<<c, rest::binary>>, remaining, offset) when c < 128 do
-    do_utf16_offset(rest, remaining - 1, offset + 1)
-  end
-
-  defp do_utf16_offset(<<c::utf8, rest::binary>>, remaining, offset) do
-    increment = code_unit_size(c, :utf16)
-    do_utf16_offset(rest, remaining - 1, offset + increment)
   end
 
   # UTF-8
