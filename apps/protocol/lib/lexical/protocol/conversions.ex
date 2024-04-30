@@ -143,10 +143,9 @@ defmodule Lexical.Protocol.Conversions do
   end
 
   defp extract_lsp_character(%ElixirPosition{context_line: line(text: utf8_text)} = position) do
-    with {:ok, code_unit} <- CodeUnit.to_utf16(utf8_text, position.character - 1) do
-      character = min(code_unit, CodeUnit.count(:utf16, utf8_text))
-      {:ok, character}
-    end
+    code_unit = CodeUnit.utf8_position_to_utf16_offset(utf8_text, position.character - 1)
+    character = min(code_unit, CodeUnit.count(:utf16, utf8_text))
+    {:ok, character}
   end
 
   defp extract_elixir_character(%LSPosition{} = position, line(ascii?: true, text: text)) do
@@ -155,7 +154,7 @@ defmodule Lexical.Protocol.Conversions do
   end
 
   defp extract_elixir_character(%LSPosition{} = position, line(text: utf8_text)) do
-    with {:ok, code_unit} <- CodeUnit.to_utf8(utf8_text, position.character) do
+    with {:ok, code_unit} <- CodeUnit.utf16_offset_to_utf8_offset(utf8_text, position.character) do
       character = min(code_unit, byte_size(utf8_text) + 1)
       {:ok, character}
     end

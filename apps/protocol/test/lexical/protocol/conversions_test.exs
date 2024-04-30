@@ -87,7 +87,7 @@ defmodule Lexical.Protocol.ConversionsTest do
 
     test "single line utf8" do
       doc = doc("🏳️‍🌈abcde")
-      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 15))
+      assert {:ok, pos} = Conversions.to_lsp(ex_position(doc, 1, 2))
       assert %LSPosition{character: 6, line: 0} == pos
     end
 
