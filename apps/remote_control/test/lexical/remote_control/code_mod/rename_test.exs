@@ -8,9 +8,11 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.Test.CodeSigil
   alias Lexical.Test.CursorSupport
   alias Lexical.Test.Fixtures
+  alias Lexical.Test.RangeSupport
 
   import CodeSigil
   import CursorSupport
+  import RangeSupport
   import Lexical.Test.EventualAssertions
   import Fixtures
 
@@ -82,6 +84,48 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
           alias |Foo
         end
       ] |> prepare()
+    end
+
+    test "returns the function name" do
+      code = ~q[
+        defmodule Foo do
+          def |bar do
+          end
+        end
+      ]
+
+      {:ok, result, range} = prepare(code)
+      assert result == "bar"
+      assert code |> strip_cursor() |> decorate(range) == "  def «bar» do"
+    end
+
+    test "only returns function range even if that is a qualified function" do
+      code = ~q[
+        defmodule Foo do
+          def bar do
+          end
+        end
+
+        defmodule Bar do
+          Foo.|bar()
+        end
+      ]
+
+      {:ok, result, range} = prepare(code)
+      assert result == "bar"
+      assert code |> strip_cursor() |> decorate(range) == "  Foo.«bar»()"
+    end
+
+    test "returns the macro name" do
+      {:ok, result, _} =
+        ~q[
+        defmodule Foo do
+          defmacro |bar(thing) do
+          end
+        end
+      ] |> prepare()
+
+      assert result == "bar"
     end
 
     test "returns error when the entity is not found" do
@@ -506,6 +550,174 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       ] |> rename("DemoWeb.RenamedLive", "lib/demo_web/live/foo_live.ex")
 
       assert rename_file.new_uri == subject_uri(project, "lib/demo_web/live/renamed_live.ex")
+    end
+  end
+
+  describe "rename function" do
+    test "succeeds when the cursor is at the definition with 0 arity" do
+      {:ok, result} =
+        ~q[
+        defmodule Foo do
+          def |bar do
+          end
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed]
+    end
+
+    test "succeeds when the cursor is at the definition with 1 arity" do
+      {:ok, result} =
+        ~q[
+        defmodule Foo do
+          def |bar(x) do
+          end
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed(x)]
+    end
+
+    test "succeeds when the function has default params" do
+      {:ok, result} =
+        ~q[
+        defmodule Foo do
+          def |bar(x \\ 1) do
+          end
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed(x \\ 1)]
+    end
+
+    test "succeeds when the function has declaring defaults" do
+      {:ok, result} =
+        ~q[
+        defmodule Foo do
+          def |bar(x, y \\ 1)
+
+          def bar(x, y) do
+          end
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed(x, y \\ 1)]
+      assert result =~ ~S[def renamed(x, y) do]
+    end
+
+    test "succeeds when the cursor is at the reference for a local call" do
+      {:ok, result} =
+        ~q/
+        defmodule Foo do
+          def bar do
+          end
+
+          def baz do
+            [|bar()]
+          end
+        end
+      / |> rename("renamed")
+
+      assert result =~ ~S/[renamed()]/
+    end
+
+    test "it should rename both definition and reference" do
+      {:ok, result} =
+        ~q/
+        defmodule DefinitionModule do
+          def |hello do
+            :world
+          end
+        end
+
+        defmodule DefinitionModuleTest do
+          use ExUnit.Case
+
+          test "it should call the |hello function" do
+            assert DefinitionModule.hello() == :world
+          end
+        end
+      / |> rename("renamed")
+
+      assert result =~ ~S/def renamed do/
+      assert result =~ ~S/assert DefinitionModule.renamed() == :world/
+    end
+
+    @tag :skip
+    @doc """
+    There is a bug in the `Entity.resolve/2` function that is causing the test to fail.
+    """
+    test "succeeds when the cursor is at the reference for a local call with capture" do
+      {:ok, result} =
+        ~q{
+        defmodule Foo do
+          def bar(x) do
+            x
+          end
+
+          def baz do
+            [&|bar/1]
+          end
+        end
+      } |> rename("renamed")
+
+      assert result =~ ~S{[&renamed/1]}
+    end
+
+    test "succeeds when the cursor is at the reference for a qualified call with multiple arguments" do
+      {:ok, result} =
+        ~q[
+        defmodule DefinitionModule do
+          def bar(x, y) do
+            {x, y}
+          end
+        end
+
+        defmodule Bar do
+          DefinitionModule.|bar(1, 2)
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed(x, y) do]
+      assert result =~ ~S[DefinitionModule.renamed(1, 2)]
+    end
+
+    @tag :skip
+    @doc """
+    This is a bug in our function indexation:
+      when the cursor is at the reference for a imported call, the definition function can't be found.
+    """
+    test "succeeds when the cursor is at the reference for a imported call" do
+      {:ok, result} =
+        ~q[
+        defmodule DefinitionModule do
+          def bar(x, y) do
+            {x, y}
+          end
+        end
+
+        defmodule Baz do
+          import DefinitionModule
+          |bar(1, 2)
+        end
+      ] |> rename("renamed")
+
+      assert result =~ ~S[def renamed(x, y) do]
+      assert result =~ ~S[renamed(1, 2)]
+    end
+
+    test "it should shouldn't rename when the cursor is at the reference for a deps qualified call" do
+      assert {:error, :unsupported_entity} =
+               ~q[
+        defmodule Foo do
+          def bar do
+          end
+
+          def baz do
+            Application.|start(:foo)
+          end
+        end
+      ] |> rename("renamed")
     end
   end
 

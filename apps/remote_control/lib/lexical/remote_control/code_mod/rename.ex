@@ -14,7 +14,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
           {:ok, {atom(), String.t()}, Range.t()} | {:error, term()}
   defdelegate prepare(analysis, position), to: Rename.Prepare
 
-  @rename_mapping %{module: Rename.Module}
+  @rename_mapping %{call: Rename.Callable, module: Rename.Module}
 
   @spec rename(Analysis.t(), Position.t(), String.t(), String.t() | nil) ::
           {:ok, [Document.Changes.t()]} | {:error, term()}
