@@ -1,20 +1,25 @@
-## Unreleased 
+## Unreleased
+
+### What's Changed
+
+* Fix conversion of UTF-8 positions to UTF-16 code units by @zachallaun in https://github.com/lexical-lsp/lexical/pull/719
 
 ## v0.6.0 `24 April, 2024`
-After multiple people asked, both document and workspace symbols have been implemented. 
-Both make heavy use of our indexing infrastructure, which provides extremely fast and 
+After multiple people asked, both document and workspace symbols have been implemented.
+Both make heavy use of our indexing infrastructure, which provides extremely fast and
 accurate results.
 
-We've also fixed a number of small inconsistencies and crashes in the indexer, making it more robust and accurate. I especially want to call out the fix that @lukad made, that improved indexing performance by 3600x on his large codebase. 
-When you update to this release, we strongly recommend re-indexing your project's source code by opening the project's `mix.exs` file and 
+We've also fixed a number of small inconsistencies and crashes in the indexer, making it more robust and accurate. I especially want to call out the fix that @lukad made, that improved indexing performance by 3600x on his large codebase.
+When you update to this release, we strongly recommend re-indexing your project's source code by opening the project's `mix.exs` file and
 running the `Rebuild <your project>'s code search index` code action.
 
-In addition, we've improved support for completions in phoenix controllers, stopped completions inside strings and have changed how we sort completions. The new sorting scheme is a big improvement for usability, and sorts things by how "close" they are to what you're working on. Give it a shot, we think you'll like it. 
+In addition, we've improved support for completions in phoenix controllers, stopped completions inside strings and have changed how we sort completions. The new sorting scheme is a big improvement for usability, and sorts things by how "close" they are to what you're working on. Give it a shot, we think you'll like it.
 
-I'd like to thank all our new contributors, and especially our core team of 
+I'd like to thank all our new contributors, and especially our core team of
 @scottming, @zachallaun, @moosieus and @blond. You've all gone above and beyond.
 
-## What's Changed
+### What's Changed
+
 * Add Sublime Text instructions to docs by @distefam in https://github.com/lexical-lsp/lexical/pull/633
 * Implement callback completions by @Moosieus in https://github.com/lexical-lsp/lexical/pull/640
 * Fix `do` completing to `defmodule` in VSCode by @Moosieus in https://github.com/lexical-lsp/lexical/pull/642
@@ -121,7 +126,7 @@ And we've made a ton of bug fixes and usability improvements since 0.4.1 as well
 This is a small bugfix release for 0.4.0
 
 It contains the following fixes:
-  
+
    * Fix: Stutter when completing some items inside strings (`:erl` would complete to `:erlerlang`)
    * Fix: Undefined variable names in HEEX templates
    * Fix: Erlang remote calls in pipelines did not have their first parameter removed during completion
@@ -149,7 +154,8 @@ Bugs fixed:
 
    * Longstanding unicode completion / editing bugs slain. Unicode works perfectly now.
 
-## What's Changed
+### What's Changed
+
 * Suggest a module name for defmodule completion by @scohen in https://github.com/lexical-lsp/lexical/pull/338
 * Add Vanilla Emacs with eglot instruction by @dalugm in https://github.com/lexical-lsp/lexical/pull/343
 * Add elixir boot script to support having spaces in the package path by @Blond11516 in https://github.com/lexical-lsp/lexical/pull/345
@@ -201,7 +207,8 @@ Bugs fixed:
 
 **Full Changelog**: https://github.com/lexical-lsp/lexical/compare/v0.3.0...v0.4.0
 
-## What's Changed
+### What's Changed
+
 * Suggest a module name for defmodule completion by @scohen in https://github.com/lexical-lsp/lexical/pull/338
 * Add Vanilla Emacs with eglot instruction by @dalugm in https://github.com/lexical-lsp/lexical/pull/343
 * Add elixir boot script to support having spaces in the package path by @Blond11516 in https://github.com/lexical-lsp/lexical/pull/345
@@ -262,7 +269,7 @@ Unicode was likely broken under the last several releases; Unicode in documents 
 **Full Changelog**: https://github.com/lexical-lsp/lexical/compare/v0.3.2...v0.3.3
 
 ## v0.3.2 `29 August, 2023`
-0.3.2 fixes a bug where packaging would not produce namespaced artifacts if the lexical directory was inside a subdirectory that had one of its dependencies as a path element. 
+0.3.2 fixes a bug where packaging would not produce namespaced artifacts if the lexical directory was inside a subdirectory that had one of its dependencies as a path element.
 
 For example, packaging would fail if lexical was in `/path/to/home/language_servers/lexical`.
 
@@ -270,11 +277,13 @@ For example, packaging would fail if lexical was in `/path/to/home/language_serv
 
 ## v0.3.1 `24 August, 2023`
 
-This is a bugfix release. Packaging generated in v0.3.0 would not start in directories that contain spaces, and this is the default for vscode under macOS. 
+This is a bugfix release. Packaging generated in v0.3.0 would not start in directories that contain spaces, and this is the default for vscode under macOS.
 This release has a new launching mechanism that should allow us to use a lot less bash scripting.
 
 ## v0.3.0 `23 August, 2023`
-## What's Changed
+
+### What's Changed
+
 * Support Struct fields completion when in struct arguments context by @scottming in https://github.com/lexical-lsp/lexical/pull/196
 * Fix: Argument names crashes in light of a literal atom by @scohen in https://github.com/lexical-lsp/lexical/pull/285
 * Add Nix Flake by @hauleth in https://github.com/lexical-lsp/lexical/pull/175
@@ -311,7 +320,9 @@ This release has a new launching mechanism that should allow us to use a lot les
 **Full Changelog**: https://github.com/lexical-lsp/lexical/compare/v0.2.2...v0.3.0
 
 ## v0.2.2 `21 July, 2023`
-## What's Changed
+
+### What's Changed
+
 * fix: Add missing command to get rtx env by @Blond11516 in https://github.com/lexical-lsp/lexical/pull/281
 * Update Lexical version to 0.2.2 by @Blond11516 in https://github.com/lexical-lsp/lexical/pull/282
 
@@ -322,7 +333,9 @@ This release has a new launching mechanism that should allow us to use a lot les
 This release bumps versions of our apps, and contains no improvements or fixes.
 
 ## v0.2.0 `21 July, 2023`
-## What's Changed
+
+### What's Changed
+
 * Handled Cancel Notifications by @scohen in https://github.com/lexical-lsp/lexical/pull/157
 * Support work done progress during project compilation by @scottming in https://github.com/lexical-lsp/lexical/pull/135
 * Normalize naming by @scohen in https://github.com/lexical-lsp/lexical/pull/158
