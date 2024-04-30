@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
       {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
     else
       :error -> {:error, :not_found}
-      {:error, :surround_context} -> {:error, :not_found}
+      {:error, :surround_context} -> maybe_local_capture_func(analysis, position)
       {:error, _} = error -> error
     end
   end
@@ -102,6 +102,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
       _ ->
         {:ok, {:variable, List.to_atom(chars)}, node_range}
+    end
+  end
+
+  defp resolve({:local_arity, chars}, node_range, analysis, position) do
+    current_module = current_module(analysis, position)
+
+    case Ast.zipper_at(analysis.document, position) do
+      {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, [arity]}]}}} ->
+        {:ok, {:call, current_module, List.to_atom(chars), arity}, node_range}
+
+      _ ->
+        {:error, :not_found}
     end
   end
 
@@ -463,6 +475,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     case RemoteControl.Analyzer.current_module(analysis, position) do
       {:ok, module} -> module
       _ -> nil
+    end
+  end
+
+  defp maybe_local_capture_func(analysis, position) do
+    case Ast.zipper_at(analysis.document, position) do
+      {:ok,
+       %Zipper{
+         node: {:/, _, [{local_func_name, meta, _}, {:__block__, _, [arity]}]}
+       }} ->
+        start_column = meta[:column]
+        function_name_length = local_func_name |> to_string() |> String.length()
+
+        begin_pos = {position.line, start_column}
+        end_pos = {position.line, start_column + function_name_length}
+        range = to_range(analysis.document, begin_pos, end_pos)
+
+        current_module = current_module(analysis, position)
+        {:ok, {:call, current_module, local_func_name, arity}, range}
+
+      _ ->
+        {:error, :not_found}
     end
   end
 end
