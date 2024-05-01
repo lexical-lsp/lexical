@@ -671,6 +671,32 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[    &«local_fn»/1]
     end
 
+    test "failed at the position of the molecule" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            a = 1
+            a|/1
+          end
+        end
+      ]
+
+      assert {:error, :not_found} = resolve(code)
+    end
+
+    test "failed at the position of the denominator" do
+      code = ~q[
+        defmodule Parent do
+          def function do
+            a = 1
+            a/|1
+          end
+        end
+      ]
+
+      assert {:error, :not_found} = resolve(code)
+    end
+
     test "in a function capture and the cursor is at `ampersand`" do
       code = ~q[
         defmodule Parent do
