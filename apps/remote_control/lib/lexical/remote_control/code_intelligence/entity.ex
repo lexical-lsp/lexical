@@ -481,7 +481,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp maybe_local_capture_func(analysis, position) do
     with {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, _}]}} = zipper} <-
            Ast.zipper_at(analysis.document, position),
-         %Zipper{node: {:&, _, _}} <- Zipper.up(zipper) do
+         true <- inside_capture?(zipper) do
       {:/, _, [{local_func_name, _meta, _}, {:__block__, _, [arity]}]} = zipper.node
       function_name_length = local_func_name |> to_string() |> String.length()
       range = Ast.Range.fetch!(zipper.node, analysis.document)
@@ -492,6 +492,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     else
       _ ->
         {:error, :not_found}
+    end
+  end
+
+  defp inside_capture?(zipper) do
+    case Zipper.up(zipper) do
+      %Zipper{node: {:&, _, _}} -> true
+      _ -> false
     end
   end
 end
