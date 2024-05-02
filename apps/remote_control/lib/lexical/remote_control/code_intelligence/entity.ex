@@ -482,13 +482,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     with {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, _}]}} = zipper} <-
            Ast.zipper_at(analysis.document, position),
          %Zipper{node: {:&, _, _}} <- Zipper.up(zipper) do
-      {:/, _, [{local_func_name, meta, _}, {:__block__, _, [arity]}]} = zipper.node
-      start_column = meta[:column]
+      {:/, _, [{local_func_name, _meta, _}, {:__block__, _, [arity]}]} = zipper.node
       function_name_length = local_func_name |> to_string() |> String.length()
-
-      begin_pos = {position.line, start_column}
-      end_pos = {position.line, start_column + function_name_length}
-      range = to_range(analysis.document, begin_pos, end_pos)
+      range = Ast.Range.fetch!(zipper.node, analysis.document)
+      range = put_in(range.end.character, range.start.character + function_name_length)
 
       current_module = current_module(analysis, position)
       {:ok, {:call, current_module, local_func_name, arity}, range}
