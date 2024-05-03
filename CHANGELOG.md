@@ -1,8 +1,11 @@
 ## Unreleased
 
-### What's Changed
+### v0.6.1
+
+Small bugfix release. We found an issue regarding unicode conversion, and although it's existed for a while and noone complained, we felt that it was more likely to happen now that we have workspace symbols.
 
 * Fix conversion of UTF-8 positions to UTF-16 code units by @zachallaun in https://github.com/lexical-lsp/lexical/pull/719
+* Fix Entity.resolve not correctly resolving local function capture calls @scottming in https://github.com/lexical-lsp/lexical/pull/721
 
 ## v0.6.0 `24 April, 2024`
 After multiple people asked, both document and workspace symbols have been implemented.
