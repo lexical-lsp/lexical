@@ -55,7 +55,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
     end
 
     defp entries_for_uri(uri) do
-      with {:ok, %Document{} = document, %Analysis{} = analysis} <- ensure_document_open(uri),
+      with {:ok, %Document{} = document, %Analysis{} = analysis} <- ensure_open(uri),
            {:ok, entries} <- Indexer.Quoted.index_with_cleanup(analysis) do
         {:ok, document.path, entries}
       else
@@ -65,7 +65,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
       end
     end
 
-    defp ensure_document_open(uri) do
+    defp ensure_open(uri) do
       case Document.Store.fetch(uri, :analysis) do
         {:ok, %Document{} = document, analysis} ->
           {:ok, document, analysis}

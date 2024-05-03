@@ -35,7 +35,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
 
   defp rename_file(document, entry, new_suffix) do
     root_path = root_path()
-    relative_path = relative_path(entry.path, root_path)
+    relative_path = Path.relative_to(entry.path, root_path)
 
     with {:ok, prefix} <- fetch_conventional_prefix(relative_path),
          {:ok, new_name} <- fetch_new_name(document, entry, new_suffix) do
@@ -55,10 +55,6 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     else
       _ -> nil
     end
-  end
-
-  defp relative_path(path, root_path) do
-    Path.relative_to(path, root_path)
   end
 
   defp root_path do
@@ -90,31 +86,19 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     #
     # iex> fetch_conventional_prefix("apps/remote_control/lib/lexical/remote_control/code_mod/rename/file.ex")
     # {:ok, "apps/remote_control/lib"}
-    result =
-      path
-      |> Path.split()
-      |> Enum.chunk_every(2, 2)
-      |> Enum.reduce([], fn
-        ["apps", app_name], _ ->
-          [app_name, "apps"]
+    segments =
+      case Path.split(path) do
+        ["apps", app_name, "lib" | _] -> ["apps", app_name, "lib"]
+        ["apps", app_name, "test" | _] -> ["apps", app_name, "test"]
+        ["lib" | _] -> ["lib"]
+        ["test" | _] -> ["test"]
+        _ -> nil
+      end
 
-        ["lib", _follow_element], prefix ->
-          ["lib" | prefix]
-
-        ["test", _follow_element], prefix ->
-          ["test" | prefix]
-
-        _remain, prefix ->
-          prefix
-      end)
-
-    case result do
-      [] ->
-        :error
-
-      prefix ->
-        prefix = prefix |> Enum.reverse() |> Path.join()
-        {:ok, prefix}
+    if segments do
+      {:ok, Path.join(segments)}
+    else
+      :error
     end
   end
 
@@ -137,7 +121,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     # In some cases, users prefer to include the `insertions` in the module name,
     # such as `DemoWeb.Components.Icons`.
     # In this case, we should not insert the prefix in a nested manner.
-    prefer_to_include_insertions? = insertions && insertions in Path.split(suffix)
+    prefer_to_include_insertions? = insertions in Path.split(suffix)
     old_path_contains_insertions? = insertions in Path.split(relative_path)
 
     if not is_nil(insertions) and old_path_contains_insertions? and
@@ -145,7 +129,6 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
       suffix
       |> Path.split()
       |> List.insert_at(1, insertions)
-      |> Enum.reject(&(&1 == ""))
       |> Path.join()
     else
       suffix

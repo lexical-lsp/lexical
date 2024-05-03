@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence
+  alias Lexical.RemoteControl.CodeMod
 
   require Logger
 
@@ -18,18 +19,15 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl, :compile_document, [document])
   end
 
-  def maybe_schedule_compile(project, triggered_file_uri, triggered_message) do
-    RemoteControl.call(project, Build, :maybe_schedule_compile, [
-      triggered_file_uri,
-      triggered_message
-    ])
+  def maybe_schedule_compile(project, triggered_message) do
+    RemoteControl.call(project, Build, :maybe_schedule_compile, [triggered_message])
   end
 
-  def maybe_compile_document(project, document, triggered_message) do
+  def maybe_compile_document(project, document, updated_message) do
     RemoteControl.call(project, Build, :maybe_compile_document, [
       project,
       document,
-      triggered_message
+      updated_message
     ])
   end
 

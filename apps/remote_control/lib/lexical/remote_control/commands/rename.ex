@@ -1,10 +1,12 @@
 defmodule Lexical.RemoteControl.Commands.Rename do
-  @moduledoc """
-  We are unable to accurately determine the process of renaming,
-  because after the rename, there will be a series of operations such as
-  `DidChange`, `DidSave`, etc., which will trigger expensive actions like compiling the entire project.
-  Therefore, we need this module to make some markings to determine whether it is currently in the process of renaming.
-  """
+  # We are unable to accurately determine when the rename process finishes,
+  # because after the rename, we will receive a series of events like
+  # `DidChange`, `DidSave`, etc., which will trigger expensive actions like compiling the entire project.
+  # Therefore, we need this module to tell us if lexical is currently in the process of renaming.
+
+  alias Lexical.RemoteControl.Api.Messages
+  import Messages
+
   defmodule State do
     defstruct uri_with_expected_operation: %{}, on_update_progess: nil, on_complete: nil
 
@@ -18,12 +20,20 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       }
     end
 
-    def update_progress(%__MODULE__{} = state, uri, operation_message) do
+    def update_progress(%__MODULE__{} = state, file_changed(uri: uri)) do
+      update_progress(state, uri, file_changed(uri: uri))
+    end
+
+    def update_progress(%__MODULE__{} = state, file_saved(uri: uri)) do
+      update_progress(state, uri, file_saved(uri: uri))
+    end
+
+    defp update_progress(%__MODULE__{} = state, uri, message) do
       new_uri_with_expected_operation =
         maybe_pop_expected_operation(
           state.uri_with_expected_operation,
           uri,
-          operation_message,
+          message,
           state.on_update_progess
         )
 
@@ -38,10 +48,10 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       state.uri_with_expected_operation != %{}
     end
 
-    def maybe_pop_expected_operation(uri_to_operation, uri, %operation{}, on_update_progess) do
+    def maybe_pop_expected_operation(uri_to_operation, uri, message, on_update_progess) do
       case uri_to_operation do
-        %{^uri => ^operation} ->
-          on_update_progess.(1, "Renaming")
+        %{^uri => ^message} ->
+          on_update_progess.(1, "")
           Map.delete(uri_to_operation, uri)
 
         _ ->
@@ -61,7 +71,10 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     {:ok, state}
   end
 
-  @spec set_rename_progress(%{Lexical.uri() => atom()}, tuple()) :: :ok
+  @spec set_rename_progress(
+          %{Lexical.uri() => Messages.file_changed() | Messages.file_saved()},
+          {function(), function()}
+        ) :: :ok
   def set_rename_progress(uri_with_expected_operation, progress_functions) do
     GenServer.cast(
       __MODULE__,
@@ -69,12 +82,17 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     )
   end
 
-  def update_progress(uri, operation_message) do
-    GenServer.cast(__MODULE__, {:update_progress, uri, operation_message})
-  end
-
   def in_progress? do
     GenServer.call(__MODULE__, :in_progress?)
+  end
+
+  @spec update_progress(Messages.file_changed() | Messages.file_saved()) :: :ok
+  # NOTE:
+  # This GenServer cannot simply subscribe to messages and then update the rename status.
+  # Instead, it should call this function to synchronously update the status,
+  # thus preventing failures due to latency issues.
+  def update_progress(message) do
+    GenServer.cast(__MODULE__, {:update_progress, message})
   end
 
   @impl true
@@ -83,14 +101,14 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   end
 
   @impl true
-  def handle_cast({:set_rename_progress, uri_with_expected_operation, progress_functions}, _state) do
-    new_state = State.new(uri_with_expected_operation, progress_functions)
+  def handle_cast({:update_progress, message}, state) do
+    new_state = State.update_progress(state, message)
     {:noreply, new_state}
   end
 
   @impl true
-  def handle_cast({:update_progress, uri, message}, state) do
-    new_state = State.update_progress(state, uri, message)
+  def handle_cast({:set_rename_progress, uri_with_expected_operation, progress_functions}, _state) do
+    new_state = State.new(uri_with_expected_operation, progress_functions)
     {:noreply, new_state}
   end
 end

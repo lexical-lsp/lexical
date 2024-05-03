@@ -3,10 +3,10 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
-  alias Lexical.Protocol.Notifications.DidChange
-  alias Lexical.Protocol.Notifications.DidSave
   alias Lexical.RemoteControl.Commands
   alias Lexical.RemoteControl.Progress
+
+  import Lexical.RemoteControl.Api.Messages
 
   alias __MODULE__
 
@@ -14,13 +14,13 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
           {:ok, {atom(), String.t()}, Range.t()} | {:error, term()}
   defdelegate prepare(analysis, position), to: Rename.Prepare
 
-  @rename_mapping %{module: Rename.Module}
+  @rename_mappings %{module: Rename.Module}
 
   @spec rename(Analysis.t(), Position.t(), String.t(), String.t() | nil) ::
           {:ok, [Document.Changes.t()]} | {:error, term()}
   def rename(%Analysis{} = analysis, %Position{} = position, new_name, client_name) do
     with {:ok, {renamable, entity}, range} <- Rename.Prepare.resolve(analysis, position) do
-      rename_module = @rename_mapping[renamable]
+      rename_module = Map.fetch!(@rename_mappings, renamable)
       results = rename_module.rename(range, new_name, entity)
       set_rename_progress(results, client_name)
       {:ok, results}
@@ -46,9 +46,12 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
         # when the file is renamed, we won't receive `DidSave` for the old file
-        [{rename_file.old_uri, DidChange}, {rename_file.new_uri, DidSave}]
+        [
+          {rename_file.old_uri, file_changed(uri: rename_file.old_uri)},
+          {rename_file.new_uri, file_saved(uri: rename_file.new_uri)}
+        ]
       else
-        [{document.uri, DidSave}]
+        [{document.uri, file_saved(uri: document.uri)}]
       end
     end)
     |> Map.new()
@@ -58,11 +61,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     document_changes_list
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
-        [{document.uri, DidSave}]
+        [{document.uri, file_saved(uri: document.uri)}]
       else
         # Some editors do not directly save the file after renaming, such as *neovim*.
         # when the file is not renamed, we'll only received `DidChange` for the old file
-        [{document.uri, DidChange}]
+        [{document.uri, file_changed(uri: document.uri)}]
       end
     end)
     |> Map.new()

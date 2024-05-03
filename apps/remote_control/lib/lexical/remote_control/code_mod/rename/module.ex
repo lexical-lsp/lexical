@@ -111,9 +111,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   defp adjust_range_for_exacts(entries, old_suffix) do
     for entry <- entries do
       start_character = entry.range.end.character - String.length(old_suffix)
-      start_position = %{entry.range.start | character: start_character}
-      range = %{entry.range | start: start_position}
-      %{entry | range: range}
+      put_in(entry.range.start.character, start_character)
     end
   end
 
@@ -140,8 +138,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   defp resolve_module_range(entry, entity, [[{start, length}]]) do
     range = adjust_range_characters(entry.range, {start, length})
 
-    with {:ok, {:module, result}, _} <- resolve(entry.path, range.start),
-         true <- entity == result do
+    with {:ok, {:module, ^entity}, _} <- resolve(entry.path, range.start) do
       {:ok, range}
     end
   end

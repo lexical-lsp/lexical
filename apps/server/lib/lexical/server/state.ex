@@ -144,7 +144,7 @@ defmodule Lexical.Server.State do
     {:ok, state}
   end
 
-  def apply(%__MODULE__{} = state, %DidChange{lsp: event} = message) do
+  def apply(%__MODULE__{} = state, %DidChange{lsp: event}) do
     uri = event.text_document.uri
     version = event.text_document.version
     project = state.configuration.project
@@ -163,7 +163,7 @@ defmodule Lexical.Server.State do
           )
 
         Api.broadcast(project, updated_message)
-        Api.maybe_compile_document(state.configuration.project, updated_source, message)
+        Api.maybe_compile_document(state.configuration.project, updated_source, updated_message)
         {:ok, state}
 
       error ->
@@ -208,12 +208,13 @@ defmodule Lexical.Server.State do
     end
   end
 
-  def apply(%__MODULE__{} = state, %DidSave{lsp: event} = message) do
+  def apply(%__MODULE__{} = state, %DidSave{lsp: event}) do
     uri = event.text_document.uri
 
     case Document.Store.save(uri) do
       :ok ->
-        Api.maybe_schedule_compile(state.configuration.project, uri, message)
+        Api.maybe_schedule_compile(state.configuration.project, file_saved(uri: uri))
+
         {:ok, state}
 
       error ->
