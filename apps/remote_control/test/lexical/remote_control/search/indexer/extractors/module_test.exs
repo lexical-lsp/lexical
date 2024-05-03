@@ -139,6 +139,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ModuleTest do
       assert decorate(doc, module_ref.range) =~ "    «Thing.Util» = arg"
     end
 
+    test "can detect a module reference in a nested alias" do
+      {:ok, [_top_level, _foo, _first, second, fourth], doc} = ~q[
+        defmodule TopLevel do
+          alias Foo.{
+            First,
+            Second,
+            Third.Fourth
+          }
+        end] |> index()
+
+      assert second.subject == Foo.Second
+      assert decorate(doc, second.range) == "    «Second»,"
+
+      assert fourth.subject == Foo.Third.Fourth
+      assert decorate(doc, fourth.range) == "    «Third.Fourth»"
+    end
+
     test "can detect a module reference on the right side of a pattern match" do
       {:ok, [_module, module_ref], doc} =
         ~q[

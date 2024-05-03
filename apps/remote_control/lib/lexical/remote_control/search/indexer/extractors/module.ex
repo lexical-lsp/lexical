@@ -248,8 +248,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
   defp resolve_for_block(_, _), do: :error
 
   defp resolve_alias(%Reducer{} = reducer, unresolved_alias) do
-    {line, column} = reducer.position
-    position = Position.new(reducer.analysis.document, line, column)
+    position = Reducer.position(reducer)
 
     RemoteControl.Analyzer.expand_alias(unresolved_alias, reducer.analysis, position)
   end

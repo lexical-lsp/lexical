@@ -161,11 +161,27 @@ defmodule Lexical.RemoteControl.Analyzer do
     end
   end
 
-  defp resolve_alias([first | rest], aliases_mapping) when is_atom(first) do
+  defp resolve_alias([first | _] = segments, aliases_mapping) when is_atom(first) do
+    with :error <- fetch_leading_alias(segments, aliases_mapping) do
+      fetch_trailing_alias(segments, aliases_mapping)
+    end
+  end
+
+  defp resolve_alias(_, _), do: :error
+
+  defp fetch_leading_alias([first | rest], aliases_mapping) do
     with {:ok, resolved} <- Map.fetch(aliases_mapping, first) do
       {:ok, [resolved | rest]}
     end
   end
 
-  defp resolve_alias(_, _), do: :error
+  defp fetch_trailing_alias(segments, aliases_mapping) do
+    # Trailing aliases happen when you use the curly syntax to define multiple aliases
+    # in one go, like Foo.{First, Second.Third, Fourth}
+    # Our alias mapping will have Third mapped to Foo.Second.Third, so we need to look
+    # for Third, wheras the leading alias will look for Second in the mappings.
+    with {:ok, resolved} <- Map.fetch(aliases_mapping, List.last(segments)) do
+      {:ok, List.wrap(resolved)}
+    end
+  end
 end
