@@ -3,14 +3,10 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
   alias Lexical.Ast.Analysis.Import
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document.Position
+  alias Lexical.Document.Range
   alias Lexical.ProcessCache
   alias Lexical.RemoteControl.Analyzer.Aliases
   alias Lexical.RemoteControl.Module.Loader
-
-  @kernel_imports [
-    Import.new([:Kernel], 1),
-    Import.new([:Kernel, :SpecialForms], 1)
-  ]
 
   @spec at(Analysis.t(), Position.t()) :: [Scope.import_mfa()]
   def at(%Analysis{} = analysis, %Position{} = position) do
@@ -34,18 +30,18 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
   defp import_map(%Scope{} = scope, position) do
     end_line = Scope.end_line(scope, position)
 
-    (@kernel_imports ++ scope.imports)
+    (kernel_imports(scope) ++ scope.imports)
     # sorting by line ensures that imports on later lines
     # override imports on earlier lines
-    |> Enum.sort_by(& &1.line)
-    |> Enum.take_while(&(&1.line <= end_line))
+    |> Enum.sort_by(& &1.range.start.line)
+    |> Enum.take_while(&(&1.range.start.line <= end_line))
     |> Enum.reduce(%{}, fn %Import{} = import, current_imports ->
       apply_to_scope(import, scope, current_imports)
     end)
   end
 
   defp apply_to_scope(%Import{} = import, current_scope, %{} = current_imports) do
-    import_module = Aliases.resolve_at(current_scope, import.module, import.line)
+    import_module = Aliases.resolve_at(current_scope, import.module, import.range.start.line)
 
     functions = mfas_for(import_module, :functions)
     macros = mfas_for(import_module, :macros)
@@ -134,5 +130,15 @@ defmodule Lexical.RemoteControl.Analyzer.Imports do
 
   defp sigil?(string_name, arity) do
     String.starts_with?(string_name, "sigil_") and arity in [1, 2]
+  end
+
+  defp kernel_imports(%Scope{} = scope) do
+    start_pos = scope.range.start
+    range = Range.new(start_pos, start_pos)
+
+    [
+      Import.implicit(range, [:Kernel]),
+      Import.implicit(range, [:Kernel, :SpecialForms])
+    ]
   end
 end

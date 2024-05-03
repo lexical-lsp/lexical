@@ -1,9 +1,11 @@
 defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
   alias Lexical.Ast
+  alias Lexical.Document
   alias Lexical.RemoteControl.Analyzer
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
+  import Lexical.Test.RangeSupport
 
   use ExUnit.Case
 
@@ -13,6 +15,19 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
     document
     |> Ast.analyze()
     |> Analyzer.aliases_at(position)
+  end
+
+  defp scope_aliases(text) do
+    {position, document} = pop_cursor(text, as: :document)
+
+    aliases =
+      document
+      |> Ast.analyze()
+      |> Ast.Analysis.scopes_at(position)
+      |> Enum.flat_map(& &1.aliases)
+      |> Map.new(&{&1.as, &1})
+
+    {aliases, document}
   end
 
   describe "top level aliases" do
@@ -189,7 +204,7 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
     test "aliases expanding current module using as" do
       aliases = ~q[
         defmodule TopLevel do
-          alias __MODULE__.Foo|, as: OtherAlias
+          alias __MODULE__.Foo, as: OtherAlias|
         end
       ] |> aliases_at_cursor()
 
@@ -244,6 +259,134 @@ defmodule Lexical.RemoteControl.Analyzer.AliasesTest do
 
       assert aliases[:"@protocol"] == MyProtocol
       assert aliases[:"@for"] == Atom
+    end
+  end
+
+  describe "alias ranges" do
+    test "for a simple alias" do
+      {aliases, doc} =
+        ~q[
+          defmodule Parent do
+            alias Foo.Bar.Baz|
+          end
+        ]
+        |> scope_aliases()
+
+      assert decorate(doc, aliases[:Baz].range) =~ "  «alias Foo.Bar.Baz»"
+    end
+
+    test "for a multiple alias on one line" do
+      {aliases, doc} =
+        ~q[
+            defmodule Parent do
+              alias Foo.Bar.{Baz, Quux}|
+            end
+        ]
+        |> scope_aliases()
+
+      assert decorate(doc, aliases[:Baz].range) =~ "  «alias Foo.Bar.{Baz, Quux}»"
+      assert decorate(doc, aliases[:Quux].range) =~ "  «alias Foo.Bar.{Baz, Quux}»"
+    end
+
+    test "for a multiple alias on multiple lines" do
+      {aliases, doc} =
+        ~q[
+            defmodule Parent do
+              alias Foo.Bar.{
+                Baz,
+                Quux,
+                Other
+            }|
+            end
+        ]
+        |> scope_aliases()
+
+      for name <- [:Baz, :Quux, :Other] do
+        assert decorate(doc, aliases[name].range) =~
+                 "  «alias Foo.Bar.{\n    Baz,\n    Quux,\n    Other\n}»"
+      end
+    end
+
+    def column_after_do(%Document{} = doc, line) do
+      with {:ok, text} <- Document.fetch_text_at(doc, line),
+           {:ok, column} <- find_do_position(text, 0) do
+        column + 2
+      else
+        _ ->
+          :not_found
+      end
+    end
+
+    def find_do_position("do" <> _, position) do
+      {:ok, position}
+    end
+
+    def find_do_position(<<_c::utf8, rest::binary>>, position) do
+      find_do_position(rest, position + 1)
+    end
+
+    def find_do_position(<<>>, _) do
+      :not_found
+    end
+
+    test "__MODULE__ implicit aliases don't have a visible range" do
+      {aliases, doc} =
+        ~q[
+          defmodule MyModule do
+          |
+          end
+        ]
+        |> scope_aliases()
+
+      module_range = aliases[:__MODULE__].range
+
+      refute aliases[:__MODULE__].explicit?
+      assert module_range.start.line == 1
+      assert module_range.start.character == column_after_do(doc, 1)
+      assert module_range.start == module_range.end
+    end
+
+    test "implicit parent alias doesn't have a range" do
+      {aliases, doc} =
+        ~q[
+          defmodule Parent do
+            defmodule Child do
+             |
+            end
+          end
+        ]
+        |> scope_aliases()
+
+      parent_range = aliases[:Parent].range
+
+      refute aliases[:Parent].explicit?
+      assert parent_range.start.line == 1
+      assert parent_range.start.character == column_after_do(doc, 1)
+      assert parent_range.start == parent_range.end
+    end
+
+    test "protocol implicit aliases doesn't have a visible range" do
+      {aliases, doc} =
+        ~q[
+          defimpl MyThing, for: MyProtocol do
+           |
+          end
+        ]
+        |> scope_aliases()
+
+      # the implicit aliases don't have any text in their range
+
+      for_range = aliases[:"@for"].range
+      refute aliases[:"@for"].explicit?
+      assert for_range.start.line == 1
+      assert for_range.start.character == column_after_do(doc, 1)
+      assert for_range.start == for_range.end
+
+      protocol_range = aliases[:"@protocol"].range
+      refute aliases[:"@protocol"].explicit?
+      assert protocol_range.start.line == 1
+      assert protocol_range.start.character == column_after_do(doc, 1)
+      assert protocol_range.start == protocol_range.end
     end
   end
 

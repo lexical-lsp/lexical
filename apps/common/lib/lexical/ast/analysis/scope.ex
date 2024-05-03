@@ -38,13 +38,22 @@ defmodule Lexical.Ast.Analysis.Scope do
 
   @spec alias_map(t(), scope_position()) :: %{module() => t()}
   def alias_map(%__MODULE__{} = scope, position \\ :end) do
-    end_line = end_line(scope, position)
-
     scope.aliases
     # sorting by line ensures that aliases on later lines
     # override aliases on earlier lines
-    |> Enum.sort_by(& &1.line)
-    |> Enum.take_while(&(&1.line <= end_line))
+    |> Enum.sort_by(& &1.range.start.line)
+    |> Enum.take_while(fn %Alias{range: range} ->
+      case position do
+        %Position{} = pos ->
+          pos.line >= range.end.line
+
+        line when is_integer(line) ->
+          line >= range.end.line
+
+        :end ->
+          true
+      end
+    end)
     |> Map.new(&{&1.as, &1})
   end
 

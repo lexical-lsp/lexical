@@ -1,5 +1,10 @@
 defmodule Lexical.Ast.Analysis.Import do
-  defstruct module: nil, selector: :all, line: nil
+  alias Lexical.Ast
+  alias Lexical.Document
+  alias Lexical.Document.Range
+
+  defstruct module: nil, selector: :all, range: nil, explicit?: true
+
   @type function_name :: atom()
   @type function_arity :: {function_name(), arity()}
   @type selector ::
@@ -13,12 +18,20 @@ defmodule Lexical.Ast.Analysis.Import do
           selector: selector(),
           line: non_neg_integer()
         }
-  def new(module, line) do
-    %__MODULE__{module: module, line: line}
+  def new(%Document{} = document, ast, module) do
+    %__MODULE__{module: module, range: Ast.Range.get(ast, document)}
   end
 
-  def new(module, selector, line) do
-    %__MODULE__{module: module, selector: expand_selector(selector), line: line}
+  def new(%Document{} = document, ast, module, selector) do
+    %__MODULE__{
+      module: module,
+      selector: expand_selector(selector),
+      range: Ast.Range.get(ast, document)
+    }
+  end
+
+  def implicit(%Range{} = range, module) do
+    %__MODULE__{module: module, range: range, explicit?: false}
   end
 
   defp expand_selector(selectors) when is_list(selectors) do

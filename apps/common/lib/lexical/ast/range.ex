@@ -37,4 +37,12 @@ defmodule Lexical.Ast.Range do
           message: "Could not get a range for #{inspect(ast)} in #{document.path}"
     end
   end
+
+  @spec get(Macro.t(), Document.t()) :: Range.t() | nil
+  def get(ast, %Document{} = document) do
+    case fetch(ast, document) do
+      {:ok, range} -> range
+      :error -> nil
+    end
+  end
 end

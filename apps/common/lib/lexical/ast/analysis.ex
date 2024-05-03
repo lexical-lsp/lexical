@@ -237,7 +237,7 @@ defmodule Lexical.Ast.Analysis do
 
   @module_defining_forms [:defmodule, :defprotocol]
   # defmodule Foo do or defprotocol MyProtocol do
-  defp analyze_node({form, meta, [{:__aliases__, _, segments} | _]} = quoted, state)
+  defp analyze_node({form, _meta, [{:__aliases__, _, segments} | _]} = quoted, state)
        when form in @module_defining_forms do
     module =
       case State.current_module(state) do
@@ -245,12 +245,12 @@ defmodule Lexical.Ast.Analysis do
         current_module -> reify_alias(current_module, segments)
       end
 
-    current_module_alias = Alias.new(module, :__MODULE__, meta[:line])
+    current_module_alias = Alias.implicit(state.document, quoted, module, :__MODULE__)
 
     new_state =
       state
       # implicit alias belongs to the current scope
-      |> maybe_push_implicit_alias(segments, meta[:line])
+      |> maybe_push_implicit_alias(segments, state.document, quoted)
       # new __MODULE__ alias belongs to the new scope
       |> State.push_scope_for(quoted, module)
       |> State.push_alias(current_module_alias)
@@ -260,19 +260,18 @@ defmodule Lexical.Ast.Analysis do
 
   # defimpl Foo, for: SomeProtocol do
   defp analyze_node(
-         {:defimpl, meta,
+         {:defimpl, _meta,
           [
             {:__aliases__, _, protocol_segments},
             [{_for_keyword, {:__aliases__, _, for_segments}}] | _
           ]} = quoted,
          state
        ) do
-    line = meta[:line]
     expanded_for = expand_alias(for_segments, state)
     module = expand_alias(protocol_segments ++ expanded_for, state)
-    current_module_alias = Alias.new(module, :__MODULE__, line)
-    for_alias = Alias.new(expanded_for, :"@for", line)
-    protocol_alias = Alias.new(protocol_segments, :"@protocol", line)
+    current_module_alias = Alias.implicit(state.document, quoted, module, :__MODULE__)
+    for_alias = Alias.implicit(state.document, quoted, expanded_for, :"@for")
+    protocol_alias = Alias.implicit(state.document, quoted, protocol_segments, :"@protocol")
 
     new_state =
       state
@@ -285,11 +284,16 @@ defmodule Lexical.Ast.Analysis do
   end
 
   # alias Foo.{Bar, Baz, Buzz.Qux}
-  defp analyze_node({:alias, meta, [{{:., _, [aliases, :{}]}, _, aliases_nodes}]}, state) do
+  defp analyze_node(
+         {:alias, _meta, [{{:., _, [aliases, :{}]}, _, aliases_nodes}]} = quoted,
+         state
+       ) do
     base_segments = expand_alias(aliases, state)
 
     Enum.reduce(aliases_nodes, state, fn {:__aliases__, _, segments}, state ->
-      alias = Alias.new(base_segments ++ segments, List.last(segments), meta[:line])
+      alias =
+        Alias.explicit(state.document, quoted, base_segments ++ segments, List.last(segments))
+
       State.push_alias(state, alias)
     end)
   end
@@ -297,10 +301,10 @@ defmodule Lexical.Ast.Analysis do
   # alias Foo
   # alias Foo.Bar
   # alias __MODULE__.Foo
-  defp analyze_node({:alias, meta, [aliases]}, state) do
+  defp analyze_node({:alias, _meta, [aliases]} = quoted, state) do
     case expand_alias(aliases, state) do
       [_ | _] = segments ->
-        alias = Alias.new(segments, List.last(segments), meta[:line])
+        alias = Alias.explicit(state.document, quoted, segments, List.last(segments))
         State.push_alias(state, alias)
 
       [] ->
@@ -309,10 +313,10 @@ defmodule Lexical.Ast.Analysis do
   end
 
   # alias Foo, as: Bar
-  defp analyze_node({:alias, meta, [aliases, options]}, state) do
+  defp analyze_node({:alias, meta, [aliases, options]} = quoted, state) do
     with {:ok, alias_as} <- fetch_alias_as(options),
          [_ | _] = segments <- expand_alias(aliases, state) do
-      alias = Alias.new(segments, alias_as, meta[:line])
+      alias = Alias.explicit(state.document, quoted, segments, alias_as)
       State.push_alias(state, alias)
     else
       _ ->
@@ -322,15 +326,15 @@ defmodule Lexical.Ast.Analysis do
 
   # import with selector import MyModule, only: :functions
   defp analyze_node(
-         {:import, meta, [{:__aliases__, _aliases, module}, selector]},
+         {:import, _meta, [{:__aliases__, _aliases, module}, selector]} = quoted,
          state
        ) do
-    State.push_import(state, Import.new(module, selector, meta[:line]))
+    State.push_import(state, Import.new(state.document, quoted, module, selector))
   end
 
   # wholesale import import MyModule
-  defp analyze_node({:import, meta, [{:__aliases__, _aliases, module}]}, state) do
-    State.push_import(state, Import.new(module, meta[:line]))
+  defp analyze_node({:import, _meta, [{:__aliases__, _aliases, module}]} = quoted, state) do
+    State.push_import(state, Import.new(state.document, quoted, module))
   end
 
   # stab clauses: ->
@@ -353,7 +357,7 @@ defmodule Lexical.Ast.Analysis do
     state
   end
 
-  defp maybe_push_implicit_alias(%State{} = state, [first_segment | _], line)
+  defp maybe_push_implicit_alias(%State{} = state, [first_segment | _], document, quoted)
        when is_atom(first_segment) do
     segments =
       case State.current_module(state) do
@@ -367,14 +371,14 @@ defmodule Lexical.Ast.Analysis do
           current_module ++ [first_segment]
       end
 
-    implicit_alias = Alias.new(segments, first_segment, line)
+    implicit_alias = Alias.implicit(document, quoted, segments, first_segment)
     State.push_alias(state, implicit_alias)
   end
 
   # don't create an implicit alias if the module is defined using complex forms:
   # defmodule __MODULE__.Foo do
   # defmodule unquote(...) do
-  defp maybe_push_implicit_alias(%State{} = state, [non_atom | _], _line)
+  defp maybe_push_implicit_alias(%State{} = state, [non_atom | _], _, _)
        when not is_atom(non_atom) do
     state
   end
