@@ -3,7 +3,7 @@ defmodule Lexical.Server.Provider.Handlers.PrepareRename do
   alias Lexical.Document
   alias Lexical.Protocol.Requests.PrepareRename
   alias Lexical.Protocol.Responses
-  alias Lexical.Protocol.Types
+  alias Lexical.Protocol.Types.PrepareRenameResult.PrepareRenameResult
   alias Lexical.RemoteControl.Api
   alias Lexical.Server.Provider.Env
 
@@ -26,7 +26,7 @@ defmodule Lexical.Server.Provider.Handlers.PrepareRename do
     case Api.prepare_rename(project, analysis, position) do
       {:ok, cursor_entity, range} ->
         result =
-          Types.PrepareRenameResult.PrepareRenameResult.new(
+          PrepareRenameResult.new(
             placeholder: cursor_entity,
             range: range
           )
