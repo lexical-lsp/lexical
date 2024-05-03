@@ -19,8 +19,13 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
     :ok = Document.Store.open(uri, text, 1)
     {:ok, document} = Document.Store.fetch(uri)
 
-    [action] = OrganizeAliases.actions(document, range, [])
-    {:ok, action.changes.edits}
+    edits =
+      case OrganizeAliases.actions(document, range, []) do
+        [action] -> action.changes.edits
+        _ -> []
+      end
+
+    {:ok, edits}
   end
 
   def organize_aliases(original_text) do
