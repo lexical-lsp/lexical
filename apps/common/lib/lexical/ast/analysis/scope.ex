@@ -42,13 +42,13 @@ defmodule Lexical.Ast.Analysis.Scope do
     # sorting by line ensures that aliases on later lines
     # override aliases on earlier lines
     |> Enum.sort_by(& &1.range.start.line)
-    |> Enum.take_while(fn %Alias{range: range} ->
+    |> Enum.take_while(fn %Alias{range: alias_range} ->
       case position do
         %Position{} = pos ->
-          pos.line >= range.end.line
+          pos.line >= alias_range.start.line
 
         line when is_integer(line) ->
-          line >= range.end.line
+          line >= alias_range.start.line
 
         :end ->
           true
