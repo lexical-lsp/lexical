@@ -31,8 +31,15 @@ defmodule Lexical.Server.Configuration do
 
   @dialyzer {:nowarn_function, set_dialyzer_enabled: 2}
 
+  @spec from_initialize(Requests.Initialize.t()) :: t()
+  def from_initialize(%Requests.Initialize{lsp: %Requests.Initialize.LSP{} = event}) do
+    %{capabilities: capabilities, root_uri: root_uri} = event
+    client_name = get_in(event, [:client_info, :name])
+    new(root_uri, capabilities, client_name)
+  end
+
   @spec new(Lexical.uri(), map(), String.t() | nil) :: t
-  def new(root_uri, %ClientCapabilities{} = client_capabilities, client_name) do
+  defp new(root_uri, %ClientCapabilities{} = client_capabilities, client_name) do
     support = Support.new(client_capabilities)
     project = Project.new(root_uri)
 
@@ -41,7 +48,7 @@ defmodule Lexical.Server.Configuration do
   end
 
   @spec new() :: t
-  def new do
+  defp new do
     %__MODULE__{support: Support.new()}
   end
 
