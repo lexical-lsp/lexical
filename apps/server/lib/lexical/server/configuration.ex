@@ -59,6 +59,12 @@ defmodule Lexical.Server.Configuration do
     client_supports?(get().support, key)
   end
 
+  @spec update_project(t(), Project.t()) :: t()
+  def update_project(%__MODULE__{} = config, %Project{} = project) do
+    %__MODULE__{config | project: project}
+    |> tap(&set/1)
+  end
+
   defp client_supports?(%Support{} = client_support, key) do
     case Map.fetch(client_support, key) do
       {:ok, value} -> value

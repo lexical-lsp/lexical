@@ -68,8 +68,10 @@ defmodule Lexical.Server.State do
 
     Transport.write(registrations())
 
-    Project.Supervisor.start(config.project)
-    {:ok, new_state}
+    with {:ok, _} <- Project.Supervisor.start(config.project),
+         %Lexical.Project{} = project <- RemoteControl.Api.get_project(config.project) do
+      {:ok, %__MODULE__{new_state | configuration: Configuration.update_project(config, project)}}
+    end
   end
 
   def initialize(%__MODULE__{initialized?: true}, %Initialize{}) do
