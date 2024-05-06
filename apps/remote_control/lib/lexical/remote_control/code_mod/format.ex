@@ -74,7 +74,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
     {formatter, _opts} =
       if RemoteControl.project_node?() do
-        case RemoteControl.Mix.in_project(project, fetch_formatter) do
+        case RemoteControl.Mix.in_project(fetch_formatter) do
           {:ok, result} ->
             result
 
