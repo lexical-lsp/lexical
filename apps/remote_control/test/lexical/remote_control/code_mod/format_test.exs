@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
       |> Keyword.get(:file_path, file_path(project))
       |> maybe_uri()
 
-    with {:ok, document_edits} <- Format.edits(project, document(file_uri, text)) do
+    with {:ok, document_edits} <- Format.edits(document(file_uri, text)) do
       {:ok, document_edits.edits}
     end
   end
@@ -67,6 +67,7 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
 
   setup do
     project = project()
+    RemoteControl.set_project(project)
     {:ok, project: project}
   end
 

@@ -72,6 +72,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
 
   alias Lexical.Document
   alias Lexical.Project
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search
@@ -89,6 +90,10 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
 
   def uri(uri) do
     GenServer.cast(__MODULE__, {:reindex_uri, uri})
+  end
+
+  def perform do
+    perform(RemoteControl.get_project())
   end
 
   def perform(%Project{} = project) do

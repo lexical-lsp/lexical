@@ -34,7 +34,7 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def format(%Project{} = project, %Document{} = document) do
-    RemoteControl.call(project, CodeMod.Format, :edits, [project, document])
+    RemoteControl.call(project, CodeMod.Format, :edits, [document])
   end
 
   def code_actions(
@@ -116,7 +116,7 @@ defmodule Lexical.RemoteControl.Api do
   end
 
   def reindex(%Project{} = project) do
-    RemoteControl.call(project, Commands.Reindex, :perform, [project])
+    RemoteControl.call(project, Commands.Reindex, :perform, [])
   end
 
   def index_running?(%Project{} = project) do

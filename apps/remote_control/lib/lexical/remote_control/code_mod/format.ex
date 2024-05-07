@@ -10,8 +10,10 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   @type formatter_function :: (String.t() -> any) | nil
 
-  @spec edits(Project.t(), Document.t()) :: {:ok, Changes.t()} | {:error, any}
-  def edits(%Project{} = project, %Document{} = document) do
+  @spec edits(Document.t()) :: {:ok, Changes.t()} | {:error, any}
+  def edits(%Document{} = document) do
+    project = RemoteControl.get_project()
+
     with :ok <- Build.compile_document(project, document),
          {:ok, formatted} <- do_format(project, document) do
       edits = Diff.diff(document, formatted)
