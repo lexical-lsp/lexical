@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Api do
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Env
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -47,18 +48,9 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, CodeAction, :for_range, [document, range, diagnostics, kinds])
   end
 
-  def complete(%Project{} = project, %Document{} = document, %Position{} = position) do
-    document_string = Document.to_string(document)
-    complete(project, document_string, position)
-  end
-
-  def complete(%Project{} = project, document_string, %Position{} = position) do
-    Logger.info("Completion for #{inspect(position)}")
-
-    RemoteControl.call(project, RemoteControl.Completion, :elixir_sense_expand, [
-      document_string,
-      position
-    ])
+  def complete(%Project{} = project, %Env{} = env) do
+    Logger.info("Completion for #{inspect(env.position)}")
+    RemoteControl.call(project, RemoteControl.Completion, :elixir_sense_expand, [env])
   end
 
   def complete_struct_fields(%Project{} = project, %Analysis{} = analysis, %Position{} = position) do

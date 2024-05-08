@@ -71,10 +71,8 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         |> Enum.map(&Translatable.translate(&1, Builder, env))
 
       true ->
-        {stripped, position} = Builder.strip_struct_operator_for_elixir_sense(env)
-
         project
-        |> RemoteControl.Api.complete(stripped, position)
+        |> RemoteControl.Api.complete(env)
         |> to_completion_items(project, env, context)
     end
   end

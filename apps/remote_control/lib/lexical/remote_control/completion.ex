@@ -1,10 +1,16 @@
 defmodule Lexical.RemoteControl.Completion do
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Env
+  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
 
-  def elixir_sense_expand(doc_string, %Position{} = position) do
+  import Document.Line
+
+  def elixir_sense_expand(%Env{} = env) do
+    {doc_string, position} = strip_struct_operator(env)
+
     line = position.line
     character = position.character
     hint = ElixirSense.Core.Source.prefix(doc_string, line, character)
@@ -49,5 +55,56 @@ defmodule Lexical.RemoteControl.Completion do
       {:%, _, [{:__aliases__, _, aliases} | _]} -> aliases
       _ -> nil
     end)
+  end
+
+  # HACK: This fixes ElixirSense struct completions for certain cases.
+  # We should try removing when we update or remove ElixirSense.
+  defp strip_struct_operator(%Env{} = env) do
+    with true <- Env.in_context?(env, :struct_reference),
+         {:ok, completion_length} <- fetch_struct_completion_length(env) do
+      column = env.position.character
+      percent_position = column - (completion_length + 1)
+
+      new_line_start = String.slice(env.line, 0, percent_position - 1)
+      new_line_end = String.slice(env.line, percent_position..-1//1)
+      new_line = [new_line_start, new_line_end]
+      new_position = Position.new(env.document, env.position.line, env.position.character - 1)
+      line_to_replace = env.position.line
+
+      stripped_text =
+        env.document.lines
+        |> Enum.with_index(1)
+        |> Enum.reduce([], fn
+          {line(ending: ending), ^line_to_replace}, acc ->
+            [acc, new_line, ending]
+
+          {line(text: line_text, ending: ending), _}, acc ->
+            [acc, line_text, ending]
+        end)
+        |> IO.iodata_to_binary()
+
+      {stripped_text, new_position}
+    else
+      _ ->
+        doc_string = Document.to_string(env.document)
+        {doc_string, env.position}
+    end
+  end
+
+  defp fetch_struct_completion_length(env) do
+    case Code.Fragment.cursor_context(env.prefix) do
+      {:struct, {:dot, {:alias, struct_name}, []}} ->
+        # add one because of the trailing period
+        {:ok, length(struct_name) + 1}
+
+      {:struct, {:local_or_var, local_name}} ->
+        {:ok, length(local_name)}
+
+      {:struct, struct_name} ->
+        {:ok, length(struct_name)}
+
+      {:local_or_var, local_name} ->
+        {:ok, length(local_name)}
+    end
   end
 end

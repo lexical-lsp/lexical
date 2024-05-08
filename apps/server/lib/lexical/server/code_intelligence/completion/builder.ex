@@ -21,8 +21,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.Markup.Content
 
-  import Document.Line
-
   @behaviour Builder
 
   @impl Builder
@@ -96,14 +94,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     %Completion.Item{item | sort_text: sort_text}
   end
 
-  # HACK: This fixes ElixirSense struct completions for certain cases.
-  # We should try removing when we update or remove ElixirSense.
-  @spec strip_struct_operator_for_elixir_sense(Env.t()) ::
-          {Document.t() | String.t(), Position.t()}
-  def strip_struct_operator_for_elixir_sense(%Env{} = env) do
-    do_strip_struct_operator(env)
-  end
-
   # private
 
   defp prefix_range(%Env{} = env) do
@@ -168,54 +158,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         # add one to include the leading colon, which isn't included
         # in the atom charlist
         length(atom) + 1
-    end
-  end
-
-  defp do_strip_struct_operator(env) do
-    with true <- Env.in_context?(env, :struct_reference),
-         {:ok, completion_length} <- fetch_struct_completion_length(env) do
-      column = env.position.character
-      percent_position = column - (completion_length + 1)
-
-      new_line_start = String.slice(env.line, 0, percent_position - 1)
-      new_line_end = String.slice(env.line, percent_position..-1//1)
-      new_line = [new_line_start, new_line_end]
-      new_position = Position.new(env.document, env.position.line, env.position.character - 1)
-      line_to_replace = env.position.line
-
-      new_document =
-        env.document.lines
-        |> Enum.with_index(1)
-        |> Enum.reduce([], fn
-          {line(ending: ending), ^line_to_replace}, acc ->
-            [acc, new_line, ending]
-
-          {line(text: line_text, ending: ending), _}, acc ->
-            [acc, line_text, ending]
-        end)
-        |> IO.iodata_to_binary()
-
-      {new_document, new_position}
-    else
-      _ ->
-        {env.document, env.position}
-    end
-  end
-
-  defp fetch_struct_completion_length(env) do
-    case Code.Fragment.cursor_context(env.prefix) do
-      {:struct, {:dot, {:alias, struct_name}, []}} ->
-        # add one because of the trailing period
-        {:ok, length(struct_name) + 1}
-
-      {:struct, {:local_or_var, local_name}} ->
-        {:ok, length(local_name)}
-
-      {:struct, struct_name} ->
-        {:ok, length(struct_name)}
-
-      {:local_or_var, local_name} ->
-        {:ok, length(local_name)}
     end
   end
 
