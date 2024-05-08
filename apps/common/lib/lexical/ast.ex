@@ -87,7 +87,7 @@ defmodule Lexical.Ast do
           {location :: keyword(), String.t() | {String.t(), String.t()}, String.t()}
 
   @type patch :: %{
-          optional(:preserver_indentation) => boolean(),
+          optional(:preserve_indentation) => boolean(),
           range: patch_range(),
           change: patch_change()
         }
