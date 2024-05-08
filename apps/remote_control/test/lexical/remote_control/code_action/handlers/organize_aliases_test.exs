@@ -51,6 +51,26 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
       assert expected == organized
     end
 
+    test "aliases are sorted in a case insensitive way" do
+      {:ok, organized} =
+        ~q[
+        defmodule Outer do
+          alias CSV
+          alias Common|
+        end
+        ]
+        |> organize_aliases()
+
+      expected = ~q[
+      defmodule Outer do
+        alias Common
+        alias CSV
+      end
+      ]t
+
+      assert expected == organized
+    end
+
     test "nested aliases are flattened" do
       {:ok, organized} =
         ~q[

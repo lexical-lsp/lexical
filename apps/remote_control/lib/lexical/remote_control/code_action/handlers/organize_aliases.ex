@@ -82,10 +82,11 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
       |> Enum.map(fn %Alias{} = alias ->
         orig_range = alias.range
 
-        %Range{
-          start: %Position{orig_range.start | character: 1},
-          end: %Position{orig_range.end | line: orig_range.end.line + 1, character: 1}
-        }
+        orig_range
+        |> put_in([:start, :character], 1)
+        |> update_in([:end], fn %Position{} = pos ->
+          %Position{pos | character: 1, line: pos.line + 1}
+        end)
       end)
 
     first_alias_index = length(ranges) - 1
@@ -123,7 +124,9 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
     |> Enum.filter(fn %Alias{} = scope_alias ->
       scope_alias.explicit? and Range.contains?(scope.range, scope_alias.range.start)
     end)
-    |> Enum.sort_by(& &1.module)
+    |> Enum.sort_by(fn %Alias{} = scope_alias ->
+      Enum.map(scope_alias.module, fn elem -> elem |> Atom.to_string() |> String.downcase() end)
+    end)
   end
 
   defp aliases_in_scope(_) do
