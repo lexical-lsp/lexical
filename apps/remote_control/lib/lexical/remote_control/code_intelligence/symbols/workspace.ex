@@ -41,14 +41,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Workspace do
     }
   end
 
-  @module_types [
-    :struct,
-    :module,
-    :protocol,
-    :protocol_implementation
-  ]
-
+  @module_types [:struct, :module]
   defp symbol_name(type, entry) when type in @module_types do
+    Formats.module(entry.subject)
+  end
+
+  defp symbol_name({:protocol, _}, entry) do
     Formats.module(entry.subject)
   end
 

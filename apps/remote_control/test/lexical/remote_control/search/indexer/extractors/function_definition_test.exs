@@ -1,15 +1,16 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest do
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   use Lexical.Test.ExtractorCase
 
   def index(source) do
-    do_index(source, fn entry ->
-      entry.type in [:public_function, :private_function] and entry.subtype == :definition
+    do_index(source, fn %Entry{type: type} = entry ->
+      type in [{:function, :public}, {:function, :private}] and entry.subtype == :definition
     end)
   end
 
   def index_functions(source) do
-    do_index(source, fn entry ->
-      entry.type in [:function, :public_function, :private_function]
+    do_index(source, fn %Entry{type: type} ->
+      match?({:function, _}, type)
     end)
   end
 
@@ -24,7 +25,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :public_function
+      assert zero_arity.type == {:function, :public}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity" == extract(code, zero_arity.range)
@@ -40,7 +41,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :public_function
+      assert zero_arity.type == {:function, :public}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity" == extract(code, zero_arity.range)
@@ -57,7 +58,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :public_function
+      assert zero_arity.type == {:function, :public}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity()" == extract(code, zero_arity.range)
@@ -75,7 +76,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [one_arity], _} = index(code)
 
-      assert one_arity.type == :public_function
+      assert one_arity.type == {:function, :public}
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.one_arity/1"
       assert "one_arity(a)" == extract(code, one_arity.range)
@@ -93,7 +94,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [one_arity], _} = index(code)
 
-      assert one_arity.type == :public_function
+      assert one_arity.type == {:function, :public}
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.one_arity/1"
       assert "one_arity(a) when is_integer(a)" == extract(code, one_arity.range)
@@ -113,7 +114,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [multi_arity], _} = index(code)
 
-      assert multi_arity.type == :public_function
+      assert multi_arity.type == {:function, :public}
       assert multi_arity.subtype == :definition
       assert multi_arity.subject == "Parent.multi_arity/4"
       assert "multi_arity(a, b, c, d)" == extract(code, multi_arity.range)
@@ -158,7 +159,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         ]
         |> index_functions()
 
-      assert function.type == :public_function
+      assert function.type == {:function, :public}
       assert function.subject == "MyProtocol.Structs.Mystruct.do_proto/2"
       assert "do_proto(a, b)" = extract(doc, function.range)
       assert decorate(doc, function.block_range) =~ "«def do_proto(a, b) do\n    a + b\n  end»"
@@ -189,7 +190,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         |> in_a_module()
         |> index_functions()
 
-      assert function_definition.type == :public_function
+      assert function_definition.type == {:function, :public}
       assert function_definition.subtype == :definition
       assert "my_fn(a, b)" = extract(doc, function_definition.range)
     end
@@ -205,7 +206,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :private_function
+      assert zero_arity.type == {:function, :private}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity" == extract(code, zero_arity.range)
@@ -221,7 +222,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :private_function
+      assert zero_arity.type == {:function, :private}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity()" == extract(code, zero_arity.range)
@@ -238,7 +239,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :private_function
+      assert zero_arity.type == {:function, :private}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity" == extract(code, zero_arity.range)
@@ -255,7 +256,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [zero_arity], _} = index(code)
 
-      assert zero_arity.type == :private_function
+      assert zero_arity.type == {:function, :private}
       assert zero_arity.subtype == :definition
       assert zero_arity.subject == "Parent.zero_arity/0"
       assert "zero_arity()" == extract(code, zero_arity.range)
@@ -271,7 +272,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [one_arity], _} = index(code)
 
-      assert one_arity.type == :private_function
+      assert one_arity.type == {:function, :private}
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.one_arity/1"
       assert "one_arity(a)" == extract(code, one_arity.range)
@@ -289,7 +290,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [one_arity], _} = index(code)
 
-      assert one_arity.type == :private_function
+      assert one_arity.type == {:function, :private}
       assert one_arity.subtype == :definition
       assert one_arity.subject == "Parent.one_arity/1"
       assert "one_arity(a)" == extract(code, one_arity.range)
@@ -305,7 +306,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [multi_arity], _} = index(code)
 
-      assert multi_arity.type == :private_function
+      assert multi_arity.type == {:function, :private}
       assert multi_arity.subtype == :definition
       assert multi_arity.subject == "Parent.multi_arity/3"
       assert "multi_arity(a, b, c)" == extract(code, multi_arity.range)
@@ -323,7 +324,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
       {:ok, [multi_arity], _} = index(code)
 
-      assert multi_arity.type == :private_function
+      assert multi_arity.type == {:function, :private}
       assert multi_arity.subtype == :definition
       assert multi_arity.subject == "Parent.multi_arity/4"
       assert "multi_arity(a, b, c, d)" == extract(code, multi_arity.range)
@@ -346,7 +347,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         |> in_a_module()
 
       {:ok, [something], _} = index(code)
-      assert something.type == :private_function
+      assert something.type == {:function, :private}
       assert "something(name)" = extract(code, something.range)
     end
 
@@ -361,7 +362,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         |> in_a_module()
         |> index()
 
-      assert definiton.type == :public_function
+      assert definiton.type == {:function, :public}
 
       assert decorate(doc, definiton.range) =~
                "def «rpc_call(pid, call = %Call{method: unquote(method_name)})»"
@@ -376,7 +377,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
         |> in_a_module()
         |> index_functions()
 
-      assert function_definition.type == :private_function
+      assert function_definition.type == {:function, :private}
       assert function_definition.subtype == :definition
       assert "my_fn(a, b)" = extract(doc, function_definition.range)
     end

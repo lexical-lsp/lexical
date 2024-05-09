@@ -35,8 +35,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     :ignored
   end
 
-  defp type(:def), do: :public_function
-  defp type(:defp), do: :private_function
+  defp type(:def), do: {:function, :public}
+  defp type(:defp), do: {:function, :private}
 
   defp fun_name_and_arity({:when, _, [{fun_name, _, fun_args} | _]}) do
     # a function with guards

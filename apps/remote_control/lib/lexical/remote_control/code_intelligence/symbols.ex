@@ -11,9 +11,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
     :ex_unit_setup,
     :ex_unit_setup_all,
     :ex_unit_test,
-    :module,
-    :private_function,
-    :public_function
+    :module
   ]
 
   @symbol_extractors [
@@ -46,26 +44,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
     block_entries = Map.get(entries_by_block_id, block_id, [])
 
     Enum.flat_map(block_entries, fn
+      %Entry{type: {:protocol, _}} = entry ->
+        map_block_type(document, entry, entries_by_block_id)
+
+      %Entry{type: {:function, type}} = entry when type in [:public, :private] ->
+        map_block_type(document, entry, entries_by_block_id)
+
       %Entry{type: type, subtype: :definition} = entry when type in @block_types ->
-        result =
-          if Map.has_key?(entries_by_block_id, entry.id) do
-            children =
-              entries_by_block_id
-              |> rebuild_structure(document, entry.id)
-              |> Enum.sort_by(fn %Symbols.Document{} = symbol ->
-                start = symbol.range.start
-                {start.line, start.character}
-              end)
-
-            Symbols.Document.from(document, entry, children)
-          else
-            Symbols.Document.from(document, entry)
-          end
-
-        case result do
-          {:ok, symbol} -> [symbol]
-          _ -> []
-        end
+        map_block_type(document, entry, entries_by_block_id)
 
       %Entry{} = entry ->
         case Symbols.Document.from(document, entry) do
@@ -73,5 +59,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
           _ -> []
         end
     end)
+  end
+
+  defp map_block_type(%Document{} = document, %Entry{} = entry, entries_by_block_id) do
+    result =
+      if Map.has_key?(entries_by_block_id, entry.id) do
+        children =
+          entries_by_block_id
+          |> rebuild_structure(document, entry.id)
+          |> Enum.sort_by(fn %Symbols.Document{} = symbol ->
+            start = symbol.range.start
+            {start.line, start.character}
+          end)
+
+        Symbols.Document.from(document, entry, children)
+      else
+        Symbols.Document.from(document, entry)
+      end
+
+    case result do
+      {:ok, symbol} -> [symbol]
+      _ -> []
+    end
   end
 end

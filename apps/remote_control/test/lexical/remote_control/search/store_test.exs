@@ -260,7 +260,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
         {:ok, parent} = Store.parent(subject_entry)
 
         assert parent.subject == "Parent.function/0"
-        assert parent.type == :public_function
+        assert parent.type == {:function, :public}
         assert parent.subtype == :definition
 
         assert {:ok, parent} = Store.parent(parent)
