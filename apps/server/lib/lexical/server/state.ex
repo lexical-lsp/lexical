@@ -42,7 +42,8 @@ defmodule Lexical.Server.State do
             in_flight_requests: %{}
 
   @supported_code_actions [
-    :quick_fix
+    :quick_fix,
+    :source_organize_imports
   ]
 
   def new do
