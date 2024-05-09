@@ -1,4 +1,5 @@
 ## Unreleased
+* Organize Aliases by @scohen https://github.com/lexical-lsp/lexical/pull/725
 
 ### v0.6.1
 
