@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
         []
       else
         changes = Changes.new(doc, edits)
-        [CodeAction.new(doc.uri, "Organize aliases", :source, changes)]
+        [CodeAction.new(doc.uri, "Organize aliases", :source_organize_imports, changes)]
       end
     else
       _ ->
