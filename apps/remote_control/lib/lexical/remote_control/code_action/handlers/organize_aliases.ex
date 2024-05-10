@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
 
   @impl CodeAction.Handler
   def kinds do
-    [:source_organize_imports]
+    [:source, :source_organize_imports]
   end
 
   defp aliases_to_edits([]), do: []
