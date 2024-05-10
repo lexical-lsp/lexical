@@ -2,10 +2,10 @@ defmodule Lexical.RemoteControl.Plugin do
   alias Lexical.Document
   alias Lexical.Project
   alias Lexical.RemoteControl.Api.Messages
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Plugin.Runner
 
   import Messages
+  alias Lexical.RemoteControl.Api
 
   def diagnose(%Project{} = project, build_number) do
     on_complete = fn
@@ -20,7 +20,7 @@ defmodule Lexical.RemoteControl.Plugin do
             diagnostics: diagnostics
           )
 
-        Dispatch.broadcast(message)
+        Api.Local.broadcast(message)
     end
 
     Runner.diagnose(project, on_complete)
@@ -40,7 +40,7 @@ defmodule Lexical.RemoteControl.Plugin do
             diagnostics: diagnostics
           )
 
-        Dispatch.broadcast(message)
+        Api.Local.broadcast(message)
     end
 
     Runner.diagnose(document, on_complete)
