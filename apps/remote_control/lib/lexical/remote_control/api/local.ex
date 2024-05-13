@@ -1,5 +1,4 @@
 defmodule Lexical.RemoteControl.Api.Local do
-  alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.CodeAction
@@ -36,7 +35,6 @@ defmodule Lexical.RemoteControl.Api.Local do
 
   defdelegate modules_with_prefix(prefix, predicate), to: RemoteControl.Modules, as: :with_prefix
 
-  @spec docs(Project.t(), module()) :: {:ok, CodeIntelligence.Docs.t()} | {:error, any()}
   defdelegate docs(module, opts \\ []), to: CodeIntelligence.Docs, as: :for_module
 
   defdelegate register_listener(listener_pid, message_types), to: RemoteControl.Dispatch
