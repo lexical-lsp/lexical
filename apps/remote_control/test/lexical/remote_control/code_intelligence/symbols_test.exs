@@ -30,7 +30,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       ])
 
     entries = Enum.reject(entries, &(&1.type == :metadata))
-    patch(Lexical.RemoteControl.Search.Store, :fuzzy, entries)
+    patch(Lexical.RemoteControl.Search.Store, :fuzzy, {:ok, entries})
     symbols = Symbols.for_workspace("")
     {symbols, doc}
   end

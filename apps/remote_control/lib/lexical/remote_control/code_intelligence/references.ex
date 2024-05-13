@@ -86,7 +86,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp query(subject, opts) do
-    subject |> Store.exact(opts) |> Enum.map(&to_location/1)
+    case Store.exact(subject, opts) do
+      {:ok, entries} -> Enum.map(entries, &to_location/1)
+      _ -> []
+    end
   end
 
   defp subtype(true = _include_definitions?), do: :_

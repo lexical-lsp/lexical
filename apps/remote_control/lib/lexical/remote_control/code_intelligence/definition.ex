@@ -24,11 +24,17 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     module = Formats.module(entity)
 
     locations =
-      for entry <- Store.exact(module, type: type, subtype: :definition),
-          result = to_location(entry),
-          match?({:ok, _}, result) do
-        {:ok, location} = result
-        location
+      case Store.exact(module, type: type, subtype: :definition) do
+        {:ok, entries} ->
+          for entry <- entries,
+              result = to_location(entry),
+              match?({:ok, _}, result) do
+            {:ok, location} = result
+            location
+          end
+
+        _ ->
+          []
       end
 
     case locations do

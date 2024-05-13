@@ -13,9 +13,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Structs do
   end
 
   defp structs_from_index do
-    for %Entry{subject: struct_module} <- Store.exact(type: :struct, subtype: :definition),
-        Loader.ensure_loaded?(struct_module) do
-      struct_module
+    case Store.exact(type: :struct, subtype: :definition) do
+      {:ok, entries} ->
+        for %Entry{subject: struct_module} <- entries,
+            Loader.ensure_loaded?(struct_module) do
+          struct_module
+        end
+
+      _ ->
+        []
     end
   end
 end
