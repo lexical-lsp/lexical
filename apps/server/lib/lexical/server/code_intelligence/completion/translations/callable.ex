@@ -123,7 +123,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         "${#{index}:#{name}}"
       end)
 
-    "#{callable.name}(#{argument_templates})"
+    if callable.parens do
+      "#{callable.name}(#{argument_templates})"
+    else
+      "#{callable.name} #{argument_templates}"
+    end
   end
 
   @default_functions ["module_info", "behaviour_info"]
@@ -164,7 +168,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   defp label(%_{} = callable, env) do
     arg_detail = callable |> argument_names(env) |> Enum.join(", ")
-    "#{callable.name}(#{arg_detail})"
+
+    if callable.parens do
+      "#{callable.name}(#{arg_detail})"
+    else
+      "#{callable.name} #{arg_detail}"
+    end
   end
 
   defp name_and_arity(%_{name: name, arity: arity}) do

@@ -717,6 +717,40 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
 
       assert apply_completion(completion) =~ "Macros.macro_add(${1:a}, ${2:b})"
     end
+
+    test "completes macros in locals_without_parens with a specific arity", %{project: project} do
+      source = ~q[
+        import Project.Macros
+
+        example_1|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "example_1_without_parens arg"
+      assert apply_completion(completion) =~ "example_1_without_parens ${1:arg}"
+    end
+
+    test "completes macros in locals_without_parens with any arity", %{project: project} do
+      source = ~q[
+        import Project.Macros
+
+        example_2|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "example_2_without_parens arg1, arg2, arg3, arg4"
+
+      assert apply_completion(completion) =~
+               "example_2_without_parens ${1:arg1}, ${2:arg2}, ${3:arg3}, ${4:arg4}"
+    end
   end
 
   test "test completion snippets", %{project: project} do

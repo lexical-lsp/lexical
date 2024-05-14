@@ -35,7 +35,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   @spec formatter_for(Project.t(), String.t()) :: {:ok, formatter_function}
   defp formatter_for(%Project{} = project, uri_or_path) do
     path = Document.Path.ensure_path(uri_or_path)
-    formatter_function = formatter_for_file(project, path)
+    {formatter_function, _opts} = formatter_for_file(project, path)
     wrapped_formatter_function = wrap_with_try_catch(formatter_function)
     {:ok, wrapped_formatter_function}
   end
@@ -71,38 +71,38 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     String.starts_with?(child, normalized_parent)
   end
 
-  defp formatter_for_file(%Project{} = project, file_path) do
+  @doc """
+  Returns `{formatter_function, opts}` for the given file.
+  """
+  def formatter_for_file(%Project{} = project, file_path) do
     fetch_formatter = fn _ -> Mix.Tasks.Format.formatter_for_file(file_path) end
 
-    {formatter, _opts} =
-      if RemoteControl.project_node?() do
-        case RemoteControl.Mix.in_project(project, fetch_formatter) do
-          {:ok, result} ->
-            result
+    if RemoteControl.project_node?() do
+      case RemoteControl.Mix.in_project(project, fetch_formatter) do
+        {:ok, result} ->
+          result
 
-          _error ->
-            formatter_opts =
-              case find_formatter_exs(project, file_path) do
-                {:ok, opts} ->
-                  opts
+        _error ->
+          formatter_opts =
+            case find_formatter_exs(project, file_path) do
+              {:ok, opts} ->
+                opts
 
-                :error ->
-                  Logger.warning("Could not find formatter options for file #{file_path}")
-                  []
-              end
-
-            formatter = fn source ->
-              formatted_source = Code.format_string!(source, formatter_opts)
-              IO.iodata_to_binary([formatted_source, ?\n])
+              :error ->
+                Logger.warning("Could not find formatter options for file #{file_path}")
+                []
             end
 
-            {formatter, nil}
-        end
-      else
-        fetch_formatter.(nil)
-      end
+          formatter = fn source ->
+            formatted_source = Code.format_string!(source, formatter_opts)
+            IO.iodata_to_binary([formatted_source, ?\n])
+          end
 
-    formatter
+          {formatter, formatter_opts}
+      end
+    else
+      fetch_formatter.(nil)
+    end
   end
 
   defp find_formatter_exs(%Project{} = project, file_path) do

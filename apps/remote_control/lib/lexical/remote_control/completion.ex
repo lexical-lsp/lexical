@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Completion do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.CodeMod.Format
   alias Lexical.RemoteControl.Completion.Candidate
 
   import Document.Line
@@ -18,13 +19,45 @@ defmodule Lexical.RemoteControl.Completion do
     if String.trim(hint) == "" do
       []
     else
+      {_formatter, opts} = Format.formatter_for_file(env.project, env.document.path)
+      locals_without_parens = Keyword.get(opts, :locals_without_parens, [])
+
       for suggestion <- ElixirSense.suggestions(doc_string, line, character),
-          candidate = Candidate.from_elixir_sense(suggestion),
+          candidate = from_elixir_sense(suggestion, locals_without_parens),
           candidate != nil do
         candidate
       end
     end
   end
+
+  defp from_elixir_sense(suggestion, locals_without_parens) do
+    suggestion
+    |> Candidate.from_elixir_sense()
+    |> maybe_suppress_parens(locals_without_parens)
+  end
+
+  defp maybe_suppress_parens(%struct{} = candidate, locals_without_parens)
+       when struct in [Candidate.Function, Candidate.Macro] do
+    atom_name = String.to_atom(candidate.name)
+
+    suppress_parens? =
+      locals_without_parens
+      |> Keyword.take([atom_name])
+      |> Keyword.values()
+      |> Enum.any?(&suppress_parens?(&1, candidate.arity))
+
+    if suppress_parens? do
+      %{candidate | parens: false}
+    else
+      candidate
+    end
+  end
+
+  defp maybe_suppress_parens(candidate, _), do: candidate
+
+  defp suppress_parens?(:*, _), do: true
+  defp suppress_parens?(arity, arity), do: true
+  defp suppress_parens?(_, _), do: false
 
   def struct_fields(%Analysis{} = analysis, %Position{} = position) do
     container_struct_module =
