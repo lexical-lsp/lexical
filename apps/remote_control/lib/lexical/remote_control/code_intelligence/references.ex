@@ -43,7 +43,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
     subject = Subject.mfa(module, function_name, arity)
     subtype = subtype(include_definitions?)
 
-    query(subject, type: :function, subtype: subtype)
+    query(subject, type: {:function, :_}, subtype: subtype)
   end
 
   defp find_references(

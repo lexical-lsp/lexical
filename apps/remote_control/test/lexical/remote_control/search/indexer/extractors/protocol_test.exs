@@ -2,7 +2,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
   use Lexical.Test.ExtractorCase
 
   def index(source) do
-    do_index(source, &(&1.type in [:protocol, :protocol_implementation]))
+    do_index(source, &match?({:protocol, _}, &1.type))
   end
 
   describe "indexing protocol definitions" do
@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
         ]
         |> index()
 
-      assert protocol.type == :protocol
+      assert protocol.type == {:protocol, :definition}
       assert protocol.subtype == :definition
       assert protocol.subject == Something
 
@@ -42,7 +42,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
         ]
         |> index()
 
-      assert protocol.type == :protocol_implementation
+      assert protocol.type == {:protocol, :implementation}
       assert protocol.subtype == :definition
       assert protocol.subject == Something
 
@@ -72,7 +72,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
       ]
       |> index()
 
-    assert protocol.type == :protocol_implementation
+    assert protocol.type == {:protocol, :implementation}
     assert protocol.subtype == :definition
     assert protocol.subject == Something
 
@@ -116,7 +116,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
      end»
     ]t
 
-    assert protocol_impl_def.type == :protocol_implementation
+    assert protocol_impl_def.type == {:protocol, :implementation}
     assert protocol_impl_def.subtype == :definition
     assert protocol_impl_def.subject == Protocol
     assert decorate(doc, protocol_impl_def.range) =~ "«defimpl Protocol, for: Target do»"
@@ -138,7 +138,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.ProtocolTest do
     assert target_ref.subject == Target
     assert decorate(doc, target_ref.range) =~ "defimpl Protocol, for: «Target» do"
 
-    assert function_def.type == :public_function
+    assert function_def.type == {:function, :public}
 
     assert proto_module_ref.type == :module
     assert proto_module_ref.subject == Protocol.Target

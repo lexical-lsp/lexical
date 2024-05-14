@@ -42,13 +42,10 @@ defmodule Lexical.Server.Provider.Handlers.WorkspaceSymbol do
 
   defp to_kind(:struct), do: :struct
   defp to_kind(:module), do: :module
-  defp to_kind(:protocol_implementation), do: :module
-  defp to_kind(:protocol), do: :interface
-  defp to_kind(:lx_protocol), do: :module
+  defp to_kind({:protocol, _}), do: :module
+  defp to_kind({:lx_protocol, _}), do: :module
   defp to_kind(:variable), do: :variable
-  defp to_kind(:function), do: :function
-  defp to_kind(:public_function), do: :function
-  defp to_kind(:private_function), do: :function
+  defp to_kind({:function, _}), do: :function
   defp to_kind(:module_attribute), do: :constant
   defp to_kind(:ex_unit_test), do: :method
   defp to_kind(:ex_unit_describe), do: :method

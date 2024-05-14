@@ -239,7 +239,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
 
       [fun] = module.children
       assert decorate(doc, fun.detail_range) =~ "  defp «my_fn» do"
-      assert fun.type == :private_function
+      assert fun.type == {:function, :private}
       assert fun.name == "defp my_fn"
       assert [] == fun.children
     end
@@ -256,7 +256,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
 
       [fun] = module.children
       assert decorate(doc, fun.detail_range) =~ "  def «my_fun(x) when x > 0» do"
-      assert fun.type == :public_function
+      assert fun.type == {:function, :public}
       assert fun.name == "def my_fun(x) when x > 0"
       assert [] == fun.children
     end
@@ -385,7 +385,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
         ]
         |> workspace_symbols()
 
-      assert public_function.type == :public_function
+      assert public_function.type == {:function, :public}
       assert String.ends_with?(public_function.name, ".my_fn/0")
       assert public_function.link.uri == "file:///file.ex"
       refute public_function.container_name
@@ -393,7 +393,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert decorate(doc, public_function.link.range) =~ "  «def my_fn do\n  end»"
       assert decorate(doc, public_function.link.detail_range) =~ "  def «my_fn» do"
 
-      assert private_function.type == :private_function
+      assert private_function.type == {:function, :private}
       assert private_function.name == "Parent.Child.private_fun/2"
       assert private_function.link.uri == "file:///file.ex"
       refute private_function.container_name
@@ -414,7 +414,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
 
       [proto_impl, defined_module, protocol_module, proto_target, function] = symbols
 
-      assert proto_impl.type == :protocol_implementation
+      assert proto_impl.type == {:protocol, :implementation}
       assert proto_impl.name == "SomeProtocol"
 
       assert defined_module.type == :module
@@ -426,7 +426,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert proto_target.type == :module
       assert proto_target.name == "Atom"
 
-      assert function.type == :public_function
+      assert function.type == {:function, :public}
       assert function.name == "SomeProtocol.Atom.do_stuff/2"
     end
 
@@ -439,10 +439,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
         ]
         |> workspace_symbols()
 
-      assert protocol.type == :protocol
+      assert protocol.type == {:protocol, :definition}
       assert protocol.name == "MyProto"
 
-      assert function.type == :function
+      assert function.type == {:function, :usage}
       assert function.name == "MyProto.do_stuff/2"
     end
   end

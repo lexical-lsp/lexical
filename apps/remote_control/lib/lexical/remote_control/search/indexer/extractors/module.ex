@@ -18,7 +18,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
 
   @definition_mappings %{
     defmodule: :module,
-    defprotocol: :protocol
+    defprotocol: {:protocol, :definition}
   }
   @module_definitions Map.keys(@definition_mappings)
 
@@ -77,7 +77,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.Module do
           reducer.analysis.document.path,
           block,
           Subject.module(protocol_module),
-          :protocol_implementation,
+          {:protocol, :implementation},
           block_range(reducer.analysis.document, defimpl_ast),
           detail_range,
           Application.get_application(protocol_module)

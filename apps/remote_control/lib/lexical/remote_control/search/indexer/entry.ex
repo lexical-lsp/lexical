@@ -1,16 +1,16 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Entry do
+  @type function_type :: :public | :private | :delegated | :usage
+  @type protocol_type :: :implementation | :definition
+
   @type entry_type ::
           :ex_unit_describe
           | :ex_unit_test
-          | :function
           | :module
           | :module_attribute
-          | :private_function
-          | :protocol
-          | :protocol_implementation
-          | :public_function
           | :struct
           | :variable
+          | {:protocol, protocol_type()}
+          | {:function, function_type()}
 
   @type subject :: String.t()
   @type entry_subtype :: :reference | :definition

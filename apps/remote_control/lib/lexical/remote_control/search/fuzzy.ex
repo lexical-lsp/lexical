@@ -280,9 +280,7 @@ defmodule Lexical.RemoteControl.Search.Fuzzy do
     end
   end
 
-  @function_types [:function, :public_function, :private_function]
-
-  defp stringify(mapped(type: type, subject: subject)) when type in @function_types do
+  defp stringify(mapped(type: {:function, _}, subject: subject)) do
     subject
     |> String.split(".")
     |> List.last()

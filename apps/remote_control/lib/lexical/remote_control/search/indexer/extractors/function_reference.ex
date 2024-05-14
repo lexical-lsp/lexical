@@ -142,7 +142,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
           reducer.analysis.document.path,
           block,
           mfa,
-          :function,
+          {:function, :usage},
           range,
           Application.get_application(module)
         )

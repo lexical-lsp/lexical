@@ -52,6 +52,63 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
     end
   end
 
+  describe "function references" do
+    test "are found inside public functions", %{project: project} do
+      code = ~q/
+        defmodule Functions do
+          def func(x), do: Enum.map(x, & &1 + 1)
+        end
+      /
+      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert decorate(code, location.range) =~ "def func(x), do: «Enum.map(x, & &1 + 1)»"
+    end
+
+    test "are found inside private functions", %{project: project} do
+      code = ~q/
+        defmodule Functions do
+          defp func(x), do: Enum.map(x, & &1 + 1)
+        end
+      /
+      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert decorate(code, location.range) =~ "defp func(x), do: «Enum.map(x, & &1 + 1)»"
+    end
+
+    test "are found in aliased functions", %{project: project} do
+      code = ~q/
+        defmodule Functions do
+          alias Enum, as: E
+          defp func(x), do: E.map(x, & &1 + 1)
+        end
+      /
+      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert decorate(code, location.range) =~ "defp func(x), do: «E.map(x, & &1 + 1)»"
+    end
+
+    test "are found in imported functions", %{project: project} do
+      code = ~q/
+        defmodule Functions do
+          import Enum, only: [map: 2]
+          defp func(x), do: map(x, & &1 + 1)
+        end
+      /
+      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert decorate(code, location.range) =~ "defp func(x), do: «map(x, & &1 + 1)»"
+    end
+
+    test "are found in local functions", %{project: project} do
+      code = ~q/
+        defmodule Functions do
+          def do_map(a, b), do: Enum.map(a, b)
+
+          def func(x), do: do_map(x, & &1 + 1)
+
+        end
+      /
+      assert [%Location{} = location] = references(project, "Functions.do_map|(a, b)", code)
+      assert decorate(code, location.range) =~ "def func(x), do: «do_map(x, & &1 + 1)»"
+    end
+  end
+
   describe "module references" do
     # Note: These tests aren't exhaustive, as that is covered by Search.StoreTest.
     test "are found in an alias", %{project: project} do

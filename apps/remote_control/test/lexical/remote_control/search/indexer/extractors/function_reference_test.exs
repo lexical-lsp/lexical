@@ -8,7 +8,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
   def index(source) do
     do_index(source, fn entry ->
-      entry.type in [:function] and entry.subtype == :reference
+      match?({:function, :usage}, entry.type) and entry.subtype == :reference
     end)
   end
 
@@ -19,7 +19,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "OtherModule.test/0"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "OtherModule.test()" = extract(code, reference.range)
     end
@@ -29,7 +29,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       {:ok, [reference], _} = index(code)
       assert reference.subject == "OtherModule.test/0"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "OtherModule.test" = extract(code, reference.range)
     end
@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       {:ok, [reference], _} = index(code)
       assert reference.subject == "OtherModule.test/1"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "OtherModule.test(:arg)" = extract(code, reference.range)
     end
@@ -68,7 +68,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
         |> String.trim()
 
       assert multi_line.subject == "OtherModule.test/3"
-      assert multi_line.type == :function
+      assert multi_line.type == {:function, :usage}
       assert multi_line.subtype == :reference
       assert expected == extract(code, multi_line.range)
     end
@@ -88,7 +88,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "Other.Long.Module.function/3"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "Module.function(a, b, c)" == extract(code, reference.range)
     end
@@ -106,7 +106,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "Other.Long.Module.function/3"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "Mod.function(a, b, c)" == extract(code, reference.range)
     end
@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "OtherModule.test/3"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "OtherModule.test/3" == extract(code, reference.range)
     end
@@ -129,7 +129,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "OtherModule.test/2"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "OtherModule.test(arg, &1)" == extract(code, reference.range)
     end
@@ -148,7 +148,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "Parent.local/0"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "local()" == extract(code, reference.range)
     end
@@ -158,7 +158,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       {:ok, [reference], _} = index(code)
       assert reference.subject == "Parent.local/0"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "local()" == extract(code, reference.range)
     end
@@ -168,7 +168,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       {:ok, [reference], _} = index(code)
       assert reference.subject == "Parent.local/3"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "local(a, b, c)" == extract(code, reference.range)
     end
@@ -186,7 +186,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
 
       {:ok, [reference], _} = index(code)
       assert reference.subject == "Parent.local_fn/3"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
 
       expected = ~q[
@@ -211,7 +211,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "Parent.private_fun/2"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "private_fun(&1, 1)" == extract(code, reference.range)
     end
@@ -227,7 +227,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
       {:ok, [reference], _} = index(code)
 
       assert reference.subject == "Parent.public_fun/1"
-      assert reference.type == :function
+      assert reference.type == {:function, :usage}
       assert reference.subtype == :reference
       assert "public_fun/1" == extract(code, reference.range)
     end
