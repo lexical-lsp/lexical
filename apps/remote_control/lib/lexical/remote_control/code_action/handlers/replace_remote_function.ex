@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeAction.Diagnostic
+  alias Lexical.RemoteControl.Modules
   alias Sourceror.Zipper
 
   @behaviour CodeAction.Handler
@@ -128,24 +129,18 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   @function_threshold 0.77
   @max_suggestions 5
   defp prepare_suggestions(module, function, arity) do
-    suggestions =
-      for {module_function, ^arity} <- module_functions(module),
-          distance = module_function |> Atom.to_string() |> String.jaro_distance(function),
-          distance >= @function_threshold do
-        {distance, module_function}
-      end
-      |> Enum.sort(:desc)
-      |> Enum.take(@max_suggestions)
-      |> Enum.map(fn {_distance, module_function} -> module_function end)
+    with {:ok, module_functions} <- Modules.fetch_functions(module) do
+      suggestions =
+        for {module_function, ^arity} <- module_functions,
+            distance = module_function |> Atom.to_string() |> String.jaro_distance(function),
+            distance >= @function_threshold do
+          {distance, module_function}
+        end
+        |> Enum.sort(:desc)
+        |> Enum.take(@max_suggestions)
+        |> Enum.map(fn {_distance, module_function} -> module_function end)
 
-    {:ok, suggestions}
-  end
-
-  defp module_functions(module) do
-    if function_exported?(module, :module_info, 1) do
-      module.module_info(:functions)
-    else
-      module.__info__(:functions)
+      {:ok, suggestions}
     end
   end
 end
