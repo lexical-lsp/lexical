@@ -167,6 +167,28 @@ defmodule Lexical.RemoteControl.Modules do
     end
   end
 
+  @doc """
+  Get a list of a module's functions
+
+  This function will attempt to load the given module using our module cache, and
+  if it's found, will return a keyword list of function names and arities.
+  """
+  @spec fetch_functions(module()) :: {:ok, [{function(), arity()}]} | :error
+  def fetch_functions(module) when is_atom(module) do
+    with {:module, module} <- Loader.ensure_loaded(module) do
+      cond do
+        function_exported?(module, :__info__, 1) ->
+          {:ok, module.__info__(:functions)}
+
+        function_exported?(module, :module_info, 1) ->
+          {:ok, module.module_info(:functions)}
+
+        true ->
+          :error
+      end
+    end
+  end
+
   defp format_definition(quoted) do
     quoted
     |> Future.Code.quoted_to_algebra()
