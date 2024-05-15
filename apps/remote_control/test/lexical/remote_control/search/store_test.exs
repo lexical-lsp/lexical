@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           reference(id: 3)
         ])
 
-        assert [ref] = Store.exact(subtype: :reference)
+        assert {:ok, [ref]} = Store.exact(subtype: :reference)
         assert ref.subtype == :reference
       end
 
@@ -78,7 +78,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(subject: Foo.Bar.Baz)
         ])
 
-        assert [ref] = Store.exact("Foo.Bar.Baz", subtype: :reference)
+        assert {:ok, [ref]} = Store.exact("Foo.Bar.Baz", subtype: :reference)
 
         assert ref.subject == Foo.Bar.Baz
         assert ref.type == :module
@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 2, subject: Foo.Bar.Bak)
         ])
 
-        assert [entry] = Store.exact("Foo.Bar.Baz", type: :module, subtype: :definition)
+        assert {:ok, [entry]} = Store.exact("Foo.Bar.Baz", type: :module, subtype: :definition)
 
         assert entry.subject == Foo.Bar.Baz
         assert entry.id == 1
@@ -104,7 +104,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 3, subject: Foo.Bar.Baz)
         ])
 
-        assert [entry1, entry3] = Store.prefix("Foo.Bar", type: :module, subtype: :definition)
+        assert {:ok, [entry1, entry3]} =
+                 Store.prefix("Foo.Bar", type: :module, subtype: :definition)
 
         assert entry1.subject == Foo.Bar
         assert entry3.subject == Foo.Bar.Baz
@@ -120,7 +121,8 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 3, subject: Bad.Times.Now)
         ])
 
-        assert [entry_1, entry_2] = Store.fuzzy("Foo.Bar.B", type: :module, subtype: :definition)
+        assert {:ok, [entry_1, entry_2]} =
+                 Store.fuzzy("Foo.Bar.B", type: :module, subtype: :definition)
 
         assert entry_1.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
         assert entry_2.subject in [Foo.Bar.Baz, Foo.Bar.Bak]
@@ -182,7 +184,9 @@ defmodule Lexical.RemoteControl.Search.StoreTest do
           definition(id: 2, subject: Present, path: path)
         ])
 
-        assert_eventually [found] = Store.fuzzy("Pres", type: :module, subtype: :definition)
+        assert_eventually {:ok, [found]} =
+                            Store.fuzzy("Pres", type: :module, subtype: :definition)
+
         assert found.id == 2
         assert found.subject == Present
       end

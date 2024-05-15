@@ -52,24 +52,29 @@ defmodule Lexical.RemoteControl.Search.Store do
     GenServer.call(__MODULE__, {:replace, entries})
   end
 
+  @spec exact(Entry.subject_query(), Entry.constraints()) :: {:ok, [Entry.t()]} | {:error, term()}
   def exact(subject \\ :_, constraints) do
-    GenServer.call(__MODULE__, {:exact, subject, constraints})
+    call_or_default({:exact, subject, constraints}, [])
   end
 
+  @spec prefix(String.t(), Entry.constraints()) :: {:ok, [Entry.t()]} | {:error, term()}
   def prefix(prefix, constraints) do
-    GenServer.call(__MODULE__, {:prefix, prefix, constraints})
+    call_or_default({:prefix, prefix, constraints}, [])
   end
 
+  @spec parent(Entry.t()) :: {:ok, Entry.t()} | {:error, term()}
   def parent(%Entry{} = entry) do
-    GenServer.call(__MODULE__, {:parent, entry})
+    call_or_default({:parent, entry}, nil)
   end
 
+  @spec siblings(Entry.t()) :: {:ok, [Entry.t()]} | {:error, term()}
   def siblings(%Entry{} = entry) do
-    GenServer.call(__MODULE__, {:siblings, entry})
+    call_or_default({:siblings, entry}, [])
   end
 
+  @spec fuzzy(Entry.subject(), Entry.constraints()) :: {:ok, [Entry.t()]} | {:error, term()}
   def fuzzy(subject, constraints) do
-    GenServer.call(__MODULE__, {:fuzzy, subject, constraints})
+    call_or_default({:fuzzy, subject, constraints}, [])
   end
 
   def clear(path) do
@@ -267,10 +272,23 @@ defmodule Lexical.RemoteControl.Search.Store do
 
   defp enable(%State{} = state) do
     state = State.async_load(state)
+    :persistent_term.put({__MODULE__, :enabled?}, true)
     {nil, state}
   end
 
   defp schedule_gc do
     Process.send_after(self(), :gc, :timer.seconds(5))
+  end
+
+  defp call_or_default(call, default) do
+    if enabled?() do
+      GenServer.call(__MODULE__, call)
+    else
+      default
+    end
+  end
+
+  defp enabled? do
+    :persistent_term.get({__MODULE__, :enabled?}, false)
   end
 end

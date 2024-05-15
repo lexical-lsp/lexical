@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Fuzzy
+  alias Lexical.RemoteControl.Search.Indexer.Entry
 
   require Logger
   import Messages
@@ -85,33 +86,54 @@ defmodule Lexical.RemoteControl.Search.Store.State do
   def exact(%__MODULE__{} = state, subject, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    state.backend.find_by_subject(subject, type, subtype)
+
+    case state.backend.find_by_subject(subject, type, subtype) do
+      l when is_list(l) -> {:ok, l}
+      error -> error
+    end
   end
 
   def prefix(%__MODULE__{} = state, prefix, constraints) do
     type = Keyword.get(constraints, :type, :_)
     subtype = Keyword.get(constraints, :subtype, :_)
-    state.backend.find_by_prefix(prefix, type, subtype)
+
+    case state.backend.find_by_prefix(prefix, type, subtype) do
+      l when is_list(l) ->
+        {:ok, l}
+
+      error ->
+        error
+    end
   end
 
   def fuzzy(%__MODULE__{} = state, subject, constraints) do
     case Fuzzy.match(state.fuzzy, subject) do
       [] ->
-        []
+        {:ok, []}
 
       ids ->
         type = Keyword.get(constraints, :type, :_)
         subtype = Keyword.get(constraints, :subtype, :_)
-        state.backend.find_by_ids(ids, type, subtype)
+
+        case state.backend.find_by_ids(ids, type, subtype) do
+          l when is_list(l) -> {:ok, l}
+          error -> error
+        end
     end
   end
 
   def siblings(%__MODULE__{} = state, entry) do
-    state.backend.siblings(entry)
+    case state.backend.siblings(entry) do
+      l when is_list(l) -> {:ok, l}
+      error -> error
+    end
   end
 
   def parent(%__MODULE__{} = state, entry) do
-    state.backend.parent(entry)
+    case state.backend.parent(entry) do
+      %Entry{} = entry -> {:ok, entry}
+      error -> error
+    end
   end
 
   def buffer_updates(%__MODULE__{} = state, path, entries) do

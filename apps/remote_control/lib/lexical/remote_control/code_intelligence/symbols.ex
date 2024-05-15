@@ -30,9 +30,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
   end
 
   def for_workspace(query) do
-    query
-    |> Search.Store.fuzzy([])
-    |> Enum.map(&Symbols.Workspace.from_entry/1)
+    case Search.Store.fuzzy(query, []) do
+      {:ok, entries} ->
+        Enum.map(entries, &Symbols.Workspace.from_entry/1)
+
+      _ ->
+        []
+    end
   end
 
   defp to_symbols(%Document{} = document, entries) do

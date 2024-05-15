@@ -62,7 +62,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
       assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
 
-      assert_eventually [entry] = Search.Store.exact("NewModule", [])
+      assert_eventually {:ok, [entry]} = Search.Store.exact("NewModule", [])
 
       assert entry.subject == NewModule
     end
@@ -86,9 +86,9 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
 
       assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
 
-      assert_eventually [entry] = Search.Store.exact("UpdatedModule", [])
+      assert_eventually {:ok, [entry]} = Search.Store.exact("UpdatedModule", [])
       assert entry.subject == UpdatedModule
-      assert [] = Search.Store.exact("OldModule", [])
+      assert {:ok, []} = Search.Store.exact("OldModule", [])
     end
 
     test "only updates entries if the version of the document is the same as the version in the document store",
@@ -103,7 +103,7 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
         |> set_document!()
 
       assert {:ok, _} = Indexing.on_event(file_compile_requested(uri: uri), state)
-      assert [] = Search.Store.exact("Stale", [])
+      assert {:ok, []} = Search.Store.exact("Stale", [])
     end
   end
 
@@ -119,14 +119,14 @@ defmodule Lexical.RemoteControl.Dispatch.Handlers.IndexingTest do
       {:ok, entries} = Search.Indexer.Source.index(uri, source)
       Search.Store.update(uri, entries)
 
-      assert_eventually [_] = Search.Store.exact("ToDelete", [])
+      assert_eventually {:ok, [_]} = Search.Store.exact("ToDelete", [])
 
       Indexing.on_event(
         filesystem_event(project: project, uri: uri, event_type: :deleted),
         state
       )
 
-      assert_eventually [] = Search.Store.exact("ToDelete", [])
+      assert_eventually {:ok, []} = Search.Store.exact("ToDelete", [])
     end
   end
 
