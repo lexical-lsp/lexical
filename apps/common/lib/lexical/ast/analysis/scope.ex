@@ -64,6 +64,7 @@ defmodule Lexical.Ast.Analysis.Scope do
     end
   end
 
+  def empty?(%__MODULE__{id: :global}), do: false
   def empty?(%__MODULE__{aliases: [], imports: []}), do: true
   def empty?(%__MODULE__{}), do: false
 
