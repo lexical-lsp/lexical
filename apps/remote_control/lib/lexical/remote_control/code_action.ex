@@ -28,7 +28,8 @@ defmodule Lexical.RemoteControl.CodeAction do
   @handlers [
     Handlers.ReplaceRemoteFunction,
     Handlers.ReplaceWithUnderscore,
-    Handlers.OrganizeAliases
+    Handlers.OrganizeAliases,
+    Handlers.AddAlias
   ]
 
   @spec new(Lexical.uri(), String.t(), code_action_kind(), Changes.t()) :: t()

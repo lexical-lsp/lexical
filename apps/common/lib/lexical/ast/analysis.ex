@@ -10,7 +10,6 @@ defmodule Lexical.Ast.Analysis do
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Analysis.State
   alias Lexical.Document
-  alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Identifier
@@ -90,6 +89,35 @@ defmodule Lexical.Ast.Analysis do
       {:ok, comment} -> position.character > comment[:column]
       _ -> false
     end
+  end
+
+  @doc """
+  Returns the scope of the nearest enclosing module of the given function.
+
+  If there is no enclosing module scope, the global scope is returned
+  """
+  @spec module_scope(t(), Range.t()) :: Scope.t()
+  def module_scope(%__MODULE__{} = analysis, %Range{} = range) do
+    enclosing_scopes =
+      analysis
+      |> scopes_at(range.start)
+      |> enclosing_scopes(range)
+
+    first_scope = List.first(enclosing_scopes)
+
+    Enum.reduce_while(enclosing_scopes, first_scope, fn
+      %Scope{module: same} = current, %Scope{module: same} ->
+        {:cont, current}
+
+      _, current ->
+        {:halt, current}
+    end)
+  end
+
+  defp enclosing_scopes(scopes, range) do
+    Enum.filter(scopes, fn scope ->
+      Range.contains?(scope.range, range.start)
+    end)
   end
 
   defp traverse(quoted, %Document{} = document) do
