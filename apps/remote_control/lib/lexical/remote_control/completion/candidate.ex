@@ -14,7 +14,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
       :spec,
       :summary,
       :metadata,
-      parens: true
+      parens?: true
     ]
 
     def new(%{} = elixir_sense_map) do
@@ -41,7 +41,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
       :spec,
       :summary,
       :type,
-      parens: true
+      parens?: true
     ]
 
     def new(%{} = elixir_sense_map) do
@@ -68,7 +68,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
       :visibility,
       :spec,
       :metadata,
-      parens: true
+      parens?: true
     ]
 
     def new(%{} = elixir_sense_map) do
@@ -96,7 +96,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
       :origin,
       :signature,
       :spec,
-      parens: true
+      parens?: true
     ]
 
     def new(%{} = elixir_sense_map) do

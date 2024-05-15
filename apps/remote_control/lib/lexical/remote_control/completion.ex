@@ -124,11 +124,11 @@ defmodule Lexical.RemoteControl.Completion do
   end
 
   defp maybe_suppress_parens(%struct{} = candidate, locals_without_parens)
-       when struct in [Candidate.Function, Candidate.Macro] do
+       when struct in [Candidate.Function, Candidate.Macro, Candidate.Typespec] do
     atom_name = String.to_atom(candidate.name)
     suppress_parens? = local_without_parens?(atom_name, candidate.arity, locals_without_parens)
 
-    %{candidate | parens: not suppress_parens?}
+    %{candidate | parens?: not suppress_parens?}
   end
 
   defp maybe_suppress_parens(candidate, _), do: candidate
