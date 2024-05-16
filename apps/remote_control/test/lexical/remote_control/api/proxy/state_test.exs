@@ -110,7 +110,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
         ]
         |> add_to_state_and_flush()
 
-      assert flushed_messages == [mfa(module: Commands.Reindex, function: :perform)]
+      assert [mfa(module: Commands.Reindex, function: :perform)] = flushed_messages
     end
 
     test "a reindex is the last thing", %{project: project} do
