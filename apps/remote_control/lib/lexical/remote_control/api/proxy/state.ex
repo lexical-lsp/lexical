@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.Api.Proxy.State do
   alias Lexical.Document
-  alias Lexical.Identifier
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Commands
@@ -9,7 +8,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
   import Api.Proxy.Records
   import Record
 
-  defrecord :buffered, id: nil, message: nil, type: nil
+  defrecord :indexed, index: nil, value: nil
   defstruct initiator_pid: nil, buffer: []
 
   def new(initiator_pid) do
@@ -17,35 +16,38 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
   end
 
   def add_mfa(%__MODULE__{} = state, mfa() = mfa_record) do
-    command = buffered(id: Identifier.next_global!(), message: mfa_record, type: :mfa)
-    %__MODULE__{state | buffer: [command | state.buffer]}
+    %__MODULE__{state | buffer: [mfa_record | state.buffer]}
   end
 
   def add_message(%__MODULE__{} = state, message() = message_record) do
-    message = buffered(id: Identifier.next_global!(), message: message_record, type: :message)
-    %__MODULE__{state | buffer: [message | state.buffer]}
+    %__MODULE__{state | buffer: [message_record | state.buffer]}
   end
 
   def flush(%__MODULE__{} = state) do
-    {commands, messages} = Enum.split_with(state.buffer, &match?(buffered(message: mfa()), &1))
+    {commands, messages} =
+      state.buffer
+      |> Enum.reverse()
+      |> Enum.with_index()
+      |> Enum.map(fn {item, index} -> indexed(index: index, value: item) end)
+      |> Enum.split_with(fn indexed(value: value) -> match?(mfa(), value) end)
+
     {project_compile, document_compiles, reindex} = collapse_commands(commands)
 
-    all_commands = [reindex, project_compile | Map.values(document_compiles)]
+    all_commands = [project_compile | Map.values(document_compiles)]
 
     all_commands
     |> Enum.concat(collapse_messages(messages, project_compile, document_compiles))
-    |> Enum.filter(&match?(buffered(), &1))
+    |> Enum.filter(&match?(indexed(), &1))
     |> Enum.sort_by(fn
-      buffered(message: mfa(module: Commands.Reindex)) ->
-        # atoms are always greater than integers, so this will go last
-        :reindex
-
-      buffered(id: id) ->
-        id
+      indexed(index: index) ->
+        index
     end)
-    |> Enum.map(fn
-      buffered(message: message) ->
-        message
+    |> Enum.map(fn indexed(value: message) -> message end)
+    |> then(fn commands ->
+      case reindex do
+        indexed(value: value) -> commands ++ [value]
+        _ -> commands
+      end
     end)
   end
 
@@ -62,17 +64,16 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
       |> Enum.reduce(
         initial_state,
         fn
-          buffered(message: mfa(module: Build, function: :schedule_compile)) = buffered, acc ->
-            Map.update(acc, :project_compiles, [buffered], &[buffered | &1])
+          indexed(value: mfa(module: Build, function: :schedule_compile)) = indexed, acc ->
+            Map.update(acc, :project_compiles, [indexed], &[indexed | &1])
 
-          buffered(message: mfa(module: Build, function: :compile_document) = mfa) = buffered,
-          acc ->
+          indexed(value: mfa(module: Build, function: :compile_document) = mfa) = indexed, acc ->
             mfa(arguments: [_, document]) = mfa
             uri = document.uri
-            put_in(acc, [:document_compiles, uri], buffered)
+            put_in(acc, [:document_compiles, uri], indexed)
 
-          buffered(message: mfa(module: Commands.Reindex)) = buffered, acc ->
-            Map.put(acc, :reindex, buffered)
+          indexed(value: mfa(module: Commands.Reindex)) = indexed, acc ->
+            Map.put(acc, :reindex, indexed)
 
           _, acc ->
             acc
@@ -87,14 +88,14 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
 
     project_compile =
       Enum.reduce(project_compiles, nil, fn
-        buffered(message: mfa(arguments: [_, true])) = buffered, _ ->
-          buffered
+        indexed(value: mfa(arguments: [_, true])) = indexed, _ ->
+          indexed
 
-        buffered(message: mfa(arguments: [true])) = buffered, _ ->
-          buffered
+        indexed(value: mfa(arguments: [true])) = indexed, _ ->
+          indexed
 
-        buffered() = buffered, nil ->
-          buffered
+        indexed() = indexed, nil ->
+          indexed
 
         _, acc ->
           acc
@@ -104,8 +105,8 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
       if project_compile do
         %{}
       else
-        for {uri, buffered} <- document_compiles, Document.Store.open?(uri), into: %{} do
-          {uri, buffered}
+        for {uri, indexed} <- document_compiles, Document.Store.open?(uri), into: %{} do
+          {uri, indexed}
         end
       end
 
@@ -122,17 +123,17 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
     # 4. Progress messages should still be sent to dispatch, even when buffering
 
     Enum.filter(messages, fn
-      buffered(message: message(body: file_compile_requested())) ->
+      indexed(value: message(body: file_compile_requested())) ->
         false
 
-      buffered(message: message(body: project_compile_requested())) ->
+      indexed(value: message(body: project_compile_requested())) ->
         false
 
-      buffered(message: message(body: file_diagnostics(uri: uri))) ->
+      indexed(value: message(body: file_diagnostics(uri: uri))) ->
         not (Map.has_key?(document_compiles, uri) or
                match?(project_compile_requested(), project_compile))
 
-      buffered(message: message(body: body)) ->
+      indexed(value: message(body: body)) ->
         case fetch_uri(body) do
           {:ok, uri} ->
             Document.Store.open?(uri)
