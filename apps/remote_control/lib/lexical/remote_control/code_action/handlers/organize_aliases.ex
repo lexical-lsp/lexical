@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
   alias Lexical.Ast.Analysis
-  alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Changes
@@ -17,8 +16,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
     with {:ok, _doc, analysis} <- Document.Store.fetch(doc.uri, :analysis),
          :ok <- check_aliases(doc, analysis, range) do
       aliases = CodeMod.Aliases.in_scope(analysis, range)
-      insert_position = first_alias_position(aliases)
-      edits = CodeMod.Aliases.to_edits(aliases, insert_position)
+      {insert_position, trailer} = CodeMod.Aliases.insert_position(analysis, range.start)
+      edits = CodeMod.Aliases.to_edits(aliases, insert_position, trailer)
 
       if Enum.empty?(edits) do
         []
@@ -42,19 +41,5 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
       %Scope{aliases: [_ | _]} -> :ok
       _ -> :error
     end
-  end
-
-  defp first_alias_position([]) do
-  end
-
-  defp first_alias_position(aliases) do
-    alias =
-      aliases
-      |> Enum.reject(&is_nil(&1.range))
-      |> Enum.min_by(fn %Alias{} = a ->
-        {a.range.start.line, a.range.start.character}
-      end)
-
-    alias.range.start
   end
 end

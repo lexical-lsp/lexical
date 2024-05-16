@@ -56,7 +56,37 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
     patch(Store, :fuzzy, returns)
   end
 
-  describe "adding an alias based off of a module" do
+  describe "in an existing module with no aliases" do
+    test "aliases are added at the top of the module" do
+      {:ok, added} =
+        ~q[
+        defmodule MyModule do
+          def my_fn do
+            Line|
+          end
+        end
+        ]
+        |> add_alias([Line])
+
+      expected = ~q[
+      defmodule MyModule do
+        alias Lexical.Document.Line
+        def my_fn do
+          Line
+        end
+      end
+      ]t
+      assert added =~ expected
+    end
+  end
+
+  describe "in an existing module" do
+  end
+
+  describe "in the root context" do
+  end
+
+  describe "adding an alias" do
     test "does nothing on an invalid document" do
       {:ok, added} = add_alias("%Lexical.RemoteControl.Search.", [Lexical.RemoteControl.Search])
 
