@@ -65,4 +65,20 @@ defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
       assert [^i, ^ii, ^iii_low, ^i_deprecated] = sort_items([i_deprecated, i, ii, iii_low])
     end
   end
+
+  describe "snippet edge cases" do
+    # The following would crash due to missing case clauses
+    # in `prefix_length/1`
+    test "handles aliases inside locals" do
+      "before __MODULE__.Submodule|"
+      |> new_env()
+      |> snippet("", label: "")
+    end
+
+    test "handles locals inside a module attribute" do
+      "@hello.Submodule"
+      |> new_env()
+      |> snippet("", label: "")
+    end
+  end
 end

@@ -111,6 +111,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         |> List.last()
         |> length()
 
+      {:alias, {:local_or_var, _}, alias_charlist} ->
+        length(alias_charlist)
+
+      {:alias, {:module_attribute, _}, alias_charlist} ->
+        length(alias_charlist)
+
       {:dot, _inside_dot, charlist} ->
         length(charlist)
 
