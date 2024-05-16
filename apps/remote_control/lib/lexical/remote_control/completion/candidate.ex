@@ -4,7 +4,18 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule Function do
     @moduledoc false
-    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :summary, :metadata]
+    defstruct [
+      :argument_names,
+      :arity,
+      :name,
+      :origin,
+      :type,
+      :visibility,
+      :spec,
+      :summary,
+      :metadata,
+      parens?: true
+    ]
 
     def new(%{} = elixir_sense_map) do
       arg_names =
@@ -21,7 +32,17 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule Callback do
     @moduledoc false
-    defstruct [:argument_names, :arity, :metadata, :name, :origin, :spec, :summary, :type]
+    defstruct [
+      :argument_names,
+      :arity,
+      :metadata,
+      :name,
+      :origin,
+      :spec,
+      :summary,
+      :type,
+      parens?: true
+    ]
 
     def new(%{} = elixir_sense_map) do
       arg_names =
@@ -38,7 +59,17 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule Macro do
     @moduledoc false
-    defstruct [:argument_names, :arity, :name, :origin, :type, :visibility, :spec, :metadata]
+    defstruct [
+      :argument_names,
+      :arity,
+      :name,
+      :origin,
+      :type,
+      :visibility,
+      :spec,
+      :metadata,
+      parens?: true
+    ]
 
     def new(%{} = elixir_sense_map) do
       arg_names =
@@ -55,7 +86,18 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule Typespec do
     @moduledoc false
-    defstruct [:argument_names, :arity, :doc, :metadata, :type, :name, :origin, :signature, :spec]
+    defstruct [
+      :argument_names,
+      :arity,
+      :doc,
+      :metadata,
+      :type,
+      :name,
+      :origin,
+      :signature,
+      :spec,
+      parens?: true
+    ]
 
     def new(%{} = elixir_sense_map) do
       arg_names =

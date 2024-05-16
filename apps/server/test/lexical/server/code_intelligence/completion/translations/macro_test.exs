@@ -664,7 +664,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       source = ~q[
         import Project.Macros
 
-        macro_a|
+        macro_ad|
       ]
 
       assert {:ok, completion} =
@@ -683,7 +683,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       source = ~q[
         require Project.Macros
 
-        Project.Macros.macro_a|
+        Project.Macros.macro_ad|
       ]
 
       assert {:ok, completion} =
@@ -703,7 +703,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
         alias Project.Macros
         require Macros
 
-        Macros.macro_a|
+        Macros.macro_ad|
       ]
 
       assert {:ok, completion} =
@@ -716,6 +716,78 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert completion.label == "macro_add(a, b)"
 
       assert apply_completion(completion) =~ "Macros.macro_add(${1:a}, ${2:b})"
+    end
+
+    test "completes imported macros in locals_without_parens with a specific arity",
+         %{project: project} do
+      source = ~q[
+        import Project.Macros
+
+        macro_1_without|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "macro_1_without_parens arg"
+      assert apply_completion(completion) =~ "macro_1_without_parens ${1:arg}"
+    end
+
+    test "completes required macros in locals_without_parens with a specific arity",
+         %{project: project} do
+      source = ~q[
+        require Project.Macros
+
+        Project.Macros.macro_1_without|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "macro_1_without_parens arg"
+      assert apply_completion(completion) =~ "Project.Macros.macro_1_without_parens ${1:arg}"
+    end
+
+    test "completes imported macros in locals_without_parens with any arity", %{project: project} do
+      source = ~q[
+        import Project.Macros
+
+        macro_2_without|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "macro_2_without_parens arg1, arg2, arg3, arg4"
+
+      assert apply_completion(completion) =~
+               "macro_2_without_parens ${1:arg1}, ${2:arg2}, ${3:arg3}, ${4:arg4}"
+    end
+
+    test "completes ExUnit macros without parens", %{project: project} do
+      source = ~q[
+        defmodule ExampleTest do
+          use ExUnit.Case
+
+          test "example do"
+            asser|
+          end
+        end
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion("assert assertion")
+
+      assert completion.label == "assert assertion"
+      assert apply_completion(completion) =~ "assert ${1:assertion}"
     end
   end
 

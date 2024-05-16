@@ -8,6 +8,91 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
   require Logger
 
+  @built_in_locals_without_parens [
+    # Special forms
+    alias: 1,
+    alias: 2,
+    case: 2,
+    cond: 1,
+    for: :*,
+    import: 1,
+    import: 2,
+    quote: 1,
+    quote: 2,
+    receive: 1,
+    require: 1,
+    require: 2,
+    try: 1,
+    with: :*,
+
+    # Kernel
+    def: 1,
+    def: 2,
+    defp: 1,
+    defp: 2,
+    defguard: 1,
+    defguardp: 1,
+    defmacro: 1,
+    defmacro: 2,
+    defmacrop: 1,
+    defmacrop: 2,
+    defmodule: 2,
+    defdelegate: 2,
+    defexception: 1,
+    defoverridable: 1,
+    defstruct: 1,
+    destructure: 2,
+    raise: 1,
+    raise: 2,
+    reraise: 2,
+    reraise: 3,
+    if: 2,
+    unless: 2,
+    use: 1,
+    use: 2,
+
+    # Stdlib,
+    defrecord: 2,
+    defrecord: 3,
+    defrecordp: 2,
+    defrecordp: 3,
+
+    # Testing
+    assert: 1,
+    assert: 2,
+    assert_in_delta: 3,
+    assert_in_delta: 4,
+    assert_raise: 2,
+    assert_raise: 3,
+    assert_receive: 1,
+    assert_receive: 2,
+    assert_receive: 3,
+    assert_received: 1,
+    assert_received: 2,
+    doctest: 1,
+    doctest: 2,
+    refute: 1,
+    refute: 2,
+    refute_in_delta: 3,
+    refute_in_delta: 4,
+    refute_receive: 1,
+    refute_receive: 2,
+    refute_receive: 3,
+    refute_received: 1,
+    refute_received: 2,
+    setup: 1,
+    setup: 2,
+    setup_all: 1,
+    setup_all: 2,
+    test: 1,
+    test: 2,
+
+    # Mix config
+    config: 2,
+    config: 3,
+    import_config: 1
+  ]
+
   @type formatter_function :: (String.t() -> any) | nil
 
   @spec edits(Document.t()) :: {:ok, Changes.t()} | {:error, any}
@@ -35,7 +120,7 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   @spec formatter_for(Project.t(), String.t()) :: {:ok, formatter_function}
   defp formatter_for(%Project{} = project, uri_or_path) do
     path = Document.Path.ensure_path(uri_or_path)
-    formatter_function = formatter_for_file(project, path)
+    {formatter_function, _opts} = formatter_for_file(project, path)
     wrapped_formatter_function = wrap_with_try_catch(formatter_function)
     {:ok, wrapped_formatter_function}
   end
@@ -71,10 +156,13 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
     String.starts_with?(child, normalized_parent)
   end
 
-  defp formatter_for_file(%Project{} = project, file_path) do
+  @doc """
+  Returns `{formatter_function, opts}` for the given file.
+  """
+  def formatter_for_file(%Project{} = project, file_path) do
     fetch_formatter = fn _ -> Mix.Tasks.Format.formatter_for_file(file_path) end
 
-    {formatter, _opts} =
+    {formatter_function, opts} =
       if RemoteControl.project_node?() do
         case RemoteControl.Mix.in_project(project, fetch_formatter) do
           {:ok, result} ->
@@ -96,13 +184,21 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
               IO.iodata_to_binary([formatted_source, ?\n])
             end
 
-            {formatter, nil}
+            {formatter, formatter_opts}
         end
       else
         fetch_formatter.(nil)
       end
 
-    formatter
+    opts =
+      Keyword.update(
+        opts,
+        :locals_without_parens,
+        @built_in_locals_without_parens,
+        &(@built_in_locals_without_parens ++ &1)
+      )
+
+    {formatter_function, opts}
   end
 
   defp find_formatter_exs(%Project{} = project, file_path) do
