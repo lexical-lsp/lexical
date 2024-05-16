@@ -151,25 +151,30 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
 
   defp possible_aliases(unaliased_module) do
     unaliased_strings = Module.split(unaliased_module)
+    module_subject = Formats.module(unaliased_module)
 
-    unaliased_module
-    |> Formats.module()
-    |> Search.Store.fuzzy(type: :module, subtype: :definition)
-    |> Stream.uniq_by(& &1.subject)
-    |> Stream.filter(fn %Entry{} = entry ->
-      split = Module.split(entry.subject)
+    case Search.Store.fuzzy(module_subject, type: :module, subtype: :definition) do
+      {:ok, entries} ->
+        entries
+        |> Stream.uniq_by(& &1.subject)
+        |> Stream.filter(fn %Entry{} = entry ->
+          split = Module.split(entry.subject)
 
-      head_module = split |> List.first() |> List.wrap() |> Module.concat()
-      tail_module = split |> List.last()
+          head_module = split |> List.first() |> List.wrap() |> Module.concat()
+          tail_module = split |> List.last()
 
-      protocol? = function_exported?(head_module, :__protocol__, 1)
+          protocol? = function_exported?(head_module, :__protocol__, 1)
 
-      if protocol? do
-        false
-      else
-        Enum.any?(unaliased_strings, &similar?(&1, tail_module))
-      end
-    end)
-    |> Stream.map(& &1.subject)
+          if protocol? do
+            false
+          else
+            Enum.any?(unaliased_strings, &similar?(&1, tail_module))
+          end
+        end)
+        |> Stream.map(& &1.subject)
+
+      _ ->
+        []
+    end
   end
 end

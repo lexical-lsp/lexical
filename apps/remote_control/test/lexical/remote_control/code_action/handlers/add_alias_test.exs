@@ -53,7 +53,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
           %Entry{subject: module, range: range, type: :module, subtype: :definition}
       end)
 
-    patch(Store, :fuzzy, returns)
+    patch(Store, :fuzzy, {:ok, returns})
   end
 
   describe "in an existing module with no aliases" do
