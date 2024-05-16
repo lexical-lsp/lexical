@@ -2,7 +2,6 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Alias
-  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Changes
   alias Lexical.Document.Position
@@ -44,7 +43,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   end
 
   defp build_code_action(%Analysis{} = analysis, range, current_aliases, potential_alias_module) do
-    {insert_position, trailer} = insert_position_and_trailer(current_aliases, analysis, range)
+    {insert_position, trailer} = CodeMod.Aliases.insert_position(analysis, range.start)
     split_alias = potential_alias_module |> Module.split() |> Enum.map(&String.to_atom/1)
     alias_to_add = %Alias{module: split_alias, as: List.last(split_alias), explicit?: true}
     replace_current_alias = get_current_replacement(analysis, range, split_alias)
@@ -172,30 +171,5 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
       end
     end)
     |> Stream.map(& &1.subject)
-  end
-
-  defp insert_position_and_trailer([%Alias{} = first | _], _, _) do
-    {first.range.start, nil}
-  end
-
-  defp insert_position_and_trailer([], %Analysis{} = analysis, range) do
-    case Analysis.module_scope(analysis, range) do
-      %Scope{id: :global} = scope ->
-        {scope.range.start, "\n"}
-
-      %Scope{} = scope ->
-        start_pos = scope.range.start
-        # we use the end position here because the start position is right after
-        # the do for modules, which puts it well into the line. The end position
-        # is before the end, which is equal to the indent of the scope.
-        end_pos = scope.range.end
-
-        start_pos =
-          start_pos
-          |> put_in([:line], start_pos.line + 1)
-          |> put_in([:character], end_pos.character + 2)
-
-        {start_pos, "\n"}
-    end
   end
 end

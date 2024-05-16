@@ -1,10 +1,13 @@
 defmodule Lexical.RemoteControl.CodeMod.Aliases do
+  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Scope
+  alias Lexical.Document
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Sourceror.Zipper
 
   @doc """
   Returns the aliases that are in scope at the given range.
@@ -24,6 +27,21 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
     Enum.sort_by(aliases, fn %Alias{} = scope_alias ->
       Enum.map(scope_alias.module, fn elem -> elem |> to_string() |> String.downcase() end)
     end)
+  end
+
+  @doc """
+  Returns the position in the document where aliases should be inserted
+  Since a document can have multiple module definitions, the cursor position is used to
+  determine the initial starting point.
+
+  This function also returns a string that should be appended to the end of the
+  edits that are performed.
+  """
+  @spec insert_position(Analysis.t(), Position.t()) :: {Position.t(), String.t() | nil}
+  def insert_position(%Analysis{} = analysis, %Position{} = cursor_position) do
+    range = Range.new(cursor_position, cursor_position)
+    current_aliases = in_scope(analysis, range)
+    do_insert_position(analysis, current_aliases, range)
   end
 
   @doc """
@@ -118,5 +136,71 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
       {range, _} ->
         Edit.new("", range)
     end)
+  end
+
+  defp do_insert_position(%Analysis{}, [%Alias{} | _] = aliases, _) do
+    first = Enum.min_by(aliases, &{&1.range.start.line, &1.range.start.character})
+    {first.range.start, nil}
+  end
+
+  defp do_insert_position(%Analysis{} = analysis, _, range) do
+    case Analysis.module_scope(analysis, range) do
+      %Scope{id: :global} = scope ->
+        {scope.range.start, "\n"}
+
+      %Scope{} = scope ->
+        scope_start = scope.range.start
+        # we use the end position here because the start position is right after
+        # the do for modules, which puts it well into the line. The end position
+        # is before the end, which is equal to the indent of the scope.
+        initial_position =
+          scope_start
+          |> put_in([:line], scope_start.line + 1)
+          |> put_in([:character], scope.range.end.character + 2)
+          |> constrain_to_range(scope.range)
+
+        case Ast.zipper_at(analysis.document, scope_start) do
+          {:ok, zipper} ->
+            {_, position} =
+              Zipper.traverse(zipper, initial_position, fn
+                %Zipper{node: {:@, _, [{:moduledoc, _, _}]}} = zipper, _acc ->
+                  # If we detect a moduledoc node, place the alias after it
+                  range = Sourceror.get_range(zipper.node)
+
+                  {zipper, after_node(analysis.document, scope.range, range)}
+
+                zipper, acc ->
+                  {zipper, acc}
+              end)
+
+            position
+
+          _ ->
+            initial_position
+        end
+    end
+  end
+
+  defp after_node(%Document{} = document, %Range{} = scope_range, %{
+         start: start_pos,
+         end: end_pos
+       }) do
+    document
+    |> Position.new(end_pos[:line] + 1, start_pos[:column])
+    |> constrain_to_range(scope_range)
+  end
+
+  defp constrain_to_range(%Position{} = position, %Range{} = scope_range) do
+    cond do
+      position.line == scope_range.end.line ->
+        character = min(scope_range.end.character, position.character)
+        {%Position{position | character: character}, "\n"}
+
+      position.line > scope_range.end.line ->
+        {%Position{scope_range.end | character: 1}, "\n"}
+
+      true ->
+        {position, "\n"}
+    end
   end
 end

@@ -4,8 +4,11 @@ defmodule Lexical.Test.CursorSupport do
   """
 
   alias Lexical.Document
+  alias Lexical.Document.Line
   alias Lexical.Document.Position
   alias Lexical.Test.PositionSupport
+
+  import Line
 
   @default_cursor "|"
   @starting_line 1
@@ -102,6 +105,24 @@ defmodule Lexical.Test.CursorSupport do
       end)
 
     IO.iodata_to_binary(iodata)
+  end
+
+  def decorate_cursor(%Document{} = document, %Position{} = position) do
+    replace_line = position.line
+
+    document.lines
+    |> Enum.map(fn
+      line(line_number: ^replace_line, text: text, ending: ending) ->
+        {leading, trailing} = String.split_at(text, position.character - 1)
+
+        leading = String.pad_leading(leading, position.character - 1)
+
+        [leading, "|", trailing, ending]
+
+      line(text: text, ending: ending) ->
+        [text, ending]
+    end)
+    |> IO.iodata_to_binary()
   end
 
   defp cursor_position(text, opts) do
