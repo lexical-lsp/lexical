@@ -64,6 +64,38 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
 
       assert apply_completion(completion) == "Enum.dedup_by(${1:enumerable}, ${2:fun})"
     end
+
+    test "completes funs in locals_without_parens with a specific arity",
+         %{project: project} do
+      source = ~q[
+        Project.Functions.fun_1|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "fun_1_without_parens arg"
+      assert apply_completion(completion) =~ "Project.Functions.fun_1_without_parens ${1:arg}"
+    end
+
+    test "completes imported funs in locals_without_parens with a specific arity",
+         %{project: project} do
+      source = ~q[
+        import Project.Functions
+
+        fun_1|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion(kind: :function)
+
+      assert completion.label == "fun_1_without_parens arg"
+      assert apply_completion(completion) =~ "fun_1_without_parens ${1:arg}"
+    end
   end
 
   describe "function captures" do

@@ -12,11 +12,11 @@ defmodule Project.Macros do
     end
   end
 
-  defmacro example_1_without_parens(arg) do
+  defmacro macro_1_without_parens(arg) do
     arg
   end
 
-  defmacro example_2_without_parens(arg1, arg2, arg3, arg4) do
+  defmacro macro_2_without_parens(arg1, arg2, arg3, arg4) do
     [arg1, arg2, arg3, arg4]
   end
 end
