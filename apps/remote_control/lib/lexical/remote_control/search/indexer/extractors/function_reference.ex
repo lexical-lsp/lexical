@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
+  alias Lexical.Ast
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.RemoteControl
@@ -96,6 +97,47 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     new_pipe = {:|>, pipe_meta, [pipe_start, {fn_name, updated_meta, args}]}
 
     {:ok, nil, new_pipe}
+  end
+
+  def extract({:defdelegate, _, [call | keywords]} = ast, %Reducer{} = reducer) do
+    document = reducer.analysis.document
+
+    {_, keyword_args} =
+      Macro.prewalk(keywords, [], fn
+        {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
+          {ast, [{:to, delegated_module} | acc]}
+
+        {{:__block__, _, [:as]}, {:__block__, _, [remote_fun_name]}} = ast, acc ->
+          {ast, [{:as, remote_fun_name} | acc]}
+
+        ast, acc ->
+          {ast, acc}
+      end)
+
+    delegated_module = keyword_args[:to]
+    position = Reducer.position(reducer)
+
+    case RemoteControl.Analyzer.expand_alias(delegated_module, reducer.analysis, position) do
+      {:ok, module} ->
+        {function_name, args} = Macro.decompose_call(call)
+        arity = length(args)
+        function_name = Keyword.get(keyword_args, :as, function_name)
+
+        entry =
+          Entry.reference(
+            document.path,
+            Reducer.current_block(reducer),
+            Lexical.Formats.mfa(module, function_name, arity),
+            {:function, :usage},
+            Ast.Range.get(ast, document),
+            Application.get_application(module)
+          )
+
+        {:ok, entry, []}
+
+      _ ->
+        :ignored
+    end
   end
 
   # local function call foo() foo(arg)

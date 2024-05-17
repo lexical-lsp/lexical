@@ -27,14 +27,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
   @do_regex ~r/\s*do\s*$/
 
   defp name_and_type({:function, type}, %Entry{} = entry, %Document{} = document)
-       when type in [:public, :private] do
+       when type in [:public, :private, :delegate] do
     fragment = Document.fragment(document, entry.range.start, entry.range.end)
 
     prefix =
-      if type == :public do
-        "def "
-      else
-        "defp "
+      case type do
+        :public -> "def "
+        :private -> "defp "
+        :delegate -> "defdelegate "
       end
 
     {prefix <> fragment, entry.type}

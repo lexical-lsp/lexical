@@ -174,6 +174,37 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert decorate(doc, function.detail_range) =~ " def «my_fn» do"
     end
 
+    test "public functions created with defdelegate are found" do
+      {[module], doc} =
+        ~q[
+          defmodule Module do
+            defdelegate map(enumerable, func), to: Enum
+          end
+        ]
+        |> document_symbols()
+
+      assert [function] = module.children
+      assert function.type == {:function, :delegate}
+
+      assert decorate(doc, function.detail_range) =~
+               "  defdelegate «map(enumerable, func)», to: Enum"
+    end
+
+    test "public functions created with defdelegate using as are found" do
+      {[module], doc} =
+        ~q[
+          defmodule Module do
+            defdelegate collect(enumerable, func), to: Enum, as: :map
+          end
+        ]
+        |> document_symbols()
+
+      assert [function] = module.children
+
+      assert decorate(doc, function.detail_range) =~
+               "  defdelegate «collect(enumerable, func)», to: Enum, as: :map"
+    end
+
     test "private function definitions are found" do
       {[module], doc} =
         ~q[

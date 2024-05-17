@@ -112,6 +112,49 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReferenceTest 
     end
   end
 
+  describe "defdelegate" do
+    test "creates a function reference" do
+      {:ok, [reference], doc} =
+        "defdelegate map(enumerable, func), to: Enum"
+        |> in_a_module()
+        |> index()
+
+      assert reference.subject == "Enum.map/2"
+      assert reference.type == {:function, :usage}
+      assert reference.subtype == :reference
+      assert "defdelegate map(enumerable, func), to: Enum" = extract(doc, reference.range)
+    end
+
+    test "creates a function reference to an aliased module" do
+      {:ok, [reference], doc} =
+        ~q[
+          alias Grandparent.Parent.Child
+          defdelegate map(enumerable, func), to: Child
+        ]
+        |> in_a_module()
+        |> index()
+
+      assert reference.subject == "Grandparent.Parent.Child.map/2"
+      assert reference.type == {:function, :usage}
+      assert reference.subtype == :reference
+      assert "defdelegate map(enumerable, func), to: Child" = extract(doc, reference.range)
+    end
+
+    test "creates a function reference when as is used" do
+      {:ok, [reference], doc} =
+        "defdelegate collect(enumerable, func), to: Enum, as: :map"
+        |> in_a_module()
+        |> index()
+
+      assert reference.subject == "Enum.map/2"
+      assert reference.type == {:function, :usage}
+      assert reference.subtype == :reference
+
+      assert "defdelegate collect(enumerable, func), to: Enum, as: :map" =
+               extract(doc, reference.range)
+    end
+  end
+
   describe "function captures" do
     test "with specified arity" do
       code = in_a_module_function("&OtherModule.test/3")

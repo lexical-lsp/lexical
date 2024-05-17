@@ -31,6 +31,31 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     end
   end
 
+  def extract({:defdelegate, _, [call, _]}, %Reducer{} = reducer) do
+    document = reducer.analysis.document
+
+    with {:ok, detail_range} <- Ast.Range.fetch(call, document),
+         {:ok, module} <- Analyzer.current_module(reducer.analysis, detail_range.start) do
+      {delegate_name, args} = Macro.decompose_call(call)
+      arity = length(args)
+
+      entry =
+        Entry.definition(
+          document.path,
+          Reducer.current_block(reducer),
+          Subject.mfa(module, delegate_name, arity),
+          {:function, :delegate},
+          detail_range,
+          Application.get_application(module)
+        )
+
+      {:ok, entry}
+    else
+      _ ->
+        :ignored
+    end
+  end
+
   def extract(_ast, _reducer) do
     :ignored
   end

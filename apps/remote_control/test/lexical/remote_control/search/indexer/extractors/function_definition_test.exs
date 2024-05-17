@@ -4,7 +4,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
 
   def index(source) do
     do_index(source, fn %Entry{type: type} = entry ->
-      type in [{:function, :public}, {:function, :private}] and entry.subtype == :definition
+      match?({:function, _}, type) and entry.subtype == :definition
     end)
   end
 
@@ -163,6 +163,54 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert function.subject == "MyProtocol.Structs.Mystruct.do_proto/2"
       assert "do_proto(a, b)" = extract(doc, function.range)
       assert decorate(doc, function.block_range) =~ "«def do_proto(a, b) do\n    a + b\n  end»"
+    end
+
+    test "finds functions defined with defdelegate" do
+      {:ok, [function | _], doc} =
+        ~q[
+          defmodule MyModule do
+            defdelegate map(enumerable, other), to: Enum
+          end
+        ]
+        |> index_functions()
+
+      assert function.type == {:function, :delegate}
+      assert function.subject == "MyModule.map/2"
+      assert "map(enumerable, other)" = extract(doc, function.range)
+      assert decorate(doc, function.range) =~ "defdelegate «map(enumerable, other)», to: Enum"
+    end
+
+    test "finds functions defined with defdelegate with an aliased module" do
+      {:ok, [function | _], doc} =
+        ~q[
+          defmodule MyModule do
+            alias Parent.Child
+            defdelegate map(enumerable, other), to: Child
+          end
+        ]
+        |> index_functions()
+
+      assert function.type == {:function, :delegate}
+      assert function.subject == "MyModule.map/2"
+      assert "map(enumerable, other)" = extract(doc, function.range)
+      assert decorate(doc, function.range) =~ "defdelegate «map(enumerable, other)», to: Child"
+    end
+
+    test "finds functions defined with defdelegate and as" do
+      {:ok, [function | _], doc} =
+        ~q[
+          defmodule MyModule do
+            defdelegate collect(enumerable, other), to: Enum, as: :map
+          end
+        ]
+        |> index_functions()
+
+      assert function.type == {:function, :delegate}
+      assert function.subject == "MyModule.collect/2"
+      assert "collect(enumerable, other)" = extract(doc, function.range)
+
+      assert decorate(doc, function.range) =~
+               "  defdelegate «collect(enumerable, other)», to: Enum, as: :map"
     end
 
     test "skips public functions defined in quote blocks" do
