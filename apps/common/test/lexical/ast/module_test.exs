@@ -9,23 +9,17 @@ defmodule Lexical.Ast.ModuleTest do
 
     test "splits elixir modules into binaries" do
       assert {:elixir, ~w(Lexical Document Store)} ==
-               safe_split(Lexical.Document.Store, as: :binary)
-
-      assert {:elixir, ~w(Lexical Document Store)} ==
                safe_split(Lexical.Document.Store, as: :binaries)
     end
 
     test "splits elixir modules into atoms" do
-      assert {:elixir, ~w(Lexical Document Store)a} ==
-               safe_split(Lexical.Document.Store, as: :atom)
-
       assert {:elixir, ~w(Lexical Document Store)a} ==
                safe_split(Lexical.Document.Store, as: :atoms)
     end
 
     test "splits erlang modules" do
       assert {:erlang, ["ets"]} = safe_split(:ets)
-      assert {:erlang, [:ets]} = safe_split(:ets, as: :atoms)
+      assert {:erlang, ["ets"]} = safe_split(:ets, as: :binaries)
       assert {:erlang, [:ets]} = safe_split(:ets, as: :atoms)
     end
   end
