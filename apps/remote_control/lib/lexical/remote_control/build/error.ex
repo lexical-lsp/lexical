@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.Build.Error do
+  alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic.Result
   alias Lexical.RemoteControl.Build.Error.Location
@@ -274,12 +275,9 @@ defmodule Lexical.RemoteControl.Build.Error do
   end
 
   defp safe_split(module) do
-    module
-    |> Atom.to_string()
-    |> String.split(".")
-    |> case do
-      [erlang_module] -> String.to_atom(erlang_module)
-      ["Elixir" | elixir_module_path] -> Enum.map(elixir_module_path, &String.to_atom/1)
+    case Ast.Module.safe_split(module, as: :atoms) do
+      {:elixir, segments} -> segments
+      {:erlang, [erlang_module]} -> erlang_module
     end
   end
 
