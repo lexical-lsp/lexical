@@ -287,5 +287,21 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
 
       assert added =~ expected
     end
+
+    test "protocol implementations are excluded" do
+      {:ok, added} =
+        add_alias("Lin|", [Lexical.Document.Lines, Enumerable.Lexical.Document.Lines])
+
+      expected = ~q[
+        alias Lexical.Document.Lines
+        Lin
+      ]t
+      assert added =~ expected
+    end
+
+    test "erlang modules are excluded" do
+      {:ok, added} = add_alias(":ets|", [:ets])
+      assert added =~ ":ets"
+    end
   end
 end

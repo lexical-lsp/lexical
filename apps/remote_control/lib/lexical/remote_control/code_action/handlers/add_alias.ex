@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   alias Lexical.Document.Position
   alias Lexical.Document.Range
   alias Lexical.Formats
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeIntelligence.Entity
@@ -30,7 +31,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
       unaliased_module
       |> possible_aliases()
       |> filter_by_resolution(resolved)
-      |> Enum.map(&build_code_action(analysis, range, current_aliases, &1))
+      |> Stream.map(&build_code_action(analysis, range, current_aliases, &1))
+      |> Enum.reject(&is_nil/1)
     else
       _ ->
         []
@@ -43,26 +45,31 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   end
 
   defp build_code_action(%Analysis{} = analysis, range, current_aliases, potential_alias_module) do
-    {insert_position, trailer} = CodeMod.Aliases.insert_position(analysis, range.start)
-    split_alias = potential_alias_module |> Module.split() |> Enum.map(&String.to_atom/1)
-    alias_to_add = %Alias{module: split_alias, as: List.last(split_alias), explicit?: true}
-    replace_current_alias = get_current_replacement(analysis, range, split_alias)
+    case Ast.Module.safe_split(potential_alias_module, as: :atoms) do
+      {:erlang, _} ->
+        nil
 
-    alias_edits =
-      CodeMod.Aliases.to_edits(
-        [alias_to_add | current_aliases],
-        insert_position,
-        trailer
-      )
+      {:elixir, segments} ->
+        {insert_position, trailer} = CodeMod.Aliases.insert_position(analysis, range.start)
+        alias_to_add = %Alias{module: segments, as: List.last(segments), explicit?: true}
+        replace_current_alias = get_current_replacement(analysis, range, segments)
 
-    changes = Changes.new(analysis.document, replace_current_alias ++ alias_edits)
+        alias_edits =
+          CodeMod.Aliases.to_edits(
+            [alias_to_add | current_aliases],
+            insert_position,
+            trailer
+          )
 
-    CodeAction.new(
-      analysis.document.uri,
-      "alias #{Formats.module(potential_alias_module)}",
-      :quick_fix,
-      changes
-    )
+        changes = Changes.new(analysis.document, replace_current_alias ++ alias_edits)
+
+        CodeAction.new(
+          analysis.document.uri,
+          "alias #{Formats.module(potential_alias_module)}",
+          :quick_fix,
+          changes
+        )
+    end
   end
 
   def fetch_unaliased_module(%Analysis{} = analysis, %Position{} = position, resolved) do
@@ -81,8 +88,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   defp fetch_module({:call, module, _function, _arity}), do: {:ok, module}
   defp fetch_module(_), do: :error
 
-  defp get_current_replacement(%Analysis{} = analysis, %Range{} = range, split_alias) do
-    with {:ok, patches} <- replace_full_module_on_line(analysis, range.start.line, split_alias),
+  defp get_current_replacement(%Analysis{} = analysis, %Range{} = range, segments) do
+    with {:ok, patches} <- replace_full_module_on_line(analysis, range.start.line, segments),
          {:ok, edits} <- Ast.patches_to_edits(analysis.document, patches) do
       edits
     else
@@ -91,9 +98,9 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
     end
   end
 
-  defp replace_full_module_on_line(%Analysis{} = analysis, line, split_alias) do
+  defp replace_full_module_on_line(%Analysis{} = analysis, line, segments) do
     aliased_module =
-      split_alias
+      segments
       |> List.last()
       |> List.wrap()
       |> Module.concat()
@@ -101,7 +108,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
 
     analysis.document
     |> Ast.traverse_line(line, [], fn
-      %Zipper{node: {:__aliases__, _, ^split_alias}} = zipper, patches ->
+      %Zipper{node: {:__aliases__, _, ^segments}} = zipper, patches ->
         range = Sourceror.get_range(zipper.node)
 
         patch = %{range: range, change: aliased_module}
@@ -150,29 +157,31 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   end
 
   defp possible_aliases(unaliased_module) do
-    unaliased_strings = Module.split(unaliased_module)
     module_subject = Formats.module(unaliased_module)
+    constraints = [type: :module, subtype: :definition]
 
-    case Search.Store.fuzzy(module_subject, type: :module, subtype: :definition) do
-      {:ok, entries} ->
-        entries
-        |> Stream.uniq_by(& &1.subject)
-        |> Stream.filter(fn %Entry{} = entry ->
-          split = Module.split(entry.subject)
-
-          head_module = split |> List.first() |> List.wrap() |> Module.concat()
-          tail_module = split |> List.last()
-
-          protocol? = function_exported?(head_module, :__protocol__, 1)
-
-          if protocol? do
+    with {:elixir, unaliased_strings} <- Ast.Module.safe_split(unaliased_module),
+         {:ok, entries} <- Search.Store.fuzzy(module_subject, constraints) do
+      entries
+      |> Stream.uniq_by(& &1.subject)
+      |> Stream.filter(fn %Entry{} = entry ->
+        case Ast.Module.safe_split(entry.subject) do
+          {:erlang, _} ->
             false
-          else
-            Enum.any?(unaliased_strings, &similar?(&1, tail_module))
-          end
-        end)
-        |> Stream.map(& &1.subject)
 
+          {:elixir, split} ->
+            alias_as = List.last(split)
+            subject_module = entry.subject
+            RemoteControl.Module.Loader.ensure_loaded(subject_module)
+
+            protocol_or_implementation? = function_exported?(entry.subject, :__impl__, 1)
+
+            not protocol_or_implementation? and
+              Enum.any?(unaliased_strings, &similar?(&1, alias_as))
+        end
+      end)
+      |> Stream.map(& &1.subject)
+    else
       _ ->
         []
     end
