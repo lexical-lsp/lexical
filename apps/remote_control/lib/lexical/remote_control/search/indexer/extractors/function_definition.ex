@@ -31,13 +31,16 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     end
   end
 
-  def extract({:defdelegate, _, [call, _]}, %Reducer{} = reducer) do
+  def extract({:defdelegate, _, [call, _]} = node, %Reducer{} = reducer) do
     document = reducer.analysis.document
 
     with {:ok, detail_range} <- Ast.Range.fetch(call, document),
-         {:ok, module} <- Analyzer.current_module(reducer.analysis, detail_range.start) do
+         {:ok, module} <- Analyzer.current_module(reducer.analysis, detail_range.start),
+         {:ok, {delegated_module, delegated_name, _delegated_arity}} <-
+           fetch_delegated_mfa(node, reducer.analysis, detail_range.start) do
       {delegate_name, args} = Macro.decompose_call(call)
       arity = length(args)
+      metadata = %{original_mfa: Subject.mfa(delegated_module, delegated_name, arity)}
 
       entry =
         Entry.definition(
@@ -49,7 +52,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
           Application.get_application(module)
         )
 
-      {:ok, entry}
+      {:ok, Entry.put_metadata(entry, metadata)}
     else
       _ ->
         :ignored
@@ -58,6 +61,31 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
 
   def extract(_ast, _reducer) do
     :ignored
+  end
+
+  def fetch_delegated_mfa(node, analysis, position) do
+    {:defdelegate, _, [call | keywords]} = node
+
+    {_, keyword_args} =
+      Macro.prewalk(keywords, [], fn
+        {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
+          {ast, [{:to, delegated_module} | acc]}
+
+        {{:__block__, _, [:as]}, {:__block__, _, [remote_fun_name]}} = ast, acc ->
+          {ast, [{:as, remote_fun_name} | acc]}
+
+        ast, acc ->
+          {ast, acc}
+      end)
+
+    {function_name, args} = Macro.decompose_call(call)
+    function_name = Keyword.get(keyword_args, :as, function_name)
+    delegated_module = keyword_args[:to]
+
+    case Analyzer.expand_alias(delegated_module, analysis, position) do
+      {:ok, module} -> {:ok, {module, function_name, length(args)}}
+      _ -> :error
+    end
   end
 
   defp type(:def), do: {:function, :public}

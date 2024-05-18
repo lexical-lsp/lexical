@@ -6,13 +6,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.Document.Location
   alias Lexical.Document.Position
   alias Lexical.Formats
-  alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
 
-  alias Sourceror.Zipper
   require Logger
 
   @spec definition(Document.t(), Position.t()) :: {:ok, [Location.t()]} | {:error, String.t()}
@@ -55,10 +53,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       mfa
       |> exact(subtype: :definition)
       |> Enum.flat_map(fn entry ->
-        with %Entry{type: {:function, :delegate}} <- entry,
-             {:ok, mfa} <- fetch_delegated_mfa(entry.path, entry.range.start) do
-          exact(mfa, subtype: :definition) ++ [entry]
-        else
+        case entry do
+          %Entry{type: {:function, :delegate}} ->
+            mfa = get_in(entry, [:metadata, :original_mfa])
+            exact(mfa, subtype: :definition) ++ [entry]
+
           _ ->
             [entry]
         end
@@ -99,40 +98,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     |> Document.to_string()
     |> ElixirSense.definition(position.line, position.character)
     |> parse_location(analysis.document)
-  end
-
-  defp fetch_delegated_mfa(path, position) do
-    uri = Document.Path.ensure_uri(path)
-
-    with {:ok, document} <- Document.Store.open_temporary(uri),
-         analysis = Ast.analyze(document),
-         {:ok, zipper} <- Ast.zipper_at(analysis.document, position),
-         %Zipper{node: {:defdelegate, _, _}} = zipper <- Zipper.prev(zipper) do
-      {_, _, [call, keywords]} = zipper.node
-      {function_name, args} = Macro.decompose_call(call)
-      arity = length(args)
-
-      {_, keyword_args} =
-        Macro.prewalk(keywords, [], fn
-          {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
-            {ast, [{:to, delegated_module} | acc]}
-
-          {{:__block__, _, [:as]}, {:__block__, _, [remote_fun_name]}} = ast, acc ->
-            {ast, [{:as, remote_fun_name} | acc]}
-
-          ast, acc ->
-            {ast, acc}
-        end)
-
-      delegated_module = keyword_args[:to]
-      function_name = Keyword.get(keyword_args, :as, function_name) || function_name
-      {:ok, module} = Analyzer.expand_alias(delegated_module, analysis, position)
-      mfa = Formats.mfa(module, function_name, arity)
-      {:ok, mfa}
-    else
-      _ ->
-        :error
-    end
   end
 
   defp parse_location(%ElixirSense.Location{} = location, document) do

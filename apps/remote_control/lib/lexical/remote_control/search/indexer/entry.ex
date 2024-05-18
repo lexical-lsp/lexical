@@ -32,7 +32,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
     :range,
     :subject,
     :subtype,
-    :type
+    :type,
+    :metadata
   ]
 
   @type t :: %__MODULE__{
@@ -43,7 +44,8 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
           path: Path.t(),
           range: Lexical.Document.Range.t(),
           subtype: entry_subtype(),
-          type: entry_type()
+          type: entry_type(),
+          metadata: nil | map()
         }
   @type datetime_format :: :erl | :unix | :datetime
   @type date_type :: :calendar.datetime() | integer() | DateTime.t()
@@ -145,5 +147,9 @@ defmodule Lexical.RemoteControl.Search.Indexer.Entry do
 
   def updated_at(%__MODULE__{}, _format) do
     nil
+  end
+
+  def put_metadata(%__MODULE__{} = entry, metadata) do
+    %__MODULE__{entry | metadata: metadata}
   end
 end
