@@ -84,7 +84,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       assert {:ok, ^referenced_uri, definition_line} =
                definition(project, subject_module, referenced_uri)
 
-      assert definition_line == ~S[  def «greet»(name) do]
+      assert definition_line == ~S[  def «greet(name)» do]
     end
 
     test "find the definition of the module", %{project: project, uri: referenced_uri} do
@@ -176,7 +176,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       assert {:ok, ^referenced_uri, definition_line} =
                definition(project, subject_module, referenced_uri)
 
-      assert definition_line == ~S[  def «greet»(name) do]
+      assert definition_line == ~S[  def «greet(name)» do]
     end
 
     test "find the definition of a remote macro call",
@@ -305,7 +305,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
 
       {:ok, referenced_uri, definition_line} = definition(project, subject_module, subject_uri)
 
-      assert definition_line == ~S[  def «greet»(name) when is_binary(name) do]
+      assert definition_line == ~S[  def «greet(name) when is_binary(name)» do]
       assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
@@ -378,6 +378,37 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
+  describe "definition/2 when making local call to a delegated function" do
+    setup [:with_referenced_file]
+
+    test "find the definition of the delegated function", %{
+      project: project,
+      uri: uri,
+      subject_uri: subject_uri
+    } do
+      subject_module = ~q[
+        defmodule UsesDelegatedFunction do
+          defdelegate greet(name), to: MyDefinition
+
+          def uses_greet do
+            gree|t("World")
+          end
+        end
+      ]
+
+      {:ok, [location1, location2]} =
+        definition(project, subject_module, [uri, subject_uri])
+
+      {referenced_uri, definition_line} = location1
+      assert definition_line =~ ~S[  def «greet(name)» do]
+      assert referenced_uri == uri
+
+      {referenced_uri, definition_line} = location2
+      assert definition_line == ~S[  defdelegate «greet(name)», to: MyDefinition]
+      assert referenced_uri == subject_uri
+    end
+  end
+
   defp definition(project, code, referenced_uri) do
     with {position, code} <- pop_cursor(code),
          {:ok, document} <- subject_module(project, code),
@@ -392,11 +423,21 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
+  defp index(project, referenced_uris) when is_list(referenced_uris) do
+    entries = Enum.flat_map(referenced_uris, &do_index/1)
+    RemoteControl.call(project, Search.Store, :replace, [entries])
+  end
+
   defp index(project, referenced_uri) do
+    entries = do_index(referenced_uri)
+    RemoteControl.call(project, Search.Store, :replace, [entries])
+  end
+
+  defp do_index(referenced_uri) do
     with {:ok, document} <- Document.Store.fetch(referenced_uri),
          {:ok, entries} <-
            Search.Indexer.Source.index(document.path, Document.to_string(document)) do
-      RemoteControl.call(project, Search.Store, :replace, [entries])
+      entries
     end
   end
 end
