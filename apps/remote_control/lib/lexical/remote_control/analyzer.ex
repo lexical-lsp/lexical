@@ -111,10 +111,8 @@ defmodule Lexical.RemoteControl.Analyzer do
 
   def expand_alias(module, %Analysis{} = analysis, %Position{} = position)
       when is_atom(module) and not is_nil(module) do
-    module
-    |> Module.split()
-    |> Enum.map(&String.to_atom/1)
-    |> expand_alias(analysis, position)
+    {:elixir, segments} = Ast.Module.safe_split(module, as: :atoms)
+    expand_alias(segments, analysis, position)
   end
 
   def expand_alias(empty, _, _) when empty in [nil, []] do

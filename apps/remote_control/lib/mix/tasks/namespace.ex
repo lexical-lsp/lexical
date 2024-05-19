@@ -10,6 +10,7 @@ defmodule Mix.Tasks.Namespace do
 
   This task takes a single argument, which is the full path to the release.
   """
+  alias Lexical.Ast
   alias Mix.Tasks.Namespace.Transform
   use Mix.Task
 
@@ -96,11 +97,9 @@ defmodule Mix.Tasks.Namespace do
   end
 
   defp safe_split_module(module) do
-    module_string = Atom.to_string(module)
-
-    case String.split(module_string, ".") do
-      ["Elixir" | rest] -> rest
-      _ -> []
+    case Ast.Module.safe_split(module) do
+      {:elixir, segments} -> segments
+      {:erlang, _} -> []
     end
   end
 
