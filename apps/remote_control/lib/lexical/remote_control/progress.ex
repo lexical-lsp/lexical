@@ -1,5 +1,5 @@
 defmodule Lexical.RemoteControl.Progress do
-  alias Lexical.RemoteControl.Api
+  alias Lexical.RemoteControl
 
   import Lexical.RemoteControl.Api.Messages
 
@@ -41,26 +41,26 @@ defmodule Lexical.RemoteControl.Progress do
 
   @spec begin_progress(label :: label()) :: on_complete_callback()
   def begin_progress(label) do
-    Api.Local.broadcast(project_progress(label: label, stage: :begin))
+    RemoteControl.broadcast(project_progress(label: label, stage: :begin))
 
     fn ->
-      Api.Local.broadcast(project_progress(label: label, stage: :complete))
+      RemoteControl.broadcast(project_progress(label: label, stage: :complete))
     end
   end
 
   @spec begin_percent(label(), pos_integer()) ::
           {report_progress_callback(), on_complete_callback()}
   def begin_percent(label, max) do
-    Api.Local.broadcast(percent_progress(label: label, max: max, stage: :begin))
+    RemoteControl.broadcast(percent_progress(label: label, max: max, stage: :begin))
 
     report_progress = fn delta, message ->
-      Api.Local.broadcast(
+      RemoteControl.broadcast(
         percent_progress(label: label, message: message, delta: delta, stage: :report)
       )
     end
 
     complete = fn ->
-      Api.Local.broadcast(percent_progress(label: label, stage: :complete))
+      RemoteControl.broadcast(percent_progress(label: label, stage: :complete))
     end
 
     {report_progress, complete}

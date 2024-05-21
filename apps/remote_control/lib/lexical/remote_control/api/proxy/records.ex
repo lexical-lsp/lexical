@@ -1,4 +1,6 @@
 defmodule Lexical.RemoteControl.Api.Proxy.Records do
+  alias Lexical.Formats
+
   import Record
 
   defrecord :message, body: nil
@@ -10,6 +12,20 @@ defmodule Lexical.RemoteControl.Api.Proxy.Records do
 
   defmacro to_mfa(ast) do
     {m, f, a} = Macro.decompose_call(ast)
+    module = Macro.expand(m, __CALLER__)
+    arity = length(a)
+
+    Code.ensure_loaded!(module)
+
+    unless function_exported?(module, f, arity) do
+      mfa = Formats.mfa(module, f, arity)
+
+      raise CompileError.message(%{
+              file: __CALLER__.file,
+              line: __CALLER__.line,
+              description: "No function named #{mfa} defined. Proxy will fail"
+            })
+    end
 
     quote do
       require unquote(__MODULE__)

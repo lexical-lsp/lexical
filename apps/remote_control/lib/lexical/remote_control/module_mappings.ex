@@ -39,7 +39,7 @@ defmodule Lexical.RemoteControl.ModuleMappings do
     end
   end
 
-  alias Lexical.RemoteControl.Api
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
 
   use GenServer
@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl.ModuleMappings do
 
   @impl GenServer
   def init(_) do
-    Api.Local.register_listener(self(), [module_updated()])
+    RemoteControl.register_listener(self(), [module_updated()])
     {:ok, State.new()}
   end
 

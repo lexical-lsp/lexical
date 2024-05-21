@@ -147,7 +147,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   end
 
   defp do_reindex(%Project{} = project) do
-    Api.Local.broadcast(project_reindex_requested(project: project))
+    RemoteControl.broadcast(project_reindex_requested(project: project))
 
     {elapsed_us, result} =
       :timer.tc(fn ->
@@ -156,7 +156,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
         end
       end)
 
-    Api.Local.broadcast(
+    RemoteControl.broadcast(
       project_reindexed(project: project, elapsed_ms: round(elapsed_us / 1000), status: :success)
     )
 
