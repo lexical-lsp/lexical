@@ -196,6 +196,15 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinitionTest
       assert decorate(doc, function.range) =~ "defdelegate «map(enumerable, other)», to: Child"
     end
 
+    test "skip quoted function defined with defdelegate" do
+      assert {:ok, [], _doc} =
+               ~q[
+          quote do
+            defdelegate unquote(symbol)(enumerable, other), to: Enum
+          end
+        ] |> index_functions()
+    end
+
     test "finds functions defined with defdelegate and as" do
       {:ok, [function | _], doc} =
         ~q[

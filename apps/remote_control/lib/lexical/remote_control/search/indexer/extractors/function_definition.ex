@@ -63,9 +63,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     :ignored
   end
 
-  def fetch_delegated_mfa(node, analysis, position) do
-    {:defdelegate, _, [call | keywords]} = node
-
+  def fetch_delegated_mfa({:defdelegate, _, [call | keywords]}, analysis, position) do
     {_, keyword_args} =
       Macro.prewalk(keywords, [], fn
         {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
@@ -78,13 +76,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
           {ast, acc}
       end)
 
-    {function_name, args} = Macro.decompose_call(call)
-    function_name = Keyword.get(keyword_args, :as, function_name)
-    delegated_module = keyword_args[:to]
-
-    case Analyzer.expand_alias(delegated_module, analysis, position) do
-      {:ok, module} -> {:ok, {module, function_name, length(args)}}
-      _ -> :error
+    with {function_name, args} <- Macro.decompose_call(call),
+         {:ok, module} <- Analyzer.expand_alias(keyword_args[:to], analysis, position) do
+      function_name = Keyword.get(keyword_args, :as, function_name)
+      {:ok, {module, function_name, length(args)}}
+    else
+      _ ->
+        :error
     end
   end
 
