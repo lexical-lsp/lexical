@@ -7,8 +7,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.Document.Position
   alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.Text
+
   require Logger
 
   @spec definition(Document.t(), Position.t()) :: {:ok, [Location.t()]} | {:error, String.t()}
@@ -19,7 +21,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp fetch_definition({type, entity}, %Analysis{} = analysis, %Position{} = position)
+  defp fetch_definition({type, entity} = resolved, %Analysis{} = analysis, %Position{} = position)
        when type in [:struct, :module] do
     module = Formats.module(entity)
 
@@ -37,11 +39,49 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
           []
       end
 
+    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+  end
+
+  defp fetch_definition(
+         {:call, module, function, arity} = resolved,
+         %Analysis{} = analysis,
+         %Position{} = position
+       ) do
+    mfa = Formats.mfa(module, function, arity)
+
+    definitions =
+      mfa
+      |> query_search_index(subtype: :definition)
+      |> Enum.flat_map(fn entry ->
+        case entry do
+          %Entry{type: {:function, :delegate}} ->
+            mfa = get_in(entry, [:metadata, :original_mfa])
+            query_search_index(mfa, subtype: :definition) ++ [entry]
+
+          _ ->
+            [entry]
+        end
+      end)
+
+    locations =
+      for entry <- definitions,
+          result = to_location(entry),
+          match?({:ok, _}, result) do
+        {:ok, location} = result
+        location
+      end
+
+    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+  end
+
+  defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
+    elixir_sense_definition(analysis, position)
+  end
+
+  defp maybe_fallback_to_elixir_sense(resolved, locations, analysis, position) do
     case locations do
       [] ->
-        Logger.info(
-          "No definition found for #{to_string(type)}: #{inspect(module)} with Indexer."
-        )
+        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
 
         elixir_sense_definition(analysis, position)
 
@@ -51,10 +91,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       _ ->
         {:ok, locations}
     end
-  end
-
-  defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
-    elixir_sense_definition(analysis, position)
   end
 
   defp elixir_sense_definition(%Analysis{} = analysis, %Position{} = position) do
@@ -132,6 +168,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
       _ ->
         :error
+    end
+  end
+
+  defp query_search_index(subject, condition) do
+    case Store.exact(subject, condition) do
+      {:ok, entries} ->
+        entries
+
+      _ ->
+        []
     end
   end
 end

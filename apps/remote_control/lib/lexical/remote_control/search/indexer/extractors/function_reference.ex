@@ -4,6 +4,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
   alias Lexical.Document.Range
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
   alias Lexical.RemoteControl.Search.Subject
@@ -99,37 +100,19 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionReference do
     {:ok, nil, new_pipe}
   end
 
-  def extract({:defdelegate, _, [call | keywords]} = ast, %Reducer{} = reducer) do
-    document = reducer.analysis.document
-
-    {_, keyword_args} =
-      Macro.prewalk(keywords, [], fn
-        {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
-          {ast, [{:to, delegated_module} | acc]}
-
-        {{:__block__, _, [:as]}, {:__block__, _, [remote_fun_name]}} = ast, acc ->
-          {ast, [{:as, remote_fun_name} | acc]}
-
-        ast, acc ->
-          {ast, acc}
-      end)
-
-    delegated_module = keyword_args[:to]
+  def extract({:defdelegate, _, _} = ast, %Reducer{} = reducer) do
+    analysis = reducer.analysis
     position = Reducer.position(reducer)
 
-    case RemoteControl.Analyzer.expand_alias(delegated_module, reducer.analysis, position) do
-      {:ok, module} ->
-        {function_name, args} = Macro.decompose_call(call)
-        arity = length(args)
-        function_name = Keyword.get(keyword_args, :as, function_name)
-
+    case FunctionDefinition.fetch_delegated_mfa(ast, analysis, position) do
+      {:ok, {module, function_name, arity}} ->
         entry =
           Entry.reference(
-            document.path,
+            analysis.document.path,
             Reducer.current_block(reducer),
             Lexical.Formats.mfa(module, function_name, arity),
             {:function, :usage},
-            Ast.Range.get(ast, document),
+            Ast.Range.get(ast, analysis.document),
             Application.get_application(module)
           )
 
