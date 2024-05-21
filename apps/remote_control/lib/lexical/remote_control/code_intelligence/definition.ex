@@ -52,7 +52,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     definitions =
       mfa
       |> query_search_index(subtype: :definition)
-      |> Enum.flat_map(fn entry ->
+      |> Stream.flat_map(fn entry ->
         case entry do
           %Entry{type: {:function, :delegate}} ->
             mfa = get_in(entry, [:metadata, :original_mfa])
@@ -62,6 +62,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
             [entry]
         end
       end)
+      |> Stream.uniq_by(& &1.subject)
 
     locations =
       for entry <- definitions,
