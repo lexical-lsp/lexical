@@ -51,12 +51,12 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
     definitions =
       mfa
-      |> exact(subtype: :definition)
+      |> query_search_index(subtype: :definition)
       |> Enum.flat_map(fn entry ->
         case entry do
           %Entry{type: {:function, :delegate}} ->
             mfa = get_in(entry, [:metadata, :original_mfa])
-            exact(mfa, subtype: :definition) ++ [entry]
+            query_search_index(mfa, subtype: :definition) ++ [entry]
 
           _ ->
             [entry]
@@ -171,7 +171,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp exact(subject, condition) do
+  defp query_search_index(subject, condition) do
     case Store.exact(subject, condition) do
       {:ok, entries} ->
         entries

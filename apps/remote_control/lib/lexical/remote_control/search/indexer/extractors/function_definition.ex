@@ -67,10 +67,10 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.FunctionDefinition do
     {_, keyword_args} =
       Macro.prewalk(keywords, [], fn
         {{:__block__, _, [:to]}, {:__aliases__, _, delegated_module}} = ast, acc ->
-          {ast, [{:to, delegated_module} | acc]}
+          {ast, Keyword.put(acc, :to, delegated_module)}
 
         {{:__block__, _, [:as]}, {:__block__, _, [remote_fun_name]}} = ast, acc ->
-          {ast, [{:as, remote_fun_name} | acc]}
+          {ast, Keyword.put(acc, :as, remote_fun_name)}
 
         ast, acc ->
           {ast, acc}
