@@ -309,6 +309,31 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       assert referenced_uri =~ "navigations/lib/my_module.ex"
     end
 
+    test "find only one function when there are multiple same arity functions", %{
+      project: project,
+      subject_uri: subject_uri
+    } do
+      subject_module = ~q[
+        defmodule UsesOwnFunction do
+          def greet(name) when is_atom(name) do
+            IO.inspect(name)
+          end
+
+          def greet(name) do
+            name
+          end
+
+          def uses_greet do
+            gree|t("World")
+          end
+        end
+      ]
+
+      {:ok, referenced_uri, definition_line} = definition(project, subject_module, subject_uri)
+      assert definition_line == ~S[  def «greet(name) when is_atom(name)» do]
+      assert referenced_uri == subject_uri
+    end
+
     test "find the attribute", %{project: project, subject_uri: subject_uri} do
       subject_module = ~q[
         defmodule UsesAttribute do
