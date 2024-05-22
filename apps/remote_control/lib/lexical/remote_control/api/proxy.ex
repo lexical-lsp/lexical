@@ -12,7 +12,8 @@ defmodule Lexical.RemoteControl.Api.Proxy do
 
   The logic follows below
     `broadcast` - Buffered - Though, those related to other events, like compilation are subject to
-                  the rules that govern their source events.
+                  the rules that govern their source events. Progress messages are sent regardless of
+                  buffering.
     `schedule_compile` - Buffered - Only one call is kept
     `compile_document` - Buffered, though only one call per URI is kept, and if a `schedule_compile` call
                          was buffered, all `compile_document` calls are dropped
