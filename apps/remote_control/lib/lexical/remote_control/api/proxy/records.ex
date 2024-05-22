@@ -15,6 +15,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.Records do
     module = Macro.expand(m, __CALLER__)
     arity = length(a)
 
+    Code.ensure_compiled!(module)
     Code.ensure_loaded!(module)
 
     unless function_exported?(module, f, arity) do
