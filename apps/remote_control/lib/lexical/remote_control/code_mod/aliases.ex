@@ -136,6 +136,30 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
       {range, _} ->
         Edit.new("", range)
     end)
+    |> merge_adjacent_edits()
+  end
+
+  defp merge_adjacent_edits([]), do: []
+  defp merge_adjacent_edits([_] = edit), do: edit
+
+  defp merge_adjacent_edits([edit | rest]) do
+    rest
+    |> Enum.reduce([edit], fn %Edit{} = current, [%Edit{} = last | rest] = edits ->
+      with {same_text, same_text} <- {last.text, current.text},
+           {same, same} <- {to_tuple(current.range.end), to_tuple(last.range.start)} do
+        collapsed = put_in(current.range.end, last.range.end)
+
+        [collapsed | rest]
+      else
+        _ ->
+          [current | edits]
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  defp to_tuple(%Position{} = position) do
+    {position.line, position.character}
   end
 
   defp do_insert_position(%Analysis{}, [%Alias{} | _] = aliases, _) do
