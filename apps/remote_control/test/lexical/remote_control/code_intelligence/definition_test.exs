@@ -421,8 +421,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
         end
       ]
 
-      {:ok, [location1, location2]} =
-        definition(project, subject_module, [uri, subject_uri])
+      {:ok, [location1, location2]} = definition(project, subject_module, [uri, subject_uri])
 
       {referenced_uri, definition_line} = location1
       assert definition_line =~ ~S[  def «greet(name)» do]
@@ -431,6 +430,21 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       {referenced_uri, definition_line} = location2
       assert definition_line == ~S[  defdelegate «greet(name)», to: MyDefinition]
       assert referenced_uri == subject_uri
+    end
+  end
+
+  describe "edge cases" do
+    setup [:with_referenced_file]
+
+    test "doesn't crash with structs defined with DSLs", %{project: project, uri: uri} do
+      subject_module = ~q[
+      defmodule MyTest do
+        def my_test(%TypedStructs.MacroBased|Struct{}) do
+        end
+      end
+      ]
+
+      assert {:ok, _file, _definition} = definition(project, subject_module, [uri])
     end
   end
 
