@@ -33,6 +33,10 @@ defmodule Mix.Tasks.Namespace.Module do
   def prefixed?("lx_" <> _),
     do: true
 
+  def prefixed?([?l, ?x, ?_ | _]), do: true
+  def prefixed?([?E, ?l, ?i, ?x, ?i, ?r, ?., ?L, ?X | _]), do: true
+  def prefixed?([?L, ?X | _]), do: true
+
   def prefixed?(_),
     do: false
 

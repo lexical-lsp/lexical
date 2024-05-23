@@ -7,7 +7,6 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
   alias Lexical.Document.Range
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction.Handlers.AddAlias
-  alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
 
   import Lexical.Test.CursorSupport
@@ -38,22 +37,18 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
 
   def add_alias(original_text, modules_to_return) do
     {position, stripped_text} = pop_cursor(original_text)
+    patch_fuzzy_search(modules_to_return)
     range = Range.new(position, position)
-    patch_store(range, modules_to_return)
     modify(stripped_text, range: range)
   end
 
-  def patch_store(range, modules_to_return) do
-    returns =
-      Enum.map(modules_to_return, fn
-        %Entry{} = entry ->
-          entry
-
-        module ->
-          %Entry{subject: module, range: range, type: :module, subtype: :definition}
+  def patch_fuzzy_search(modules_to_return) do
+    all_modules =
+      Enum.map(modules_to_return, fn module ->
+        {Atom.to_charlist(module), :code.which(module), :code.is_loaded(module)}
       end)
 
-    patch(Store, :fuzzy, {:ok, returns})
+    patch(AddAlias, :all_modules, all_modules)
   end
 
   describe "in an existing module with no aliases" do
@@ -97,14 +92,14 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
       {:ok, added} =
         ~q[
           alias ZZ.XX.YY
-          Lines|
+          Line|
         ]
         |> add_alias([Line])
 
       expected = ~q[
       alias Lexical.Document.Line
       alias ZZ.XX.YY
-      Lines
+      Line
       ]t
 
       assert added == expected
@@ -150,12 +145,12 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
 
     test "outside of a module with no aliases" do
       {:ok, added} =
-        ~q[Lines|]
+        ~q[Line|]
         |> add_alias([Line])
 
       expected = ~q[
        alias Lexical.Document.Line
-       Lines
+       Line
       ]t
 
       assert added == expected
@@ -189,7 +184,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
         ~q[
         defmodule MyModule do
           alias Something.Else
-          Lines|
+          Line|
         end
         ]
         |> add_alias([Line])
@@ -198,7 +193,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
       defmodule MyModule do
         alias Lexical.Document.Line
         alias Something.Else
-        Lines
+        Line
       end
       ]
 
@@ -211,7 +206,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
         defmodule MyModule do
           alias Something.Else
           def my_fn do
-            Lines|
+            Line|
           end
         end
         ]
@@ -222,7 +217,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
         alias Lexical.Document.Line
         alias Something.Else
         def my_fn do
-          Lines
+          Line
         end
       end
       ]
@@ -236,7 +231,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
             alias Top.Level
             defmodule Child do
               alias Some.Other
-              Lines|
+              Line|
             end
           end
         ]
@@ -248,7 +243,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
         defmodule Child do
           alias Lexical.Document.Line
           alias Some.Other
-          Lines
+          Line
         end
       end
       ]t

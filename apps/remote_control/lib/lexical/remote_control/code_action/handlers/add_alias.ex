@@ -13,11 +13,11 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod
   alias Lexical.RemoteControl.Modules
-  alias Lexical.RemoteControl.Search
+  alias Lexical.RemoteControl.Search.Fuzzy
   alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Mix.Tasks.Namespace
   alias Sourceror.Zipper
 
-  require Logger
   @behaviour CodeAction.Handler
 
   @impl CodeAction.Handler
@@ -156,34 +156,56 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAlias do
     modules_stream
   end
 
-  defp possible_aliases(unaliased_module) do
+  def possible_aliases(unaliased_module) do
     module_subject = Formats.module(unaliased_module)
-    constraints = [type: :module, subtype: :definition]
 
-    with {:elixir, unaliased_strings} <- Ast.Module.safe_split(unaliased_module),
-         {:ok, entries} <- Search.Store.fuzzy(module_subject, constraints) do
-      entries
-      |> Stream.uniq_by(& &1.subject)
-      |> Stream.filter(fn %Entry{} = entry ->
-        case Ast.Module.safe_split(entry.subject) do
-          {:erlang, _} ->
-            false
+    case Ast.Module.safe_split(unaliased_module) do
+      {:elixir, unaliased_strings} ->
+        module_subject
+        |> do_fuzzy_search()
+        |> Stream.filter(fn module ->
+          {:elixir, split} = Ast.Module.safe_split(module)
+          alias_as = List.last(split)
+          subject_module = module
+          RemoteControl.Module.Loader.ensure_loaded(subject_module)
 
-          {:elixir, split} ->
-            alias_as = List.last(split)
-            subject_module = entry.subject
-            RemoteControl.Module.Loader.ensure_loaded(subject_module)
+          protocol_or_implementation? = function_exported?(module, :__impl__, 1)
 
-            protocol_or_implementation? = function_exported?(entry.subject, :__impl__, 1)
+          not protocol_or_implementation? and
+            Enum.any?(unaliased_strings, &similar?(&1, alias_as))
+        end)
 
-            not protocol_or_implementation? and
-              Enum.any?(unaliased_strings, &similar?(&1, alias_as))
-        end
-      end)
-      |> Stream.map(& &1.subject)
-    else
       _ ->
         []
     end
   end
+
+  defp do_fuzzy_search(subject) do
+    # Note: we can't use the indexer's fuzzy matcher here, since it
+    # ignores all deps, and then we won't be able to alias any deps module
+
+    for {mod, _, _} <- all_modules(),
+        elixir_module?(mod),
+        not Namespace.Module.prefixed?(mod) do
+      module_name = List.to_atom(mod)
+
+      %Entry{
+        id: module_name,
+        path: "",
+        subject: module_name,
+        subtype: :definition,
+        type: :module
+      }
+    end
+    |> Fuzzy.from_entries()
+    |> Fuzzy.match(subject)
+  end
+
+  defp all_modules do
+    # Note: this is for testing
+    :code.all_available()
+  end
+
+  defp elixir_module?([?E, ?l, ?i, ?x, ?i, ?r, ?. | _]), do: true
+  defp elixir_module?(_), do: false
 end
