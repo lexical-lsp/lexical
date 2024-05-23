@@ -3,7 +3,6 @@ defmodule Lexical.RemoteControl.Api.Proxy.Records do
 
   import Record
 
-  defrecord :message, body: nil
   defrecord :mfa, module: nil, function: nil, arguments: []
 
   def mfa(module, function, arguments) do

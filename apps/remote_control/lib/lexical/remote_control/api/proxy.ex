@@ -57,8 +57,8 @@ defmodule Lexical.RemoteControl.Api.Proxy do
   end
 
   def broadcast(message) do
-    message = message(body: message)
-    :gen_statem.call(__MODULE__, buffer(contents: message))
+    mfa = to_mfa(RemoteControl.Dispatch.broadcast(message))
+    :gen_statem.call(__MODULE__, buffer(contents: mfa))
   end
 
   def schedule_compile(force? \\ false) do
@@ -148,11 +148,6 @@ defmodule Lexical.RemoteControl.Api.Proxy do
     {:keep_state, state, [{:reply, from, return}]}
   end
 
-  def buffering({:call, from}, buffer(contents: message() = message), %State{} = state) do
-    state = State.add_message(state, message)
-    {:keep_state, state, [{:reply, from, :ok}]}
-  end
-
   def buffering({:call, from}, drop(return: return), %State{} = state) do
     {:keep_state, state, [{:reply, from, return}]}
   end
@@ -173,9 +168,5 @@ defmodule Lexical.RemoteControl.Api.Proxy do
 
   defp apply(mfa(module: module, function: function, arguments: arguments)) do
     apply(module, function, arguments)
-  end
-
-  defp apply(message(body: message)) do
-    RemoteControl.Dispatch.broadcast(message)
   end
 end

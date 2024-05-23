@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
   alias Lexical.Document
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.Api.Proxy.State
@@ -31,13 +32,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
 
   def add_to_state_and_flush(messages) do
     messages
-    |> Enum.reduce(State.new(self()), fn
-      mfa() = mfa, state ->
-        State.add_mfa(state, mfa)
-
-      message() = message, state ->
-        State.add_message(state, message)
-    end)
+    |> Enum.reduce(State.new(self()), &State.add_mfa(&2, &1))
     |> State.flush()
   end
 
@@ -130,13 +125,13 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
     end
   end
 
-  defp wrap_with_messages(messages) do
+  defp wrap_broadcasts(messages) do
     Enum.map(messages, fn
       mfa() = mfa ->
         mfa
 
       message ->
-        message(body: message)
+        mfa(module: RemoteControl.Dispatch, function: :broadcast, arguments: [message])
     end)
   end
 
@@ -150,7 +145,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           file_compiled(uri: @default_uri),
           file_deleted(uri: @default_uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
         |> add_to_state_and_flush()
 
       assert flushed_messages == []
@@ -166,7 +161,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           file_compiled(uri: uri),
           file_deleted(uri: uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
 
       flushed_messages = add_to_state_and_flush(orig_messages)
 
@@ -183,7 +178,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           to_mfa(Build.compile_document(project, document)),
           file_diagnostics(uri: @default_uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
         |> add_to_state_and_flush()
 
       assert flushed_messages == [to_mfa(Build.compile_document(project, document))]
@@ -194,14 +189,14 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
 
       assert [] ==
                [file_compile_requested(uri: document.uri)]
-               |> wrap_with_messages()
+               |> wrap_broadcasts()
                |> add_to_state_and_flush()
     end
 
     test "project compiles are removed" do
       assert [] ==
                [project_compile_requested()]
-               |> wrap_with_messages()
+               |> wrap_broadcasts()
                |> add_to_state_and_flush()
     end
   end

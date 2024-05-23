@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Api.Proxy.State do
   alias Lexical.Document
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Commands
@@ -19,17 +20,15 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
     %__MODULE__{state | buffer: [mfa_record | state.buffer]}
   end
 
-  def add_message(%__MODULE__{} = state, message() = message_record) do
-    %__MODULE__{state | buffer: [message_record | state.buffer]}
-  end
-
   def flush(%__MODULE__{} = state) do
-    {commands, messages} =
+    {messages, commands} =
       state.buffer
       |> Enum.reverse()
       |> Enum.with_index()
       |> Enum.map(fn {item, index} -> indexed(index: index, value: item) end)
-      |> Enum.split_with(fn indexed(value: value) -> match?(mfa(), value) end)
+      |> Enum.split_with(fn indexed(value: value) ->
+        match?(mfa(module: RemoteControl.Dispatch, function: :broadcast), value)
+      end)
 
     {project_compile, document_compiles, reindex} = collapse_commands(commands)
 
@@ -123,17 +122,17 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
     # 4. Progress messages should still be sent to dispatch, even when buffering
 
     Enum.filter(messages, fn
-      indexed(value: message(body: file_compile_requested())) ->
+      indexed(value: mfa(arguments: [file_compile_requested()])) ->
         false
 
-      indexed(value: message(body: project_compile_requested())) ->
+      indexed(value: mfa(arguments: [project_compile_requested()])) ->
         false
 
-      indexed(value: message(body: file_diagnostics(uri: uri))) ->
+      indexed(value: mfa(arguments: [file_diagnostics(uri: uri)])) ->
         not (Map.has_key?(document_compiles, uri) or
                match?(project_compile_requested(), project_compile))
 
-      indexed(value: message(body: body)) ->
+      indexed(value: mfa(arguments: [body])) ->
         case fetch_uri(body) do
           {:ok, uri} ->
             Document.Store.open?(uri)
