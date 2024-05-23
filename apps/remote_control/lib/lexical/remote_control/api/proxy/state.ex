@@ -7,9 +7,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
 
   import Api.Messages
   import Api.Proxy.Records
-  import Record
 
-  defrecord :indexed, index: nil, value: nil
   defstruct initiator_pid: nil, buffer: []
 
   def new(initiator_pid) do
@@ -24,9 +22,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
     {messages, commands} =
       state.buffer
       |> Enum.reverse()
-      |> Enum.with_index()
-      |> Enum.map(fn {item, index} -> indexed(index: index, value: item) end)
-      |> Enum.split_with(fn indexed(value: value) ->
+      |> Enum.split_with(fn value ->
         match?(mfa(module: RemoteControl.Dispatch, function: :broadcast), value)
       end)
 
@@ -36,16 +32,13 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
 
     all_commands
     |> Enum.concat(collapse_messages(messages, project_compile, document_compiles))
-    |> Enum.filter(&match?(indexed(), &1))
-    |> Enum.sort_by(fn
-      indexed(index: index) ->
-        index
-    end)
-    |> Enum.map(fn indexed(value: message) -> message end)
+    |> Enum.filter(&match?(mfa(), &1))
+    |> Enum.sort_by(fn mfa(seq: seq) -> seq end)
     |> then(fn commands ->
-      case reindex do
-        indexed(value: value) -> commands ++ [value]
-        _ -> commands
+      if reindex do
+        commands ++ [reindex]
+      else
+        commands
       end
     end)
   end
@@ -63,16 +56,16 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
       |> Enum.reduce(
         initial_state,
         fn
-          indexed(value: mfa(module: Build, function: :schedule_compile)) = indexed, acc ->
-            Map.update(acc, :project_compiles, [indexed], &[indexed | &1])
+          mfa(module: Build, function: :schedule_compile) = mfa, acc ->
+            Map.update(acc, :project_compiles, [mfa], &[mfa | &1])
 
-          indexed(value: mfa(module: Build, function: :compile_document) = mfa) = indexed, acc ->
+          mfa(module: Build, function: :compile_document) = mfa, acc ->
             mfa(arguments: [_, document]) = mfa
             uri = document.uri
-            put_in(acc, [:document_compiles, uri], indexed)
+            put_in(acc, [:document_compiles, uri], mfa)
 
-          indexed(value: mfa(module: Commands.Reindex)) = indexed, acc ->
-            Map.put(acc, :reindex, indexed)
+          mfa(module: Commands.Reindex) = mfa, acc ->
+            Map.put(acc, :reindex, mfa)
 
           _, acc ->
             acc
@@ -87,14 +80,14 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
 
     project_compile =
       Enum.reduce(project_compiles, nil, fn
-        indexed(value: mfa(arguments: [_, true])) = indexed, _ ->
-          indexed
+        mfa(arguments: [_, true]) = mfa, _ ->
+          mfa
 
-        indexed(value: mfa(arguments: [true])) = indexed, _ ->
-          indexed
+        mfa(arguments: [true]) = mfa, _ ->
+          mfa
 
-        indexed() = indexed, nil ->
-          indexed
+        mfa() = mfa, nil ->
+          mfa
 
         _, acc ->
           acc
@@ -122,17 +115,17 @@ defmodule Lexical.RemoteControl.Api.Proxy.State do
     # 4. Progress messages should still be sent to dispatch, even when buffering
 
     Enum.filter(messages, fn
-      indexed(value: mfa(arguments: [file_compile_requested()])) ->
+      mfa(arguments: [file_compile_requested()]) ->
         false
 
-      indexed(value: mfa(arguments: [project_compile_requested()])) ->
+      mfa(arguments: [project_compile_requested()]) ->
         false
 
-      indexed(value: mfa(arguments: [file_diagnostics(uri: uri)])) ->
+      mfa(arguments: [file_diagnostics(uri: uri)]) ->
         not (Map.has_key?(document_compiles, uri) or
                match?(project_compile_requested(), project_compile))
 
-      indexed(value: mfa(arguments: [body])) ->
+      mfa(arguments: [body]) ->
         case fetch_uri(body) do
           {:ok, uri} ->
             Document.Store.open?(uri)

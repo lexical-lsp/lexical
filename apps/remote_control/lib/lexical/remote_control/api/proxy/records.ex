@@ -3,10 +3,15 @@ defmodule Lexical.RemoteControl.Api.Proxy.Records do
 
   import Record
 
-  defrecord :mfa, module: nil, function: nil, arguments: []
+  defrecord :mfa, module: nil, function: nil, arguments: [], seq: nil
 
   def mfa(module, function, arguments) do
-    mfa(module: module, function: function, arguments: arguments)
+    mfa(
+      module: module,
+      function: function,
+      arguments: arguments,
+      seq: System.unique_integer([:monotonic])
+    )
   end
 
   defmacro to_mfa(ast) do
@@ -27,9 +32,6 @@ defmodule Lexical.RemoteControl.Api.Proxy.Records do
             })
     end
 
-    quote do
-      require unquote(__MODULE__)
-      mfa(module: unquote(m), function: unquote(f), arguments: unquote(a))
-    end
+    quote(do: unquote(__MODULE__).mfa(unquote(m), unquote(f), unquote(a)))
   end
 end
