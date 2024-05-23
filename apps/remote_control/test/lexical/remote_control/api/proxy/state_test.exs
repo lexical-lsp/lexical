@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
   alias Lexical.Document
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.Api.Proxy.State
@@ -31,13 +32,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
 
   def add_to_state_and_flush(messages) do
     messages
-    |> Enum.reduce(State.new(self()), fn
-      mfa() = mfa, state ->
-        State.add_mfa(state, mfa)
-
-      message() = message, state ->
-        State.add_message(state, message)
-    end)
+    |> Enum.reduce(State.new(self()), &State.add_mfa(&2, &1))
     |> State.flush()
   end
 
@@ -50,7 +45,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
         ]
         |> add_to_state_and_flush()
 
-      assert [to_mfa(Build.schedule_compile(project))] == flushed_messages
+      assert [{:mfa, Build, :schedule_compile, [^project], _}] = flushed_messages
     end
 
     test "force project compilation takes precedence", %{project: project} do
@@ -62,18 +57,18 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
         ]
         |> add_to_state_and_flush()
 
-      assert [{:mfa, Build, :schedule_compile, [project, true]}] == flushed_messages
+      assert [{:mfa, Build, :schedule_compile, [^project, true], _}] = flushed_messages
     end
 
     test "a project compilation removes all document compilations", %{project: project} do
-      flushed_messaes =
+      flushed_messages =
         [
           to_mfa(Build.compile_document(project, document())),
           to_mfa(Build.schedule_compile(project))
         ]
         |> add_to_state_and_flush()
 
-      assert flushed_messaes == [to_mfa(Build.schedule_compile(project))]
+      assert [{:mfa, Build, :schedule_compile, [^project], _}] = flushed_messages
     end
 
     test "documents that aren't open are removed", %{project: project} do
@@ -99,7 +94,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
         ]
         |> add_to_state_and_flush()
 
-      assert flushed_messages == [to_mfa(Build.compile_document(project, document))]
+      assert [{:mfa, Build, :compile_document, [^project, ^document], _}] = flushed_messages
     end
 
     test "there can only be one reindex", %{project: project} do
@@ -110,33 +105,36 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
         ]
         |> add_to_state_and_flush()
 
-      assert [mfa(module: Commands.Reindex, function: :perform)] = flushed_messages
+      assert [{:mfa, Commands.Reindex, :perform, [^project], _}] = flushed_messages
     end
 
     test "a reindex is the last thing", %{project: project} do
+      other = open_document("file:///other.uri")
+      third = open_document("file:///third.uri")
+
       flushed_messages =
         [
           to_mfa(Commands.Reindex.perform()),
-          to_mfa(Build.compile_document(project, open_document("file:///other.uri"))),
-          to_mfa(Build.compile_document(project, open_document("file:///third.uri")))
+          to_mfa(Build.compile_document(project, other)),
+          to_mfa(Build.compile_document(project, third))
         ]
         |> add_to_state_and_flush()
 
-      assert flushed_messages == [
-               to_mfa(Build.compile_document(project, document("file:///other.uri"))),
-               to_mfa(Build.compile_document(project, document("file:///third.uri"))),
-               to_mfa(Commands.Reindex.perform())
-             ]
+      assert [
+               {:mfa, Build, :compile_document, [^project, ^other], _},
+               {:mfa, Build, :compile_document, [^project, ^third], _},
+               {:mfa, Commands.Reindex, :perform, [], _}
+             ] = flushed_messages
     end
   end
 
-  defp wrap_with_messages(messages) do
+  defp wrap_broadcasts(messages) do
     Enum.map(messages, fn
       mfa() = mfa ->
         mfa
 
       message ->
-        message(body: message)
+        mfa(module: RemoteControl.Dispatch, function: :broadcast, arguments: [message])
     end)
   end
 
@@ -150,7 +148,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           file_compiled(uri: @default_uri),
           file_deleted(uri: @default_uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
         |> add_to_state_and_flush()
 
       assert flushed_messages == []
@@ -166,7 +164,7 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           file_compiled(uri: uri),
           file_deleted(uri: uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
 
       flushed_messages = add_to_state_and_flush(orig_messages)
 
@@ -183,10 +181,10 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
           to_mfa(Build.compile_document(project, document)),
           file_diagnostics(uri: @default_uri)
         ]
-        |> wrap_with_messages()
+        |> wrap_broadcasts()
         |> add_to_state_and_flush()
 
-      assert flushed_messages == [to_mfa(Build.compile_document(project, document))]
+      assert [{:mfa, Build, :compile_document, [^project, ^document], _}] = flushed_messages
     end
 
     test "file compiles are removed" do
@@ -194,14 +192,14 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
 
       assert [] ==
                [file_compile_requested(uri: document.uri)]
-               |> wrap_with_messages()
+               |> wrap_broadcasts()
                |> add_to_state_and_flush()
     end
 
     test "project compiles are removed" do
       assert [] ==
                [project_compile_requested()]
-               |> wrap_with_messages()
+               |> wrap_broadcasts()
                |> add_to_state_and_flush()
     end
   end
