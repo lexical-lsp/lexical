@@ -36,7 +36,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
 
   def translate(%Candidate.StructField{} = struct_field, builder, %Env{} = env) do
     builder.plain_text(env, struct_field.name,
-      detail: struct_field.name,
+      detail: struct_field.type_spec,
       label: struct_field.name,
       kind: :field
     )
