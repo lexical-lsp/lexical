@@ -12,7 +12,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.detail == "first_name"
+    assert completion.detail == "String.t()"
     assert completion.label == "first_name"
   end
 
@@ -28,7 +28,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.detail == "first_name"
+    assert completion.detail == "String.t()"
     assert completion.label == "first_name"
   end
 
@@ -44,7 +44,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.detail == "first_name"
+    assert completion.detail == "String.t()"
     assert completion.label == "first_name"
     assert apply_completion(completion) =~ "struct.first_name"
   end
@@ -61,7 +61,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.detail == "first_name"
+    assert completion.detail == "String.t()"
     assert completion.label == "first_name"
     assert apply_completion(completion) =~ "struct.first_name"
   end
@@ -81,7 +81,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructFieldTes
              |> complete(source)
              |> fetch_completion(kind: :field)
 
-    assert completion.detail == "first_name"
+    assert completion.detail == "String.t()"
     assert completion.label == "first_name"
     assert apply_completion(completion) =~ "user.first_name"
   end

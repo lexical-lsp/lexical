@@ -159,7 +159,7 @@ defmodule Lexical.RemoteControl.Completion.Candidate do
 
   defmodule StructField do
     @moduledoc false
-    defstruct [:call?, :name, :origin]
+    defstruct [:call?, :name, :origin, :type_spec]
 
     def new(%{} = elixir_sense_map) do
       struct(__MODULE__, elixir_sense_map)
