@@ -225,3 +225,22 @@ jobs:
 
       - name: Run integration tests
         run: NO_BUILD=1 ./integration/test.sh
+
+  nix_hash_check:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    name: Check nix hash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build flake (check hashes)
+        env:
+          NIX_CONFIG: experimental-features = nix-command flakes
+        run: nix build --no-link
