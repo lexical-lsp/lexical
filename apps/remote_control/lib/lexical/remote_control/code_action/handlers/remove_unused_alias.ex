@@ -31,6 +31,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
   alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeAction
   alias Lexical.RemoteControl.CodeAction.Diagnostic
+  alias Sourceror.Zipper
 
   import Record
 
@@ -45,8 +46,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
   @behaviour CodeAction.Handler
 
   @impl CodeAction.Handler
-  def actions(%Document{} = document, %Range{} = range, diagnontics) do
-    Enum.reduce(diagnontics, [], fn %Diagnostic{} = diagnostic, acc ->
+  def actions(%Document{} = document, %Range{} = range, diagnostics) do
+    Enum.reduce(diagnostics, [], fn %Diagnostic{} = diagnostic, acc ->
       case to_edit(document, range.start, diagnostic) do
         {:ok, module_name, edit} ->
           changes = Changes.new(document, [edit])
@@ -65,13 +66,12 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
     [:source]
   end
 
-  @alias_regex ~r/unused alias (\w+)/
   defp to_edit(%Document{} = document, %Position{} = position, %Diagnostic{} = diagnostic) do
-    with [[_, module_string]] <- Regex.scan(@alias_regex, diagnostic.message),
+    with {:ok, module_string} <- fetch_unused_alias_module_string(diagnostic),
          {:ok, _doc, %Analysis{} = analysis} <- Document.Store.fetch(document.uri, :analysis),
          last_segment = String.to_atom(module_string),
          {:ok, full_alias} <- fetch_full_alias(analysis, position, last_segment),
-         {:ok, alias_meta} <- fetch_alias_metadata(analysis, full_alias, last_segment),
+         {:ok, alias_meta} <- fetch_alias_metadata(position, analysis, full_alias, last_segment),
          {:ok, edit} <- fetch_edit(alias_meta) do
       {:ok, module_string, edit}
     else
@@ -80,40 +80,101 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
     end
   end
 
-  defp fetch_alias_metadata(%Analysis{} = analysis, full_alias, last_segment) do
-    {_, result} =
-      Macro.prewalk(analysis.ast, :error, fn
-        {:alias, _, [{:__aliases__, _, ^full_alias}]} = node, :error ->
-          metadata =
-            single_alias_metadata(
-              document: analysis.document,
-              range: Ast.Range.fetch!(node, analysis.document)
-            )
+  @alias_regex ~r/unused alias (\w+)/
+  defp fetch_unused_alias_module_string(%Diagnostic{} = diagnostic) do
+    case Regex.scan(@alias_regex, diagnostic.message) do
+      [[_, module_string]] -> {:ok, module_string}
+      _ -> :error
+    end
+  end
 
-          {node, {:ok, metadata}}
+  defp fetch_alias_metadata(
+         %Position{} = cursor,
+         %Analysis{} = analysis,
+         full_alias,
+         last_segment
+       ) do
+    zipper = Zipper.zip(analysis.ast)
+    document = analysis.document
 
-        {:alias, _, [{{:., _, _}, _, multi_alias_list}]} = node, :error ->
-          case Enum.find(multi_alias_list, &segment_matches?(&1, last_segment)) do
-            nil ->
-              {node, :error}
+    with :error <- find_single_alias(document, cursor, zipper, full_alias, last_segment) do
+      find_multi_alias(document, cursor, zipper, last_segment)
+    end
+  end
 
-            alias_node ->
-              metadata =
-                multi_alias_metadata(
-                  document: analysis.document,
-                  multi_alias_range: Ast.Range.fetch!(node, analysis.document),
-                  removed_alias_range: Ast.Range.fetch!(alias_node, analysis.document),
-                  alias_count: length(multi_alias_list)
-                )
+  defp find_single_alias(
+         %Document{} = document,
+         %Position{} = cursor,
+         %Zipper{} = zipper,
+         full_alias,
+         last_segment
+       ) do
+    finder = fn
+      {:alias, _, [{:__aliases__, _, ^full_alias}]} = node ->
+        cursor_in_node?(document, cursor, node)
 
-              {node, {:ok, metadata}}
-          end
+      {:alias, _,
+       [
+         {:__aliases__, _, ^full_alias},
+         [{{:__block__, _, [:as]}, {:__aliases__, _, [^last_segment]}}]
+       ]} = node ->
+        cursor_in_node?(document, cursor, node)
 
-        node, acc ->
-          {node, acc}
-      end)
+      _ ->
+        false
+    end
 
-    result
+    case Zipper.find(zipper, finder) do
+      nil ->
+        :error
+
+      %Zipper{node: node} ->
+        metadata =
+          single_alias_metadata(document: document, range: Ast.Range.fetch!(node, document))
+
+        {:ok, metadata}
+    end
+  end
+
+  defp find_multi_alias(
+         %Document{} = document,
+         %Position{} = cursor,
+         %Zipper{} = zipper,
+         last_segment
+       ) do
+    finder = fn
+      {:alias, _, [{{:., _, _}, _, multi_alias_list}]} = node ->
+        Enum.find_value(multi_alias_list, &segment_matches?(&1, last_segment)) and
+          cursor_in_node?(document, cursor, node)
+
+      _ ->
+        false
+    end
+
+    case Zipper.find(zipper, finder) do
+      nil ->
+        :error
+
+      %Zipper{node: {:alias, _, [{{:., _, _}, _, multi_alias_list}]}} = zipper ->
+        alias_node = Enum.find(multi_alias_list, &segment_matches?(&1, last_segment))
+
+        multi_alias =
+          multi_alias_metadata(
+            document: document,
+            multi_alias_range: Ast.Range.fetch!(zipper.node, document),
+            removed_alias_range: Ast.Range.fetch!(alias_node, document),
+            alias_count: length(multi_alias_list)
+          )
+
+        {:ok, multi_alias}
+    end
+  end
+
+  defp cursor_in_node?(%Document{} = document, %Position{} = cursor, node) do
+    case Ast.Range.fetch(node, document) do
+      {:ok, range} -> Range.contains?(range, cursor)
+      _ -> false
+    end
   end
 
   defp fetch_full_alias(%Analysis{} = analysis, %Position{} = position, last_segment) do

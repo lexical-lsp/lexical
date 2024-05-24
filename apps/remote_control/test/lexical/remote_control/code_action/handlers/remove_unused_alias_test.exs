@@ -99,6 +99,31 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAliasTest do
       ] =~ removed
     end
 
+    test "works using as" do
+      {:ok, removed} =
+        ~q[
+        alias Foo.Bar.Baz, as: Quux|
+        ]
+        |> remove_alias(alias: "Quux")
+
+      assert "" == removed
+    end
+
+    test "only deletes the alias on the cursor's line" do
+      {:ok, removed} =
+        ~q[
+        alias Foo.Bar
+        alias Something.Else
+        alias Foo.Bar|
+        ]
+        |> remove_alias(alias: "Bar")
+
+      assert ~q[
+      alias Foo.Bar
+      alias Something.Else
+      ] =~ removed
+    end
+
     test "leaves things alone if the message is different" do
       assert {:ok, "alias This.Is.Correct"} ==
                remove_alias("alias This.Is.Correct|", message: "ugly code")
@@ -133,6 +158,25 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAliasTest do
       defmodule MyModule do
         alias Foo.Bar.Baz
         alias Yet.More.Things
+      end
+      ] =~ removed
+    end
+
+    test "removes an alias at the end of an alias block" do
+      {:ok, removed} =
+        ~q[
+        defmodule MyModule do
+          alias Foo.Bar.Baz
+          alias Quux.Stuff
+          alias Yet.More.Things|
+        end
+        ]
+        |> remove_alias(alias: "Things")
+
+      assert ~q[
+      defmodule MyModule do
+        alias Foo.Bar.Baz
+        alias Quux.Stuff
       end
       ] =~ removed
     end
@@ -246,7 +290,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAliasTest do
         ~q[
         alias Grandparent.Parent.{
           Child.Stinky,
-          Child.Smelly,
+          Child.Smelly|,
           Other.Reeky
         }
         ]
