@@ -1,8 +1,10 @@
 defmodule Lexical.RemoteControl.CodeMod.RenameTest do
   alias Lexical.Document
   alias Lexical.RemoteControl
+  alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod.Rename
+  alias Lexical.RemoteControl.Commands.RenameSupervisor
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Store.Backends
   alias Lexical.Test.CodeSigil
@@ -39,6 +41,11 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end)
 
     {:ok, project: project}
+  end
+
+  setup do
+    patch(RenameSupervisor, :start_renaming, :ok)
+    patch(Proxy, :start_buffering, :ok)
   end
 
   describe "prepare/2" do

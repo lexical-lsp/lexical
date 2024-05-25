@@ -34,7 +34,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     progress_notification_functions =
       Progress.begin_percent("Renaming", Enum.count(uri_with_expected_operation))
 
-    Commands.Rename.set_rename_progress(
+    Commands.RenameSupervisor.start_renaming(
       uri_with_expected_operation,
       progress_notification_functions
     )

@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod.Format
-  alias Lexical.RemoteControl.Commands
 
   use Lexical.Test.CodeMod.Case, enable_ast_conversion: false
   use Patch
@@ -67,7 +66,6 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
   end
 
   setup do
-    start_supervised!(Commands.Rename)
     project = project()
     RemoteControl.set_project(project)
     {:ok, project: project}
