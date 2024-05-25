@@ -162,8 +162,9 @@ defmodule Lexical.Server.State do
             to_version: updated_source.version
           )
 
+        Api.maybe_update_rename_progress(state.configuration.project, updated_message)
+        Api.compile_document(state.configuration.project, updated_source)
         Api.broadcast(project, updated_message)
-        Api.maybe_compile_document(state.configuration.project, updated_source, updated_message)
         {:ok, state}
 
       error ->
@@ -213,7 +214,8 @@ defmodule Lexical.Server.State do
 
     case Document.Store.save(uri) do
       :ok ->
-        Api.maybe_schedule_compile(state.configuration.project, file_saved(uri: uri))
+        Api.maybe_update_rename_progress(state.configuration.project, file_saved(uri: uri))
+        Api.schedule_compile(state.configuration.project, false)
 
         {:ok, state}
 

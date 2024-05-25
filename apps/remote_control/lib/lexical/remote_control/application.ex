@@ -15,7 +15,6 @@ defmodule Lexical.RemoteControl.Application do
         [
           RemoteControl.Api.Proxy,
           {RemoteControl.Commands.Reindex, nil},
-          RemoteControl.Commands.Rename,
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,

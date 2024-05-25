@@ -19,18 +19,6 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl, :compile_document, [document])
   end
 
-  def maybe_schedule_compile(project, triggered_message) do
-    RemoteControl.call(project, Build, :maybe_schedule_compile, [triggered_message])
-  end
-
-  def maybe_compile_document(project, document, updated_message) do
-    RemoteControl.call(project, Build, :maybe_compile_document, [
-      project,
-      document,
-      updated_message
-    ])
-  end
-
   def expand_alias(
         %Project{} = project,
         segments_or_module,
@@ -88,6 +76,10 @@ defmodule Lexical.RemoteControl.Api do
       new_name,
       client_name
     ])
+  end
+
+  def maybe_update_rename_progress(project, updated_message) do
+    RemoteControl.call(project, RemoteControl, :maybe_update_rename_progress, [updated_message])
   end
 
   def complete(%Project{} = project, %Env{} = env) do
