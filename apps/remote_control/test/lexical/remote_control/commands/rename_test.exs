@@ -1,19 +1,27 @@
 defmodule Lexical.RemoteControl.Commands.RenameTest do
+  alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.Commands.Rename
+  alias Lexical.RemoteControl.Commands.RenameSupervisor
 
   import Lexical.RemoteControl.Api.Messages
+  import Lexical.Test.EventualAssertions
 
   use ExUnit.Case
   use Patch
 
   setup do
-    start_supervised!(Rename)
+    start_supervised!({RenameSupervisor, []})
+    :ok
+  end
+
+  setup do
     pid = self()
 
     progress_funcs =
       {fn delta, message -> update_progress(pid, delta, message) end,
        fn -> complete_progress(pid) end}
 
+    patch(Proxy, :start_buffering, :ok)
     %{progress_funcs: progress_funcs}
   end
 
@@ -21,22 +29,28 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
     progress_funcs: progress_funcs
   } do
     uri = "file://file.ex"
-    assert :ok = Rename.set_rename_progress(%{uri => file_changed(uri: uri)}, progress_funcs)
+    uri_with_expected_operation = %{uri => file_changed(uri: uri)}
+    {:ok, pid} = RenameSupervisor.start_renaming(uri_with_expected_operation, progress_funcs)
+
     assert Rename.in_progress?()
+    assert_called(Proxy.start_buffering(^pid))
   end
 
-  test "it should mark the `in_progress` as false when a rename is done", %{
-    progress_funcs: progress_funcs
-  } do
-    file_uri = "file://file.ex"
+  test "it should mark the `in_progress` as false and shutdown the process when a rename is done",
+       %{
+         progress_funcs: progress_funcs
+       } do
+    uri = "file://file.ex"
 
-    Rename.set_rename_progress(%{file_uri => file_saved(uri: file_uri)}, progress_funcs)
-    Rename.update_progress(file_saved(uri: file_uri))
+    {:ok, _pid} =
+      RenameSupervisor.start_renaming(%{uri => file_saved(uri: uri)}, progress_funcs)
+
+    Rename.update_progress(file_saved(uri: uri))
 
     assert_receive {:update_progress, 1, ""}
     assert_receive :complete_progress
 
-    refute Rename.in_progress?()
+    refute_eventually Process.whereis(Rename)
   end
 
   test "it should still in progress if there are files yet to be saved.", %{
@@ -45,17 +59,21 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
     uri1 = "file://file1.ex"
     uri2 = "file://file2.ex"
 
-    Rename.set_rename_progress(
-      %{uri1 => file_changed(uri: uri1), uri2 => file_saved(uri: uri2)},
-      progress_funcs
-    )
+    uri_with_expected_operation = %{
+      uri1 => file_changed(uri: uri1),
+      uri2 => file_saved(uri: uri2)
+    }
+
+    {:ok, _pid} = RenameSupervisor.start_renaming(uri_with_expected_operation, progress_funcs)
 
     Rename.update_progress(file_changed(uri: uri1))
-
     assert_receive {:update_progress, 1, ""}
-
     refute_receive :complete_progress
     assert Rename.in_progress?()
+  end
+
+  test "it should return `:ok` when updating the progress if the process is not alive" do
+    assert :ok = Rename.update_progress(file_changed(uri: "file://file.ex"))
   end
 
   defp update_progress(pid, delta, message) do

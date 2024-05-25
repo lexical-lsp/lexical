@@ -5,6 +5,7 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   # Therefore, we need this module to tell us if lexical is currently in the process of renaming.
 
   alias Lexical.RemoteControl.Api.Messages
+  require Logger
   import Messages
 
   defmodule State do
@@ -60,30 +61,25 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     end
   end
 
+  alias Lexical.RemoteControl.Api.Proxy
   use GenServer
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, %State{}, name: __MODULE__)
+  def child_spec(uri_with_expected_operation, progress_functions) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [uri_with_expected_operation, progress_functions]},
+      restart: :transient
+    }
+  end
+
+  def start_link(uri_with_expected_operation, progress_functions) do
+    state = State.new(uri_with_expected_operation, progress_functions)
+    GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
   @impl true
   def init(state) do
-    {:ok, state}
-  end
-
-  @spec set_rename_progress(
-          %{Lexical.uri() => Messages.file_changed() | Messages.file_saved()},
-          {function(), function()}
-        ) :: :ok
-  def set_rename_progress(uri_with_expected_operation, progress_functions) do
-    GenServer.cast(
-      __MODULE__,
-      {:set_rename_progress, uri_with_expected_operation, progress_functions}
-    )
-  end
-
-  def in_progress? do
-    GenServer.call(__MODULE__, :in_progress?)
+    {:ok, state, {:continue, :start_buffering}}
   end
 
   @spec update_progress(Messages.file_changed() | Messages.file_saved()) :: :ok
@@ -92,7 +88,28 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   # Instead, it should call this function to synchronously update the status,
   # thus preventing failures due to latency issues.
   def update_progress(message) do
-    GenServer.cast(__MODULE__, {:update_progress, message})
+    if in_progress?() do
+      GenServer.cast(__MODULE__, {:update_progress, message})
+    else
+      :ok
+    end
+  end
+
+  def in_progress? do
+    pid = Process.whereis(__MODULE__)
+
+    if pid && Process.alive?(pid) do
+      GenServer.call(__MODULE__, :in_progress?)
+    else
+      false
+    end
+  end
+
+  @impl true
+  def handle_continue(:start_buffering, state) do
+    Proxy.start_buffering(self())
+    Logger.info("Rename process started, and started buffering.")
+    {:noreply, state}
   end
 
   @impl true
@@ -103,12 +120,12 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   @impl true
   def handle_cast({:update_progress, message}, state) do
     new_state = State.update_progress(state, message)
-    {:noreply, new_state}
-  end
 
-  @impl true
-  def handle_cast({:set_rename_progress, uri_with_expected_operation, progress_functions}, _state) do
-    new_state = State.new(uri_with_expected_operation, progress_functions)
-    {:noreply, new_state}
+    if State.in_progress?(new_state) do
+      {:noreply, new_state}
+    else
+      Logger.info("Rename process completed.")
+      {:stop, :normal, new_state}
+    end
   end
 end
