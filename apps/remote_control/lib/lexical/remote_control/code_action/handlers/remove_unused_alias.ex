@@ -111,14 +111,14 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
        ) do
     finder = fn
       {:alias, _, [{:__aliases__, _, ^full_alias}]} = node ->
-        cursor_in_node?(document, cursor, node)
+        Ast.contains_position?(node, cursor)
 
       {:alias, _,
        [
          {:__aliases__, _, ^full_alias},
          [{{:__block__, _, [:as]}, {:__aliases__, _, [^last_segment]}}]
        ]} = node ->
-        cursor_in_node?(document, cursor, node)
+        Ast.contains_position?(node, cursor)
 
       _ ->
         false
@@ -145,7 +145,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
     finder = fn
       {:alias, _, [{{:., _, _}, _, multi_alias_list}]} = node ->
         Enum.find_value(multi_alias_list, &segment_matches?(&1, last_segment)) and
-          cursor_in_node?(document, cursor, node)
+          Ast.contains_position?(node, cursor)
 
       _ ->
         false
@@ -167,13 +167,6 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.RemoveUnusedAlias do
           )
 
         {:ok, multi_alias}
-    end
-  end
-
-  defp cursor_in_node?(%Document{} = document, %Position{} = cursor, node) do
-    case Ast.Range.fetch(node, document) do
-      {:ok, range} -> Range.contains?(range, cursor)
-      _ -> false
     end
   end
 
