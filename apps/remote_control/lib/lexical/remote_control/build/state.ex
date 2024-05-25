@@ -69,43 +69,41 @@ defmodule Lexical.RemoteControl.Build.State do
     state = increment_build_number(state)
     project = state.project
 
-    Build.with_lock(fn ->
-      compile_requested_message =
-        project_compile_requested(project: project, build_number: state.build_number)
+    compile_requested_message =
+      project_compile_requested(project: project, build_number: state.build_number)
 
-      RemoteControl.broadcast(compile_requested_message)
-      {elapsed_us, result} = :timer.tc(fn -> Build.Project.compile(project, initial?) end)
-      elapsed_ms = to_ms(elapsed_us)
+    RemoteControl.broadcast(compile_requested_message)
+    {elapsed_us, result} = :timer.tc(fn -> Build.Project.compile(project, initial?) end)
+    elapsed_ms = to_ms(elapsed_us)
 
-      {compile_message, diagnostics} =
-        case result do
-          :ok ->
-            message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+    {compile_message, diagnostics} =
+      case result do
+        :ok ->
+          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
 
-            {message, []}
+          {message, []}
 
-          {:ok, diagnostics} ->
-            message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
+        {:ok, diagnostics} ->
+          message = project_compiled(status: :success, project: project, elapsed_ms: elapsed_ms)
 
-            {message, List.wrap(diagnostics)}
+          {message, List.wrap(diagnostics)}
 
-          {:error, diagnostics} ->
-            message = project_compiled(status: :error, project: project, elapsed_ms: elapsed_ms)
+        {:error, diagnostics} ->
+          message = project_compiled(status: :error, project: project, elapsed_ms: elapsed_ms)
 
-            {message, List.wrap(diagnostics)}
-        end
+          {message, List.wrap(diagnostics)}
+      end
 
-      diagnostics_message =
-        project_diagnostics(
-          project: project,
-          build_number: state.build_number,
-          diagnostics: diagnostics
-        )
+    diagnostics_message =
+      project_diagnostics(
+        project: project,
+        build_number: state.build_number,
+        diagnostics: diagnostics
+      )
 
-      RemoteControl.broadcast(compile_message)
-      RemoteControl.broadcast(diagnostics_message)
-      Plugin.diagnose(project, state.build_number)
-    end)
+    RemoteControl.broadcast(compile_message)
+    RemoteControl.broadcast(diagnostics_message)
+    Plugin.diagnose(project, state.build_number)
   end
 
   def on_file_compile(%__MODULE__{} = state, %Document{} = document) do
@@ -119,56 +117,54 @@ defmodule Lexical.RemoteControl.Build.State do
   def compile_file(%__MODULE__{} = state, %Document{} = document) do
     project = state.project
 
-    Build.with_lock(fn ->
-      RemoteControl.broadcast(file_compile_requested(uri: document.uri))
+    RemoteControl.broadcast(file_compile_requested(uri: document.uri))
 
-      safe_compile_func = fn ->
-        RemoteControl.Mix.in_project(fn _ -> Build.Document.compile(document) end)
+    safe_compile_func = fn ->
+      RemoteControl.Mix.in_project(fn _ -> Build.Document.compile(document) end)
+    end
+
+    {elapsed_us, result} = :timer.tc(fn -> safe_compile_func.() end)
+
+    elapsed_ms = to_ms(elapsed_us)
+
+    {compile_message, diagnostics} =
+      case result do
+        {:ok, diagnostics} ->
+          message =
+            file_compiled(
+              project: project,
+              build_number: state.build_number,
+              status: :success,
+              uri: document.uri,
+              elapsed_ms: elapsed_ms
+            )
+
+          {message, diagnostics}
+
+        {:error, diagnostics} ->
+          message =
+            file_compiled(
+              project: project,
+              build_number: state.build_number,
+              status: :error,
+              uri: document.uri,
+              elapsed_ms: elapsed_ms
+            )
+
+          {message, diagnostics}
       end
 
-      {elapsed_us, result} = :timer.tc(fn -> safe_compile_func.() end)
+    diagnostics =
+      file_diagnostics(
+        project: project,
+        build_number: state.build_number,
+        uri: document.uri,
+        diagnostics: List.wrap(diagnostics)
+      )
 
-      elapsed_ms = to_ms(elapsed_us)
-
-      {compile_message, diagnostics} =
-        case result do
-          {:ok, diagnostics} ->
-            message =
-              file_compiled(
-                project: project,
-                build_number: state.build_number,
-                status: :success,
-                uri: document.uri,
-                elapsed_ms: elapsed_ms
-              )
-
-            {message, diagnostics}
-
-          {:error, diagnostics} ->
-            message =
-              file_compiled(
-                project: project,
-                build_number: state.build_number,
-                status: :error,
-                uri: document.uri,
-                elapsed_ms: elapsed_ms
-              )
-
-            {message, diagnostics}
-        end
-
-      diagnostics =
-        file_diagnostics(
-          project: project,
-          build_number: state.build_number,
-          uri: document.uri,
-          diagnostics: List.wrap(diagnostics)
-        )
-
-      RemoteControl.broadcast(compile_message)
-      RemoteControl.broadcast(diagnostics)
-      Plugin.diagnose(project, state.build_number, document)
-    end)
+    RemoteControl.broadcast(compile_message)
+    RemoteControl.broadcast(diagnostics)
+    Plugin.diagnose(project, state.build_number, document)
   end
 
   def set_compiler_options do

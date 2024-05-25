@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.Mix do
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Build
 
   def in_project(fun) do
     if RemoteControl.project_node?() do
@@ -17,35 +16,33 @@ defmodule Lexical.RemoteControl.Mix do
 
     old_cwd = File.cwd!()
 
-    Build.with_lock(fn ->
-      try do
-        Mix.ProjectStack.post_config(prune_code_paths: false)
+    try do
+      Mix.ProjectStack.post_config(prune_code_paths: false)
 
-        build_path = RemoteControl.Build.path(project)
-        project_root = Project.root_path(project)
+      build_path = RemoteControl.Build.path(project)
+      project_root = Project.root_path(project)
 
-        project
-        |> Project.atom_name()
-        |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
-      rescue
-        ex ->
-          blamed = Exception.blame(:error, ex, __STACKTRACE__)
-          {:error, {:exception, blamed, __STACKTRACE__}}
-      else
-        result ->
-          case result do
-            error when is_tuple(error) and elem(error, 0) == :error ->
-              error
+      project
+      |> Project.atom_name()
+      |> Mix.Project.in_project(project_root, [build_path: build_path], fun)
+    rescue
+      ex ->
+        blamed = Exception.blame(:error, ex, __STACKTRACE__)
+        {:error, {:exception, blamed, __STACKTRACE__}}
+    else
+      result ->
+        case result do
+          error when is_tuple(error) and elem(error, 0) == :error ->
+            error
 
-            ok when is_tuple(ok) and elem(ok, 0) == :ok ->
-              ok
+          ok when is_tuple(ok) and elem(ok, 0) == :ok ->
+            ok
 
-            other ->
-              {:ok, other}
-          end
-      after
-        File.cd!(old_cwd)
-      end
-    end)
+          other ->
+            {:ok, other}
+        end
+    after
+      File.cd!(old_cwd)
+    end
   end
 end
