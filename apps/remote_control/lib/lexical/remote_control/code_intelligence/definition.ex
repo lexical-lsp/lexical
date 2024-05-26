@@ -1,5 +1,5 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
-  alias Future.Code, as: Code
+  alias Future.Code
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document
@@ -125,20 +125,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
        when type in [:function, :module, :macro] do
     position = Position.new(document, line, column)
 
-    case Ast.zipper_at(document, position) do
-      {:ok, zipper} ->
-        zipper = %{node: {entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
+    with {:ok, zipper} <- Ast.zipper_at(document, position),
+         %{node: {entity_name, meta, _}} <- Sourceror.Zipper.next(zipper) do
+      meta =
+        if entity_name == :when do
+          %{node: {_entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
+          meta
+        else
+          meta
+        end
 
-        meta =
-          if entity_name == :when do
-            %{node: {_entity_name, meta, _}} = Sourceror.Zipper.next(zipper)
-            meta
-          else
-            meta
-          end
-
-        {meta[:line], meta[:column]}
-
+      {meta[:line], meta[:column]}
+    else
       _ ->
         {line, column}
     end
