@@ -15,9 +15,12 @@ defmodule Lexical.RemoteControl.Api.Proxy.DrainingState do
     ProxyingState.empty?(state.proxying_state)
   end
 
+  def consume_reply(%__MODULE__{} = state, ref) when is_reference(ref) do
+    %__MODULE__{state | proxying_state: ProxyingState.consume_reply(state.proxying_state, ref)}
+  end
+
   def reply(%__MODULE__{} = state, ref, reply) do
-    new_state = ProxyingState.reply(state.proxying_state, ref, reply)
-    %__MODULE__{state | proxying_state: new_state}
+    ProxyingState.reply(state.proxying_state, ref, reply)
   end
 
   def add_mfa(%__MODULE__{} = state, mfa() = mfa) do

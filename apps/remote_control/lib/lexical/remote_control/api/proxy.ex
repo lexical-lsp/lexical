@@ -158,24 +158,22 @@ defmodule Lexical.RemoteControl.Api.Proxy do
   end
 
   def proxying(:info, {ref, reply}, %ProxyingState{} = state) when is_reference(ref) do
-    new_state = ProxyingState.reply(state, ref, reply)
-    {:keep_state, new_state}
-  end
-
-  def proxying(:info, {:DOWN, _, _, _, _}, %ProxyingState{} = state) do
+    ProxyingState.reply(state, ref, reply)
     {:keep_state, state}
   end
 
-  # Callbacks for the draining state
+  def proxying(:info, {:DOWN, ref, _, _, _}, %ProxyingState{} = state) do
+    # Handle the DOWN from the task
+    new_state = ProxyingState.consume_reply(state, ref)
+    {:keep_state, new_state}
+  end
+
+  # Callbacks for the draining mode
 
   def draining(:info, {ref, reply}, %DrainingState{} = state) when is_reference(ref) do
-    new_state = DrainingState.reply(state, ref, reply)
+    DrainingState.reply(state, ref, reply)
 
-    if DrainingState.drained?(new_state) do
-      {:next_state, :buffering, state.buffering_state}
-    else
-      {:keep_state, new_state}
-    end
+    {:keep_state, state}
   end
 
   def draining({:call, from}, {:start_buffering, _}, %DrainingState{} = state) do
@@ -200,8 +198,14 @@ defmodule Lexical.RemoteControl.Api.Proxy do
     {:keep_state, state, {:reply, from, true}}
   end
 
-  def draining(:info, {:DOWN, _, _, _, _}, %DrainingState{} = state) do
-    {:keep_state, state}
+  def draining(:info, {:DOWN, ref, _, _, _}, %DrainingState{} = state) do
+    new_state = DrainingState.consume_reply(state, ref)
+
+    if DrainingState.drained?(new_state) do
+      {:next_state, :buffering, state.buffering_state}
+    else
+      {:keep_state, state}
+    end
   end
 
   # Callbacks for buffering mode
@@ -229,10 +233,6 @@ defmodule Lexical.RemoteControl.Api.Proxy do
     |> Enum.each(&apply/1)
 
     {:next_state, :proxying, ProxyingState.new()}
-  end
-
-  def buffering(:info, {:DOWN, _, _, _, _}, state) do
-    {:keep_state, state}
   end
 
   def buffering({:call, from}, :buffering?, state) do
