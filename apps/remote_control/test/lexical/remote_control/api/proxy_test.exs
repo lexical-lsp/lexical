@@ -4,6 +4,8 @@ defmodule Lexical.RemoteControl.Api.ProxyTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.Api.Proxy
+  alias Lexical.RemoteControl.Api.Proxy.BufferingState
+  alias Lexical.RemoteControl.Api.Proxy.DrainingState
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.CodeMod
   alias Lexical.RemoteControl.Commands
@@ -71,6 +73,55 @@ defmodule Lexical.RemoteControl.Api.ProxyTest do
 
       assert {:ok, %Changes{}} = Proxy.format(document)
       assert_called(CodeMod.Format.edits(^document))
+    end
+  end
+
+  def with_draining_mode(ctx) do
+    patch(Commands.Reindex, :perform, fn ->
+      Process.sleep(100)
+      :ok
+    end)
+
+    me = self()
+
+    spawn_link(fn ->
+      send(me, :ready)
+      result = Proxy.reindex()
+      send(me, {:proxy_result, result})
+    end)
+
+    assert_receive :ready
+    Process.sleep(50)
+
+    with_buffer_mode(ctx)
+  end
+
+  describe "draining mode" do
+    setup [:with_draining_mode]
+
+    test "handles in-flight calls" do
+      assert {:draining, %DrainingState{}} = :sys.get_state(Proxy)
+      assert_receive {:proxy_result, :ok}
+      assert {:buffering, %BufferingState{}} = :sys.get_state(Proxy)
+    end
+
+    test "buffers subsequent calls" do
+      me = self()
+      patch(Dispatch, :broadcast, fn message -> send(me, {:broadcast, message}) end)
+      assert :ok = Proxy.broadcast(:hello)
+      assert :ok = Proxy.broadcast(:goodbye)
+
+      refute_receive {:broadcast, _}
+    end
+
+    test "ends when in-flight requests end", %{stop_buffering: stop_buffering} do
+      patch(Build, :schedule_compile, callable(fn _ -> :ok end))
+
+      assert :ok = Proxy.schedule_compile()
+      refute_called(Build.schedule_compile(_, _))
+      assert_receive {:proxy_result, :ok}
+      stop_buffering.()
+      assert_called(Build.schedule_compile(_, _))
     end
   end
 

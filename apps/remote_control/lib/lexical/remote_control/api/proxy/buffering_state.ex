@@ -1,4 +1,4 @@
-defmodule Lexical.RemoteControl.Api.Proxy.State do
+defmodule Lexical.RemoteControl.Api.Proxy.BufferingState do
   alias Lexical.Document
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api

@@ -21,13 +21,23 @@ defmodule Lexical.RemoteControl.Api.Proxy do
     `index_running?` - Dropped because it requires an immediate response
     `format`  - Dropped, as it requires an immediate response. Responds immediately with empty changes
 
+  Internally, there are three states: proxying, draining and buffering.
+  The proxy starts in proxying mode. Then, when start_buffering is called, it changes to draining mode. This
+  mode checks if there are any in-flight calls. If there aren't any, it changes immediately to buffring mode.
+  If there are in-flight reqeusts, it waits for them to finish, and then switches to buffer mode. Once in buffer
+  mode, requests are buffered until the process that called `start_buffering` exits. When that happens, then
+  the requests are de-duplicated and run, and then the proxy returns to proxying mode.
+
   """
+
   alias Lexical.Document
   alias Lexical.Document.Changes
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Api.Proxy.BufferingState
+  alias Lexical.RemoteControl.Api.Proxy.DrainingState
+  alias Lexical.RemoteControl.Api.Proxy.ProxyingState
   alias Lexical.RemoteControl.Api.Proxy.Records
-  alias Lexical.RemoteControl.Api.Proxy.State
   alias Lexical.RemoteControl.CodeMod
   alias Lexical.RemoteControl.Commands
 
@@ -105,7 +115,7 @@ defmodule Lexical.RemoteControl.Api.Proxy do
 
   @impl :gen_statem
   def init(_) do
-    {:ok, :proxying, nil}
+    {:ok, :proxying, ProxyingState.new()}
   end
 
   def child_spec(_) do
@@ -120,48 +130,113 @@ defmodule Lexical.RemoteControl.Api.Proxy do
 
   # callbacks for proxying mode
 
-  def proxying({:call, from}, {:start_buffering, caller}, _state) do
+  def proxying({:call, from}, {:start_buffering, caller}, %ProxyingState{} = state) do
     Process.monitor(caller)
-    {:next_state, :buffering, State.new(caller), [{:reply, from, :ok}]}
+    buffering_state = BufferingState.new(caller)
+
+    if ProxyingState.empty?(state) do
+      {:next_state, :buffering, buffering_state, {:reply, from, :ok}}
+    else
+      draining_state = DrainingState.new(buffering_state, state)
+      {:next_state, :draining, draining_state, {:reply, from, :ok}}
+    end
   end
 
-  def proxying({:call, from}, buffer(contents: contents), state) do
-    {:keep_state, state, [{:reply, from, apply(contents)}]}
+  def proxying({:call, from}, buffer(contents: contents), %ProxyingState{} = state) do
+    state = ProxyingState.apply_mfa(state, from, contents)
+
+    {:keep_state, state}
   end
 
   def proxying({:call, from}, drop(contents: contents), state) do
-    {:keep_state, state, [{:reply, from, apply(contents)}]}
+    state = ProxyingState.apply_mfa(state, from, contents)
+    {:keep_state, state}
   end
 
   def proxying({:call, from}, :buffering?, state) do
-    {:keep_state, state, [{:reply, from, false}]}
+    {:keep_state, state, {:reply, from, false}}
+  end
+
+  def proxying(:info, {ref, reply}, %ProxyingState{} = state) when is_reference(ref) do
+    new_state = ProxyingState.reply(state, ref, reply)
+    {:keep_state, new_state}
+  end
+
+  def proxying(:info, {:DOWN, _, _, _, _}, %ProxyingState{} = state) do
+    {:keep_state, state}
+  end
+
+  # Callbacks for the draining state
+
+  def draining(:info, {ref, reply}, %DrainingState{} = state) when is_reference(ref) do
+    new_state = DrainingState.reply(state, ref, reply)
+
+    if DrainingState.drained?(new_state) do
+      {:next_state, :buffering, state.buffering_state}
+    else
+      {:keep_state, new_state}
+    end
+  end
+
+  def draining({:call, from}, {:start_buffering, _}, %DrainingState{} = state) do
+    initiator_pid = state.buffering_state.initiator_pid
+    {:keep_state, state, {:reply, from, {:error, {:already_buffering, initiator_pid}}}}
+  end
+
+  def draining(
+        {:call, from},
+        buffer(contents: mfa() = mfa, return: return),
+        %DrainingState{} = state
+      ) do
+    state = DrainingState.add_mfa(state, mfa)
+    {:keep_state, state, {:reply, from, return}}
+  end
+
+  def draining({:call, from}, drop(return: return), %DrainingState{} = state) do
+    {:keep_state, state, {:reply, from, return}}
+  end
+
+  def draining({:call, from}, :buffering?, state) do
+    {:keep_state, state, {:reply, from, true}}
+  end
+
+  def draining(:info, {:DOWN, _, _, _, _}, %DrainingState{} = state) do
+    {:keep_state, state}
   end
 
   # Callbacks for buffering mode
 
-  def buffering({:call, from}, {:start_buffering, _}, %State{} = state) do
-    {:keep_state, state, [{:reply, from, {:error, {:already_buffering, state.initiator_pid}}}]}
+  def buffering({:call, from}, {:start_buffering, _}, %BufferingState{} = state) do
+    {:keep_state, state, {:reply, from, {:error, {:already_buffering, state.initiator_pid}}}}
   end
 
-  def buffering({:call, from}, buffer(contents: mfa() = mfa, return: return), %State{} = state) do
-    state = State.add_mfa(state, mfa)
-    {:keep_state, state, [{:reply, from, return}]}
+  def buffering(
+        {:call, from},
+        buffer(contents: mfa() = mfa, return: return),
+        %BufferingState{} = state
+      ) do
+    state = BufferingState.add_mfa(state, mfa)
+    {:keep_state, state, {:reply, from, return}}
   end
 
-  def buffering({:call, from}, drop(return: return), %State{} = state) do
-    {:keep_state, state, [{:reply, from, return}]}
+  def buffering({:call, from}, drop(return: return), %BufferingState{} = state) do
+    {:keep_state, state, {:reply, from, return}}
   end
 
-  def buffering(:info, {:DOWN, _, :process, pid, _}, %State{initiator_pid: pid} = state) do
+  def buffering(:info, {:DOWN, _, :process, pid, _}, %BufferingState{initiator_pid: pid} = state) do
     state
-    |> State.flush()
+    |> BufferingState.flush()
     |> Enum.each(&apply/1)
 
-    {:next_state, :proxying, nil}
+    {:next_state, :proxying, ProxyingState.new()}
+  end
+
+  def buffering(:info, {:DOWN, _, _, _, _}, state) do
+    {:keep_state, state}
   end
 
   def buffering({:call, from}, :buffering?, state) do
-    {:keep_state, state, [{:reply, from, true}]}
+    {:keep_state, state, {:reply, from, true}}
   end
 
   # Private
