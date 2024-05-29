@@ -8,7 +8,9 @@ defmodule Lexical.Ast.Analysis.Scope do
     :range,
     module: [],
     aliases: [],
-    imports: []
+    imports: [],
+    requires: [],
+    uses: []
   ]
 
   @type import_mfa :: {module(), atom(), non_neg_integer()}
@@ -23,12 +25,22 @@ defmodule Lexical.Ast.Analysis.Scope do
         }
 
   def new(%__MODULE__{} = parent_scope, id, %Range{} = range, module \\ []) do
+    uses =
+      if module == parent_scope.module do
+        # if we're still in the same module, we have the same uses
+        parent_scope.uses
+      else
+        []
+      end
+
     %__MODULE__{
       id: id,
       aliases: parent_scope.aliases,
       imports: parent_scope.imports,
+      requires: parent_scope.requires,
       module: module,
-      range: range
+      range: range,
+      uses: uses
     }
   end
 

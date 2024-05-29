@@ -7,8 +7,10 @@ defmodule Lexical.Ast.Analysis do
 
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Import
+  alias Lexical.Ast.Analysis.Require
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Analysis.State
+  alias Lexical.Ast.Analysis.Use
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -363,6 +365,40 @@ defmodule Lexical.Ast.Analysis do
   # wholesale import import MyModule
   defp analyze_node({:import, _meta, [{:__aliases__, _aliases, module}]} = quoted, state) do
     State.push_import(state, Import.new(state.document, quoted, module))
+  end
+
+  # require of a module using as
+  defp analyze_node(
+         {:require, _meta, [{:__aliases__, _, module}, options]} = quoted,
+         state
+       ) do
+    {_, as_module} =
+      Macro.prewalk(options, nil, fn
+        {:__aliases__, _, as} = ast, nil ->
+          {ast, as}
+
+        ast, acc ->
+          {ast, acc}
+      end)
+
+    State.push_require(state, Require.new(state.document, quoted, module, as_module))
+  end
+
+  # require a module
+  defp analyze_node(
+         {:require, _meta, [{:__aliases__, _, module}]} = quoted,
+         state
+       ) do
+    State.push_require(state, Require.new(state.document, quoted, module))
+  end
+
+  # use statement
+
+  defp analyze_node(
+         {:use, _meta, [{:__aliases__, _, module} | opts]} = use,
+         state
+       ) do
+    State.push_use(state, Use.new(state.document, use, module, opts))
   end
 
   # stab clauses: ->

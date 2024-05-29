@@ -1,14 +1,42 @@
 defmodule Lexical.RemoteControl.Analyzer do
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Analysis.Require
+  alias Lexical.Ast.Analysis.Use
   alias Lexical.Document.Position
   alias Lexical.RemoteControl.Analyzer.Aliases
   alias Lexical.RemoteControl.Analyzer.Imports
+  alias Lexical.RemoteControl.Analyzer.Requires
+  alias Lexical.RemoteControl.Analyzer.Uses
 
   require Logger
 
   defdelegate aliases_at(analysis, position), to: Aliases, as: :at
   defdelegate imports_at(analysis, position), to: Imports, as: :at
+
+  @spec requires_at(Analysis.t(), Position.t()) :: [module()]
+  def requires_at(%Analysis{} = analysis, %Position{} = position) do
+    analysis
+    |> Requires.at(position)
+    |> Enum.reduce([], fn %Require{} = require, acc ->
+      case expand_alias(require.module, analysis, position) do
+        {:ok, expanded} -> [expanded | acc]
+        _ -> [Module.concat(require.as) | acc]
+      end
+    end)
+  end
+
+  @spec uses_at(Analysis.t(), Position.t()) :: [module()]
+  def uses_at(%Analysis{} = analysis, %Position{} = position) do
+    analysis
+    |> Uses.at(position)
+    |> Enum.reduce([], fn %Use{} = use, acc ->
+      case expand_alias(use.module, analysis, position) do
+        {:ok, expanded} -> [expanded | acc]
+        _ -> [Module.concat(use.module) | acc]
+      end
+    end)
+  end
 
   def resolve_local_call(%Analysis{} = analysis, %Position{} = position, function_name, arity) do
     maybe_imported_mfa =
