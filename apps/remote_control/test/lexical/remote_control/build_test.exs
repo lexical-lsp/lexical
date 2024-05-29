@@ -29,7 +29,7 @@ defmodule Lexical.BuildTest do
       end
 
     source = Document.new(uri, source_code, 0)
-    Build.force_compile_document(project, source)
+    RemoteControl.call(project, Build, :force_compile_document, [source])
   end
 
   def with_project(project_name) do
@@ -72,7 +72,7 @@ defmodule Lexical.BuildTest do
   describe "compiling a project" do
     test "sends a message when complete " do
       {:ok, project} = with_project(:project_metadata)
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :success)
       assert_receive project_progress(label: "Building " <> project_name)
@@ -82,7 +82,7 @@ defmodule Lexical.BuildTest do
     test "receives metadata about the defined modules" do
       {:ok, project} = with_project(:project_metadata)
 
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
       assert_receive module_updated(name: ProjectMetadata, functions: functions)
 
       assert {:zero_arity, 0} in functions
@@ -94,7 +94,7 @@ defmodule Lexical.BuildTest do
   describe "compiling an umbrella project" do
     test "it sends a message when compilation is complete" do
       {:ok, project} = with_project(:umbrella)
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :success)
       assert_receive project_diagnostics(diagnostics: [])
@@ -119,7 +119,7 @@ defmodule Lexical.BuildTest do
   describe "compiling a project that has errors" do
     test "it reports the errors" do
       {:ok, project} = with_project(:compilation_errors)
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :error)
       assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{}])
@@ -132,7 +132,7 @@ defmodule Lexical.BuildTest do
     @feature_condition span_in_diagnostic?: false
     @tag execute_if(@feature_condition)
     test "stuff", %{project: project} do
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :error)
       assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic])
@@ -144,7 +144,7 @@ defmodule Lexical.BuildTest do
     @feature_condition span_in_diagnostic?: true
     @tag execute_if(@feature_condition)
     test "stuff when #{inspect(@feature_condition)}", %{project: project} do
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :error)
       assert_receive project_diagnostics(diagnostics: [%Diagnostic.Result{} = diagnostic])
@@ -160,7 +160,7 @@ defmodule Lexical.BuildTest do
   describe "when compiling a project that has warnings" do
     test "it reports them" do
       {:ok, project} = with_project(:compilation_warnings)
-      Build.schedule_compile(project, true)
+      RemoteControl.Api.schedule_compile(project, true)
 
       assert_receive project_compiled(status: :success)
       assert_receive project_diagnostics(diagnostics: diagnostics)
@@ -651,7 +651,7 @@ defmodule Lexical.BuildTest do
     describe "exceptions during compilation" do
       test "compiling a project with callback errors" do
         {:ok, project} = with_project(:compilation_callback_errors)
-        Build.schedule_compile(project)
+        RemoteControl.Api.schedule_compile(project, false)
         assert_receive project_compiled(status: :error)
         assert_receive project_diagnostics(diagnostics: [diagnostic])
 

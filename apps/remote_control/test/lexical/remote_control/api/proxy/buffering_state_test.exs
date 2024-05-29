@@ -1,9 +1,9 @@
-defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
+defmodule Lexical.RemoteControl.Api.Proxy.BufferingStateStateTest do
   alias Lexical.Document
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Api.Proxy
-  alias Lexical.RemoteControl.Api.Proxy.State
+  alias Lexical.RemoteControl.Api.Proxy.BufferingState
   alias Lexical.RemoteControl.Build
   alias Lexical.RemoteControl.Commands
 
@@ -32,8 +32,8 @@ defmodule Lexical.RemoteControl.Api.Proxy.StateTest do
 
   def add_to_state_and_flush(messages) do
     messages
-    |> Enum.reduce(State.new(self()), &State.add_mfa(&2, &1))
-    |> State.flush()
+    |> Enum.reduce(BufferingState.new(self()), &BufferingState.add_mfa(&2, &1))
+    |> BufferingState.flush()
   end
 
   describe "command collapse" do

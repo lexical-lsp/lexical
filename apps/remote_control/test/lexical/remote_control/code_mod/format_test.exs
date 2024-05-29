@@ -130,10 +130,12 @@ defmodule Lexical.RemoteControl.CodeMod.FormatTest do
     setup [:with_real_project]
 
     test "it should emit diagnostics when a syntax error occurs", %{project: project} do
-      assert {:error, _} = ~q[
+      text = ~q[
         def foo(a, ) do
-      end
-      ] |> modify(project: project)
+        end
+        ]
+      document = document("file:///file.ex", text)
+      RemoteControl.Api.format(project, document)
 
       assert_receive file_diagnostics(diagnostics: [diagnostic]), 500
       assert diagnostic.message =~ "syntax error"

@@ -36,10 +36,10 @@ defmodule Lexical.RemoteControl.Build do
   end
 
   # this is for testing
-  def force_compile_document(%Project{} = _project, %Document{} = document) do
+  def force_compile_document(%Document{} = document) do
     with false <- Path.absname(document.path) == "mix.exs",
          false <- HEEx.recognizes?(document) do
-      GenServer.call(__MODULE__, {:force_commpile_file, document})
+      GenServer.call(__MODULE__, {:force_compile_file, document})
     end
 
     :ok
