@@ -8,6 +8,9 @@ defmodule Lexical.RemoteControl.Plugin.Runner do
 
   require Logger
 
+  @project_level_plugin_timeout_ms :timer.seconds(3)
+  @file_level_plugin_timeout_ms 50
+
   @doc false
   def clear_config do
     :persistent_term.erase(__MODULE__)
@@ -32,12 +35,17 @@ defmodule Lexical.RemoteControl.Plugin.Runner do
 
   @doc false
   def diagnose(%Project{} = project, on_complete) do
-    Runner.Coordinator.run_all(project, :diagnostic, on_complete, 2000)
+    Runner.Coordinator.run_all(
+      project,
+      :diagnostic,
+      on_complete,
+      @project_level_plugin_timeout_ms
+    )
   end
 
   @doc false
   def diagnose(%Document{} = document, on_complete) do
-    Runner.Coordinator.run_all(document, :diagnostic, on_complete, 50)
+    Runner.Coordinator.run_all(document, :diagnostic, on_complete, @file_level_plugin_timeout_ms)
   end
 
   @doc false
