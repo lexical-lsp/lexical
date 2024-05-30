@@ -154,6 +154,12 @@ jobs:
       # and running the workflow steps.
       matrix:
         include:
+          - elixir: "1.17"
+            otp: "27"
+          - elixir: "1.17"
+            otp: "26"
+          - elixir: "1.17"
+            otp: "25"
           - elixir: "1.16"
             otp: "26"
           - elixir: "1.16"
