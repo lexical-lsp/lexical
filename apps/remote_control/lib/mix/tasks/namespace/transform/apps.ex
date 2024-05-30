@@ -66,7 +66,7 @@ defmodule Mix.Tasks.Namespace.Transform.Apps do
   end
 
   defp visit({:description, desc}) do
-    {:description, desc ++ ' namespaced by lexical.'}
+    {:description, desc ++ ~c" namespaced by lexical."}
   end
 
   defp visit({:mod, {module_name, args}}) do
