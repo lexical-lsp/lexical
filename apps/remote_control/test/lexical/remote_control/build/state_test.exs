@@ -14,6 +14,7 @@ defmodule Lexical.RemoteControl.Build.StateTest do
 
   setup do
     start_supervised!(RemoteControl.Dispatch)
+    start_supervised!(RemoteControl.Api.Proxy)
     start_supervised!(Build.CaptureServer)
     start_supervised!(RemoteControl.ModuleMappings)
     start_supervised!(Plugin.Runner.Coordinator)

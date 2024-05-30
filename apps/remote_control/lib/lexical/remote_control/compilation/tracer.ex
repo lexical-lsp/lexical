@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.Compilation.Tracer do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Build
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Module.Loader
 
   import RemoteControl.Api.Messages
@@ -9,7 +8,7 @@ defmodule Lexical.RemoteControl.Compilation.Tracer do
   def trace({:on_module, module_binary, _filename}, %Macro.Env{} = env) do
     message = extract_module_updated(env.module, module_binary, env.file)
     maybe_report_progress(env.file)
-    Dispatch.broadcast(message)
+    RemoteControl.broadcast(message)
     :ok
   end
 
@@ -61,7 +60,7 @@ defmodule Lexical.RemoteControl.Compilation.Tracer do
     if Path.extname(file) == ".ex" do
       file
       |> progress_message()
-      |> Dispatch.broadcast()
+      |> RemoteControl.broadcast()
     end
   end
 

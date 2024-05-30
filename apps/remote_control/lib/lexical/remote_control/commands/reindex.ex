@@ -74,7 +74,6 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search
 
   use GenServer
@@ -148,7 +147,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   end
 
   defp do_reindex(%Project{} = project) do
-    Dispatch.broadcast(project_reindex_requested(project: project))
+    RemoteControl.broadcast(project_reindex_requested(project: project))
 
     {elapsed_us, result} =
       :timer.tc(fn ->
@@ -157,7 +156,7 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
         end
       end)
 
-    Dispatch.broadcast(
+    RemoteControl.broadcast(
       project_reindexed(project: project, elapsed_ms: round(elapsed_us / 1000), status: :success)
     )
 

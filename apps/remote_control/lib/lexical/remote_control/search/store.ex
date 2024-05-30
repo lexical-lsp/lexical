@@ -4,8 +4,8 @@ defmodule Lexical.RemoteControl.Search.Store do
   """
 
   alias Lexical.Project
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api
-  alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
   alias Lexical.RemoteControl.Search.Store.State
@@ -130,7 +130,7 @@ defmodule Lexical.RemoteControl.Search.Store do
     # we have this bandaid. We wait for the first compilation to complete, and then
     # the search store enables itself, at which point we index the code.
 
-    Dispatch.register_listener(self(), project_compiled())
+    RemoteControl.register_listener(self(), project_compiled())
     state = State.new(project, create_index, update_index, backend)
     {:ok, state}
   end

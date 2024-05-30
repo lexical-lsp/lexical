@@ -22,27 +22,24 @@ defmodule Lexical.RemoteControl.Build do
     Path.join([build_root, "erl-#{erlang_major}", "elixir-#{elixir_major}"])
   end
 
-  def schedule_compile(%Project{} = project, force? \\ false) do
-    RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile, force?}])
+  def schedule_compile(%Project{} = _project, force? \\ false) do
+    GenServer.cast(__MODULE__, {:compile, force?})
   end
 
-  def compile_document(%Project{} = project, %Document{} = document) do
+  def compile_document(%Project{} = _project, %Document{} = document) do
     with false <- Path.absname(document.path) == "mix.exs",
          false <- HEEx.recognizes?(document) do
-      RemoteControl.call(project, GenServer, :cast, [__MODULE__, {:compile_file, document}])
+      GenServer.cast(__MODULE__, {:compile_file, document})
     end
 
     :ok
   end
 
   # this is for testing
-  def force_compile_document(%Project{} = project, %Document{} = document) do
+  def force_compile_document(%Document{} = document) do
     with false <- Path.absname(document.path) == "mix.exs",
          false <- HEEx.recognizes?(document) do
-      RemoteControl.call(project, GenServer, :call, [
-        __MODULE__,
-        {:force_compile_file, document}
-      ])
+      GenServer.call(__MODULE__, {:force_compile_file, document})
     end
 
     :ok

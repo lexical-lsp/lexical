@@ -10,7 +10,7 @@ defmodule Lexical.RemoteControl.ProgressTest do
 
   setup do
     test_pid = self()
-    patch(RemoteControl.Dispatch, :broadcast, &send(test_pid, &1))
+    patch(RemoteControl.Api.Proxy, :broadcast, &send(test_pid, &1))
     :ok
   end
 
