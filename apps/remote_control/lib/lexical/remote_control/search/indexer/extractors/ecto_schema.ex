@@ -58,7 +58,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchema do
 
       definition =
         Entry.block_definition(
-          document,
+          document.path,
           Reducer.current_block(reducer),
           struct_module,
           :struct,
