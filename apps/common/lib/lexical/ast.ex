@@ -321,13 +321,13 @@ defmodule Lexical.Ast do
 
         cond do
           on_same_line? ->
-            position.character >= start_pos[:column] and position.character < end_pos[:column]
+            position.character >= start_pos[:column] and position.character <= end_pos[:column]
 
           position.line == start_pos[:line] ->
             position.character >= start_pos[:column]
 
           position.line == end_pos[:line] ->
-            position.character < end_pos[:column]
+            position.character <= end_pos[:column]
 
           true ->
             position.line > start_pos[:line] and position.line < end_pos[:line]
