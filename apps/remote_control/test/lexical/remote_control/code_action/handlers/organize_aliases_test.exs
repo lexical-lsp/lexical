@@ -223,6 +223,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
     end
 
     test "aliases in a given scope are pulled to the top" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
       {:ok, organized} =
         ~q[
           defmodule Scattered do
@@ -318,6 +320,92 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
         ]t
 
       assert expected == organized
+    end
+  end
+
+  describe "check the return conditions for the alias" do
+    test "returns organized aliases if the cursor is at an alias" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
+      {:ok, organized} =
+        ~q[
+          defmodule Outer do
+            |alias Foo.Bar
+            alias A.B.C
+            alias D.E.F
+          end] |> organize_aliases()
+
+      expected =
+        ~q[
+          defmodule Outer do
+            alias A.B.C
+            alias D.E.F
+            alias Foo.Bar
+          end]
+
+      assert expected == organized
+    end
+
+    test "returns organized aliases if the cursor's ancesor is an alias" do
+      {:ok, organized} =
+        ~q[
+          defmodule Outer do
+            alias Foo.|Bar
+            alias A.B.C
+            alias D.E.F
+          end] |> organize_aliases()
+
+      expected =
+        ~q[
+          defmodule Outer do
+            alias A.B.C
+            alias D.E.F
+            alias Foo.Bar
+          end]
+
+      assert expected == organized
+    end
+
+    test "does nothing if the cursor is at an `def` keyword" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
+      text =
+        ~q[
+          defmodule Outer do
+            alias Foo.Bar
+            alias A.B.C
+            alias D.E.F
+
+            |def my_fn do
+              1 + 2
+            end
+          end]
+
+      {:ok, organized} = organize_aliases(text)
+
+      {_, original} = pop_cursor(text)
+      assert original == organized
+    end
+
+    test "does nothing if the cursor is at the function name" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
+      text =
+        ~q[
+          defmodule Outer do
+            alias Foo.Bar
+            alias A.B.C
+            alias D.E.F
+
+            def |my_fn do
+              1 + 2
+            end
+          end]
+
+      {:ok, organized} = organize_aliases(text)
+
+      {_, original} = pop_cursor(text)
+      assert original == organized
     end
   end
 end
