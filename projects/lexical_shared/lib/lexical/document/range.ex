@@ -42,7 +42,7 @@ defmodule Lexical.Document.Range do
 
     cond do
       position.line == start_pos.line and position.line == end_pos.line ->
-        position.character >= start_pos.character and position.character <= end_pos.character
+        position.character >= start_pos.character and position.character < end_pos.character
 
       position.line == start_pos.line ->
         position.character >= start_pos.character
