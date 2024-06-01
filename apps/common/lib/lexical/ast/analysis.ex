@@ -368,14 +368,11 @@ defmodule Lexical.Ast.Analysis do
   end
 
   # require MyModule, as: Alias
-  defp analyze_node(
-         {:require, _meta, [{:__aliases__, _, module}, options]} = quoted,
-         state
-       ) do
+  defp analyze_node({:require, _meta, [{:__aliases__, _, module}, options]} = quoted, state) do
     case fetch_alias_as(options) do
       {:ok, as_module} ->
-        State.push_require(state, Require.new(state.document, quoted, module, as_module)
-        
+        State.push_require(state, Require.new(state.document, quoted, module, as_module))
+
       :error ->
         state
     end
