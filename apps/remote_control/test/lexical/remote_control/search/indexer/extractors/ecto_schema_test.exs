@@ -9,11 +9,11 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchemaTest do
     test "only finds if Ecto.Schema is used" do
       {:ok, results, _} =
         ~q[
-        defmodule NotEcto do
-          schema "not ecto" do
-            field :ecto, :boolean, default: false
-          end
-        end
+         defmodule NotEcto do
+           schema "not ecto" do
+             field :ecto, :boolean, default: false
+           end
+         end
         ]
         |> index()
 
@@ -98,13 +98,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchemaTest do
     test "only finds if Ecto.Schema is used" do
       {:ok, results, _doc} =
         ~q[
-        defmodule NotEcto do
-          schema "not ecto" do
-            embedded_schema "also_not_ecto" do
-              field :very_much_like_ecto, :string
-            end
-          end
-        end
+         defmodule NotEcto do
+           schema "not ecto" do
+             embedded_schema "also_not_ecto" do
+               field :very_much_like_ecto, :string
+             end
+           end
+         end
         ]
         |> index()
 
