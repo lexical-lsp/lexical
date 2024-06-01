@@ -367,24 +367,21 @@ defmodule Lexical.Ast.Analysis do
     State.push_import(state, Import.new(state.document, quoted, module))
   end
 
-  # require of a module using as
+  # require MyModule, as: Alias
   defp analyze_node(
          {:require, _meta, [{:__aliases__, _, module}, options]} = quoted,
          state
        ) do
-    {_, as_module} =
-      Macro.prewalk(options, nil, fn
-        {:__aliases__, _, as} = ast, nil ->
-          {ast, as}
-
-        ast, acc ->
-          {ast, acc}
-      end)
-
-    State.push_require(state, Require.new(state.document, quoted, module, as_module))
+    case fetch_alias_as(options) do
+      {:ok, as_module} ->
+        State.push_require(state, Require.new(state.document, quoted, module, as_module)
+        
+      :error ->
+        state
+    end
   end
 
-  # require a module
+  # require MyModule
   defp analyze_node(
          {:require, _meta, [{:__aliases__, _, module}]} = quoted,
          state
@@ -392,8 +389,7 @@ defmodule Lexical.Ast.Analysis do
     State.push_require(state, Require.new(state.document, quoted, module))
   end
 
-  # use statement
-
+  # use MyModule
   defp analyze_node(
          {:use, _meta, [{:__aliases__, _, module} | opts]} = use,
          state
