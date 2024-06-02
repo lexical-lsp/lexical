@@ -82,15 +82,16 @@ defmodule Lexical.Document.Position do
     compare({pos1.line, pos1.character}, {pos2.line, pos2.character})
   end
 
-  def compare(%__MODULE__{} = pos1, pos2) do
+  def compare(%__MODULE__{} = pos1, {_, _} = pos2) do
     compare({pos1.line, pos1.character}, pos2)
   end
 
-  def compare(pos1, %__MODULE__{} = pos2) do
+  def compare({_, _} = pos1, %__MODULE__{} = pos2) do
     compare(pos1, {pos2.line, pos2.character})
   end
 
-  def compare({_, _} = first, {_, _} = second) do
+  def compare({l1, c1} = first, {l2, c2} = second)
+      when is_integer(l1) and is_integer(c1) and is_integer(l2) and is_integer(c2) do
     cond do
       first < second -> :lt
       first > second -> :gt
