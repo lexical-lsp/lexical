@@ -2,7 +2,9 @@ defmodule Lexical.Ast.Analysis.State do
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Alias
   alias Lexical.Ast.Analysis.Import
+  alias Lexical.Ast.Analysis.Require
   alias Lexical.Ast.Analysis.Scope
+  alias Lexical.Ast.Analysis.Use
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
@@ -85,6 +87,18 @@ defmodule Lexical.Ast.Analysis.State do
   def push_import(%__MODULE__{} = state, %Import{} = import) do
     update_current_scope(state, fn %Scope{} = scope ->
       Map.update!(scope, :imports, &[import | &1])
+    end)
+  end
+
+  def push_require(%__MODULE__{} = state, %Require{} = require) do
+    update_current_scope(state, fn %Scope{} = scope ->
+      Map.update!(scope, :requires, &[require | &1])
+    end)
+  end
+
+  def push_use(%__MODULE__{} = state, %Use{} = use) do
+    update_current_scope(state, fn %Scope{} = scope ->
+      Map.update!(scope, :uses, &[use | &1])
     end)
   end
 
