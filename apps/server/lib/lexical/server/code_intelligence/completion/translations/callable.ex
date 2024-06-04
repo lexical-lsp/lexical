@@ -186,7 +186,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       |> Integer.to_string()
       |> String.pad_leading(3, "0")
 
-    "#{name}:#{normalized_arity}"
+    # we used to use : as a separator between the name and
+    # arity, but this  caused bang functions to sort
+    # before non-bang variants, which is incorrect.
+    # Using a space sorts correctly, as it's the only ascii
+    # character lower than bang
+
+    "#{name} #{normalized_arity}"
   end
 
   defp build_docs(%{summary: summary, spec: spec})

@@ -12,6 +12,16 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert [:deprecated] = completion.tags
     end
 
+    test "bang functions are sorted after non-bang functions", %{project: project} do
+      {:ok, [normal, bang]} =
+        project
+        |> complete("Map.fetc|")
+        |> fetch_completion("fetch")
+
+      assert normal.label == "fetch(map, key)"
+      assert bang.label == "fetch!(map, key)"
+    end
+
     test "suggest arity 0 functions if not in a pipeline", %{project: project} do
       {:ok, completion} =
         project
@@ -177,7 +187,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         |> Enum.filter(fn completion ->
           sort_text = completion.sort_text
           # arity 1 and is is_map
-          String.contains?(sort_text, ":001") and
+          String.ends_with?(sort_text, "001") and
             String.contains?(sort_text, "is_map")
         end)
 
