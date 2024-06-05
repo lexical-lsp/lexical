@@ -6,36 +6,23 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchema do
   alias Lexical.RemoteControl.Search.Indexer.Metadata
   alias Lexical.RemoteControl.Search.Indexer.Source.Reducer
 
-  @schema_types [:schema, :embedded_schema]
   def extract(
-        {schema_type, meta, [{:__block__, _, [_source]} | _]} = schema_block,
+        {:schema, meta, [{:__block__, _, [_source]} | _]} = schema_block,
         %Reducer{} = reducer
-      )
-      when schema_type in @schema_types do
-    document = reducer.analysis.document
-    position = Reducer.position(reducer)
+      ) do
+    case extract_schema_entry(schema_block, meta, reducer) do
+      {:ok, _} = success -> success
+      :error -> :ignored
+    end
+  end
 
-    with true <- defines_schema?(reducer, position),
-         {:ok, current_module} <- Analyzer.current_module(reducer.analysis, position),
-         {do_line, do_column} <- Metadata.position(meta, :do),
-         {:ok, range} <- Ast.Range.fetch(schema_block, document) do
-      detail_range = put_in(range.end, Position.new(document, do_line, do_column + 2))
-
-      definition_entry =
-        Entry.block_definition(
-          document.path,
-          Reducer.current_block(reducer),
-          current_module,
-          :struct,
-          range,
-          detail_range,
-          Application.get_application(current_module)
-        )
-
-      {:ok, definition_entry}
-    else
-      _ ->
-        :ignored
+  def extract(
+        {:embedded_schema, meta, _} = schema_block,
+        %Reducer{} = reducer
+      ) do
+    case extract_schema_entry(schema_block, meta, reducer) do
+      {:ok, _} = success -> success
+      :error -> :ignored
     end
   end
 
@@ -76,6 +63,34 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchema do
 
   def extract(_ast, _reducer) do
     :ignored
+  end
+
+  defp extract_schema_entry(schema_block, meta, %Reducer{} = reducer) do
+    document = reducer.analysis.document
+    position = Reducer.position(reducer)
+
+    with true <- defines_schema?(reducer, position),
+         {:ok, current_module} <- Analyzer.current_module(reducer.analysis, position),
+         {do_line, do_column} <- Metadata.position(meta, :do),
+         {:ok, range} <- Ast.Range.fetch(schema_block, document) do
+      detail_range = put_in(range.end, Position.new(document, do_line, do_column + 2))
+
+      definition_entry =
+        Entry.block_definition(
+          document.path,
+          Reducer.current_block(reducer),
+          current_module,
+          :struct,
+          range,
+          detail_range,
+          Application.get_application(current_module)
+        )
+
+      {:ok, definition_entry}
+    else
+      _ ->
+        :error
+    end
   end
 
   defp defines_schema?(%Reducer{} = reducer, %Position{} = position) do

@@ -116,7 +116,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchemaTest do
         ~q[
          defmodule MySchema do
            use Ecto.Schema
-           embedded_schema "my_schema" do
+           embedded_schema do
              field :last_name, :string
            end
         end
@@ -128,13 +128,13 @@ defmodule Lexical.RemoteControl.Search.Indexer.Extractors.EctoSchemaTest do
 
       expected =
         ~q[
-        embedded_schema "my_schema" do
+        embedded_schema do
             field :last_name, :string
           end
         ]
         |> String.trim()
 
-      assert decorate(doc, struct.range) =~ ~q[«embedded_schema "my_schema" do»]
+      assert decorate(doc, struct.range) =~ ~q[«embedded_schema do»]
       assert extract(doc, struct.block_range) =~ expected
     end
 
