@@ -1,5 +1,22 @@
 ## Unreleased
 * Organize Aliases by @scohen https://github.com/lexical-lsp/lexical/pull/725
+* Remove unused aliases by @scohen
+* Refactor: Pass env into completion in remote control by @scohen in https://github.com/lexical-lsp/lexical/pull/733
+* Refactor: Increased type detail by @scohen in https://github.com/lexical-lsp/lexical/pull/734
+* Fix: Edge case for module loading by @scohen in https://github.com/lexical-lsp/lexical/pull/738
+* Improved store error handling by @scohen in https://github.com/lexical-lsp/lexical/pull/737
+* Complete callables without parens if present in locals_without_parens by @zachallaun in https://github.com/lexical-lsp/lexical/pull/739
+* Indexed delegated functions by @scohen in https://github.com/lexical-lsp/lexical/pull/729
+* Fix: Crash when typing english by @scohen in https://github.com/lexical-lsp/lexical/pull/742
+* Fix go to definition behavior for same-name, same-arity functions by directing to the first function by @scottming in https://github.com/lexical-lsp/lexical/pull/746
+* Completion: show type spec for struct fields by @kirillrogovoy in https://github.com/lexical-lsp/lexical/pull/751
+* Code Action: Add alias by @scohen in https://github.com/lexical-lsp/lexical/pull/740
+* Fixed: Go to definitions crashes on modules defined via a macro by @scohen in https://github.com/lexical-lsp/lexical/pull/753
+* Increased plugin timeouts by @scohen in https://github.com/lexical-lsp/lexical/pull/757
+* Code Action: Remove unused aliases by @scohen in https://github.com/lexical-lsp/lexical/pull/748
+* Reorder `test` macro completions by @zachallaun in https://github.com/lexical-lsp/lexical/pull/769
+* Added struct definition detection for ecto schemas by @scohen in https://github.com/lexical-lsp/lexical/pull/758
+* Sorted bang functions after non-bang variants by @scohen in https://github.com/lexical-lsp/lexical/pull/770
 
 ### v0.6.1
 
