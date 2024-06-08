@@ -17,7 +17,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
   @impl CodeAction.Handler
   def actions(%Document{} = doc, %Range{} = range, _diagnostics) do
     with {:ok, _doc, analysis} <- Document.Store.fetch(doc.uri, :analysis),
-         :ok <- check_aliases(doc, analysis, range) do
+         :ok <- check_aliases(analysis, range) do
       aliases = CodeMod.Aliases.in_scope(analysis, range)
       {insert_position, trailer} = CodeMod.Aliases.insert_position(analysis, range.start)
       edits = CodeMod.Aliases.to_edits(aliases, insert_position, trailer)
@@ -39,33 +39,63 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
     [:source, :source_organize_imports]
   end
 
-  defp check_aliases(%Document{}, %Analysis{} = analysis, %Range{} = range) do
-    with %Scope{aliases: [_ | _]} <- Analysis.module_scope(analysis, range),
-         true <-
-           ancestor_is_alias?(analysis, range.start) or
-             token_at_cursor_is_alias?(analysis, range.start) do
+  defp check_aliases(%Analysis{} = analysis, %Range{} = range) do
+    checked =
+      ancestor_is_alias?(analysis, range.start) or
+        token_at_cursor_is_alias?(analysis, range.start) or
+        inside_a_scope_with_aliases?(analysis, range)
+
+    if checked do
       :ok
     else
-      _ ->
-        :error
+      :error
     end
   end
 
   defp ancestor_is_alias?(%Analysis{} = analysis, %Position{} = position) do
     analysis
     |> Ast.cursor_path(position)
-    |> Enum.any?(fn
-      {:alias, _, _} ->
-        true
-
-      _ ->
-        false
-    end)
+    |> Enum.any?(&match?({:alias, _, _}, &1))
   end
 
   defp token_at_cursor_is_alias?(%Analysis{} = analysis, %Position{} = position) do
     project = RemoteControl.get_project()
-    {:ok, env} = Ast.Env.new(project, analysis, position)
-    (env.prefix <> env.suffix) |> String.trim_leading() |> String.starts_with?("alias")
+
+    case Ast.Env.new(project, analysis, position) do
+      {:ok, env} ->
+        (env.prefix <> env.suffix) |> String.trim_leading() |> String.starts_with?("alias")
+
+      _ ->
+        false
+    end
+  end
+
+  defp inside_a_scope_with_aliases?(%Analysis{} = analysis, %Range{} = range) do
+    # defmodule WithAliases do
+    #   alias Baz.Quux
+    #   alias Foo.Bar
+    #   |
+    case Analysis.module_scope(analysis, range) do
+      %Scope{aliases: [_ | _]} ->
+        token_at_cursor_is_blank?(analysis, range.start)
+
+      _ ->
+        false
+    end
+  end
+
+  defp token_at_cursor_is_blank?(%Analysis{} = analysis, %Position{} = position) do
+    project = RemoteControl.get_project()
+
+    case Ast.Env.new(project, analysis, position) do
+      {:ok, env} ->
+        last_prefix = String.last(env.prefix)
+        first_suffix = String.first(env.suffix)
+        blanks = [" ", "", "\n", nil]
+        first_suffix in blanks and last_prefix in blanks
+
+      _ ->
+        false
+    end
   end
 end

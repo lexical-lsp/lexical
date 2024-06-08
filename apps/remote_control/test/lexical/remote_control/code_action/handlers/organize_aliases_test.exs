@@ -324,6 +324,30 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
   end
 
   describe "check the return conditions for the alias" do
+    test "returns organized aliases if the cursor's immediate parent is a module" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
+      {:ok, organized} =
+        ~q[
+          defmodule Outer do
+            alias Foo.Bar
+            alias A.B.C
+            alias D.E.F
+            | a
+          end] |> organize_aliases()
+
+      expected =
+        ~q[
+          defmodule Outer do
+            alias A.B.C
+            alias D.E.F
+            alias Foo.Bar
+             a
+          end]
+
+      assert expected == organized
+    end
+
     test "returns organized aliases if the cursor is at an alias" do
       patch(RemoteControl, :get_project, %Lexical.Project{})
 
