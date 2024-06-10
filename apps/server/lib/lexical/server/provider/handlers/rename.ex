@@ -1,6 +1,7 @@
 defmodule Lexical.Server.Provider.Handlers.Rename do
   alias Lexical.Ast
   alias Lexical.Document
+  alias Lexical.Document.Changes
   alias Lexical.Protocol.Requests.Rename
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.RenameFile
@@ -13,14 +14,7 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
   def handle(%Rename{} = request, %Env{} = env) do
     case Document.Store.fetch(request.document.uri, :analysis) do
       {:ok, _document, %Ast.Analysis{valid?: true} = analysis} ->
-        rename(
-          env.project,
-          analysis,
-          request.position,
-          request.new_name,
-          request.id,
-          env.client_name
-        )
+        rename(request, env, analysis)
 
       _ ->
         {:reply,
@@ -28,29 +22,29 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
     end
   end
 
-  defp rename(project, analysis, position, new_name, id, client_name) do
+  defp rename(%Rename{} = request, %Env{} = env, analysis) do
+    %Rename{id: id, position: position, new_name: new_name} = request
+    %Env{project: project, client_name: client_name} = env
+
     case Api.rename(project, analysis, position, new_name, client_name) do
       {:ok, []} ->
         {:reply, nil}
 
       {:ok, results} ->
-        text_document_edits =
-          Enum.map(results, fn %Document.Changes{edits: edits, document: document} ->
-            new_text_document_edit(document.uri, edits)
+        document_changes =
+          Enum.flat_map(results, fn
+            %Changes{rename_file: %Changes.RenameFile{}} = changes ->
+              [new_text_document_edit(changes), new_rename_file(changes.rename_file)]
+
+            %Changes{} = changes ->
+              [new_text_document_edit(changes)]
           end)
 
-        rename_files =
-          results
-          |> Stream.map(& &1.rename_file)
-          |> Stream.reject(&(&1 == nil))
-          |> Enum.map(&new_rename_file/1)
-
-        workspace_edit = Workspace.Edit.new(document_changes: text_document_edits ++ rename_files)
-
+        workspace_edit = Workspace.Edit.new(document_changes: document_changes)
         {:reply, Responses.Rename.new(id, workspace_edit)}
 
       {:error, {:unsupported_entity, entity}} ->
-        Logger.info("Unrenameable entity: #{inspect(entity)}")
+        Logger.info("Cannot rename entity: #{inspect(entity)}")
         {:reply, nil}
 
       {:error, reason} ->
@@ -58,12 +52,13 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
     end
   end
 
-  defp new_text_document_edit(uri, edits) do
+  defp new_text_document_edit(%Changes{} = changes) do
     # NOTE: the `0` here is for use in VSCode.
     # Before May 4, 2024, if this `0` number is not set,
     # the rename function in VSCode will not work,
     # while other editors seem not to care about this field.
-    text_document = TextDocument.OptionalVersioned.Identifier.new(uri: uri, version: 0)
+    %Changes{document: document, edits: edits} = changes
+    text_document = TextDocument.OptionalVersioned.Identifier.new(uri: document.uri, version: 0)
     TextDocument.Edit.new(edits: edits, text_document: text_document)
   end
 

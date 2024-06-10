@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.Commands.Reindex do
   defmodule State do
-    alias Lexical.Ast
     alias Lexical.Ast.Analysis
     alias Lexical.Document
     alias Lexical.ProcessCache
@@ -73,9 +72,8 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
         {:error, :not_open} ->
           # Sometimes, some operations are received long after the reindex is triggered,
           # such as new files after a batch rename
-          with {:ok, document} <- Document.Store.open_temporary(uri) do
-            analysis = Ast.analyze(document)
-            {:ok, document, analysis}
+          with {:ok, _} <- Document.Store.open_temporary(uri) do
+            Document.Store.fetch(uri, :analysis)
           end
       end
     end
