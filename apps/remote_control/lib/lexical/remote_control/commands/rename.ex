@@ -9,13 +9,18 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   import Messages
 
   defmodule State do
-    defstruct uri_with_expected_operation: %{}, on_update_progess: nil, on_complete: nil
+    @type t :: %__MODULE__{
+            uri_to_expected_operation: %{
+              Lexical.uri() => Messages.file_changed() | Messages.file_saved()
+            },
+            on_update_progess: fun(),
+            on_complete: fun()
+          }
+    defstruct uri_to_expected_operation: %{}, on_update_progess: nil, on_complete: nil
 
-    def new(uri_with_expected_operation, progress_functions) do
-      {on_update_progess, on_complete} = progress_functions
-
+    def new(uri_to_expected_operation, on_update_progess, on_complete) do
       %__MODULE__{
-        uri_with_expected_operation: uri_with_expected_operation,
+        uri_to_expected_operation: uri_to_expected_operation,
         on_update_progess: on_update_progess,
         on_complete: on_complete
       }
@@ -32,21 +37,21 @@ defmodule Lexical.RemoteControl.Commands.Rename do
     defp update_progress(%__MODULE__{} = state, uri, message) do
       new_uri_with_expected_operation =
         maybe_pop_expected_operation(
-          state.uri_with_expected_operation,
+          state.uri_to_expected_operation,
           uri,
           message,
           state.on_update_progess
         )
 
-      if new_uri_with_expected_operation == %{} do
+      if Enum.empty?(new_uri_with_expected_operation) do
         state.on_complete.()
       end
 
-      %__MODULE__{state | uri_with_expected_operation: new_uri_with_expected_operation}
+      %__MODULE__{state | uri_to_expected_operation: new_uri_with_expected_operation}
     end
 
     def in_progress?(%__MODULE__{} = state) do
-      state.uri_with_expected_operation != %{}
+      state.uri_to_expected_operation != %{}
     end
 
     def maybe_pop_expected_operation(uri_to_operation, uri, message, on_update_progess) do
@@ -64,16 +69,22 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   alias Lexical.RemoteControl.Api.Proxy
   use GenServer
 
-  def child_spec(uri_with_expected_operation, progress_functions) do
+  @spec child_spec(
+          %{Lexical.uri() => Messages.file_changed() | Messages.file_saved()},
+          fun(),
+          fun()
+        ) :: Supervisor.child_spec()
+  def child_spec(uri_to_expected_operation, on_update_progess, on_complete) do
     %{
       id: __MODULE__,
-      start: {__MODULE__, :start_link, [uri_with_expected_operation, progress_functions]},
+      start:
+        {__MODULE__, :start_link, [uri_to_expected_operation, on_update_progess, on_complete]},
       restart: :transient
     }
   end
 
-  def start_link(uri_with_expected_operation, progress_functions) do
-    state = State.new(uri_with_expected_operation, progress_functions)
+  def start_link(uri_to_expected_operation, on_update_progess, on_complete) do
+    state = State.new(uri_to_expected_operation, on_update_progess, on_complete)
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
@@ -107,8 +118,7 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
   @impl true
   def handle_continue(:start_buffering, state) do
-    Proxy.start_buffering(self())
-    Logger.info("Rename process started, and started buffering.")
+    Proxy.start_buffering()
     {:noreply, state}
   end
 

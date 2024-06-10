@@ -3,12 +3,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   alias Lexical.Document
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.RemoteControl.CodeMod.Rename
   alias Lexical.RemoteControl.Commands
   alias Lexical.RemoteControl.Progress
 
   import Lexical.RemoteControl.Api.Messages
-
-  alias __MODULE__
 
   @spec prepare(Analysis.t(), Position.t()) ::
           {:ok, {atom(), String.t()}, Range.t()} | {:error, term()}
@@ -31,12 +30,13 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     uri_with_expected_operation =
       uri_with_expected_operation(client_name, document_changes_list)
 
-    progress_notification_functions =
+    {report_progress_func, complete_func} =
       Progress.begin_percent("Renaming", Enum.count(uri_with_expected_operation))
 
     Commands.RenameSupervisor.start_renaming(
       uri_with_expected_operation,
-      progress_notification_functions
+      report_progress_func,
+      complete_func
     )
   end
 
