@@ -161,20 +161,24 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       end)
     end
 
-    test "arity > 1 provides a snippet with parens and commas", %{project: project} do
+    test "arity > 1 provides snippets with arity and with parens and commas", %{project: project} do
       source = ~q[
-        Enum.map(1..10, Enum.reduce_w|)
+        Enum.map(1..10, &Enum.reduce_w|)
       ]
 
-      {:ok, completion} =
+      {:ok, [completion_with_arity, completion_with_args]} =
         project
         |> complete(source)
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text_format == :snippet
+      assert apply_completion(completion_with_arity) == ~q[
+        Enum.map(1..10, &Enum.reduce_while/3)
+      ]
 
-      assert apply_completion(completion) == ~q[
-        Enum.map(1..10, Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
+      assert completion_with_args.insert_text_format == :snippet
+
+      assert apply_completion(completion_with_args) == ~q[
+        Enum.map(1..10, &Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
       ]
     end
 
