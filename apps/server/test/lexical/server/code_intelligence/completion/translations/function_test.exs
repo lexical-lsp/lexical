@@ -214,6 +214,33 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert is_map_key_args.insert_text_format == :snippet
       assert apply_completion(is_map_key_args) == "&is_map_key(${1:map}, ${2:key})"
     end
+
+    test "suggest completions sorted using existing arities", %{project: project} do
+      sources = [
+        "&is_fun|/2",
+        "&Kernel.is_fun|/2",
+        "&is_fun|(x, y)",
+        "&Kernel.is_fun|(x, y)"
+      ]
+
+      for source <- sources do
+        completions = project |> complete(source) |> Enum.sort_by(& &1.sort_text)
+
+        assert [
+                 %{label: "is_function/2"},
+                 %{label: "is_function(term, arity)"},
+                 %{label: "is_function/1"},
+                 %{label: "is_function(term)"}
+               ] = completions
+
+        explicitly_sorted? =
+          completions
+          |> Enum.chunk_every(2)
+          |> Enum.all?(fn [x, y] -> x.sort_text < y.sort_text end)
+
+        assert explicitly_sorted?, "expected explicitly sorted completions for: #{source}"
+      end
+    end
   end
 
   describe "handling default arguments" do

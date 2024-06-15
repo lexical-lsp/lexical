@@ -1,4 +1,5 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
+  alias Lexical.Ast
   alias Lexical.Ast.Env
   alias Lexical.Completion.SortScope
   alias Lexical.RemoteControl.Completion.Candidate
@@ -68,12 +69,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       documentation: build_docs(callable),
       tags: tags
     )
-    |> maybe_boost(callable, env)
+    |> set_sort_scope(callable, env)
   end
 
   def capture_completions(%callable_module{} = callable, %Env{} = env)
       when callable_module in @callables do
     name_and_arity = name_and_arity(callable)
+
+    local_priority =
+      if capture_arity_matches?(callable.arity, env) do
+        0
+      else
+        1
+      end
 
     complete_capture =
       env
@@ -85,7 +93,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
-      |> maybe_boost(callable, env)
+      |> set_sort_scope(callable, env, local_priority)
 
     call_capture =
       env
@@ -97,7 +105,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
-      |> maybe_boost(callable, env)
+      |> set_sort_scope(callable, env, local_priority)
 
     [complete_capture, call_capture]
   end
@@ -132,7 +140,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @default_functions ["module_info", "behaviour_info"]
 
-  defp maybe_boost(item, callable, %Env{} = env) do
+  defp set_sort_scope(item, callable, %Env{} = env, default_local_priority \\ 1) do
     position_module = env.position_module
 
     %_{
@@ -150,12 +158,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
       cond do
         dunder? -> 9
         callback? -> 8
-        true -> 1
+        true -> default_local_priority
       end
 
     cond do
       origin === "Kernel" or origin === "Kernel.SpecialForms" or name in @default_functions ->
-        local_priority = if dunder?, do: 9, else: 1
         Builder.set_sort_scope(item, SortScope.global(deprecated?, local_priority))
 
       origin === position_module ->
@@ -215,4 +222,72 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   defp callback?(%_{name: name, metadata: metadata} = _callable) do
     Map.has_key?(metadata, :implementing) || name === "child_spec"
   end
+
+  defp capture_arity_matches?(arity, %Env{} = env) when is_integer(arity) do
+    case Ast.path_at(env.analysis, env.position) do
+      {:ok, path} ->
+        slash_arity_path?(path, arity) || arg_arity_path?(path, arity)
+
+      _ ->
+        false
+    end
+  end
+
+  # &fun|/2
+  defp slash_arity_path?(
+         [
+           fun,
+           {:/, _, [fun, {:__block__, _, [arity]}]} = slash_arity,
+           {:&, _, [slash_arity]}
+           | _
+         ],
+         arity
+       ) do
+    true
+  end
+
+  # &Mod.fun|/2
+  defp slash_arity_path?(
+         [
+           {:., _, _} = dot_fun,
+           {dot_fun, _, _} = dot_fun_call,
+           {:/, _, [dot_fun_call, {:__block__, _, [arity]}]} = slash_arity,
+           {:&, _, [slash_arity]}
+           | _
+         ],
+         arity
+       ) do
+    true
+  end
+
+  defp slash_arity_path?(_path, _arity), do: false
+
+  # fun|(x, y)
+  defp arg_arity_path?(
+         [
+           {atom, _, args} = call,
+           {:&, _, [call]}
+           | _
+         ],
+         arity
+       )
+       when is_atom(atom) and is_list(args) do
+    length(args) == arity
+  end
+
+  # Mod.fun|(x, y)
+  defp arg_arity_path?(
+         [
+           {:., _, _} = dot_fun,
+           {dot_fun, _, args} = call,
+           {:&, _, [call]}
+           | _
+         ],
+         arity
+       )
+       when is_list(args) do
+    length(args) == arity
+  end
+
+  defp arg_arity_path?(_path, _arity), do: false
 end
