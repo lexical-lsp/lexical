@@ -161,46 +161,47 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       end)
     end
 
-    test "arity > 1 provides snippets with arity and with parens and commas", %{project: project} do
+    test "arity > 1 suggests ordered snippets with arity and with parens and commas",
+         %{project: project} do
       source = ~q[
         Enum.map(1..10, &Enum.reduce_w|)
       ]
 
-      {:ok, [completion_with_arity, completion_with_args]} =
+      {:ok, [capture, args_capture]} =
         project
         |> complete(source)
         |> fetch_completion(kind: :function)
 
-      assert apply_completion(completion_with_arity) == ~q[
+      assert capture.detail == "(Capture)"
+
+      assert apply_completion(capture) == ~q[
         Enum.map(1..10, &Enum.reduce_while/3)
       ]
 
-      assert completion_with_args.insert_text_format == :snippet
+      assert args_capture.detail == "(Capture with arguments)"
+      assert args_capture.insert_text_format == :snippet
 
-      assert apply_completion(completion_with_args) == ~q[
+      assert apply_completion(args_capture) == ~q[
         Enum.map(1..10, &Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
       ]
+
+      assert capture.sort_text < args_capture.sort_text
     end
 
     test "work with Kernel arity one functions", %{project: project} do
-      source = "&is_ma|"
+      source = "&is_li|"
 
-      [capture, args_capture] =
+      {:ok, [capture, args_capture]} =
         project
         |> complete(source)
-        |> Enum.filter(fn completion ->
-          sort_text = completion.sort_text
-          # arity 1 and is is_map
-          String.ends_with?(sort_text, "001") and
-            String.contains?(sort_text, "is_map")
-        end)
+        |> fetch_completion("is_list")
 
       assert capture.detail == "(Capture)"
-      assert apply_completion(capture) == "&is_map/1"
+      assert apply_completion(capture) == "&is_list/1"
 
       assert args_capture.detail == "(Capture with arguments)"
       assert args_capture.insert_text_format == :snippet
-      assert apply_completion(args_capture) == "&is_map(${1:term})"
+      assert apply_completion(args_capture) == "&is_list(${1:term})"
     end
 
     test "work with kernel two arity functions", %{project: project} do

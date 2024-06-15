@@ -81,7 +81,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: name_and_arity,
         kind: :function,
         detail: "(Capture)",
-        sort_text: sort_text(callable),
+        sort_text: sort_text(callable, "0"),
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
@@ -93,7 +93,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
         label: label(callable, env),
         kind: :function,
         detail: "(Capture with arguments)",
-        sort_text: sort_text(callable),
+        sort_text: sort_text(callable, "1"),
         filter_text: "#{callable.name}",
         documentation: build_docs(callable)
       )
@@ -180,7 +180,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     "#{name}/#{arity}"
   end
 
-  defp sort_text(%_callable{name: name, arity: arity}) do
+  defp sort_text(%_callable{name: name, arity: arity}, suffix \\ "") do
     normalized_arity =
       arity
       |> Integer.to_string()
@@ -192,7 +192,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     # Using a space sorts correctly, as it's the only ascii
     # character lower than bang
 
-    "#{name} #{normalized_arity}"
+    "#{name} #{normalized_arity}#{suffix}"
   end
 
   defp build_docs(%{summary: summary, spec: spec})
