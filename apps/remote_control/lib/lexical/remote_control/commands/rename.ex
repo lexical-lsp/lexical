@@ -5,22 +5,30 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   # Therefore, we need this module to tell us if lexical is currently in the process of renaming.
 
   alias Lexical.RemoteControl.Api.Messages
+  alias Lexical.RemoteControl.Commands.Reindex
   require Logger
   import Messages
 
   defmodule State do
+    @type uri_to_expected_operation :: %{
+            Lexical.uri() => Messages.file_changed() | Messages.file_saved()
+          }
+
     @type t :: %__MODULE__{
-            uri_to_expected_operation: %{
-              Lexical.uri() => Messages.file_changed() | Messages.file_saved()
-            },
+            uri_to_expected_operation: uri_to_expected_operation(),
+            raw_uri_to_expected_operation: uri_to_expected_operation(),
             on_update_progess: fun(),
             on_complete: fun()
           }
-    defstruct uri_to_expected_operation: %{}, on_update_progess: nil, on_complete: nil
+    defstruct uri_to_expected_operation: %{},
+              raw_uri_to_expected_operation: %{},
+              on_update_progess: nil,
+              on_complete: nil
 
     def new(uri_to_expected_operation, on_update_progess, on_complete) do
       %__MODULE__{
         uri_to_expected_operation: uri_to_expected_operation,
+        raw_uri_to_expected_operation: uri_to_expected_operation,
         on_update_progess: on_update_progess,
         on_complete: on_complete
       }
@@ -45,6 +53,7 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
       if Enum.empty?(new_uri_with_expected_operation) do
         state.on_complete.()
+        reindex_all_renamed_files(state)
       end
 
       %__MODULE__{state | uri_to_expected_operation: new_uri_with_expected_operation}
@@ -63,6 +72,12 @@ defmodule Lexical.RemoteControl.Commands.Rename do
         _ ->
           uri_to_operation
       end
+    end
+
+    defp reindex_all_renamed_files(%__MODULE__{} = state) do
+      state.raw_uri_to_expected_operation
+      |> Map.keys()
+      |> Enum.each(&Reindex.uri/1)
     end
   end
 
@@ -99,20 +114,12 @@ defmodule Lexical.RemoteControl.Commands.Rename do
   # Instead, it should call this function to synchronously update the status,
   # thus preventing failures due to latency issues.
   def update_progress(message) do
-    if in_progress?() do
-      GenServer.cast(__MODULE__, {:update_progress, message})
-    else
-      :ok
-    end
-  end
-
-  def in_progress? do
     pid = Process.whereis(__MODULE__)
 
     if pid && Process.alive?(pid) do
-      GenServer.call(__MODULE__, :in_progress?)
+      GenServer.cast(__MODULE__, {:update_progress, message})
     else
-      false
+      {:error, :not_in_rename_progress}
     end
   end
 

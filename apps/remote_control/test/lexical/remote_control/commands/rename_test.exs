@@ -38,7 +38,6 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
         on_complete
       )
 
-    assert Rename.in_progress?()
     assert_called(Proxy.start_buffering())
   end
 
@@ -86,11 +85,11 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
     Rename.update_progress(file_changed(uri: uri1))
     assert_receive {:update_progress, 1, ""}
     refute_receive :complete_progress
-    assert Rename.in_progress?()
   end
 
-  test "it should return `:ok` when updating the progress if the process is not alive" do
-    assert :ok = Rename.update_progress(file_changed(uri: "file://file.ex"))
+  test "it should return :error when updating the progress if the process is not alive" do
+    assert {:error, :not_in_rename_progress} =
+             Rename.update_progress(file_changed(uri: "file://file.ex"))
   end
 
   defp update_progress(pid, delta, message) do
