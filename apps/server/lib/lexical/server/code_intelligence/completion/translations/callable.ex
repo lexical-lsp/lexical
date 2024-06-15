@@ -75,40 +75,56 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   def capture_completions(%callable_module{} = callable, %Env{} = env)
       when callable_module in @callables do
     name_and_arity = name_and_arity(callable)
+    snippet = callable_snippet(callable, env)
 
-    local_priority =
-      if capture_arity_matches?(callable.arity, env) do
-        0
-      else
-        1
+    capture_opts = [
+      label: name_and_arity,
+      kind: :function,
+      detail: "(Capture)",
+      sort_text: sort_text(callable, "0"),
+      filter_text: "#{callable.name}",
+      documentation: build_docs(callable)
+    ]
+
+    call_opts = [
+      label: label(callable, env),
+      kind: :function,
+      detail: "(Capture with arguments)",
+      sort_text: sort_text(callable, "1"),
+      filter_text: "#{callable.name}",
+      documentation: build_docs(callable)
+    ]
+
+    maybe_node = fetch_captured_arity_node(env)
+
+    completions =
+      case maybe_node do
+        {:ok, node} ->
+          range = Ast.Range.fetch!(node, env.document)
+          capture = Builder.text_edit(env, name_and_arity, range, capture_opts)
+          call = Builder.text_edit_snippet(env, snippet, range, call_opts)
+          [capture, call]
+
+        :error ->
+          capture = Builder.plain_text(env, name_and_arity, capture_opts)
+          call = Builder.snippet(env, snippet, call_opts)
+          [capture, call]
       end
 
-    complete_capture =
-      env
-      |> Builder.plain_text(name_and_arity,
-        label: name_and_arity,
-        kind: :function,
-        detail: "(Capture)",
-        sort_text: sort_text(callable, "0"),
-        filter_text: "#{callable.name}",
-        documentation: build_docs(callable)
-      )
-      |> set_sort_scope(callable, env, local_priority)
-
-    call_capture =
-      env
-      |> Builder.snippet(callable_snippet(callable, env),
-        label: label(callable, env),
-        kind: :function,
-        detail: "(Capture with arguments)",
-        sort_text: sort_text(callable, "1"),
-        filter_text: "#{callable.name}",
-        documentation: build_docs(callable)
-      )
-      |> set_sort_scope(callable, env, local_priority)
-
-    [complete_capture, call_capture]
+    Enum.map(completions, fn completion ->
+      with {:ok, node} <- maybe_node,
+           true <- node_arity_matches?(node, callable.arity) do
+        set_sort_scope(completion, callable, env, 0)
+      else
+        _ ->
+          set_sort_scope(completion, callable, env, 1)
+      end
+    end)
   end
+
+  defp node_arity_matches?({:/, _, [_, {:__block__, _, [arity]}]}, arity), do: true
+  defp node_arity_matches?({_, _, args}, arity) when length(args) == arity, do: true
+  defp node_arity_matches?(_node, _arity), do: false
 
   defp argument_names(%_{arity: 0}, _env) do
     []
@@ -223,71 +239,64 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
     Map.has_key?(metadata, :implementing) || name === "child_spec"
   end
 
-  defp capture_arity_matches?(arity, %Env{} = env) when is_integer(arity) do
+  defp fetch_captured_arity_node(%Env{} = env) do
     case Ast.path_at(env.analysis, env.position) do
       {:ok, path} ->
-        slash_arity_path?(path, arity) || arg_arity_path?(path, arity)
+        with :error <- fetch_captured_slash(path),
+             :error <- fetch_captured_call(path) do
+          :error
+        end
 
       _ ->
-        false
+        :error
     end
   end
 
   # &fun|/2
-  defp slash_arity_path?(
-         [
-           fun,
-           {:/, _, [fun, {:__block__, _, [arity]}]} = slash_arity,
-           {:&, _, [slash_arity]}
-           | _
-         ],
-         arity
-       ) do
-    true
+  defp fetch_captured_slash([
+         fun,
+         {:/, _, [fun, {:__block__, _, [arity]}]} = slash_arity,
+         {:&, _, [slash_arity]}
+         | _
+       ])
+       when is_integer(arity) do
+    {:ok, slash_arity}
   end
 
   # &Mod.fun|/2
-  defp slash_arity_path?(
-         [
-           {:., _, _} = dot_fun,
-           {dot_fun, _, _} = dot_fun_call,
-           {:/, _, [dot_fun_call, {:__block__, _, [arity]}]} = slash_arity,
-           {:&, _, [slash_arity]}
-           | _
-         ],
-         arity
-       ) do
-    true
+  defp fetch_captured_slash([
+         {:., _, _} = dot_fun,
+         {dot_fun, _, _} = dot_fun_call,
+         {:/, _, [dot_fun_call, {:__block__, _, [arity]}]} = slash_arity,
+         {:&, _, [slash_arity]}
+         | _
+       ])
+       when is_integer(arity) do
+    {:ok, slash_arity}
   end
 
-  defp slash_arity_path?(_path, _arity), do: false
+  defp fetch_captured_slash(_path), do: :error
 
-  # fun|(x, y)
-  defp arg_arity_path?(
-         [
-           {atom, _, args} = call,
-           {:&, _, [call]}
-           | _
-         ],
-         arity
-       )
+  # &fun|(x, y)
+  defp fetch_captured_call([
+         {atom, _, args} = call,
+         {:&, _, [call]}
+         | _
+       ])
        when is_atom(atom) and is_list(args) do
-    length(args) == arity
+    {:ok, call}
   end
 
-  # Mod.fun|(x, y)
-  defp arg_arity_path?(
-         [
-           {:., _, _} = dot_fun,
-           {dot_fun, _, args} = call,
-           {:&, _, [call]}
-           | _
-         ],
-         arity
-       )
+  # &Mod.fun|(x, y)
+  defp fetch_captured_call([
+         {:., _, _} = dot_fun,
+         {dot_fun, _, args} = call,
+         {:&, _, [call]}
+         | _
+       ])
        when is_list(args) do
-    length(args) == arity
+    {:ok, call}
   end
 
-  defp arg_arity_path?(_path, _arity), do: false
+  defp fetch_captured_call(_path), do: :error
 end

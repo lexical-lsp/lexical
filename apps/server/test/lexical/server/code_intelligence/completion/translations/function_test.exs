@@ -241,6 +241,17 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
         assert explicitly_sorted?, "expected explicitly sorted completions for: #{source}"
       end
     end
+
+    test "replace slash arity with another", %{project: project} do
+      source = "&is_fun|/2"
+
+      assert {:ok, capture} =
+               project
+               |> complete(source)
+               |> fetch_completion("is_function/1")
+
+      assert apply_completion(capture) == "&is_function/1"
+    end
   end
 
   describe "handling default arguments" do
