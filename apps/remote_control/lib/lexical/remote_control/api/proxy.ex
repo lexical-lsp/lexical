@@ -66,14 +66,6 @@ defmodule Lexical.RemoteControl.Api.Proxy do
     RemoteControl.Dispatch.broadcast(message)
   end
 
-  def broadcast(file_changed() = message) do
-    RemoteControl.Dispatch.broadcast(message)
-  end
-
-  def broadcast(file_opened() = message) do
-    RemoteControl.Dispatch.broadcast(message)
-  end
-
   def broadcast(message) do
     mfa = to_mfa(RemoteControl.Dispatch.broadcast(message))
     :gen_statem.call(__MODULE__, buffer(contents: mfa))
