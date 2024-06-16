@@ -1,4 +1,5 @@
 defmodule Lexical.Server.Provider.Handlers.WorkspaceSymbol do
+  alias Lexical.Project
   alias Lexical.Protocol.Requests.WorkspaceSymbol
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.Location
@@ -6,16 +7,15 @@ defmodule Lexical.Server.Provider.Handlers.WorkspaceSymbol do
   alias Lexical.Protocol.Types.Workspace.Symbol
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.CodeIntelligence.Symbols
-  alias Lexical.Server.Provider.Env
 
   require SymbolKind
 
   require Logger
 
-  def handle(%WorkspaceSymbol{} = request, %Env{} = env) do
+  def handle(%WorkspaceSymbol{} = request, %Project{} = project) do
     symbols =
       if String.length(request.query) > 1 do
-        env.project
+        project
         |> Api.workspace_symbols(request.query)
         |> tap(fn symbols -> Logger.info("syms #{inspect(Enum.take(symbols, 5))}") end)
         |> Enum.map(&to_response/1)

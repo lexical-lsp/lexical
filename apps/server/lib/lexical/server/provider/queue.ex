@@ -1,9 +1,9 @@
 defmodule Lexical.Server.Provider.Queue do
   defmodule State do
+    alias Lexical.Project
     alias Lexical.Proto.Convert
     alias Lexical.Proto.LspTypes.ResponseError
     alias Lexical.Protocol.Requests
-    alias Lexical.Server.Provider.Env
     alias Lexical.Server.Provider.Handlers
     alias Lexical.Server.Provider.Queue
     alias Lexical.Server.Transport
@@ -17,11 +17,11 @@ defmodule Lexical.Server.Provider.Queue do
       %__MODULE__{}
     end
 
-    @spec add(t, Requests.request(), Env.t()) :: {:ok, t} | :error
-    def add(%__MODULE__{} = state, request, env) do
+    @spec add(t, Requests.request(), Project.t()) :: {:ok, t} | :error
+    def add(%__MODULE__{} = state, request, %Project{} = project) do
       with {:ok, handler_module} <- Handlers.for_request(request),
            {:ok, req} <- Convert.to_native(request) do
-        task = %Task{} = as_task(request, fn -> handler_module.handle(req, env) end)
+        task = %Task{} = as_task(request, fn -> handler_module.handle(req, project) end)
         request_id = to_string(request.id)
 
         new_state = %__MODULE__{
@@ -160,21 +160,20 @@ defmodule Lexical.Server.Provider.Queue do
     end
   end
 
+  alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Configuration
-  alias Lexical.Server.Provider.Env
 
   use GenServer
 
   # public interface
-  @spec add(Requests.request(), Configuration.t() | Env.t()) :: :ok
+  @spec add(Requests.request(), Configuration.t() | Project.t()) :: :ok
   def add(request, %Configuration{} = config) do
-    env = Env.from_configuration(config)
-    add(request, env)
+    GenServer.call(__MODULE__, {:add, request, config.project})
   end
 
-  def add(request, %Env{} = env) do
-    GenServer.call(__MODULE__, {:add, request, env})
+  def add(request, %Project{} = project) do
+    GenServer.call(__MODULE__, {:add, request, project})
   end
 
   @spec size() :: non_neg_integer()
@@ -222,9 +221,9 @@ defmodule Lexical.Server.Provider.Queue do
     {:ok, State.new()}
   end
 
-  def handle_call({:add, request, env}, _from, %State{} = state) do
+  def handle_call({:add, request, project}, _from, %State{} = state) do
     {reply, new_state} =
-      case State.add(state, request, env) do
+      case State.add(state, request, project) do
         {:ok, new_state} -> {:ok, new_state}
         error -> {error, state}
       end
