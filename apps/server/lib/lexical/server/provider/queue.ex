@@ -104,12 +104,6 @@ defmodule Lexical.Server.Provider.Queue do
               write_reply(reply)
 
               {:request_complete, request}
-
-            {:reply_and_alert, reply} ->
-              write_reply(reply)
-
-              Lexical.Server.response_complete(request, reply)
-              {:request_complete, request}
           end
         rescue
           e ->

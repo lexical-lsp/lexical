@@ -1,7 +1,6 @@
 defmodule Lexical.Server do
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
-  alias Lexical.Protocol.Responses
   alias Lexical.Server.Provider
   alias Lexical.Server.State
 
@@ -22,11 +21,6 @@ defmodule Lexical.Server do
   ]
 
   @dialyzer {:nowarn_function, apply_to_state: 2}
-
-  @spec response_complete(Requests.request(), Responses.response()) :: :ok
-  def response_complete(request, response) do
-    GenServer.call(__MODULE__, {:response_complete, request, response})
-  end
 
   @spec server_request(
           Requests.request(),
@@ -51,10 +45,6 @@ defmodule Lexical.Server do
 
   def init(_) do
     {:ok, State.new()}
-  end
-
-  def handle_call({:response_complete, _request, _response}, _from, %State{} = state) do
-    {:reply, :ok, state}
   end
 
   def handle_call({:server_request, request, on_response}, _from, %State{} = state) do
