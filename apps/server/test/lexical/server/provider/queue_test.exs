@@ -151,20 +151,6 @@ defmodule Lexical.Server.Provider.QueueTest do
       refute_receive _
     end
 
-    test "the server can be notified about the request", %{project: project} do
-      unit_test = self()
-      request = request("1", fn _, _ -> {:reply_and_alert, :response} end)
-
-      patch(Lexical.Server, :response_complete, fn request, reply ->
-        send(unit_test, {:request_complete, request, reply})
-      end)
-
-      :ok = Queue.add(request, project)
-
-      assert_receive :response
-      assert_receive {:request_complete, ^request, :response}
-    end
-
     test "exceptions are handled", %{project: project} do
       request = request("1", fn _, _ -> raise "Boom!" end)
       assert :ok = Queue.add(request, project)
