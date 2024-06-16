@@ -57,15 +57,6 @@ defmodule Lexical.Server.Provider.QueueTest do
       assert error.message == "Request cancelled"
     end
 
-    test "integers are stringified", %{config: config} do
-      request = request("1", fn _, _ -> Process.sleep(500) end)
-      assert :ok = Queue.add(request, config)
-
-      :ok = Queue.cancel(1)
-
-      assert_receive %{id: "1", error: _}
-    end
-
     test "passing in a request for cancellation", %{config: config} do
       request = request("1", fn _, _ -> Process.sleep(500) end)
       :ok = Queue.add(request, config)

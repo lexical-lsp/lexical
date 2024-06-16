@@ -22,12 +22,11 @@ defmodule Lexical.Server.Provider.Queue do
       with {:ok, handler_module} <- Handlers.for_request(request),
            {:ok, req} <- Convert.to_native(request) do
         task = %Task{} = as_task(request, fn -> handler_module.handle(req, config) end)
-        request_id = to_string(request.id)
 
         new_state = %__MODULE__{
           state
-          | ids_to_tasks: Map.put(state.ids_to_tasks, request_id, task),
-            pids_to_ids: Map.put(state.pids_to_ids, task.pid, request_id)
+          | ids_to_tasks: Map.put(state.ids_to_tasks, request.id, task),
+            pids_to_ids: Map.put(state.pids_to_ids, task.pid, request.id)
         }
 
         {:ok, new_state}
@@ -41,7 +40,7 @@ defmodule Lexical.Server.Provider.Queue do
       end
     end
 
-    @spec cancel(t, pos_integer()) :: t
+    @spec cancel(t, request_id :: term()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.ids_to_tasks, request_id),
            :ok <- Queue.Supervisor.cancel(task) do
@@ -130,9 +129,6 @@ defmodule Lexical.Server.Provider.Queue do
       Queue.Supervisor.run_in_task(handler)
     end
 
-    alias Lexical.Protocol.Types.ErrorCodes
-    require ErrorCodes
-
     defp write_reply(response) do
       case Convert.to_lsp(response) do
         {:ok, lsp_response} ->
@@ -178,13 +174,7 @@ defmodule Lexical.Server.Provider.Queue do
     cancel(request_id)
   end
 
-  def cancel(request_id) when is_integer(request_id) do
-    request_id
-    |> Integer.to_string()
-    |> cancel()
-  end
-
-  def cancel(request_id) when is_binary(request_id) do
+  def cancel(request_id) do
     GenServer.call(__MODULE__, {:cancel, request_id})
   end
 
@@ -192,7 +182,7 @@ defmodule Lexical.Server.Provider.Queue do
     running?(request_id)
   end
 
-  def running?(request_id) when is_binary(request_id) do
+  def running?(request_id) do
     GenServer.call(__MODULE__, {:running?, request_id})
   end
 
