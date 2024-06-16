@@ -53,12 +53,11 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
   end
 
   defp new_text_document_edit(%Changes{} = changes) do
-    # NOTE: the `0` here is for use in VSCode.
-    # Before May 4, 2024, if this `0` number is not set,
-    # the rename function in VSCode will not work,
-    # while other editors seem not to care about this field.
     %Changes{document: document, edits: edits} = changes
-    text_document = TextDocument.OptionalVersioned.Identifier.new(uri: document.uri, version: 0)
+
+    text_document =
+      TextDocument.OptionalVersioned.Identifier.new(uri: document.uri, version: document.version)
+
     TextDocument.Edit.new(edits: edits, text_document: text_document)
   end
 
