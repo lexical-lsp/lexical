@@ -78,14 +78,13 @@ defmodule Lexical.Server.State do
   end
 
   def in_flight?(%__MODULE__{} = state, request_id) do
-    Map.has_key?(state.in_flight_requests, to_string(request_id))
+    Map.has_key?(state.in_flight_requests, request_id)
   end
 
   def add_request(%__MODULE__{} = state, request, callback) do
     Transport.write(request)
 
-    in_flight_requests =
-      Map.put(state.in_flight_requests, to_string(request.id), {request, callback})
+    in_flight_requests = Map.put(state.in_flight_requests, request.id, {request, callback})
 
     %__MODULE__{state | in_flight_requests: in_flight_requests}
   end
@@ -93,7 +92,7 @@ defmodule Lexical.Server.State do
   def finish_request(%__MODULE__{} = state, response) do
     %{"id" => response_id} = response
 
-    case Map.pop(state.in_flight_requests, to_string(response_id)) do
+    case Map.pop(state.in_flight_requests, response_id) do
       {{%request_module{} = request, callback}, in_flight_requests} ->
         case request_module.parse_response(response) do
           {:ok, response} ->
