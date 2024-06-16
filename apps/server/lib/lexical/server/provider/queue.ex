@@ -43,10 +43,8 @@ defmodule Lexical.Server.Provider.Queue do
     @spec cancel(t, request_id :: term()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.ids_to_tasks, request_id),
-           :ok <- Queue.Supervisor.cancel(task) do
-        error = ResponseError.new(message: "Request cancelled", code: :request_cancelled)
-        reply = %{id: request_id, error: error}
-        Transport.write(reply)
+           :ok <- Queue.cancel_task(task) do
+        write_error(request_id, "Request cancelled", :request_cancelled)
 
         %State{
           state
@@ -86,9 +84,6 @@ defmodule Lexical.Server.Provider.Queue do
     defp maybe_log_task(:normal, _),
       do: :ok
 
-    defp maybe_log_task(reason, %{id: request_id} = _request),
-      do: maybe_log_task(reason, request_id)
-
     defp maybe_log_task(reason, request_id),
       do: Logger.warning("Request id #{request_id} failed with reason #{inspect(reason)}")
 
@@ -108,25 +103,13 @@ defmodule Lexical.Server.Provider.Queue do
           e ->
             exception_string = Exception.format(:error, e, __STACKTRACE__)
             Logger.error(exception_string)
-
-            response_error =
-              ResponseError.new(
-                message: exception_string,
-                code: :internal_error
-              )
-
-            error = %{
-              id: request.id,
-              error: response_error
-            }
-
-            Transport.write(error)
+            write_error(request.id, exception_string)
 
             {:request_complete, request}
         end
       end
 
-      Queue.Supervisor.run_in_task(handler)
+      Queue.run_task(handler)
     end
 
     defp write_reply(response) do
@@ -135,18 +118,30 @@ defmodule Lexical.Server.Provider.Queue do
           Transport.write(lsp_response)
 
         error ->
-          Logger.critical(
-            "Failed to convert into a response #{inspect(error)}  #{inspect(response)}"
-          )
+          error_message = """
+          Failed to convert #{response.__struct__}:
 
-          response_error =
-            ResponseError.new(
-              code: :internal_error,
-              message: "Failed to convert #{response.__struct__} due to #{inspect(error)}"
-            )
+          #{inspect(error, pretty: true)}\
+          """
 
-          Transport.write(%{id: response.id, error: response_error})
+          Logger.critical("""
+          #{error_message}
+
+          #{inspect(response, pretty: true)}\
+          """)
+
+          write_error(response.id, error_message)
       end
+    end
+
+    defp write_error(id, message, code \\ :internal_error) do
+      error =
+        ResponseError.new(
+          code: code,
+          message: message
+        )
+
+      Transport.write(%{id: id, error: error})
     end
   end
 
@@ -155,7 +150,20 @@ defmodule Lexical.Server.Provider.Queue do
 
   use GenServer
 
-  # public interface
+  def task_supervisor_name do
+    __MODULE__.TaskSupervisor
+  end
+
+  @doc false
+  def run_task(fun) when is_function(fun) do
+    Task.Supervisor.async_nolink(task_supervisor_name(), fun)
+  end
+
+  @doc false
+  def cancel_task(%Task{} = task) do
+    Task.Supervisor.terminate_child(task_supervisor_name(), task.pid)
+  end
+
   @spec add(Requests.request(), Configuration.t()) :: :ok
   def add(request, %Configuration{} = config) do
     GenServer.call(__MODULE__, {:add, request, config})
@@ -187,10 +195,6 @@ defmodule Lexical.Server.Provider.Queue do
   end
 
   # genserver callbacks
-
-  def child_spec do
-    __MODULE__
-  end
 
   def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -234,6 +238,4 @@ defmodule Lexical.Server.Provider.Queue do
     # This head handles the replies from the tasks, which we don't really care about.
     {:noreply, state}
   end
-
-  # private
 end

@@ -16,7 +16,7 @@ defmodule Lexical.Server.Provider.QueueTest do
   end
 
   setup do
-    {:ok, _} = start_supervised(Queue.Supervisor.child_spec())
+    {:ok, _} = start_supervised({Task.Supervisor, name: Queue.task_supervisor_name()})
     {:ok, _} = start_supervised(Queue)
     unit_test = self()
     patch(Transport, :write, &send(unit_test, &1))
