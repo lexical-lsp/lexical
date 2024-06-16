@@ -16,8 +16,8 @@ defmodule Lexical.Server.Application do
       document_store_child_spec(),
       Server,
       {DynamicSupervisor, Server.Project.Supervisor.options()},
-      Provider.Queue.Supervisor.child_spec(),
-      Provider.Queue.child_spec(),
+      {Task.Supervisor, name: Provider.Queue.task_supervisor_name()},
+      Provider.Queue,
       {Transport.StdIO, [:standard_io, &Server.protocol_message/1]}
     ]
 
