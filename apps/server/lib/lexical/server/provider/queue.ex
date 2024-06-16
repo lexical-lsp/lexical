@@ -9,7 +9,7 @@ defmodule Lexical.Server.Provider.Queue do
     alias Lexical.Server.Transport
     require Logger
 
-    defstruct tasks_by_id: %{}, pids_to_ids: %{}
+    defstruct ids_to_tasks: %{}, pids_to_ids: %{}
 
     @type t :: %__MODULE__{}
 
@@ -26,7 +26,7 @@ defmodule Lexical.Server.Provider.Queue do
 
         new_state = %__MODULE__{
           state
-          | tasks_by_id: Map.put(state.tasks_by_id, request_id, task),
+          | ids_to_tasks: Map.put(state.ids_to_tasks, request_id, task),
             pids_to_ids: Map.put(state.pids_to_ids, task.pid, request_id)
         }
 
@@ -43,7 +43,7 @@ defmodule Lexical.Server.Provider.Queue do
 
     @spec cancel(t, pos_integer()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
-      with {:ok, %Task{} = task} <- Map.fetch(state.tasks_by_id, request_id),
+      with {:ok, %Task{} = task} <- Map.fetch(state.ids_to_tasks, request_id),
            :ok <- Queue.Supervisor.cancel(task) do
         error = ResponseError.new(message: "Request cancelled", code: :request_cancelled)
         reply = %{id: request_id, error: error}
@@ -51,7 +51,7 @@ defmodule Lexical.Server.Provider.Queue do
 
         %State{
           state
-          | tasks_by_id: Map.delete(state.tasks_by_id, request_id),
+          | ids_to_tasks: Map.delete(state.ids_to_tasks, request_id),
             pids_to_ids: Map.delete(state.pids_to_ids, task.pid)
         }
       else
@@ -61,7 +61,7 @@ defmodule Lexical.Server.Provider.Queue do
     end
 
     def size(%__MODULE__{} = state) do
-      map_size(state.tasks_by_id)
+      map_size(state.ids_to_tasks)
     end
 
     def task_finished(%__MODULE__{} = state, pid, reason) do
@@ -75,13 +75,13 @@ defmodule Lexical.Server.Provider.Queue do
           %__MODULE__{
             state
             | pids_to_ids: new_pids_to_ids,
-              tasks_by_id: Map.delete(state.tasks_by_id, request_id)
+              ids_to_tasks: Map.delete(state.ids_to_tasks, request_id)
           }
       end
     end
 
     def running?(%__MODULE__{} = state, request_id) do
-      Map.has_key?(state.tasks_by_id, request_id)
+      Map.has_key?(state.ids_to_tasks, request_id)
     end
 
     defp maybe_log_task(:normal, _),
