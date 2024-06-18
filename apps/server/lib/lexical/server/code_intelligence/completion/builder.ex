@@ -20,85 +20,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   alias Lexical.Protocol.Types.Markup.Content
   alias Lexical.Server.CodeIntelligence.Completion.SortScope
 
-  @type insert_text_format :: :plain_text | :snippet
-
-  @type completion_item_kind ::
-          :text
-          | :method
-          | :function
-          | :constructor
-          | :field
-          | :variable
-          | :class
-          | :interface
-          | :module
-          | :property
-          | :unit
-          | :value
-          | :enum
-          | :keyword
-          | :snippet
-          | :color
-          | :file
-          | :reference
-          | :folder
-          | :enum_member
-          | :constant
-          | :struct
-          | :event
-          | :operator
-          | :type_parameter
-
-  @type completion_item_tag :: :deprecated
-
-  @type item_opt ::
-          {:deprecated, boolean}
-          | {:detail, String.t()}
-          | {:documentation, String.t()}
-          | {:filter_text, String.t()}
-          | {:insert_text, String.t()}
-          | {:kind, completion_item_kind}
-          | {:label, String.t()}
-          | {:preselect, boolean()}
-          | {:sort_text, String.t()}
-          | {:tags, [completion_item_tag]}
-
-  @type item_opts :: [item_opt]
-
-  @type maybe_string :: String.t() | nil
-
-  @opaque translated_item :: %{
-            __struct__: module(),
-            detail: maybe_string(),
-            documentation: maybe_string(),
-            filter_text: maybe_string(),
-            insert_text: String.t(),
-            kind: completion_item_kind(),
-            label: String.t(),
-            preselect: boolean | nil,
-            sort_text: maybe_string(),
-            tags: [completion_item_tag] | nil
-          }
+  @doc "Fields found in `t:Lexical.Protocol.Types.Completion.Item.t()`"
+  @type item_opts :: keyword()
 
   @type t :: module()
 
-  @type result :: translated_item | :skip
-
   @type line_range :: {start_character :: pos_integer, end_character :: pos_integer}
 
-  @spec snippet(Env.t(), String.t(), item_opts) :: translated_item()
+  @spec snippet(Env.t(), String.t(), item_opts) :: Completion.Item.t()
   def snippet(%Env{} = env, text, options \\ []) do
     range = prefix_range(env)
     text_edit_snippet(env, text, range, options)
   end
 
-  @spec plain_text(Env.t(), String.t(), item_opts) :: translated_item()
+  @spec plain_text(Env.t(), String.t(), item_opts) :: Completion.Item.t()
   def plain_text(%Env{} = env, text, options \\ []) do
     range = prefix_range(env)
     text_edit(env, text, range, options)
   end
 
-  @spec text_edit(Env.t(), String.t(), line_range, item_opts) :: translated_item()
+  @spec text_edit(Env.t(), String.t(), line_range, item_opts) :: Completion.Item.t()
   def text_edit(%Env{} = env, text, {start_char, end_char}, options \\ []) do
     line_number = env.position.line
 
@@ -117,8 +58,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
     |> set_sort_scope(SortScope.default())
   end
 
-  @spec text_edit_snippet(Env.t(), String.t(), line_range, item_opts) ::
-          translated_item()
+  @spec text_edit_snippet(Env.t(), String.t(), line_range, item_opts) :: Completion.Item.t()
   def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options \\ []) do
     snippet = String.trim_trailing(text, "\n")
     line_number = env.position.line
@@ -144,7 +84,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   def fallback("", fallback), do: fallback
   def fallback(detail, _), do: detail
 
-  @spec set_sort_scope(translated_item, sort_scope :: String.t()) :: translated_item
+  @spec set_sort_scope(Completion.Item.t(), sort_scope :: String.t()) :: Completion.Item.t()
   def set_sort_scope(item, default \\ SortScope.default())
 
   def set_sort_scope(%Completion.Item{} = item, sort_scope)

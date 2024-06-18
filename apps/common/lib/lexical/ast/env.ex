@@ -27,6 +27,8 @@ defmodule Lexical.Ast.Env do
   @type t :: %__MODULE__{
           project: Project.t(),
           analysis: Analysis.t(),
+          document: Document.t(),
+          line: String.t(),
           prefix: String.t(),
           suffix: String.t(),
           position: Position.t(),
@@ -34,9 +36,8 @@ defmodule Lexical.Ast.Env do
           zero_based_character: non_neg_integer()
         }
 
-  @type maybe_binary :: binary | nil
-  @type token_value :: String.t() | charlist
-  @type lexer_token :: {atom, token_value}
+  @type token_value :: String.t() | charlist() | atom()
+  @type lexer_token :: {atom, token_value, {line :: pos_integer(), col :: pos_integer()}}
   @type token_count :: pos_integer | :all
 
   @type context_type ::
@@ -48,6 +49,12 @@ defmodule Lexical.Ast.Env do
           | :struct_field_value
           | :function_capture
           | :bitstring
+          | :comment
+          | :string
+          | :use
+          | :impl
+          | :spec
+          | :type
 
   def new(%Project{} = project, %Analysis{} = analysis, %Position{} = cursor_position) do
     zero_based_character = cursor_position.character - 1
@@ -87,7 +94,7 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  @spec prefix_tokens(5, token_count) :: [lexer_token]
+  @spec prefix_tokens(t, token_count) :: [lexer_token]
   def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
     stream = Tokens.prefix_stream(env.document, env.position)
 
@@ -178,7 +185,7 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  @spec empty?(maybe_binary) :: boolean()
+  @spec empty?(String.t()) :: boolean()
   def empty?("") do
     true
   end

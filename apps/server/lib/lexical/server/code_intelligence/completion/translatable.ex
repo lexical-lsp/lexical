@@ -1,11 +1,14 @@
 defprotocol Lexical.Server.CodeIntelligence.Completion.Translatable do
   alias Lexical.Ast.Env
+  alias Lexical.Protocol.Types.Completion
   alias Lexical.Server.CodeIntelligence.Completion.Builder
 
   @type t :: any()
 
+  @type translated :: [Completion.Item.t()] | Completion.Item.t() | :skip
+
   @fallback_to_any true
-  @spec translate(t(), Builder.t(), Env.t()) :: Builder.result()
+  @spec translate(t, Builder.t(), Env.t()) :: translated
   def translate(item, builder, env)
 end
 
