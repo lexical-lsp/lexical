@@ -1,4 +1,4 @@
-defmodule Lexical.Completion.SortScope do
+defmodule Lexical.Server.CodeIntelligence.Completion.SortScope do
   @moduledoc """
   Enumerated categories for sorting completion items.
 

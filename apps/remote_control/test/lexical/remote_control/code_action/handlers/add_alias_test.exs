@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.CodeUnit
-  alias Lexical.Completion.SortScope
   alias Lexical.Document
   alias Lexical.Document.Line
   alias Lexical.Document.Range
@@ -258,7 +257,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
     end
 
     test "aliases for struct references don't include non-struct modules" do
-      {:ok, added} = add_alias("%Scope|{}", [SortScope, Scope])
+      {:ok, added} = add_alias("%Scope|{}", [Lexical.Ast, Scope])
 
       expected = ~q[
       alias Lexical.Ast.Analysis.Scope

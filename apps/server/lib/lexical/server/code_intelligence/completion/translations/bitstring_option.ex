@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.BitstringOption do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
-  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
   require Logger

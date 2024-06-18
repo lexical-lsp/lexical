@@ -1,9 +1,9 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.StructField do
   alias Future.Code, as: Code
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
-  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
   defimpl Translatable, for: Candidate.StructField do
