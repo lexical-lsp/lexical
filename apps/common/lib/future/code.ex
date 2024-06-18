@@ -1,19 +1,23 @@
-# Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/lib/code.ex
-# I commented print_diagnostic/1, because it is not used in the codebase.
-# And I changed string_to_quoted/2 to make it use :future_elixir
+# https://github.com/elixir-lang/elixir/blob/e8ea6a52596324cef9ebb95390d51c84c93bf73d/lib/elixir/lib/code.ex
+#
+# Changes:
+# - Code -> Future.Code
+# - :elixir -> :future_elixir
+# - :elixir_errors -> :future_elixir_errors
+
 defmodule Future.Code do
   @moduledoc ~S"""
   Utilities for managing code compilation, code evaluation, and code loading.
 
   This module complements Erlang's [`:code` module](`:code`)
-  to add behaviour which is specific to Elixir. For functions to
+  to add behavior which is specific to Elixir. For functions to
   manipulate Elixir's AST (rather than evaluating it), see the
   `Macro` module.
 
   ## Working with files
 
   This module contains three functions for compiling and evaluating files.
-  Here is a summary of them and their behaviour:
+  Here is a summary of them and their behavior:
 
     * `require_file/2` - compiles a file and tracks its name. It does not
       compile the file again if it has been previously required.
@@ -161,6 +165,10 @@ defmodule Future.Code do
       of keys to traverse in the application environment and `return` is either
       `{:ok, value}` or `:error`.
 
+    * `:defmodule` - (since v1.16.2) traced as soon as the definition of a module
+      starts. This is invoked early on in the module life cycle, `Module.open?/1`
+      still returns `false` for such traces
+
     * `{:on_module, bytecode, _ignore}` - (since v1.13.0) traced whenever a module
       is defined. This is equivalent to the `@after_compile` callback and invoked
       after any `@after_compile` in the given module. The third element is currently
@@ -199,19 +207,44 @@ defmodule Future.Code do
 
   @typedoc """
   Diagnostics returned by the compiler and code evaluation.
+
+  The file and position relate to where the diagnostic should be shown.
+  If there is a file and position, then the diagnostic is precise
+  and you can use the given file and position for generating snippets,
+  IDEs annotations, and so on. An optional span is available with
+  the line and column the diagnostic ends.
+
+  Otherwise, a stacktrace may be given, which you can place your own
+  heuristics to provide better reporting.
+
+  The source field points to the source file the compiler tracked
+  the error to. For example, a file `lib/foo.ex` may embed `.eex`
+  templates from `lib/foo/bar.eex`. A syntax error on the EEx template
+  will point to file `lib/foo/bar.eex` but the source is `lib/foo.ex`.
   """
   @type diagnostic(severity) :: %{
-          required(:file) => Path.t(),
+          required(:source) => Path.t() | nil,
+          required(:file) => Path.t() | nil,
           required(:severity) => severity,
           required(:message) => String.t(),
-          required(:position) => position,
+          required(:position) => position(),
           required(:stacktrace) => Exception.stacktrace(),
+          required(:span) => {line :: pos_integer(), column :: pos_integer()} | nil,
+          optional(:details) => term(),
           optional(any()) => any()
         }
 
   @typedoc "The line. 0 indicates no line."
   @type line() :: non_neg_integer()
-  @type position() :: line() | {pos_integer(), column :: non_neg_integer}
+
+  @typedoc """
+  The position of the diagnostic.
+
+  Can be either a line number or a `{line, column}`.
+  Line and columns numbers are one-based.
+  A position of `0` represents unknown.
+  """
+  @type position() :: line() | {line :: pos_integer(), column :: pos_integer()}
 
   @boolean_compiler_options [
     :docs,
@@ -481,14 +514,9 @@ defmodule Future.Code do
 
   ## Options
 
-  Options can be:
-
-    * `:file` - the file to be considered in the evaluation
-
-    * `:line` - the line on which the script starts
-
-  Additionally, you may also pass an environment as second argument,
-  so the evaluation happens within that environment.
+  It accepts the same options as `env_for_eval/1`. Additionally, you may
+  also pass an environment as second argument, so the evaluation happens
+  within that environment.
 
   Returns a tuple of the form `{value, binding}`, where `value` is the value
   returned from evaluating `string`. If an error occurs while evaluating
@@ -542,31 +570,49 @@ defmodule Future.Code do
 
   defp validated_eval_string(string, binding, opts_or_env) do
     %{line: line, file: file} = env = env_for_eval(opts_or_env)
-    forms = :elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
+    forms = :future_elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
     {value, binding, _env} = eval_verify(:eval_forms, [forms, binding, env])
     {value, binding}
   end
 
   defp eval_verify(fun, args) do
     Module.ParallelChecker.verify(fn ->
-      apply(:elixir, fun, args)
+      apply(:future_elixir, fun, args)
     end)
   end
 
   @doc """
   Executes the given `fun` and capture all diagnostics.
 
-  Diagnostics are warnings and errors emitted by the compiler
-  and by functions such as `IO.warn/2`.
+  Diagnostics are warnings and errors emitted during code
+  evaluation or single-file compilation and by functions
+  such as `IO.warn/2`.
+
+  If using `mix compile` or `Kernel.ParallelCompiler`,
+  note they already capture and return diagnostics.
 
   ## Options
 
     * `:log` - if the diagnostics should be logged as they happen.
       Defaults to `false`.
 
+  > #### Rescuing errors {: .info}
+  >
+  > `with_diagnostics/2` does not automatically handle exceptions.
+  > You may capture them by adding a `try/1` in `fun`:
+  >
+  >     {result, all_errors_and_warnings} =
+  >       Code.with_diagnostics(fn ->
+  >         try do
+  >           {:ok, Code.compile_quoted(quoted)}
+  >         rescue
+  >           err -> {:error, err}
+  >         end
+  >       end)
+
   """
   @doc since: "1.15.0"
-  @spec with_diagnostics(keyword(), (() -> result)) :: {result, [diagnostic(:warning | :error)]}
+  @spec with_diagnostics(keyword(), (-> result)) :: {result, [diagnostic(:warning | :error)]}
         when result: term()
   def with_diagnostics(opts \\ [], fun) do
     value = :erlang.get(:elixir_code_diagnostics)
@@ -586,18 +632,25 @@ defmodule Future.Code do
     end
   end
 
-  # @doc """
-  # Prints a diagnostic into the standard error.
-  #
-  # A diagnostic is either returned by `Kernel.ParallelCompiler`
-  # or by `Code.with_diagnostics/2`.
-  # """
-  # @doc since: "1.15.0"
-  # @spec print_diagnostic(diagnostic(:warning | :error)) :: :ok
-  # def print_diagnostic(diagnostic) do
-  #   :elixir_errors.print_diagnostic(diagnostic)
-  #   :ok
-  # end
+  @doc """
+  Prints a diagnostic into the standard error.
+
+  A diagnostic is either returned by `Kernel.ParallelCompiler`
+  or by `Code.with_diagnostics/2`.
+
+  ## Options
+
+    * `:snippet` - whether to read the code snippet in the diagnostic location.
+      As it may impact performance, it is not recommended to be used in runtime.
+      Defaults to `true`.
+  """
+  @doc since: "1.15.0"
+  @spec print_diagnostic(diagnostic(:warning | :error), keyword()) :: :ok
+  def print_diagnostic(diagnostic, opts \\ []) do
+    read_snippet? = Keyword.get(opts, :snippet, true)
+    :future_elixir_errors.print_diagnostic(diagnostic, read_snippet?)
+    :ok
+  end
 
   @doc ~S"""
   Formats the given code `string`.
@@ -614,9 +667,9 @@ defmodule Future.Code do
     * `:line` - the line the string starts, used for error reporting
 
     * `:line_length` - the line length to aim for when formatting
-      the document. Defaults to 98. Note this value is used as
-      guideline but there are situations where it is not enforced.
-      See the "Line length" section below for more information
+      the document. Defaults to 98. This value indicates when an expression
+      should be broken over multiple lines but it is not guaranteed
+      to do so. See the "Line length" section below for more information
 
     * `:locals_without_parens` - a keyword list of name and arity
       pairs that should be kept without parens whenever possible.
@@ -663,8 +716,8 @@ defmodule Future.Code do
   specially because a function is named `defmodule`, `def`, or the like. This
   principle mirrors Elixir's goal of being an extensible language where
   developers can extend the language with new constructs as if they were
-  part of the language. When it is absolutely necessary to change behaviour
-  based on the name, this behaviour should be configurable, such as the
+  part of the language. When it is absolutely necessary to change behavior
+  based on the name, this behavior should be configurable, such as the
   `:locals_without_parens` option.
 
   ## Running the formatter
@@ -747,9 +800,10 @@ defmodule Future.Code do
   ## Line length
 
   Another point about the formatter is that the `:line_length` configuration
-  is a guideline. In many cases, it is not possible for the formatter to break
-  your code apart, which means it will go over the line length. For example,
-  if you have a long string:
+  indicates when an expression should be broken over multiple lines but it is
+  not guaranteed to do so. In many cases, it is not possible for the formatter
+  to break your code apart, which means it will go over the line length.
+  For example, if you have a long string:
 
       "this is a very long string that will go over the line length"
 
@@ -762,15 +816,15 @@ defmodule Future.Code do
   The string concatenation makes the code fit on a single line and also
   gives more options to the formatter.
 
-  This may also appear in do/end blocks, where the `do` keyword (or `->`)
-  may go over the line length because there is no opportunity for the
-  formatter to introduce a line break in a readable way. For example,
-  if you do:
+  This may also appear in keywords such as do/end blocks and operators,
+  where the `do` keyword may go over the line length because there is no
+  opportunity for the formatter to introduce a line break in a readable way.
+  For example, if you do:
 
       case very_long_expression() do
       end
 
-  And only the `do` keyword is above the line length, Elixir **will not**
+  And only the `do` keyword is beyond the line length, Elixir **will not**
   emit this:
 
       case very_long_expression()
@@ -808,7 +862,7 @@ defmodule Future.Code do
     * Newlines before certain operators (such as the pipeline operators)
       and before other operators (such as comparison operators)
 
-  The behaviours above are not guaranteed. We may remove or add new
+  The behaviors above are not guaranteed. We may remove or add new
   rules in the future. The goal of documenting them is to provide better
   understanding on what to expect from the formatter.
 
@@ -939,10 +993,9 @@ defmodule Future.Code do
     to_quoted_opts =
       [
         unescape: false,
-        warn_on_unnecessary_quotes: false,
         literal_encoder: &{:ok, {:__block__, &2, [&1]}},
         token_metadata: true,
-        warnings: false
+        emit_warnings: false
       ] ++ opts
 
     {forms, comments} = string_to_quoted_with_comments!(string, to_quoted_opts)
@@ -1024,9 +1077,11 @@ defmodule Future.Code do
     * `:file` - the file to be considered in the evaluation
 
     * `:line` - the line on which the script starts
+
+    * `:module` - the module to run the environment on
   """
   @doc since: "1.14.0"
-  def env_for_eval(env_or_opts), do: :elixir.env_for_eval(env_or_opts)
+  def env_for_eval(env_or_opts), do: :future_elixir.env_for_eval(env_or_opts)
 
   @doc """
   Evaluates the given `quoted` contents with `binding` and `env`.
@@ -1047,6 +1102,8 @@ defmodule Future.Code do
 
   """
   @doc since: "1.14.0"
+  @spec eval_quoted_with_env(Macro.t(), binding, Macro.Env.t(), keyword) ::
+          {term, binding, Macro.Env.t()}
   def eval_quoted_with_env(quoted, binding, %Macro.Env{} = env, opts \\ [])
       when is_list(binding) do
     eval_verify(:eval_quoted, [quoted, binding, env, opts])
@@ -1076,7 +1133,7 @@ defmodule Future.Code do
       For example, `"null byte\\t\\x00"` will be kept as is instead of being
       converted to a bitstring literal. Note if you set this option to false, the
       resulting AST is no longer valid, but it can be useful to analyze/transform
-      source code, typically in in combination with `quoted_to_algebra/2`.
+      source code, typically in combination with `quoted_to_algebra/2`.
       Defaults to `true`.
 
     * `:existing_atoms_only` - when `true`, raises an error
@@ -1097,13 +1154,12 @@ defmodule Future.Code do
 
     * `:static_atoms_encoder` - the static atom encoder function, see
       "The `:static_atoms_encoder` function" section below. Note this
-      option overrides the `:existing_atoms_only` behaviour for static
+      option overrides the `:existing_atoms_only` behavior for static
       atoms but `:existing_atoms_only` is still used for dynamic atoms,
       such as atoms with interpolations.
 
-    * `:warn_on_unnecessary_quotes` - when `false`, does not warn
-      when atoms, keywords or calls have unnecessary quotes on
-      them. Defaults to `true`.
+    * `:emit_warnings` (since v1.16.0) - when `false`, does not emit
+      tokenizing/parsing related warnings. Defaults to `true`.
 
   ## `Macro.to_string/2`
 
@@ -1139,7 +1195,10 @@ defmodule Future.Code do
     * syntax keywords (`fn`, `do`, `else`, and so on)
 
     * atoms containing interpolation (`:"#{1 + 1} is two"`), as these
-      atoms are constructed at runtime.
+      atoms are constructed at runtime
+
+    * atoms used to represent single-letter sigils like `:sigil_X`
+      (but multi-letter sigils like `:sigil_XYZ` are encoded).
 
   """
   @spec string_to_quoted(List.Chars.t(), keyword) ::
@@ -1164,6 +1223,7 @@ defmodule Future.Code do
   It returns the AST if it succeeds,
   raises an exception otherwise. The exception is a `TokenMissingError`
   in case a token is missing (usually because the expression is incomplete),
+  `MismatchedDelimiterError` (in case of mismatched opening and closing delimiters) and
   `SyntaxError` otherwise.
 
   Check `string_to_quoted/2` for options information.
@@ -1173,7 +1233,7 @@ defmodule Future.Code do
     file = Keyword.get(opts, :file, "nofile")
     line = Keyword.get(opts, :line, 1)
     column = Keyword.get(opts, :column, 1)
-    :elixir.string_to_quoted!(to_charlist(string), line, column, file, opts)
+    :future_elixir.string_to_quoted!(to_charlist(string), line, column, file, opts)
   end
 
   @doc """
@@ -1187,7 +1247,7 @@ defmodule Future.Code do
 
   Comments are maps with the following fields:
 
-    * `:line` - The line number the source code
+    * `:line` - The line number of the source code
 
     * `:text` - The full text of the comment, including the leading `#`
 
@@ -1230,8 +1290,8 @@ defmodule Future.Code do
     Process.put(:code_formatter_comments, [])
     opts = [preserve_comments: &preserve_comments/5] ++ opts
 
-    with {:ok, tokens} <- :elixir.string_to_tokens(charlist, line, column, file, opts),
-         {:ok, forms} <- :elixir.tokens_to_quoted(tokens, file, opts) do
+    with {:ok, tokens} <- :future_elixir.string_to_tokens(charlist, line, column, file, opts),
+         {:ok, forms} <- :future_elixir.tokens_to_quoted(tokens, file, opts) do
       comments = Enum.reverse(Process.get(:code_formatter_comments))
       {:ok, forms, comments}
     end
@@ -1258,7 +1318,7 @@ defmodule Future.Code do
         {forms, comments}
 
       {:error, {location, error, token}} ->
-        :elixir_errors.parse_error(
+        :future_elixir_errors.parse_error(
           location,
           Keyword.get(opts, :file, "nofile"),
           error,
@@ -1567,7 +1627,7 @@ defmodule Future.Code do
       to the parser when compiling files. It accepts the same options as
       `string_to_quoted/2` (except by the options that change the AST itself).
       This can be used in combination with the tracer to retrieve localized
-      information about events happening during compilation. Defaults to `[]`.
+      information about events happening during compilation. Defaults to `[columns: true]`.
       This option only affects code compilation functions, such as `compile_string/2`
       and `compile_file/2` but not `string_to_quoted/2` and friends, as the
       latter is used for other purposes beyond compilation.
@@ -1577,8 +1637,9 @@ defmodule Future.Code do
       error. You may be set it to `:warn` if you want undefined variables to
       emit a warning and expand as to a local call to the zero-arity function
       of the same name (for example, `node` would be expanded as `node()`).
-      This `:warn` behaviour only exists for compatibility reasons when working
-      with old dependencies.
+      This `:warn` behavior only exists for compatibility reasons when working
+      with old dependencies, its usage is discouraged and it will be removed
+      in future releases.
 
   It always returns `:ok`. Raises an error for invalid options.
 
@@ -1629,6 +1690,7 @@ defmodule Future.Code do
   end
 
   # TODO: Make this option have no effect on Elixir v2.0
+  # TODO: Warn if mode is :warn on Elixir v1.19
   def put_compiler_option(:on_undefined_variable, value) when value in [:raise, :warn] do
     :elixir_config.put(:on_undefined_variable, value)
     :ok
@@ -1667,7 +1729,7 @@ defmodule Future.Code do
 
   Returns a list of tuples where the first element is the module name
   and the second one is its bytecode (as a binary). A `file` can be
-  given as second argument which will be used for reporting warnings
+  given as a second argument which will be used for reporting warnings
   and errors.
 
   **Warning**: `string` can be any Elixir code and code can be executed with
@@ -1911,7 +1973,7 @@ defmodule Future.Code do
   @doc """
   Returns `true` if the module is loaded.
 
-  This function doesn't attempt to load the module. For such behaviour,
+  This function doesn't attempt to load the module. For such behavior,
   `ensure_loaded?/1` can be used.
 
   ## Examples
@@ -1930,7 +1992,7 @@ defmodule Future.Code do
   end
 
   @doc """
-  Returns true if the current process can await for module compilation.
+  Returns `true` if the current process can await for module compilation.
 
   When compiling Elixir code via `Kernel.ParallelCompiler`, which is
   used by Mix and `elixirc`, calling a module that has not yet been
@@ -1978,7 +2040,11 @@ defmodule Future.Code do
   @spec fetch_docs(module | String.t()) ::
           {:docs_v1, annotation, beam_language, format, module_doc :: doc_content, metadata,
            docs :: [doc_element]}
-          | {:error, :module_not_found | :chunk_not_found | {:invalid_chunk, binary}}
+          | {:error,
+             :module_not_found
+             | :chunk_not_found
+             | {:invalid_chunk, binary}
+             | :invalid_beam}
         when annotation: :erl_anno.anno(),
              beam_language: :elixir | :erlang | atom(),
              doc_content: %{optional(binary) => binary} | :none | :hidden,
@@ -2029,7 +2095,8 @@ defmodule Future.Code do
 
   defp get_beam_and_path(module) do
     with {^module, beam, filename} <- :code.get_object_code(module),
-         {:ok, ^module} <- beam |> :beam_lib.info() |> Keyword.fetch(:module) do
+         info_pairs when is_list(info_pairs) <- :beam_lib.info(beam),
+         {:ok, ^module} <- Keyword.fetch(info_pairs, :module) do
       {beam, filename}
     else
       _ -> :error
@@ -2048,6 +2115,9 @@ defmodule Future.Code do
 
       {:error, :beam_lib, {:file_error, _, :enoent}} ->
         {:error, :module_not_found}
+
+      {:error, :beam_lib, _} ->
+        {:error, :invalid_beam}
     end
   end
 

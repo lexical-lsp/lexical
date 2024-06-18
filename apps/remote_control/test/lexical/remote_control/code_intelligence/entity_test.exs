@@ -40,7 +40,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "fails immediately preceeding the module" do
       code = ~q[
-        | Before.The.Beginning
+        |Before.The.Beginning
       ]
 
       assert {:error, :not_found} = resolve(code)
@@ -48,16 +48,16 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "resolves module segments at and before the cursor" do
       code = ~q[
-        In.|The.Middle
+        In.T|he.Middle
       ]
 
       assert {:ok, {:module, In.The}, resolved_range} = resolve(code)
       assert resolved_range =~ ~S[«In.The».Middle]
     end
 
-    test "excludes trailing module segments with the cursor is on a period" do
+    test "excludes trailing module segments with the cursor is after a period" do
       code = ~q[
-        AAA.BBB.CCC.DDD|.EEE
+        AAA.BBB.CCC.DDD.|EEE
       ]
 
       assert {:ok, {:module, AAA.BBB.CCC.DDD}, resolved_range} = resolve(code)
@@ -67,7 +67,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "succeeds for modules within a multi-line node" do
       code = ~q[
         foo =
-          On.Another.Lin|e
+          On.Another.Line|
       ]
 
       assert {:ok, {:module, On.Another.Line}, resolved_range} = resolve(code)
@@ -92,7 +92,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "succeeds in single line calls" do
       code = ~q[
-        |Enum.map(1..10, & &1 + 1)
+        Enum|.map(1..10, & &1 + 1)
       ]
 
       assert {:ok, {:module, Enum}, resolved_range} = resolve(code)
@@ -101,7 +101,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "succeeds in multi-line calls" do
       code = ~q[
-        |Enum.map(1..10, fn i ->
+        Enum|.map(1..10, fn i ->
           i + 1
         end)
       ]
@@ -114,7 +114,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         defmodule Example do
           alias Long.Aliased.Module
-          Modul|e
+          Module|
         end
       ]
 
@@ -125,7 +125,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "ignores top-level aliases made after the cursor" do
       code = ~q[
         defmodule Example do
-          Modul|e
+          Module|
           alias Long.Aliased.Module
         end
       ]
@@ -140,7 +140,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
           defmodule Inner do
           end
 
-          Inne|r
+          Inner|
         end
       ]
 
@@ -151,7 +151,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "expands current module" do
       code = ~q[
         defmodule Example do
-          |__MODULE__
+          __MODULE__|
         end
       ]
 
@@ -162,7 +162,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "expands current module used in alias" do
       code = ~q[
         defmodule Example do
-          |__MODULE__.Nested
+          __MODULE__|.Nested
         end
       ]
 
@@ -173,7 +173,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "expands alias following current module" do
       code = ~q[
         defmodule Example do
-          __MODULE__.|Nested
+          __MODULE__.Nested|
         end
       ]
 
@@ -239,7 +239,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "succeeds in the `get` block" do
       code = ~q[
         scope "/foo", FooWeb do
-          get "/foo", |FooController, :index
+          get "/foo", FooController|, :index
         end
       ]
 
@@ -250,7 +250,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "succeeds in the `post` block" do
       code = ~q[
         scope "/foo", FooWeb do
-          post "/foo", |FooController, :create
+          post "/foo", FooController|, :create
         end
       ]
 
@@ -266,7 +266,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
       code = ~q[
         scope "/foo", FooWeb.Bar do
-          get "/foo", |FooController, :index
+          get "/foo", FooController|, :index
         end
       ]
 
@@ -283,7 +283,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         scope "/", FooWeb do
           scope "/bar", Bar do
-            get "/foo", |FooController, :index
+            get "/foo", FooController|, :index
           end
         end
       ]
@@ -302,7 +302,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
       code = ~q[
         scope "/foo", FooWeb do
-          live "/foo", |FooLive
+          live "/foo", FooLive|
         end
       ]
 
@@ -312,9 +312,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
   end
 
   describe "struct resolve/2" do
-    test "succeeds when the cursor is on the %" do
+    test "succeeds when the cursor is after the %" do
       code = ~q[
-        |%MyStruct{}
+        %|MyStruct{}
       ]
 
       assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(code)
@@ -330,9 +330,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       assert resolved_range =~ ~S[%«MyStruct»{}]
     end
 
-    test "succeeds when the cursor is on the opening bracket" do
+    test "succeeds when the cursor is after the opening bracket" do
       code = ~q[
-        %MyStruct|{}
+        %MyStruct{|}
       ]
 
       assert {:ok, {:struct, MyStruct}, resolved_range} = resolve(code)
@@ -341,7 +341,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "succeeds when the struct fields span multiple lines" do
       code = ~q[
-        %MyStruct.|Nested{
+        %MyStruct.Nested|{
           foo: 1,
           bar: 2
         }
@@ -379,7 +379,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "expands current module" do
       code = ~q[
         defmodule Example do
-          %|__MODULE__{}
+          %__MODULE__|{}
         end
       ]
 
@@ -395,7 +395,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
           end
 
          def make do
-           %|Inner{}
+           %Inner|{}
          end
         end
       >
@@ -408,7 +408,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         defmodule Example do
           alias Something.Example
-          %Example.|Inner{}
+          %Example.Inner|{}
         end
       ]
 
@@ -419,7 +419,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "succeeds for module nested inside current module" do
       code = ~q[
         defmodule Example do
-          %__MODULE__.|Inner{}
+          %__MODULE__.Inner|{}
         end
       ]
 
@@ -432,7 +432,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "qualified call" do
       code = ~q[
         def example do
-          MyModule.|some_function(1, 2, 3)
+          MyModule.some_function|(1, 2, 3)
         end
       ]
 
@@ -442,7 +442,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified call without parens" do
       code = ~q[
-        MyModule.|some_function 1, 2, 3
+        MyModule.some_function| 1, 2, 3
       ]
 
       assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(code)
@@ -451,7 +451,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified call with nested alias" do
       code = ~q[
-        MyModule.Nested.|some_function(1, 2, 3)
+        MyModule.Nested.some_function|(1, 2, 3)
       ]
 
       assert {:ok, {:call, MyModule.Nested, :some_function, 3}, resolved_range} = resolve(code)
@@ -461,7 +461,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "multi-line qualified call" do
       code = ~q[
-        MyModule.|some_function(
+        MyModule.some_function|(
           1, 2, 3
         )
       ]
@@ -473,7 +473,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "qualified call at start of pipe" do
       code = ~q[
         1
-        |> MyModule.|some_function(2, 3)
+        |> MyModule.some_function|(2, 3)
         |> other()
         |> other()
       ]
@@ -487,7 +487,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
         1
         |> other()
         |> other()
-        |> MyModule.|some_function(2, 3)
+        |> MyModule.some_function|(2, 3)
       ]
 
       assert {:ok, {:call, MyModule, :some_function, 3}, resolved_range} = resolve(code)
@@ -498,7 +498,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         1
         |> other()
-        |> MyModule.|some_function(2, 3)
+        |> MyModule.some_function|(2, 3)
         |> other()
       ]
 
@@ -508,7 +508,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified call inside another call" do
       code = ~q[
-        foo(1, 2, MyModule.|some_function(3))
+        foo(1, 2, MyModule.some_function|(3))
       ]
 
       assert {:ok, {:call, MyModule, :some_function, 1}, resolved_range} = resolve(code)
@@ -517,7 +517,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified call on same line as a string with newlines" do
       code = ~q[
-        Enum.map_join(list, "\n\n---\n\n", &String.tri|m(&1)) <> "\n"
+        Enum.map_join(list, "\n\n---\n\n", &String.trim|(&1)) <> "\n"
       ]
 
       assert {:ok, {:call, String, :trim, 1}, _} = resolve(code)
@@ -537,7 +537,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "qualified call on left of type operator" do
       code = ~q[
         my_dsl do
-          MyModule.|my_fun() :: MyModule.t()
+          MyModule.my_fun|() :: MyModule.t()
         end
       ]
 
@@ -555,7 +555,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "captured calls with arity" do
       code = ~q[
-        &MyModule.|my_fun/2
+        &MyModule.my_fun|/2
       ]
       assert {:ok, {:call, MyModule, :my_fun, 2}, resolved_range} = resolve(code)
       assert resolved_range =~ "«MyModule.my_fun»/2"
@@ -563,7 +563,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "captured calls with args" do
       code = ~q[
-        &MyModule.|my_fun(:foo, &1)
+        &MyModule.my_fun|(:foo, &1)
       ]
       assert {:ok, {:call, MyModule, :my_fun, 2}, resolved_range} = resolve(code)
       assert resolved_range =~ "&«MyModule.my_fun»(:foo, &1)"
@@ -610,7 +610,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "in zero arg function definition" do
       code = ~q[
       defmodule Parent do
-        def zero_ar|g do
+        def zero_arg| do
         end
       end
       ]
@@ -624,7 +624,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
       defmodule Parent do
         def zero_arg do
-          zero_ar|g
+          zero_arg|
         end
       end
       ]
@@ -648,7 +648,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         defmodule Parent do
 
-          def |my_call
+          def my_call|
         end
       ]
       assert {:ok, {:call, Parent, :my_call, 0}, resolved_range} = resolve(code)
@@ -659,7 +659,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
         defmodule Parent do
 
-          defp |my_call
+          defp my_call|
         end
       ]
       assert {:ok, {:call, Parent, :my_call, 0}, resolved_range} = resolve(code)
@@ -821,7 +821,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
         defmodule Parent do
           def parse(doc) do
             import Lexical.Ast
-            |from(doc)
+            from|(doc)
           end
         end
       ]
@@ -839,7 +839,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
           end
 
           def parse2(doc) do
-            |from(doc)
+            from|(doc)
           end
         end
       ]
@@ -861,7 +861,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified types in @spec" do
       code = ~q[
-        @spec my_fun() :: MyModule.|t()
+        @spec my_fun() :: MyModule.t|()
       ]
 
       assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(code)
@@ -871,7 +871,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "qualified types in DSL" do
       code = ~q[
         my_dsl do
-          my_fun() :: MyModule.|t()
+          my_fun() :: MyModule.t|()
         end
       ]
 
@@ -881,7 +881,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "qualified types in nested structure" do
       code = ~q[
-        @type my_type :: %{foo: MyModule.|t()}
+        @type my_type :: %{foo: MyModule.t|()}
       ]
 
       assert {:ok, {:type, MyModule, :t, 0}, resolved_range} = resolve(code)
@@ -893,7 +893,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
     test "in a scalar definition" do
       code = ~q[
        defmodule Parent do
-         @attribut|e 3
+         @attribute| 3
        end
       ]
 
@@ -905,7 +905,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
       defmodule Parent do
         @foo 3
-        @ba|r @foo + 1
+        @bar| @foo + 1
       end
       ]
 
@@ -917,7 +917,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
       defmodule Parent do
 
-        def my_fun(@fo|o), do: 3
+        def my_fun(@foo|), do: 3
       end
       ]
 
@@ -929,7 +929,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
       defmodule Parent do
 
-        def my_fun(_), do: %{@fo|o => 3}
+        def my_fun(_), do: %{@foo| => 3}
       end
       ]
 
@@ -941,7 +941,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
       code = ~q[
       defmodule Parent do
 
-        def my_fun(_), do: %{foo: @fo|o}
+        def my_fun(_), do: %{foo: @foo|}
       end
       ]
 
@@ -951,7 +951,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.EntityTest do
 
     test "returns nil module you're not in a module context" do
       code = ~q[
-       @fo|o 3
+       @foo| 3
       ]
 
       assert {:ok, {:module_attribute, nil, :foo}, resolved_range} = resolve(code)

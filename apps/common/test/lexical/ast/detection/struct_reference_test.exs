@@ -4,7 +4,11 @@ defmodule Lexical.Ast.Detection.StructReferenceTest do
   use Lexical.Test.DetectionCase,
     for: Detection.StructReference,
     assertions: [[:struct_reference, :*]],
-    skip: [[:struct_fields, :*], [:struct_field_value, :*]],
+    skip: [
+      [:struct_fields, :*],
+      [:struct_field_key, :*],
+      [:struct_field_value, :*]
+      ],
     variations: [:match, :function_arguments]
 
   test "is detected if a module reference starts in function arguments" do

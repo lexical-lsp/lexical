@@ -7,6 +7,7 @@ defmodule Lexical.Ast.Detection.StructFieldsTest do
     variations: [:match, :function_body, :function_arguments, :module],
     skip: [
       [:struct_reference, :*],
+      [:struct_field_key, :*],
       [:struct_field_value, :*]
     ]
 
@@ -24,8 +25,8 @@ defmodule Lexical.Ast.Detection.StructFieldsTest do
 
   test "is detected if it spans multiple lines" do
     assert_detected ~q[
-      %User{
-        «name: "John",
+      %User{«
+        name: "John",
       »}
     ]
   end

@@ -46,7 +46,7 @@ defmodule Lexical.AstTest do
 
     test "returns [] when can't parse the AST" do
       text = ~q[
-        foo(bar do baz, bat|
+        {foo: bar, baz|
       ]
 
       path = cursor_path(text)

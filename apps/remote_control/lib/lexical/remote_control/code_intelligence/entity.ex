@@ -29,7 +29,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   Returns `{:ok, resolved, range}` if successful, `{:error, error}` otherwise.
   """
   @spec resolve(Analysis.t(), Position.t()) :: {:ok, resolved, Range.t()} | {:error, term()}
-  def resolve(%Analysis{} = analysis, %Position{} = position) do
+  def resolve(%Analysis{} = analysis, %Position{} = cursor) do
+    position = update_in(cursor.character, & &1 - 1)
     analysis = Ast.reanalyze_to(analysis, position)
 
     with :ok <- check_commented(analysis, position),

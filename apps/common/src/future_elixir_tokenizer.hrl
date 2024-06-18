@@ -1,4 +1,5 @@
-%% Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/src/elixir_tokenizer.hrl
+%% https://github.com/elixir-lang/elixir/blob/e8ea6a52596324cef9ebb95390d51c84c93bf73d/lib/elixir/src/elixir_tokenizer.hrl
+
 %% Numbers
 -define(is_hex(S), (?is_digit(S) orelse (S >= $A andalso S =< $F) orelse (S >= $a andalso S =< $f))).
 -define(is_bin(S), (S >= $0 andalso S =< $1)).
@@ -13,6 +14,7 @@
 -define(is_quote(S), (S =:= $" orelse S =:= $')).
 -define(is_sigil(S), (S =:= $/ orelse S =:= $< orelse S =:= $" orelse S =:= $' orelse
                       S =:= $[ orelse S =:= $( orelse S =:= ${ orelse S =:= $|)).
+-define(LOC(Line, Column), [{line, Line}, {column, Column}]).
 
 %% Spaces
 -define(is_horizontal_space(S), (S =:= $\s orelse S =:= $\t)).

@@ -1,4 +1,8 @@
-# Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/lib/code/identifier.ex
+# https://github.com/elixir-lang/elixir/blob/e8ea6a52596324cef9ebb95390d51c84c93bf73d/lib/elixir/lib/code/identifier.ex
+#
+# Changes:
+# - Code.Identifier -> Future.Code.Identifier
+
 defmodule Future.Code.Identifier do
   @moduledoc false
 
@@ -14,7 +18,7 @@ defmodule Future.Code.Identifier do
   @spec unary_op(atom) :: {:non_associative, precedence :: pos_integer} | :error
   def unary_op(op) do
     cond do
-      op in [:&] -> {:non_associative, 90}
+      op in [:&, :...] -> {:non_associative, 90}
       op in [:!, :^, :not, :+, :-, :"~~~"] -> {:non_associative, 300}
       op in [:@] -> {:non_associative, 320}
       true -> :error
@@ -45,7 +49,6 @@ defmodule Future.Code.Identifier do
       op in [:|>, :<<<, :>>>, :<~, :~>, :<<~, :~>>, :<~>, :"<|>"] -> {:left, 160}
       op in [:in] -> {:left, 170}
       op in [:"^^^"] -> {:left, 180}
-      op in [:"//"] -> {:right, 190}
       op in [:++, :--, :.., :<>, :+++, :---] -> {:right, 200}
       op in [:+, :-] -> {:left, 210}
       op in [:*, :/] -> {:left, 220}

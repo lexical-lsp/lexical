@@ -67,8 +67,8 @@ defmodule Lexical.Ast.Tokens do
     current_context = line_charlist ++ context
 
     case :future_elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
-      {:ok, _, _, _, tokens} ->
-        {:ok, Enum.reverse(tokens), ~c""}
+      {:ok, _, _, _, rev_tokens, _} ->
+        {:ok, rev_tokens, ~c""}
 
       {:error, {_, _, ~c"unexpected token: ", _}, _, _, _} ->
         {:ok, [], ~c"\n" ++ current_context}

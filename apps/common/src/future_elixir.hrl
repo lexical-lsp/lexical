@@ -1,4 +1,5 @@
-%% Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/src/elixir.hrl
+%% https://github.com/elixir-lang/elixir/blob/e8ea6a52596324cef9ebb95390d51c84c93bf73d/lib/elixir/src/elixir.hrl
+
 -define(key(M, K), maps:get(K, M)).
 -define(ann(Meta), elixir_erl:get_ann(Meta)).
 -define(line(Meta), elixir_utils:get_line(Meta)).
@@ -9,9 +10,10 @@
 -record(elixir_ex, {
   caller=false,            %% stores if __CALLER__ is allowed
   %% TODO: Remove warn and everywhere it is set in v2.0
-  prematch=warn,           %% {Read, Counter, {bitsize, Original} | none} | warn | raise | pin
+  prematch=raise,          %% {Read, Counter, {bitsize, Original} | none} | warn | raise | pin
   stacktrace=false,        %% stores if __STACKTRACE__ is allowed
   unused={#{}, 0},         %% a map of unused vars and a version counter for vars
+  runtime_modules=[],      %% a list of modules defined in functions (runtime)
   vars={#{}, false}        %% a tuple with maps of read and optional write current vars
 }).
 
@@ -36,7 +38,7 @@
   identifier_tokenizer=elixir_tokenizer,
   ascii_identifiers_only=true,
   indentation=0,
+  column=1,
   mismatch_hints=[],
-  warn_on_unnecessary_quotes=true,
   warnings=[]
 }).
