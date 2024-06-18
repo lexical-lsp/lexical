@@ -2,7 +2,6 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Future.Code, as: Code
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Env
-  alias Lexical.Completion.Translatable
   alias Lexical.Document.Position
   alias Lexical.Project
   alias Lexical.Protocol.Types.Completion
@@ -11,6 +10,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.RemoteControl.Modules.Predicate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.Configuration
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace

@@ -1,6 +1,6 @@
-defprotocol Lexical.Completion.Translatable do
+defprotocol Lexical.Server.CodeIntelligence.Completion.Translatable do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.Builder
+  alias Lexical.Server.CodeIntelligence.Completion.Builder
 
   @type t :: any()
 
@@ -9,7 +9,7 @@ defprotocol Lexical.Completion.Translatable do
   def translate(item, builder, env)
 end
 
-defimpl Lexical.Completion.Translatable, for: Any do
+defimpl Lexical.Server.CodeIntelligence.Completion.Translatable, for: Any do
   def translate(_any, _builder, _environment) do
     :skip
   end
