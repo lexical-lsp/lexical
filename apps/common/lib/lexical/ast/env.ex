@@ -1,15 +1,12 @@
 defmodule Lexical.Ast.Env do
   @moduledoc """
   Representation of the environment at a given position in a document.
-
-  This module implements the `Lexical.Ast.Environment` behaviour.
   """
 
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Ast.Analysis.Scope
   alias Lexical.Ast.Detection
-  alias Lexical.Ast.Environment
   alias Lexical.Ast.Tokens
   alias Lexical.Document
   alias Lexical.Document.Position
@@ -37,7 +34,21 @@ defmodule Lexical.Ast.Env do
           zero_based_character: non_neg_integer()
         }
 
-  @behaviour Environment
+  @type maybe_binary :: binary | nil
+  @type token_value :: String.t() | charlist
+  @type lexer_token :: {atom, token_value}
+  @type token_count :: pos_integer | :all
+
+  @type context_type ::
+          :pipe
+          | :alias
+          | :struct_reference
+          | :struct_fields
+          | :struct_field_key
+          | :struct_field_value
+          | :function_capture
+          | :bitstring
+
   def new(%Project{} = project, %Analysis{} = analysis, %Position{} = cursor_position) do
     zero_based_character = cursor_position.character - 1
 
@@ -76,7 +87,7 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  @impl Environment
+  @spec prefix_tokens(5, token_count) :: [lexer_token]
   def prefix_tokens(%__MODULE__{} = env, count \\ :all) do
     stream = Tokens.prefix_stream(env.document, env.position)
 
@@ -89,7 +100,7 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  @impl Environment
+  @spec in_context?(t, context_type) :: boolean()
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def in_context?(%__MODULE__{} = env, context_type) do
     analysis = env.analysis
@@ -167,12 +178,11 @@ defmodule Lexical.Ast.Env do
     end
   end
 
-  @impl Environment
+  @spec empty?(maybe_binary) :: boolean()
   def empty?("") do
     true
   end
 
-  @impl Environment
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
   end
