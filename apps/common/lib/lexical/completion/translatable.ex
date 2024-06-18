@@ -1,11 +1,11 @@
 defprotocol Lexical.Completion.Translatable do
-  alias Lexical.Ast.Environment
+  alias Lexical.Ast.Env
   alias Lexical.Completion.Builder
 
   @type t :: any()
 
   @fallback_to_any true
-  @spec translate(t(), Builder.t(), Environment.t()) :: Builder.result()
+  @spec translate(t(), Builder.t(), Env.t()) :: Builder.result()
   def translate(item, builder, env)
 end
 

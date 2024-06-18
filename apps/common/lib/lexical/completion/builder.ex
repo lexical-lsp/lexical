@@ -1,5 +1,5 @@
 defmodule Lexical.Completion.Builder do
-  alias Lexical.Ast.Environment
+  alias Lexical.Ast.Env
 
   @type insert_text_format :: :plain_text | :snippet
 
@@ -67,17 +67,17 @@ defmodule Lexical.Completion.Builder do
 
   @type line_range :: {start_character :: pos_integer, end_character :: pos_integer}
 
-  @callback snippet(Environment.t(), String.t()) :: translated_item()
-  @callback snippet(Environment.t(), String.t(), item_opts) :: translated_item()
+  @callback snippet(Env.t(), String.t()) :: translated_item()
+  @callback snippet(Env.t(), String.t(), item_opts) :: translated_item()
 
-  @callback plain_text(Environment.t(), String.t()) :: translated_item()
-  @callback plain_text(Environment.t(), String.t(), item_opts) :: translated_item()
+  @callback plain_text(Env.t(), String.t()) :: translated_item()
+  @callback plain_text(Env.t(), String.t(), item_opts) :: translated_item()
 
-  @callback text_edit(Environment.t(), String.t(), line_range) :: translated_item()
-  @callback text_edit(Environment.t(), String.t(), line_range, item_opts) :: translated_item()
+  @callback text_edit(Env.t(), String.t(), line_range) :: translated_item()
+  @callback text_edit(Env.t(), String.t(), line_range, item_opts) :: translated_item()
 
-  @callback text_edit_snippet(Environment.t(), String.t(), line_range) :: translated_item()
-  @callback text_edit_snippet(Environment.t(), String.t(), line_range, item_opts) ::
+  @callback text_edit_snippet(Env.t(), String.t(), line_range) :: translated_item()
+  @callback text_edit_snippet(Env.t(), String.t(), line_range, item_opts) ::
               translated_item()
 
   @callback fallback(any, any) :: any
