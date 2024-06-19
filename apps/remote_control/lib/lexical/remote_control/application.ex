@@ -29,13 +29,10 @@ defmodule Lexical.RemoteControl.Application do
              &RemoteControl.Search.Indexer.update_index/2
            ]}
         ]
-        |> List.flatten()
-        |> Enum.reject(&is_nil/1)
       else
         []
       end
 
-    children = Enum.reject(children, &is_nil/1)
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Lexical.RemoteControl.Supervisor]
