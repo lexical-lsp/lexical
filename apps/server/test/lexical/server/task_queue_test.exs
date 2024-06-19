@@ -1,8 +1,8 @@
-defmodule Lexical.Server.Provider.QueueTest do
+defmodule Lexical.Server.TaskQueueTest do
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
   alias Lexical.Server.Provider.Handlers
-  alias Lexical.Server.Provider.Queue
+  alias Lexical.Server.TaskQueue
   alias Lexical.Server.Transport
   alias Lexical.Test.Fixtures
 
@@ -15,87 +15,92 @@ defmodule Lexical.Server.Provider.QueueTest do
   end
 
   setup do
-    {:ok, _} = start_supervised({Task.Supervisor, name: Queue.task_supervisor_name()})
-    {:ok, _} = start_supervised(Queue)
+    {:ok, _} = start_supervised({Task.Supervisor, name: TaskQueue.task_supervisor_name()})
+    {:ok, _} = start_supervised(TaskQueue)
     unit_test = self()
     patch(Transport, :write, &send(unit_test, &1))
 
     :ok
   end
 
-  def request(id, func) do
-    patch(Handlers.Completion, :handle, fn request, project -> func.(request, project) end)
+  def request(project, func) do
+    id = System.unique_integer([:positive])
+
+    patch(Handlers.Completion, :handle, fn request, ^project -> func.(request, project) end)
     patch(Handlers, :for_request, fn _ -> {:ok, Handlers.Completion} end)
     patch(Requests.Completion, :to_elixir, fn req -> {:ok, req} end)
-    Requests.Completion.new(id: id, text_document: nil, position: nil, context: nil)
+
+    request = Requests.Completion.new(id: id, text_document: nil, position: nil, context: nil)
+
+    {id, {Handlers.Completion, :handle, [request, project]}}
   end
 
   describe "size/0" do
     test "an empty queue has size 0" do
-      assert 0 == Queue.size()
+      assert 0 == TaskQueue.size()
     end
 
     test "adding a request makes the queue grow", %{project: project} do
-      request = request(1, fn _, _ -> Process.sleep(500) end)
-      assert :ok = Queue.add(request, project)
-      assert 1 == Queue.size()
+      {id, mfa} = request(project, fn _, _ -> Process.sleep(500) end)
+      assert :ok = TaskQueue.add(id, mfa)
+      assert 1 == TaskQueue.size()
     end
   end
 
   describe "cancel/1" do
     test "canceling a request stops it", %{project: project} do
-      request = request("1", fn _, _ -> Process.sleep(500) end)
-      assert :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> Process.sleep(500) end)
 
-      :ok = Queue.cancel("1")
+      assert :ok = TaskQueue.add(id, mfa)
+      assert :ok = TaskQueue.cancel(id)
 
-      assert_receive %{id: "1", error: error}
+      assert_receive %{id: ^id, error: error}
 
-      assert Queue.size() == 0
+      assert TaskQueue.size() == 0
       assert error.code == :request_cancelled
       assert error.message == "Request cancelled"
     end
 
     test "passing in a request for cancellation", %{project: project} do
-      request = request("1", fn _, _ -> Process.sleep(500) end)
-      :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> Process.sleep(500) end)
 
-      :ok = Queue.cancel(request)
+      assert :ok = TaskQueue.add(id, mfa)
+      assert :ok = TaskQueue.cancel(id)
 
-      assert_receive %{id: "1", error: error}
-      assert Queue.size() == 0
+      assert_receive %{id: ^id, error: error}
+      assert TaskQueue.size() == 0
       assert error.code == :request_cancelled
       assert error.message == "Request cancelled"
     end
 
     test "canceling a non-existing request is a no-op" do
-      assert :ok = Queue.cancel("5")
+      assert :ok = TaskQueue.cancel("5")
       refute_receive %{id: _}
     end
 
     test "Adding a cancel notification cancels the request", %{project: project} do
-      request = request("1", fn _, _ -> Process.sleep(500) end)
-      :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> Process.sleep(500) end)
+      assert :ok = TaskQueue.add(id, mfa)
 
       {:ok, notif} =
         Notifications.Cancel.parse(%{
           "method" => "$/cancelRequest",
           "jsonrpc" => "2.0",
           "params" => %{
-            "id" => "1"
+            "id" => id
           }
         })
 
-      :ok = Queue.cancel(notif)
-      assert_receive %{id: "1", error: error}
-      assert Queue.size() == 0
+      assert :ok = TaskQueue.cancel(notif)
+      assert_receive %{id: ^id, error: error}
+      assert TaskQueue.size() == 0
       assert error.code == :request_cancelled
       assert error.message == "Request cancelled"
     end
 
     test "Adding a cancel request cancels the request", %{project: project} do
-      request = request("1", fn _, _ -> Process.sleep(500) end)
-      :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> Process.sleep(500) end)
+      assert :ok = TaskQueue.add(id, mfa)
 
       {:ok, req} =
         Requests.Cancel.parse(%{
@@ -103,50 +108,50 @@ defmodule Lexical.Server.Provider.QueueTest do
           "jsonrpc" => "2.0",
           "id" => "50",
           "params" => %{
-            "id" => "1"
+            "id" => id
           }
         })
 
-      :ok = Queue.cancel(req)
-      assert_receive %{id: "1", error: error}
-      assert Queue.size() == 0
+      assert :ok = TaskQueue.cancel(req)
+      assert_receive %{id: ^id, error: error}
+      assert TaskQueue.size() == 0
       assert error.code == :request_cancelled
       assert error.message == "Request cancelled"
     end
 
     test "canceling a request that has finished is a no-op", %{project: project} do
       me = self()
-      request = request("1", fn _, _ -> send(me, :finished) end)
+      {id, mfa} = request(project, fn _, _ -> send(me, :finished) end)
 
-      assert :ok = Queue.add(request, project)
+      assert :ok = TaskQueue.add(id, mfa)
       assert_receive :finished
 
-      :ok = Queue.cancel("1")
-      assert Queue.size() == 0
+      assert :ok = TaskQueue.cancel(id)
+      assert TaskQueue.size() == 0
     end
   end
 
   describe "task return values" do
     test "tasks can reply", %{project: project} do
-      request = request("1", fn _, _ -> {:reply, "great"} end)
-      :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> {:reply, "great"} end)
+      assert :ok = TaskQueue.add(id, mfa)
 
       assert_receive "great"
     end
 
     test "replies are optional", %{project: project} do
-      request = request("1", fn _, _ -> :noreply end)
-      :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> :noreply end)
+      assert :ok = TaskQueue.add(id, mfa)
 
-      assert_eventually Queue.size() == 0
+      assert_eventually TaskQueue.size() == 0
       refute_receive _
     end
 
     test "exceptions are handled", %{project: project} do
-      request = request("1", fn _, _ -> raise "Boom!" end)
-      assert :ok = Queue.add(request, project)
+      {id, mfa} = request(project, fn _, _ -> raise "Boom!" end)
+      assert :ok = TaskQueue.add(id, mfa)
 
-      assert_receive %{id: "1", error: error}
+      assert_receive %{id: ^id, error: error}
       assert error.code == :internal_error
       assert error.message =~ "Boom!"
     end
