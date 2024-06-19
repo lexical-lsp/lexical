@@ -10,6 +10,10 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
   @behaviour Build.Document.Compiler
   require Logger
 
+  @impl true
+  def enabled?, do: true
+
+  @impl true
   def recognizes?(%Document{} = document) do
     in_config_dir? =
       document.path
@@ -19,12 +23,13 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
     in_config_dir? and Path.extname(document.path) == ".exs"
   end
 
-  def enabled? do
-    Features.config_reader?()
-  end
-
+  @impl true
   def compile(%Document{} = document) do
-    do_compile(document)
+    if Features.with_diagnostics?() do
+      compile_with_diagnostics(document)
+    else
+      raw_compile(document)
+    end
   end
 
   defp config_dir do
@@ -34,14 +39,6 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
     |> Keyword.get(:config_path)
     |> Path.expand()
     |> Path.dirname()
-  end
-
-  defp do_compile(%Document{} = document) do
-    if Features.with_diagnostics?() do
-      compile_with_diagnostics(document)
-    else
-      raw_compile(document)
-    end
   end
 
   defp raw_compile(%Document{} = document) do

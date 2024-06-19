@@ -7,10 +7,6 @@ defmodule Elixir.Features do
     Version.match?(System.version(), ">= 1.15.0")
   end
 
-  def config_reader? do
-    Version.match?(System.version(), ">= 1.11.0")
-  end
-
   def after_verify? do
     Version.match?(System.version(), ">= 1.14.0")
   end
