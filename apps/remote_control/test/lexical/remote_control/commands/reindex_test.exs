@@ -15,7 +15,7 @@ defmodule Lexical.RemoteControl.Commands.ReindexTest do
       Process.sleep(20)
     end
 
-    start_supervised!({Reindex, reindex_fun})
+    start_supervised!({Reindex, reindex_fun: reindex_fun})
 
     {:ok, project: project()}
   end

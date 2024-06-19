@@ -79,12 +79,9 @@ defmodule Lexical.RemoteControl.Commands.Reindex do
   use GenServer
   import Api.Messages
 
-  def start_link(reindex_fun) when is_function(reindex_fun, 1) do
-    GenServer.start_link(__MODULE__, reindex_fun, name: __MODULE__)
-  end
-
-  def start_link(_) do
-    start_link(&do_reindex/1)
+  def start_link(opts) do
+    [reindex_fun: fun] = Keyword.validate!(opts, reindex_fun: &do_reindex/1)
+    GenServer.start_link(__MODULE__, fun, name: __MODULE__)
   end
 
   def uri(uri) do
