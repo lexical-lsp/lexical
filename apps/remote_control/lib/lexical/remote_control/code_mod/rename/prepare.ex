@@ -11,11 +11,17 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
   require Logger
 
   @spec prepare(Analysis.t(), Position.t()) ::
-          {:ok, {atom(), String.t()}, Range.t()} | {:error, term()}
+          {:ok, {atom(), String.t()} | nil, Range.t()} | {:error, term()}
   def prepare(%Analysis{} = analysis, %Position{} = position) do
     case resolve(analysis, position) do
       {:ok, {:module, module}, range} ->
         {:ok, Formats.module(module), range}
+
+      {:error, {:unsupported_location, _}} ->
+        {:ok, nil}
+
+      {:error, {:unsupported_entity, entity_type}} ->
+        {:error, "Renaming #{inspect(entity_type)} is not supported for now"}
 
       {:error, error} ->
         {:error, error}
@@ -72,7 +78,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Prepare do
     with :error <- Enum.find_value(@renamable_modules, :error, apply_resolve),
          {:ok, other, _} <- Entity.resolve(analysis, position) do
       Logger.info("Unsupported entity for renaming: #{inspect(other)}")
-      {:error, :unsupported_entity}
+      {:error, {:unsupported_entity, elem(other, 0)}}
     end
   end
 end

@@ -79,8 +79,8 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
       assert result == "TopLevel.Foo"
     end
 
-    test "returns location error when renaming a module occurs in a reference." do
-      assert {:error, {:unsupported_location, :module}} ==
+    test "returns `nil` when renaming a module occurs in a reference." do
+      assert {:ok, nil} =
                ~q[
         defmodule Foo do
         end
@@ -92,7 +92,7 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     end
 
     test "returns error when the entity is not found" do
-      assert {:error, :unsupported_entity} =
+      assert {:error, "Renaming :variable is not supported for now"} =
                ~q[
           x = 1
           |x
@@ -548,10 +548,9 @@ defmodule Lexical.RemoteControl.CodeMod.RenameTest do
     with {position, text} <- pop_cursor(code),
          {:ok, document} <- open_document(uri, text),
          {:ok, entries} <- Search.Indexer.Source.index(document.path, text),
-         :ok <- Search.Store.replace(entries),
-         analysis = Lexical.Ast.analyze(document),
-         {:ok, result} <- Rename.prepare(analysis, position) do
-      result
+         :ok <- Search.Store.replace(entries) do
+      analysis = Lexical.Ast.analyze(document)
+      Rename.prepare(analysis, position)
     end
   end
 
