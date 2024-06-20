@@ -33,8 +33,14 @@ defmodule Lexical.Server.Provider.Handlers.PrepareRename do
 
         {:reply, Responses.PrepareRename.new(id, result)}
 
-      _ ->
+      {:ok, nil} ->
         {:reply, Responses.PrepareRename.new(id, nil)}
+
+      {:error, error} when is_binary(error) ->
+        {:reply, Responses.PrepareRename.error(id, :request_failed, error)}
+
+      {:error, error} ->
+        {:reply, Responses.PrepareRename.error(id, :request_failed, inspect(error))}
     end
   end
 end

@@ -1,8 +1,8 @@
-defmodule Lexical.Server.Provider.Handlers.RenameTest do
+defmodule Lexical.Server.Provider.Handlers.PrepareRenameTest do
   alias Lexical.Ast
   alias Lexical.Document
   alias Lexical.Proto.Convert
-  alias Lexical.Protocol.Requests.Rename
+  alias Lexical.Protocol.Requests.PrepareRename
   alias Lexical.RemoteControl
 
   alias Lexical.Server
@@ -36,16 +36,16 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
     ]
 
     with {:ok, _} <- Document.Store.open_temporary(uri),
-         {:ok, req} <- build(Rename, params) do
+         {:ok, req} <- build(PrepareRename, params) do
       Convert.to_native(req)
     end
   end
 
   def handle(request, project) do
-    Handlers.Rename.handle(request, %Env{project: project})
+    Handlers.PrepareRename.handle(request, %Env{project: project})
   end
 
-  describe "rename" do
+  describe "prepare_rename" do
     test "returns error when document can not be analyzed", %{project: project, uri: uri} do
       patch(Document.Store, :fetch, fn ^uri, :analysis ->
         {:ok, nil, %Ast.Analysis{valid?: false}}
@@ -57,63 +57,34 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
       assert response.error.message == "document can not be analyzed"
     end
 
-    test "returns nil when there are no changes", %{project: project, uri: uri} do
+    test "returns nil when the cursor is not at a declaration", %{project: project, uri: uri} do
       patch(Document.Store, :fetch, fn ^uri, :analysis ->
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
-        {:ok, []}
+      patch(RemoteControl.Api, :prepare_rename, fn ^project, _analysis, _position ->
+        {:ok, nil}
       end)
 
       {:ok, request} = build_request(uri, 1, 5)
       assert {:reply, response} = handle(request, project)
 
-      assert response == nil
+      assert response.result == nil
     end
 
-    test "returns edit when there are changes", %{project: project, uri: uri} do
-      document = %Document{uri: uri, version: 0}
-
+    test "returns error when the cursor entity is not supported", %{project: project, uri: uri} do
       patch(Document.Store, :fetch, fn ^uri, :analysis ->
         {:ok, nil, %Ast.Analysis{valid?: true}}
       end)
 
-      patch(RemoteControl.Api, :rename, fn ^project, _analysis, _position, _new_name, _ ->
-        {:ok,
-         [
-           Document.Changes.new(
-             document,
-             [
-               %{
-                 new_text: "new_text",
-                 range: %{start: %{line: 1, character: 5}, end: %{line: 1, character: 10}}
-               }
-             ],
-             Document.Changes.RenameFile.new(
-               document.uri,
-               "file:///path/to/new_text.ex"
-             )
-           )
-         ]}
+      patch(RemoteControl.Api, :prepare_rename, fn ^project, _analysis, _position ->
+        {:error, "Renaming :map_field is not supported for now"}
       end)
 
       {:ok, request} = build_request(uri, 1, 5)
-
       assert {:reply, response} = handle(request, project)
-      [edit, rename_file] = response.result.document_changes
 
-      assert edit.edits == [
-               %{
-                 new_text: "new_text",
-                 range: %{end: %{character: 10, line: 1}, start: %{character: 5, line: 1}}
-               }
-             ]
-
-      assert edit.text_document.uri == document.uri
-      assert edit.text_document.version == 0
-      assert rename_file.old_uri == document.uri
-      assert rename_file.new_uri == "file:///path/to/new_text.ex"
+      assert response.error.message == "Renaming :map_field is not supported for now"
     end
   end
 end
