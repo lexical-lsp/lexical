@@ -77,7 +77,31 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases do
     #   |
     case Analysis.module_scope(analysis, range) do
       %Scope{aliases: [_ | _]} ->
-        token_at_cursor_is_blank?(analysis, range.start)
+        cursor_path = Ast.cursor_path(analysis, range.start)
+
+        immediate_parent =
+          Enum.find(cursor_path, fn
+            {:__cursor__, _, _} ->
+              false
+
+            [{:__cursor__, _, _} | _] ->
+              false
+
+            {:__block__, _, _} ->
+              false
+
+            {{:__block__, _, _}, _} ->
+              false
+
+            [{{:__block__, _, _}, _} | _] ->
+              false
+
+            _ ->
+              true
+          end)
+
+        immediate_parent_is_defmodule? = match?({:defmodule, _, _}, immediate_parent)
+        token_at_cursor_is_blank?(analysis, range.start) and immediate_parent_is_defmodule?
 
       _ ->
         false
