@@ -70,6 +70,34 @@ defmodule Lexical.Document.Position do
         }
     end
   end
+
+  @doc """
+  Compares two positions.
+
+  Returns `:gt`, `:lt`, or `:eq` depending on the location of the first
+  position relative to the second.
+  """
+  @spec compare(t | {line, character}, t | {line, character}) :: :lt | :eq | :gt
+  def compare(%__MODULE__{} = pos1, %__MODULE__{} = pos2) do
+    compare({pos1.line, pos1.character}, {pos2.line, pos2.character})
+  end
+
+  def compare(%__MODULE__{} = pos1, {_, _} = pos2) do
+    compare({pos1.line, pos1.character}, pos2)
+  end
+
+  def compare({_, _} = pos1, %__MODULE__{} = pos2) do
+    compare(pos1, {pos2.line, pos2.character})
+  end
+
+  def compare({l1, c1} = first, {l2, c2} = second)
+      when is_integer(l1) and is_integer(c1) and is_integer(l2) and is_integer(c2) do
+    cond do
+      first < second -> :lt
+      first > second -> :gt
+      true -> :eq
+    end
+  end
 end
 
 defimpl Inspect, for: Lexical.Document.Position do

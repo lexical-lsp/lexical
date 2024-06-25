@@ -317,21 +317,9 @@ defmodule Lexical.Ast do
   def contains_position?(ast, %Position{} = position) do
     case Sourceror.get_range(ast) do
       %{start: start_pos, end: end_pos} ->
-        on_same_line? = start_pos[:line] == end_pos[:line] and position.line == start_pos[:line]
-
-        cond do
-          on_same_line? ->
-            position.character >= start_pos[:column] and position.character <= end_pos[:column]
-
-          position.line == start_pos[:line] ->
-            position.character >= start_pos[:column]
-
-          position.line == end_pos[:line] ->
-            position.character <= end_pos[:column]
-
-          true ->
-            position.line > start_pos[:line] and position.line < end_pos[:line]
-        end
+        start_pos = {start_pos[:line], start_pos[:column]}
+        end_pos = {end_pos[:line], end_pos[:column]}
+        within?(position, start_pos, end_pos)
 
       nil ->
         false
@@ -514,7 +502,7 @@ defmodule Lexical.Ast do
           fn %Zipper{node: node} = zipper, {last_position, acc} ->
             current_position = node_position(node, last_position)
 
-            if within_range?(current_position, range) do
+            if within?(current_position, range.start, range.end) do
               {zipper, new_acc} = fun.(zipper, acc)
 
               {:cont, zipper, {current_position, new_acc}}
@@ -528,27 +516,15 @@ defmodule Lexical.Ast do
     end
   end
 
-  defp within_range?({current_line, current_column}, %Range{} = range) do
-    start_pos = %Position{} = range.start
-    end_pos = %Position{} = range.end
-
-    cond do
-      current_line == start_pos.line ->
-        current_column >= start_pos.character
-
-      current_line == end_pos.line ->
-        current_column <= end_pos.character
-
-      true ->
-        current_line >= start_pos.line and current_line <= end_pos.line
-    end
+  defp within?(pos, start_pos, end_pos) do
+    Position.compare(pos, start_pos) in [:gt, :eq] and
+      Position.compare(pos, end_pos) in [:lt, :eq]
   end
 
   defp at_or_after?(node, %Position{} = position) do
-    line = get_line(node, 0)
-    column = get_column(node, 0)
+    node_position = node_position(node, {0, 0})
 
-    line > position.line or (line == position.line and column >= position.character)
+    Position.compare(node_position, position) in [:gt, :eq]
   end
 
   defp one_line_range(%Document{} = document, line_number) do

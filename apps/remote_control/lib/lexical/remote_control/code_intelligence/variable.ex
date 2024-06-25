@@ -82,8 +82,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Variable do
 
     definition_children = Map.get(block_id_to_children, definition_entry.block_id, [])
 
-    definition_start = definition_entry.range.start
-
     # The algorithm here is to first clean up the entries so they either are definitions or references to a
     # variable with the given name. We sort them by their occurrence in the file, working backwards on a line, so
     # definitions earlier in the line shadow definitions later in the line.
@@ -107,14 +105,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Variable do
     {entries, _, _} =
       entries
       |> Enum.filter(fn %Entry{} = entry ->
-        entry_start = entry.range.start
-
-        after_definition? =
-          if entry_start.line == definition_start.line do
-            entry_start.character > definition_entry.range.end.character
-          else
-            entry_start.line > definition_start.line
-          end
+        after_definition? = Position.compare(entry.range.start, definition_entry.range.end) == :gt
 
         variable_type? = entry.type == :variable
         correct_subject? = entry.subject == definition_entry.subject
