@@ -40,19 +40,8 @@ defmodule Lexical.Document.Range do
   def contains?(%__MODULE__{} = range, %Position{} = position) do
     %__MODULE__{start: start_pos, end: end_pos} = range
 
-    cond do
-      position.line == start_pos.line and position.line == end_pos.line ->
-        position.character >= start_pos.character and position.character < end_pos.character
-
-      position.line == start_pos.line ->
-        position.character >= start_pos.character
-
-      position.line == end_pos.line ->
-        position.character < end_pos.character
-
-      true ->
-        position.line > start_pos.line and position.line < end_pos.line
-    end
+    Position.compare(position, start_pos) in [:eq, :gt] and
+      Position.compare(position, end_pos) == :lt
   end
 end
 
