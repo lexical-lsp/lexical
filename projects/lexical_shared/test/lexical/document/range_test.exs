@@ -13,7 +13,12 @@ defmodule Lexical.Document.RangeTest do
       assert Range.contains?(range, position(1, 1))
     end
 
-    test "excludes the end position" do
+    test "excludes the end position in a single-line range" do
+      range = Range.new(position(1, 1), position(1, 10))
+      refute Range.contains?(range, position(1, 10))
+    end
+
+    test "excludes the end position in a multi-line range" do
       range = Range.new(position(1, 1), position(2, 1))
       refute Range.contains?(range, position(2, 1))
     end

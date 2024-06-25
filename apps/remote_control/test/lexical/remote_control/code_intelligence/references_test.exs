@@ -59,7 +59,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
           def func(x), do: Enum.map(x, & &1 + 1)
         end
       /
-      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert [%Location{} = location] = references(project, "Enum.|map(a, b)", code)
       assert decorate(code, location.range) =~ "def func(x), do: «Enum.map(x, & &1 + 1)»"
     end
 
@@ -69,7 +69,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
           defp func(x), do: Enum.map(x, & &1 + 1)
         end
       /
-      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert [%Location{} = location] = references(project, "Enum.|map(a, b)", code)
       assert decorate(code, location.range) =~ "defp func(x), do: «Enum.map(x, & &1 + 1)»"
     end
 
@@ -80,7 +80,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
           defp func(x), do: E.map(x, & &1 + 1)
         end
       /
-      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert [%Location{} = location] = references(project, "Enum.|map(a, b)", code)
       assert decorate(code, location.range) =~ "defp func(x), do: «E.map(x, & &1 + 1)»"
     end
 
@@ -91,7 +91,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
           defp func(x), do: map(x, & &1 + 1)
         end
       /
-      assert [%Location{} = location] = references(project, "Enum.map|(a, b)", code)
+      assert [%Location{} = location] = references(project, "Enum.|map(a, b)", code)
       assert decorate(code, location.range) =~ "defp func(x), do: «map(x, & &1 + 1)»"
     end
 
@@ -104,7 +104,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
 
         end
       /
-      assert [%Location{} = location] = references(project, "Functions.do_map|(a, b)", code)
+      assert [%Location{} = location] = references(project, "Functions.|do_map(a, b)", code)
       assert decorate(code, location.range) =~ "def func(x), do: «do_map(x, & &1 + 1)»"
     end
   end
@@ -118,7 +118,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "|ReferencedModule", code)
       assert decorate(code, location.range) =~ ~s[alias «ReferencedModule»]
     end
 
@@ -129,7 +129,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "|ReferencedModule", code)
       assert decorate(code, location.range) =~ ~s[@attr «ReferencedModule»]
     end
 
@@ -138,7 +138,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         some_module = ReferencedModule
       ]
 
-      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "|ReferencedModule", code)
       assert decorate(code, location.range) =~ ~s[some_module = «ReferencedModule»]
     end
 
@@ -148,7 +148,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "|ReferencedModule", code)
       assert decorate(code, location.range) =~ ~s[def some_fn(«ReferencedModule») do]
     end
 
@@ -157,7 +157,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         %ReferencedModule{} = something_else
       ]
 
-      assert [%Location{} = location] = references(project, "ReferencedModule|", code)
+      assert [%Location{} = location] = references(project, "|ReferencedModule", code)
       assert decorate(code, location.range) =~ ~s[%«ReferencedModule»{} = something_else]
     end
 
@@ -171,7 +171,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
         end
       ]
 
-      assert [location_1, location_2] = references(project, "DefinedModule|", code, true)
+      assert [location_1, location_2] = references(project, "|DefinedModule", code, true)
       assert decorate(code, location_1.range) =~ ~s[defmodule «DefinedModule» do]
       assert decorate(code, location_2.range) =~ ~s[@attr «DefinedModule»]
     end
@@ -185,7 +185,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       end
       )
 
-      assert [location] = references(project, "%Struct|{}", code, true)
+      assert [location] = references(project, "%|Struct{}", code, true)
       assert decorate(code, location.range) =~ "«defstruct [:field]»"
     end
 
@@ -198,22 +198,23 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       ]
 
       selector = ~q(
-      defmodule Struct do
-        defstruc|t [:name, :value]
-      end
+        defmodule Struct do
+          defstruc|t [:name, :value]
+        end
       )
+
       assert [location] = references(project, selector, code)
       assert decorate(code, location.range) =~ "def something(«%Struct{}») do"
     end
 
     test "excludes their definition", %{project: project} do
       code = ~q(
-      defmodule Struct do
-        defstruct [:field]
-      end
+        defmodule Struct do
+          defstruct [:field]
+        end
       )
 
-      assert [] = references(project, "%Struct|{}", code)
+      assert [] = references(project, "%|Struct{}", code)
     end
   end
 
@@ -264,7 +265,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
     test "are found in a function body", %{project: project} do
       query = ~S[
         def my_fun do
-          first| = 4
+          |first = 4
           y = first * 2
           z = y * 3 + first
         end
@@ -282,7 +283,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       query = ~S[
         def my_fun do
           first = 4
-          y = first| * 2
+          y = |first * 2
           z = y * 3 + first
         end
       ]
