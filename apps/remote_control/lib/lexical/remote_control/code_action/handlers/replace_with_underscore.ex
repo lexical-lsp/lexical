@@ -47,7 +47,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceWithUnderscore do
     result =
       Ast.traverse_line(document, line_number, [], fn
         %Zipper{node: {^unused_variable_name, _meta, nil} = node} = zipper, patches ->
-          [patch] = Sourceror.Patch.rename_identifier(node, underscored_variable_name)
+          patch = Sourceror.Patch.rename_identifier(node, underscored_variable_name)
           {zipper, [patch | patches]}
 
         zipper, acc ->
