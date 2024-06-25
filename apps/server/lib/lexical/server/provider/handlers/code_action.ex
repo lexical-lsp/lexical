@@ -1,20 +1,20 @@
 defmodule Lexical.Server.Provider.Handlers.CodeAction do
+  alias Lexical.Project
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction
-  alias Lexical.Server.Provider.Env
 
   require Logger
 
-  def handle(%Requests.CodeAction{} = request, %Env{} = env) do
+  def handle(%Requests.CodeAction{} = request, %Project{} = project) do
     diagnostics = Enum.map(request.context.diagnostics, &to_code_action_diagnostic/1)
 
     code_actions =
       RemoteControl.Api.code_actions(
-        env.project,
+        project,
         request.document,
         request.range,
         diagnostics,

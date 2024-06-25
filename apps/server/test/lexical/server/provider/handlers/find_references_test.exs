@@ -7,7 +7,6 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
   alias Lexical.Protocol.Responses
   alias Lexical.RemoteControl
   alias Lexical.Server
-  alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
   import Lexical.Test.Protocol.Fixtures.LspProtocol
@@ -43,7 +42,7 @@ defmodule Lexical.Server.Provider.Handlers.FindReferencesTest do
   end
 
   def handle(request, project) do
-    Handlers.FindReferences.handle(request, %Env{project: project})
+    Handlers.FindReferences.handle(request, project)
   end
 
   describe "find references" do
