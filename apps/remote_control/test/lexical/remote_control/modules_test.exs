@@ -1,6 +1,5 @@
 defmodule Lexical.RemoteControl.ModulesTest do
   alias Lexical.RemoteControl.Modules
-  use Modules.Predicate.Syntax
 
   use ExUnit.Case
   use Lexical.Test.EventualAssertions
@@ -45,22 +44,9 @@ defmodule Lexical.RemoteControl.ModulesTest do
   end
 
   describe "using predicate descriptors" do
-    test "it should place the argument where you specify" do
-      assert [module] =
-               Modules.with_prefix("GenEvent", {Kernel, :macro_exported?, [:"$1", :__using__, 1]})
-
-      assert to_string(module) == "Elixir.GenEvent"
-    end
-
-    test "it should work with the predicate syntax helpers" do
-      assert [GenServer] =
-               Modules.with_prefix("GenServer", predicate(&macro_exported?(&1, :__using__, 1)))
-
-      assert [GenServer] =
-               Modules.with_prefix(
-                 "GenServer",
-                 predicate(&Kernel.macro_exported?(&1, :__using__, 1))
-               )
+    test "it places the module as the first argument" do
+      assert [GenEvent] =
+               Modules.with_prefix("GenEvent", {Kernel, :macro_exported?, [:__using__, 1]})
     end
   end
 end

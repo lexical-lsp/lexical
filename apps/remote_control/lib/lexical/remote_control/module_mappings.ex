@@ -59,10 +59,6 @@ defmodule Lexical.RemoteControl.ModuleMappings do
     GenServer.call(__MODULE__, {:modules_in_file, file_path})
   end
 
-  def update(module, file_path) do
-    GenServer.cast(__MODULE__, {:update, module, file_path})
-  end
-
   # GenServer callbacks
 
   @impl GenServer
@@ -79,12 +75,6 @@ defmodule Lexical.RemoteControl.ModuleMappings do
   @impl GenServer
   def handle_call({:file_for_module, module}, _from, %State{} = state) do
     {:reply, State.file_for_module(state, module), state}
-  end
-
-  @impl GenServer
-  def handle_cast({:update, module, file_path}, %State{} = state) do
-    new_state = State.update(state, module, file_path)
-    {:noreply, new_state}
   end
 
   @impl GenServer

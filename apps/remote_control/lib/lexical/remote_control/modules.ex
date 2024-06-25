@@ -1,49 +1,4 @@
 defmodule Lexical.RemoteControl.Modules do
-  defmodule Predicate.Syntax do
-    @moduledoc """
-    Syntax helpers for the predicate syntax
-    """
-    defmacro __using__(_) do
-      quote do
-        import unquote(__MODULE__), only: [predicate: 1]
-      end
-    end
-
-    defmacro predicate(call) do
-      predicate_mfa =
-        case call do
-          {:&, _, [{{:., _, [{:__aliases__, _, module}, fn_name]}, _, args}]} ->
-            # This represents the syntax of &Kernel.foo(&1, :a)
-            {Module.concat(module), fn_name, capture_to_placeholder(args)}
-
-          {:&, _, [{fn_name, _, args}]} ->
-            # This represents foo(:a, :b)
-            {Kernel, fn_name, capture_to_placeholder(args)}
-
-          _ ->
-            message = """
-            Invalid predicate.
-
-              Predicates should look like function captures, i.e.
-              predicate(&Module.function(&1, :other)).
-
-              Instead, I got predicate(#{Macro.to_string(call)})
-            """
-
-            raise CompileError, description: message, file: __CALLER__.file, line: __CALLER__.line
-        end
-
-      Macro.escape(predicate_mfa)
-    end
-
-    defp capture_to_placeholder(args) do
-      Enum.map(args, fn
-        {:&, _, [1]} -> :"$1"
-        arg -> arg
-      end)
-    end
-  end
-
   @moduledoc """
   Utilities for dealing with modules on the remote control node
   """
@@ -202,14 +157,18 @@ defmodule Lexical.RemoteControl.Modules do
   `with_prefix` returns all modules on the node on which it runs that start with the given prefix.
   It's worth noting that it will return _all modules_ regardless if they have been loaded or not.
 
-  You can optionally pass a predicate function to further select which modules are returned, but
+  You can optionally pass a predicate MFA to further select which modules are returned, but
   it's important to understand that the predicate can only be a function reference to a function that
   exists on the `remote_control` node. I.e. you CANNOT pass anonymous functions to this module.
 
-  To ease things, there is a syntax helper in the `Predicate.Syntax` module that allows you to specify
-  predicates via a syntax that looks like function captures.
+  Each module will be added as the first argument to the given list of args in the predicate,
+  for example:
+
+      iex> Modules.with_prefix("Gen", {Kernel, :macro_exported?, [:__using__, 1]})
+      [GenEvent, GenServer]
+
   """
-  def with_prefix(prefix_module, predicate_mfa \\ {Function, :identity, [:"$1"]})
+  def with_prefix(prefix_module, predicate_mfa \\ {Function, :identity, []})
 
   def with_prefix(prefix_module, mfa) when is_atom(prefix_module) do
     prefix_module
@@ -239,16 +198,7 @@ defmodule Lexical.RemoteControl.Modules do
   end
 
   defp apply_predicate(module_arg, {invoked_module, function, args}) do
-    args =
-      Enum.map(args, fn
-        :"$1" ->
-          module_arg
-
-        other ->
-          other
-      end)
-
-    apply(invoked_module, function, args)
+    apply(invoked_module, function, [module_arg | args])
   end
 
   defp ensure_loaded?(_, true), do: true

@@ -1,7 +1,11 @@
 defmodule Lexical.RemoteControl.ModuleMappingsTest do
   alias Lexical.RemoteControl.Dispatch
   alias Lexical.RemoteControl.ModuleMappings
+
   use ExUnit.Case
+  use Lexical.Test.EventualAssertions
+
+  import Lexical.RemoteControl.Api.Messages
 
   setup do
     start_supervised!(Dispatch)
@@ -10,8 +14,12 @@ defmodule Lexical.RemoteControl.ModuleMappingsTest do
   end
 
   def with_a_populated_cache(_) do
-    ModuleMappings.update(__MODULE__, __ENV__.file)
+    update_module(__MODULE__, __ENV__.file)
     :ok
+  end
+
+  def update_module(module, file) do
+    Dispatch.broadcast(module_updated(name: module, file: file))
   end
 
   describe "modules_in_file/1" do
@@ -23,33 +31,31 @@ defmodule Lexical.RemoteControl.ModuleMappingsTest do
   describe "basic functions" do
     setup [:with_a_populated_cache]
 
-    test "it allows you to update a module" do
-      ModuleMappings.update(__MODULE__, "foo.text")
+    test "it updates the file for a module" do
+      update_module(__MODULE__, "foo.text")
 
-      assert ModuleMappings.file_for_module(__MODULE__) == "foo.text"
+      assert_eventually ModuleMappings.file_for_module(__MODULE__) == "foo.text"
     end
 
     test "it allows you to get the file of a module" do
-      assert ModuleMappings.file_for_module(__MODULE__) == __ENV__.file
+      assert_eventually ModuleMappings.file_for_module(__MODULE__) == __ENV__.file
     end
 
     test "it allows you to get the modules defined in a file" do
-      assert ModuleMappings.modules_in_file(__ENV__.file) == [__MODULE__]
+      assert_eventually ModuleMappings.modules_in_file(__ENV__.file) == [__MODULE__]
     end
 
     test "it allows to get multiple modules defined in a file" do
-      assert ModuleMappings.update(FakeModule, __ENV__.file)
+      update_module(FakeModule, __ENV__.file)
 
-      modules_in_test = ModuleMappings.modules_in_file(__ENV__.file)
-      assert FakeModule in modules_in_test
-      assert __MODULE__ in modules_in_test
+      assert_eventually [FakeModule, __MODULE__] = ModuleMappings.modules_in_file(__ENV__.file)
     end
 
     test "it allows for modules to move from one file to another" do
-      ModuleMappings.update(__MODULE__, "other_file.exs")
+      update_module(__MODULE__, "other_file.exs")
 
-      assert ModuleMappings.file_for_module(__MODULE__) == "other_file.exs"
-      assert ModuleMappings.modules_in_file(__ENV__.file) == []
+      assert_eventually ModuleMappings.file_for_module(__MODULE__) == "other_file.exs"
+      assert_eventually ModuleMappings.modules_in_file(__ENV__.file) == []
     end
   end
 end
