@@ -62,6 +62,10 @@ defmodule Lexical.RemoteControl do
 
   defdelegate workspace_symbols(query), to: CodeIntelligence.Symbols, as: :for_workspace
 
+  defdelegate maybe_update_rename_progress(triggered_message),
+    to: RemoteControl.Commands.Rename,
+    as: :update_progress
+
   def start_link(%Project{} = project) do
     :ok = ensure_epmd_started()
     start_net_kernel(project)
