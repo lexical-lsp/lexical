@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
+  alias Lexical.Ast
   alias Lexical.Ast.Analysis
   alias Lexical.Document
   alias Lexical.Document.Edit
@@ -13,6 +14,31 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
 
   import Line
 
+  @spec recognizes?(Analysis.t(), Position.t()) :: boolean()
+  def recognizes?(%Analysis{} = analysis, %Position{} = position) do
+    case resolve(analysis, position) do
+      {:ok, _, _} ->
+        true
+
+      _ ->
+        false
+    end
+  end
+
+  @spec prepare(Analysis.t() | Lexical.path(), Position.t()) ::
+          {:ok, {atom(), String.t()}, Range.t()} | {:error, tuple() | atom()}
+  def prepare(%Analysis{} = analysis, %Position{} = position) do
+    with {:ok, {:module, _module}, _range} <- resolve(analysis, position) do
+      {module, range} = surround_the_whole_module(analysis, position)
+
+      if cursor_at_declaration?(module, range) do
+        {:ok, {:module, module}, range}
+      else
+        {:error, {:unsupported_location, :module}}
+      end
+    end
+  end
+
   @spec rename(Range.t(), String.t(), atom()) :: [Document.Changes.t()]
   def rename(%Range{} = old_range, new_name, module) do
     {old_suffix, new_suffix} = old_range |> range_text() |> diff(new_name)
@@ -26,9 +52,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     end
   end
 
-  @spec resolve(Analysis.t() | Lexical.path(), Position.t()) ::
-          {:ok, {atom(), atom()}, Range.t()} | {:error, term()}
-  def resolve(%Analysis{} = analysis, %Position{} = position) do
+  defp resolve(%Analysis{} = analysis, %Position{} = position) do
     case Entity.resolve(analysis, position) do
       {:ok, {module_or_struct, module}, range} when module_or_struct in [:struct, :module] ->
         {:ok, {:module, module}, range}
@@ -38,13 +62,32 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     end
   end
 
-  def resolve(path, %Position{} = position) do
+  defp resolve(path, %Position{} = position) do
     uri = Document.Path.ensure_uri(path)
 
     with {:ok, _} <- Document.Store.open_temporary(uri),
          {:ok, _document, analysis} <- Document.Store.fetch(uri, :analysis) do
       resolve(analysis, position)
     end
+  end
+
+  defp cursor_at_declaration?(module, rename_range) do
+    case Store.exact(module, type: :module, subtype: :definition) do
+      {:ok, [definition]} ->
+        rename_range == definition.range
+
+      _ ->
+        false
+    end
+  end
+
+  defp surround_the_whole_module(analysis, position) do
+    # When renaming occurs, we want users to be able to choose any place in the defining module,
+    # not just the last local module, like: `defmodule |Foo.Bar do` also works.
+    {:ok, %{end: {_end_line, end_character}}} = Ast.surround_context(analysis, position)
+    end_position = %{position | character: end_character - 1}
+    {:ok, {:module, module}, range} = resolve(analysis, end_position)
+    {module, range}
   end
 
   defp diff(old_range_text, new_name) do
