@@ -1,9 +1,9 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callback do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
-  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate.Callback
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
   defimpl Translatable, for: Callback do
     def translate(callback, _builder, %Env{} = env) do

@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.CompletionTest do
-  alias Lexical.Completion.SortScope
   alias Lexical.Protocol.Types.Completion
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
 
   use Lexical.Test.Server.CompletionCase
   use Patch

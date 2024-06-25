@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.BuilderTest do
   alias Lexical.Ast
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
   alias Lexical.Protocol.Types.Completion.Item, as: CompletionItem
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
 
   use ExUnit.Case, async: true
 
