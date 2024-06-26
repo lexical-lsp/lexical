@@ -442,9 +442,29 @@ defmodule Lexical.Ast do
   end
 
   defp do_surround_context(fragment, %Position{} = position) when is_binary(fragment) do
-    case Code.Fragment.surround_context(fragment, {position.line, position.character}) do
-      :none -> {:error, :surround_context}
+    pos = {position.line, position.character}
+
+    case Code.Fragment.surround_context(fragment, pos) do
+      :none -> do_surround_context_again(fragment, pos)
       context -> {:ok, context}
+    end
+  end
+
+  defp do_surround_context_again(_fragment, {_line, 1} = _position) do
+    {:error, :surround_context}
+  end
+
+  defp do_surround_context_again(fragment, {line, column} = position) do
+    case Code.Fragment.surround_context(fragment, {line, column - 1}) do
+      :none ->
+        {:error, :surround_context}
+
+      context ->
+        if context.end == position do
+          {:ok, context}
+        else
+          {:error, :surround_context}
+        end
     end
   end
 
