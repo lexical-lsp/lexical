@@ -7,7 +7,8 @@ defmodule Lexical.Ast.Detection.StructFieldsTest do
     variations: [:match, :function_body, :function_arguments, :module],
     skip: [
       [:struct_reference, :*],
-      [:struct_field_value, :*]
+      [:struct_field_value, :*],
+      [:struct_field_key, :*]
     ]
 
   test "is true if the cursor is in current module arguments" do
