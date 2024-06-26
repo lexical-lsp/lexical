@@ -54,7 +54,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
       def my_fn do
       end
       ]
-      assert "def my_fn «do\n»end" = decorate_location(code)
+      assert "def my_fn «do\nend»" = decorate_location(code)
     end
 
     test "are found in a private function with do/end and no body" do
@@ -62,7 +62,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
       defp my_fn do
       end
       ]
-      assert "defp my_fn «do\n»end" = decorate_location(code)
+      assert "defp my_fn «do\nend»" = decorate_location(code)
     end
 
     test "are found in a public function with do/end and  abody" do

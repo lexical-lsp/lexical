@@ -1,4 +1,4 @@
-# Copied from https://github.com/elixir-lang/elixir/blob/b50c5eb031d4ce17cfa21674c69219b6eb170783/lib/elixir/lib/code/fragment.ex
+# Copied from https://raw.githubusercontent.com/elixir-lang/elixir/d7ea2fa2e4e5de1990297be19495fc93740b2e8b/lib/elixir/lib/code/fragment.ex
 defmodule Future.Code.Fragment do
   alias Future.Code, as: Code
 
@@ -34,7 +34,7 @@ defmodule Future.Code.Fragment do
       :expr
 
       iex> Code.Fragment.cursor_context("hello_wor")
-      {:local_or_var, 'hello_wor'}
+      {:local_or_var, ~c"hello_wor"}
 
   ## Return values
 
@@ -484,15 +484,16 @@ defmodule Future.Code.Fragment do
 
   defp operator(rest, count, acc, _call_op?) do
     case :future_elixir_tokenizer.tokenize(acc, 1, 1, []) do
-      {:ok, _, _, _, [{:atom, _, _}]} ->
+      {:ok, _, _, _, [{:atom, _, _}], []} ->
         {{:unquoted_atom, tl(acc)}, count}
 
-      {:ok, _, _, _, [{_, _, op}]} ->
+      {:ok, _, _, _, [{_, _, op}], []} ->
         {rest, dot_count} = strip_spaces(rest, count)
 
         cond do
-          Code.Identifier.unary_op(op) == :error and Code.Identifier.binary_op(op) == :error ->
-            :none
+          Code.Identifier.unary_op(op) == :error and
+              Code.Identifier.binary_op(op) == :error ->
+            {:none, 0}
 
           match?([?. | rest] when rest == [] or hd(rest) != ?., rest) ->
             dot(tl(rest), dot_count + 1, acc)
@@ -550,7 +551,7 @@ defmodule Future.Code.Fragment do
   ## Examples
 
       iex> Code.Fragment.surround_context("foo", {1, 1})
-      %{begin: {1, 1}, context: {:local_or_var, 'foo'}, end: {1, 4}}
+      %{begin: {1, 1}, context: {:local_or_var, ~c"foo"}, end: {1, 4}}
 
   ## Differences to `cursor_context/2`
 
@@ -600,7 +601,8 @@ defmodule Future.Code.Fragment do
                | {:dot, inside_dot, charlist}
                | {:module_attribute, charlist}
                | {:unquoted_atom, charlist}
-               | {:var, charlist},
+               | {:var, charlist}
+               | :expr,
              inside_alias:
                {:local_or_var, charlist}
                | {:module_attribute, charlist},
@@ -638,7 +640,7 @@ defmodule Future.Code.Fragment do
     {reversed_pre, post} = adjust_position(reversed_pre, post)
 
     case take_identifier(post, []) do
-      :none ->
+      {_, [], _} ->
         maybe_operator(reversed_pre, post, line, opts)
 
       {:identifier, reversed_post, rest} ->
@@ -646,7 +648,7 @@ defmodule Future.Code.Fragment do
         reversed = reversed_post ++ reversed_pre
 
         case codepoint_cursor_context(reversed, opts) do
-          {{:struct, acc}, offset} when acc != [] ->
+          {{:struct, acc}, offset} ->
             build_surround({:struct, acc}, reversed, line, offset)
 
           {{:alias, acc}, offset} ->
@@ -751,27 +753,11 @@ defmodule Future.Code.Fragment do
     do: take_identifier(t, [h | acc])
 
   defp take_identifier(rest, acc) do
-    {stripped, _} = strip_spaces(rest, 0)
-
-    with [?. | t] <- stripped,
+    with {[?. | t], _} <- strip_spaces(rest, 0),
          {[h | _], _} when h in ?A..?Z <- strip_spaces(t, 0) do
       take_alias(rest, acc)
     else
-      # Consider it an identifier if we are at the end of line
-      # or if we have spaces not followed by . (call) or / (arity)
-      _ when acc == [] and (rest == [] or (hd(rest) in @space and hd(stripped) not in ~c"/.")) ->
-        {:identifier, acc, rest}
-
-      # If we are immediately followed by a container, we are still part of the identifier.
-      # We don't consider << as it _may_ be an operator.
-      _ when acc == [] and hd(stripped) in ~c"({[" ->
-        {:identifier, acc, rest}
-
-      _ when acc == [] ->
-        :none
-
-      _ ->
-        {:identifier, acc, rest}
+      _ -> {:identifier, acc, rest}
     end
   end
 
@@ -1106,9 +1092,41 @@ defmodule Future.Code.Fragment do
   @spec container_cursor_to_quoted(List.Chars.t(), keyword()) ::
           {:ok, Macro.t()} | {:error, {location :: keyword, binary | {binary, binary}, binary}}
   def container_cursor_to_quoted(fragment, opts \\ []) do
-    opts =
-      Keyword.take(opts, [:file, :line, :column, :columns, :token_metadata, :literal_encoder])
+    opts = Keyword.take(opts, [:columns, :token_metadata, :literal_encoder])
+    opts = [cursor_completion: true, emit_warnings: false] ++ opts
 
-    Code.string_to_quoted(fragment, [cursor_completion: true, warnings: false] ++ opts)
+    file = Keyword.get(opts, :file, "nofile")
+    line = Keyword.get(opts, :line, 1)
+    column = Keyword.get(opts, :column, 1)
+
+    case :future_elixir_tokenizer.tokenize(to_charlist(fragment), line, column, opts) do
+      {:ok, line, column, _warnings, rev_tokens, rev_terminators} ->
+        tokens = :lists.reverse(rev_tokens, rev_terminators)
+
+        case :future_elixir.tokens_to_quoted(tokens, file, opts) do
+          {:ok, ast} ->
+            {:ok, ast}
+
+          {:error, error} ->
+            # In case parsing fails, we give it another shot but handling fn/do/else/catch/rescue/after.
+            tokens =
+              :lists.reverse(
+                rev_tokens,
+                [{:stab_op, {line, column, nil}, :->}, {nil, {line, column + 2, nil}}] ++
+                  Enum.map(rev_terminators, fn tuple ->
+                    {line, column, info} = elem(tuple, 1)
+                    put_elem(tuple, 1, {line, column + 5, info})
+                  end)
+              )
+
+            case :future_elixir.tokens_to_quoted(tokens, file, opts) do
+              {:ok, ast} -> {:ok, ast}
+              {:error, _} -> {:error, error}
+            end
+        end
+
+      {:error, info, _rest, _warnings, _so_far} ->
+        {:error, :future_elixir.format_token_error(info)}
+    end
   end
 end
