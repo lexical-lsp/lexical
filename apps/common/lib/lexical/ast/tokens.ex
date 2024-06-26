@@ -70,7 +70,7 @@ defmodule Lexical.Ast.Tokens do
       {:ok, _, _, _, tokens} ->
         {:ok, Enum.reverse(tokens), ~c""}
 
-      {:error, {_, _, ~c"unexpected token: ", _}, _, _, _} ->
+      {:error, {_, ~c"unexpected token: ", _}, _, _, _} ->
         {:ok, [], ~c"\n" ++ current_context}
 
       {:error, _, _, _, tokens} ->

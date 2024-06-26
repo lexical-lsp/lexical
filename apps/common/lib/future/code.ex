@@ -566,7 +566,7 @@ defmodule Future.Code do
 
   """
   @doc since: "1.15.0"
-  @spec with_diagnostics(keyword(), (() -> result)) :: {result, [diagnostic(:warning | :error)]}
+  @spec with_diagnostics(keyword(), (-> result)) :: {result, [diagnostic(:warning | :error)]}
         when result: term()
   def with_diagnostics(opts \\ [], fun) do
     value = :erlang.get(:elixir_code_diagnostics)
@@ -1230,8 +1230,8 @@ defmodule Future.Code do
     Process.put(:code_formatter_comments, [])
     opts = [preserve_comments: &preserve_comments/5] ++ opts
 
-    with {:ok, tokens} <- :elixir.string_to_tokens(charlist, line, column, file, opts),
-         {:ok, forms} <- :elixir.tokens_to_quoted(tokens, file, opts) do
+    with {:ok, tokens} <- :future_elixir.string_to_tokens(charlist, line, column, file, opts),
+         {:ok, forms} <- :future_elixir.tokens_to_quoted(tokens, file, opts) do
       comments = Enum.reverse(Process.get(:code_formatter_comments))
       {:ok, forms, comments}
     end
