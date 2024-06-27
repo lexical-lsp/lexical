@@ -161,42 +161,47 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       end)
     end
 
-    test "arity > 1 provides a snippet with parens and commas", %{project: project} do
+    test "arity > 1 suggests ordered snippets with arity and with parens and commas",
+         %{project: project} do
       source = ~q[
-        Enum.map(1..10, Enum.reduce_w|)
+        Enum.map(1..10, &Enum.reduce_w|)
       ]
 
-      {:ok, completion} =
+      {:ok, [capture, args_capture]} =
         project
         |> complete(source)
         |> fetch_completion(kind: :function)
 
-      assert completion.insert_text_format == :snippet
-
-      assert apply_completion(completion) == ~q[
-        Enum.map(1..10, Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
-      ]
-    end
-
-    test "work with Kernel arity one functions", %{project: project} do
-      source = "&is_ma|"
-
-      [capture, args_capture] =
-        project
-        |> complete(source)
-        |> Enum.filter(fn completion ->
-          sort_text = completion.sort_text
-          # arity 1 and is is_map
-          String.ends_with?(sort_text, "001") and
-            String.contains?(sort_text, "is_map")
-        end)
-
       assert capture.detail == "(Capture)"
-      assert apply_completion(capture) == "&is_map/1"
+
+      assert apply_completion(capture) == ~q[
+        Enum.map(1..10, &Enum.reduce_while/3)
+      ]
 
       assert args_capture.detail == "(Capture with arguments)"
       assert args_capture.insert_text_format == :snippet
-      assert apply_completion(args_capture) == "&is_map(${1:term})"
+
+      assert apply_completion(args_capture) == ~q[
+        Enum.map(1..10, &Enum.reduce_while(${1:enumerable}, ${2:acc}, ${3:fun}))
+      ]
+
+      assert capture.sort_text < args_capture.sort_text
+    end
+
+    test "work with Kernel arity one functions", %{project: project} do
+      source = "&is_li|"
+
+      {:ok, [capture, args_capture]} =
+        project
+        |> complete(source)
+        |> fetch_completion("is_list")
+
+      assert capture.detail == "(Capture)"
+      assert apply_completion(capture) == "&is_list/1"
+
+      assert args_capture.detail == "(Capture with arguments)"
+      assert args_capture.insert_text_format == :snippet
+      assert apply_completion(args_capture) == "&is_list(${1:term})"
     end
 
     test "work with kernel two arity functions", %{project: project} do
@@ -208,6 +213,44 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.FunctionTest d
       assert is_map_key_args.detail == "(Capture with arguments)"
       assert is_map_key_args.insert_text_format == :snippet
       assert apply_completion(is_map_key_args) == "&is_map_key(${1:map}, ${2:key})"
+    end
+
+    test "suggest completions sorted using existing arities", %{project: project} do
+      sources = [
+        "&is_fun|/2",
+        "&Kernel.is_fun|/2",
+        "&is_fun|(x, y)",
+        "&Kernel.is_fun|(x, y)"
+      ]
+
+      for source <- sources do
+        completions = project |> complete(source) |> Enum.sort_by(& &1.sort_text)
+
+        assert [
+                 %{label: "is_function/2"},
+                 %{label: "is_function(term, arity)"},
+                 %{label: "is_function/1"},
+                 %{label: "is_function(term)"}
+               ] = completions
+
+        explicitly_sorted? =
+          completions
+          |> Enum.chunk_every(2)
+          |> Enum.all?(fn [x, y] -> x.sort_text < y.sort_text end)
+
+        assert explicitly_sorted?, "expected explicitly sorted completions for: #{source}"
+      end
+    end
+
+    test "replace slash arity with another", %{project: project} do
+      source = "&is_fun|/2"
+
+      assert {:ok, capture} =
+               project
+               |> complete(source)
+               |> fetch_completion("is_function/1")
+
+      assert apply_completion(capture) == "&is_function/1"
     end
   end
 

@@ -36,7 +36,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   end
 
   @impl Builder
-  def text_edit(%Env{} = env, text, {start_char, end_char}, options \\ []) do
+  def text_edit(env, text, range, options \\ [])
+
+  def text_edit(%Env{} = env, text, {start_char, end_char}, options) do
     line_number = env.position.line
 
     range =
@@ -45,6 +47,10 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         Position.new(env.document, line_number, end_char)
       )
 
+    text_edit(env, text, range, options)
+  end
+
+  def text_edit(%Env{} = env, text, %Range{} = range, options) do
     edits = Document.Changes.new(env.document, Edit.new(text, range))
 
     options
@@ -55,8 +61,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
   end
 
   @impl Builder
-  def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options \\ []) do
-    snippet = String.trim_trailing(text, "\n")
+  def text_edit_snippet(env, text, range, options \\ [])
+
+  def text_edit_snippet(%Env{} = env, text, {start_char, end_char}, options) do
     line_number = env.position.line
 
     range =
@@ -64,6 +71,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Builder do
         Position.new(env.document, line_number, start_char),
         Position.new(env.document, line_number, end_char)
       )
+
+    text_edit_snippet(env, text, range, options)
+  end
+
+  def text_edit_snippet(%Env{} = env, text, %Range{} = range, options) do
+    snippet = String.trim_trailing(text, "\n")
 
     edits = Document.Changes.new(env.document, Edit.new(snippet, range))
 
