@@ -212,11 +212,11 @@ tokenize([$~, H | _T] = Original, Line, Column, Scope, Tokens) when ?is_upcase(H
 % We tokenize char literals (?a) as {char, _, CharInt} instead of {number, _,
 % CharInt}. This is exactly what Erlang does with Erlang char literals
 % ($a). This means we'll have to adjust the error message for char literals in
-% elixir_errors.erl as by default {char, _, _} tokens are "hijacked" by Erlang
+% future_elixir_errors.erl as by default {char, _, _} tokens are "hijacked" by Erlang
 % and printed with Erlang syntax ($a) in the parser's error messages.
 
 tokenize([$?, $\\, H | T], Line, Column, Scope, Tokens) ->
-  Char = elixir_interpolation:unescape_map(H),
+  Char = future_elixir_interpolation:unescape_map(H),
 
   NewScope = if
     H =:= Char, H =/= $\\ ->
@@ -489,7 +489,7 @@ tokenize([T | Rest], Line, Column, Scope, Tokens) when ?pipe_op(T) ->
 % Non-operator Atoms
 
 tokenize([$:, H | T] = Original, Line, Column, Scope, Tokens) when ?is_quote(H) ->
-  case elixir_interpolation:extract(Line, Column + 2, Scope, true, T, H) of
+  case future_elixir_interpolation:extract(Line, Column + 2, Scope, true, T, H) of
     {NewLine, NewColumn, Parts, Rest, InterScope} ->
       NewScope = case is_unnecessary_quote(Parts, InterScope) of
         true ->
@@ -770,7 +770,7 @@ handle_heredocs(T, Line, Column, H, Scope, Tokens) ->
   end.
 
 handle_strings(T, Line, Column, H, Scope, Tokens) ->
-  case elixir_interpolation:extract(Line, Column, Scope, true, T, H) of
+  case future_elixir_interpolation:extract(Line, Column, Scope, true, T, H) of
     {error, Reason} ->
       interpolation_error(Reason, [H | T], Scope, Tokens, " (for string starting at line ~B)", [Line], Line, Column-1, [H], [H]);
 
@@ -896,7 +896,7 @@ handle_dot([$., $( | Rest], Line, Column, DotInfo, Scope, Tokens) ->
   tokenize([$( | Rest], Line, Column, Scope, TokensSoFar);
 
 handle_dot([$., H | T] = Original, Line, Column, DotInfo, Scope, Tokens) when ?is_quote(H) ->
-  case elixir_interpolation:extract(Line, Column + 1, Scope, true, T, H) of
+  case future_elixir_interpolation:extract(Line, Column + 1, Scope, true, T, H) of
     {NewLine, NewColumn, [Part], Rest, InterScope} when is_list(Part) ->
       NewScope = case is_unnecessary_quote([Part], InterScope) of
         true ->
@@ -1021,7 +1021,7 @@ extract_heredoc_with_interpolation(Line, Column, Scope, Interpol, T, H) ->
       %% We prepend a new line so we can transparently remove
       %% spaces later. This new line is removed by calling "tl"
       %% in the final heredoc body three lines below.
-      case elixir_interpolation:extract(Line, Column, Scope, Interpol, [$\n|Headerless], [H,H,H]) of
+      case future_elixir_interpolation:extract(Line, Column, Scope, Interpol, [$\n|Headerless], [H,H,H]) of
         {NewLine, NewColumn, Parts0, Rest, InterScope} ->
           Indent = NewColumn - 4,
           Fun = fun(Part, Acc) -> extract_heredoc_indent(Part, Acc, Indent) end,
@@ -1092,7 +1092,7 @@ maybe_heredoc_warn(Line, Column, Scope, Marker) ->
 extract_heredoc_head([[$\n|H]|T]) -> [H|T].
 
 unescape_tokens(Tokens, Line, Column, #elixir_tokenizer{unescape=true}) ->
-  case elixir_interpolation:unescape_tokens(Tokens) of
+  case future_elixir_interpolation:unescape_tokens(Tokens) of
     {ok, Result} ->
       {ok, Result};
 
@@ -1448,7 +1448,7 @@ check_terminator({'end', {Line, Column, _}}, [], #elixir_tokenizer{mismatch_hint
     case lists:keyfind('end', 1, Hints) of
       {'end', HintLine, _Identation} ->
         io_lib:format("\n~ts the \"end\" on line ~B may not have a matching \"do\" "
-                      "defined before it (based on indentation)", [elixir_errors:prefix(hint), HintLine]);
+                      "defined before it (based on indentation)", [future_elixir_errors:prefix(hint), HintLine]);
       false ->
         ""
     end,
@@ -1469,7 +1469,7 @@ missing_terminator_hint(Start, End, #elixir_tokenizer{mismatch_hints=Hints}) ->
   case lists:keyfind(Start, 1, Hints) of
     {Start, {HintLine, _, _}, _} ->
       io_lib:format("\n~ts it looks like the \"~ts\" on line ~B does not have a matching \"~ts\"",
-                    [elixir_errors:prefix(hint), Start, HintLine, End]);
+                    [future_elixir_errors:prefix(hint), Start, HintLine, End]);
     false ->
       ""
   end.
@@ -1588,7 +1588,7 @@ tokenize_sigil_contents([H, H, H | T] = Original, [S | _] = SigilName, Line, Col
 
 tokenize_sigil_contents([H | T] = Original, [S | _] = SigilName, Line, Column, Scope, Tokens)
     when ?is_sigil(H) ->
-  case elixir_interpolation:extract(Line, Column + 1, Scope, ?is_downcase(S), T, sigil_terminator(H)) of
+  case future_elixir_interpolation:extract(Line, Column + 1, Scope, ?is_downcase(S), T, sigil_terminator(H)) of
     {NewLine, NewColumn, Parts, Rest, NewScope} ->
       Indentation = nil,
       add_sigil_token(SigilName, Line, Column, NewLine, NewColumn, tokens_to_binary(Parts), Rest, NewScope, Tokens, Indentation, <<H>>);

@@ -465,7 +465,7 @@ string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(Sta
       {ok, lists:reverse(Tokens, Terminators)};
     {ok, _Line, _Column, Warnings, Tokens, Terminators} ->
       (lists:keyfind(emit_warnings, 1, Opts) /= {emit_warnings, false}) andalso
-        [elixir_errors:erl_warn(L, File, M) || {L, M} <- lists:reverse(Warnings)],
+        [future_elixir_errors:erl_warn(L, File, M) || {L, M} <- lists:reverse(Warnings)],
       {ok, lists:reverse(Tokens, Terminators)};
     {error, Info, _Rest, _Warnings, _SoFar} ->
       {error, format_token_error(Info)}
@@ -514,10 +514,10 @@ parser_location(Meta) ->
         {ok, Forms} ->
           Forms;
         {error, {Meta, Error, Token}} ->
-          elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
+          future_elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
       end;
     {error, {Meta, Error, Token}} ->
-      elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
+      future_elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
   end.
 
 to_binary(List) when is_list(List) -> elixir_utils:characters_to_binary(List);

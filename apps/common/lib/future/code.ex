@@ -542,7 +542,7 @@ defmodule Future.Code do
 
   defp validated_eval_string(string, binding, opts_or_env) do
     %{line: line, file: file} = env = env_for_eval(opts_or_env)
-    forms = :elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
+    forms = :future_elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
     {value, binding, _env} = eval_verify(:eval_forms, [forms, binding, env])
     {value, binding}
   end
@@ -1258,7 +1258,7 @@ defmodule Future.Code do
         {forms, comments}
 
       {:error, {location, error, token}} ->
-        :elixir_errors.parse_error(
+        :future_elixir_errors.parse_error(
           location,
           Keyword.get(opts, :file, "nofile"),
           error,

@@ -54,7 +54,7 @@ extract([$\\, $#, ${ | Rest], Buffer, Output, Line, Column, Scope, true, Last) -
 
 extract([$#, ${ | Rest], Buffer, Output, Line, Column, Scope, true, Last) ->
   Output1 = build_string(Buffer, Output),
-  case elixir_tokenizer:tokenize(Rest, Line, Column + 2, Scope#elixir_tokenizer{terminators=[]}) of
+  case future_elixir_tokenizer:tokenize(Rest, Line, Column + 2, Scope#elixir_tokenizer{terminators=[]}) of
     {error, {Location, _, "}"}, [$} | NewRest], Warnings, Tokens} ->
       NewScope = Scope#elixir_tokenizer{warnings=Warnings},
       {line, EndLine} = lists:keyfind(line, 1, Location),
