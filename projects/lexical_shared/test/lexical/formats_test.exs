@@ -15,6 +15,10 @@ defmodule Lexical.FormatsTest do
     test "it correctly handles an erlang module name" do
       assert ":ets" == Formats.module(:ets)
     end
+
+    test "it correctly handles an invalid elixir module" do
+      assert "This.Is.Not.A.Module" == Formats.module(:"This.Is.Not.A.Module")
+    end
   end
 
   describe "formatting time" do
