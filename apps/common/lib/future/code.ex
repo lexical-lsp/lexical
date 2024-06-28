@@ -542,7 +542,7 @@ defmodule Future.Code do
 
   defp validated_eval_string(string, binding, opts_or_env) do
     %{line: line, file: file} = env = env_for_eval(opts_or_env)
-    forms = :elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
+    forms = :future_elixir.string_to_quoted!(to_charlist(string), line, 1, file, [])
     {value, binding, _env} = eval_verify(:eval_forms, [forms, binding, env])
     {value, binding}
   end
@@ -566,7 +566,7 @@ defmodule Future.Code do
 
   """
   @doc since: "1.15.0"
-  @spec with_diagnostics(keyword(), (() -> result)) :: {result, [diagnostic(:warning | :error)]}
+  @spec with_diagnostics(keyword(), (-> result)) :: {result, [diagnostic(:warning | :error)]}
         when result: term()
   def with_diagnostics(opts \\ [], fun) do
     value = :erlang.get(:elixir_code_diagnostics)
@@ -1230,8 +1230,8 @@ defmodule Future.Code do
     Process.put(:code_formatter_comments, [])
     opts = [preserve_comments: &preserve_comments/5] ++ opts
 
-    with {:ok, tokens} <- :elixir.string_to_tokens(charlist, line, column, file, opts),
-         {:ok, forms} <- :elixir.tokens_to_quoted(tokens, file, opts) do
+    with {:ok, tokens} <- :future_elixir.string_to_tokens(charlist, line, column, file, opts),
+         {:ok, forms} <- :future_elixir.tokens_to_quoted(tokens, file, opts) do
       comments = Enum.reverse(Process.get(:code_formatter_comments))
       {:ok, forms, comments}
     end
@@ -1258,7 +1258,7 @@ defmodule Future.Code do
         {forms, comments}
 
       {:error, {location, error, token}} ->
-        :elixir_errors.parse_error(
+        :future_elixir_errors.parse_error(
           location,
           Keyword.get(opts, :file, "nofile"),
           error,

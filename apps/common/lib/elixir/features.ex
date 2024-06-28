@@ -22,4 +22,8 @@ defmodule Elixir.Features do
   def span_in_diagnostic? do
     Version.match?(System.version(), ">= 1.16.0")
   end
+
+  def constains_end_of_expression? do
+    Version.match?(System.version(), ">= 1.17.0")
+  end
 end

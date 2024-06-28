@@ -1,12 +1,14 @@
 defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
   alias Lexical.Document
   alias Lexical.Document.Range
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliases
 
   import Lexical.Test.CursorSupport
   import Lexical.Test.CodeSigil
 
   use Lexical.Test.CodeMod.Case, enable_ast_conversion: false
+  use Patch
 
   setup do
     start_supervised!({Document.Store, derive: [analysis: &Lexical.Ast.analyze/1]})
@@ -90,6 +92,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.OrganizeAliasesTest do
 
   describe "at the top of a module" do
     test "does nothing if there are no aliases" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
       {:ok, organized} =
         ~q[
           defmodule Nothing do

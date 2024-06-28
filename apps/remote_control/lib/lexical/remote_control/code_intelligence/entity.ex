@@ -34,7 +34,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
 
     with :ok <- check_commented(analysis, position),
          {:ok, surround_context} <- Ast.surround_context(analysis, position),
-         {:ok, resolved, {begin_pos, end_pos}} <- resolve(surround_context, analysis, position) do
+         {:ok, resolved, {begin_pos, end_pos}} <-
+           resolve(surround_context, analysis, position) do
       Logger.info("Resolved entity: #{inspect(resolved)}")
       {:ok, resolved, to_range(analysis.document, begin_pos, end_pos)}
     else
@@ -108,10 +109,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
   defp resolve({:local_arity, chars}, node_range, analysis, position) do
     current_module = current_module(analysis, position)
 
-    case Ast.zipper_at(analysis.document, position) do
-      {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, [arity]}]}}} ->
-        {:ok, {:call, current_module, List.to_atom(chars), arity}, node_range}
-
+    with {:ok, %Zipper{node: {:/, _, [_, {:__block__, _, [arity]}]}} = zipper} <-
+           Ast.zipper_at(analysis.document, position),
+         true <- inside_capture?(zipper) do
+      {:ok, {:call, current_module, List.to_atom(chars), arity}, node_range}
+    else
       _ ->
         {:error, :not_found}
     end

@@ -1,19 +1,19 @@
-%% Copied from https://github.com/elixir-lang/elixir/blob/bacea2cef6323d0ede4222f36ddcedd82cb514e4/lib/elixir/src/elixir.erl
-%% And I changed string_to_tokens/5 to use the future_elixir_tokenizer module
-%% and tokens_to_quoted/3 need to use the future_elixir_parser module
+%% Copied from https://github.com/elixir-lang/elixir/blob/d7ea2fa2e4e5de1990297be19495fc93740b2e8b/lib/elixir/src/elixir.erl
 %% Main entry point for Elixir functions. All of those functions are
 %% private to the Elixir compiler and reserved to be used by Elixir only.
 -module(future_elixir).
 -behaviour(application).
--export([start_cli/0, start/0, start_iex/0]).
+-export([start_cli/0, start/0]).
 -export([start/2, stop/1, config_change/3]).
 -export([
   string_to_tokens/5, tokens_to_quoted/3, 'string_to_quoted!'/5,
   env_for_eval/1, quoted_to_erl/2, eval_forms/3, eval_quoted/3,
-  eval_quoted/4
+  eval_quoted/4, eval_local_handler/2, eval_external_handler/3,
+  format_token_error/1
 ]).
 -include("future_elixir.hrl").
 -define(system, 'Elixir.System').
+-define(elixir_eval_env, {elixir, eval_env}).
 
 %% Top level types
 %% TODO: Remove char_list type on v2.0
@@ -67,7 +67,7 @@ start(_Type, _Args) ->
 
   Tokenizer = case code:ensure_loaded('Elixir.String.Tokenizer') of
     {module, Mod} -> Mod;
-    _ -> elixir_tokenizer
+    _ -> future_elixir_tokenizer
   end,
 
   URIConfig = [
@@ -92,7 +92,7 @@ start(_Type, _Args) ->
     {ignore_already_consolidated, false},
     {ignore_module_conflict, false},
     {on_undefined_variable, raise},
-    {parser_options, []},
+    {parser_options, [{columns, true}]},
     {debug_info, true},
     {warnings_as_errors, false},
     {relative_paths, true},
@@ -141,10 +141,10 @@ preload_common_modules() ->
 parse_otp_release() ->
   %% Whenever we change this check, we should also change Makefile.
   case string:to_integer(erlang:system_info(otp_release)) of
-    {Num, _} when Num >= 24 ->
+    {Num, _} when Num >= 25 ->
       Num;
     _ ->
-      io:format(standard_error, "ERROR! Unsupported Erlang/OTP version, expected Erlang/OTP 24+~n", []),
+      io:format(standard_error, "ERROR! Unsupported Erlang/OTP version, expected Erlang/OTP 25+~n", []),
       erlang:halt(1)
   end.
 
@@ -178,6 +178,19 @@ check_file_encoding(Encoding) ->
   end.
 
 %% Boot and process given options. Invoked by Elixir's script.
+%% TODO: Delete prim_tty branches on Erlang/OTP 26.
+
+start() ->
+  case code:ensure_loaded(prim_tty) of
+    {module, _} ->
+      user_drv:start(#{initial_shell => iex:shell()});
+    {error, _} ->
+      case init:get_argument(elixir_root) of
+        {ok, [[Root]]} -> code:add_patha(Root ++ "/iex/ebin");
+        _ -> ok
+      end,
+      'Elixir.IEx.CLI':deprecated()
+  end.
 
 start_cli() ->
   {ok, _} = application:ensure_all_started(elixir),
@@ -192,32 +205,7 @@ start_cli() ->
     {error, _}  -> ok
   end,
 
-  'Elixir.Kernel.CLI':main(init:get_plain_arguments()),
-  elixir_config:booted().
-
-%% TODO: Delete prim_tty branches and -user on Erlang/OTP 26.
-start() ->
-  case code:ensure_loaded(prim_tty) of
-    {module, _} ->
-      user_drv:start(#{initial_shell => noshell});
-    {error, _} ->
-      case init:get_argument(elixir_root) of
-        {ok, [[Root]]} -> code:add_patha(Root ++ "/iex/ebin");
-        _ -> ok
-      end,
-      'Elixir.IEx.CLI':deprecated()
-  end.
-start_iex() ->
-  case code:ensure_loaded(prim_tty) of
-    {module, _} ->
-      spawn(fun() ->
-        elixir_config:wait_until_booted(),
-        (shell:whereis() =:= undefined) andalso 'Elixir.IEx':cli()
-      end);
-
-    {error, _} ->
-      ok
-  end.
+  'Elixir.Kernel.CLI':main(init:get_plain_arguments()).
 
 %% EVAL HOOKS
 
@@ -358,8 +346,27 @@ eval_forms(Tree, Binding, OrigE, Opts) ->
           _ -> [Erl]
         end,
 
-      ExternalHandler = eval_external_handler(NewE),
-      {value, Value, NewBinding} = erl_eval:exprs(Exprs, ErlBinding, none, ExternalHandler),
+      %% We use remote names so eval works across Elixir versions.
+      LocalHandler = {value, fun ?MODULE:eval_local_handler/2},
+      ExternalHandler = {value, fun ?MODULE:eval_external_handler/3},
+
+      {value, Value, NewBinding} =
+        try
+          %% ?elixir_eval_env is used by the external handler.
+          %%
+          %% The reason why we use the process dictionary to pass the environment
+          %% is because we want to avoid passing closures to erl_eval, as that
+          %% would effectively tie the eval code to the Elixir version and it is
+          %% best if it depends solely on Erlang/OTP.
+          %%
+          %% The downside is that functions that escape the eval context will no
+          %% longer have the original environment they came from.
+          erlang:put(?elixir_eval_env, NewE),
+          erl_eval:exprs(Exprs, ErlBinding, LocalHandler, ExternalHandler)
+        after
+          erlang:erase(?elixir_eval_env)
+        end,
+
       PruneBefore = if Prune -> length(Binding); true -> -1 end,
 
       {DumpedBinding, DumpedVars} =
@@ -368,54 +375,63 @@ eval_forms(Tree, Binding, OrigE, Opts) ->
       {Value, DumpedBinding, NewE#{versioned_vars := DumpedVars}}
   end.
 
-%% TODO: Remove conditional once we require Erlang/OTP 25+.
--if(?OTP_RELEASE >= 25).
-eval_external_handler(Env) ->
-  Fun = fun(Ann, FunOrModFun, Args) ->
-    try
-      case FunOrModFun of
-        {Mod, Fun} -> apply(Mod, Fun, Args);
-        Fun -> apply(Fun, Args)
-      end
-    catch
-      Kind:Reason:Stacktrace ->
-        %% Take everything up to the Elixir module
-        Pruned =
-          lists:takewhile(fun
-            ({elixir,_,_,_}) -> false;
-            (_) -> true
-          end, Stacktrace),
+eval_local_handler(FunName, Args) ->
+  {current_stacktrace, Stack} = erlang:process_info(self(), current_stacktrace),
+  Opts = [{module, nil}, {function, FunName}, {arity, length(Args)}, {reason, 'undefined local'}],
+  Exception = 'Elixir.UndefinedFunctionError':exception(Opts),
+  erlang:raise(error, Exception, Stack).
 
-        Caller =
-          lists:dropwhile(fun
-            ({elixir,_,_,_}) -> false;
-            (_) -> true
-          end, Stacktrace),
-
-        %% Now we prune any shared code path from erl_eval
-        {current_stacktrace, Current} =
-          erlang:process_info(self(), current_stacktrace),
-
-        %% We need to make sure that we don't generate more
-        %% frames than supported. So we do our best to drop
-        %% from the Caller, but if the caller has no frames,
-        %% we need to drop from Pruned.
-        {DroppedCaller, ToDrop} =
-          case Caller of
-            [] -> {[], true};
-            _ -> {lists:droplast(Caller), false}
-          end,
-
-        Reversed = drop_common(lists:reverse(Current), lists:reverse(Pruned), ToDrop),
-        File = elixir_utils:characters_to_list(?key(Env, file)),
-        Location = [{file, File}, {line, erl_anno:line(Ann)}],
-
-        %% Add file+line information at the bottom
-        Custom = lists:reverse([{elixir_eval, '__FILE__', 1, Location} | Reversed], DroppedCaller),
-        erlang:raise(Kind, Reason, Custom)
+eval_external_handler(Ann, FunOrModFun, Args) ->
+  try
+    case FunOrModFun of
+      {Mod, Fun} -> apply(Mod, Fun, Args);
+      Fun -> apply(Fun, Args)
     end
-  end,
-  {value, Fun}.
+  catch
+    Kind:Reason:Stacktrace ->
+      %% Take everything up to the Elixir module
+      Pruned =
+        lists:takewhile(fun
+          ({elixir,_,_,_}) -> false;
+          (_) -> true
+        end, Stacktrace),
+
+      Caller =
+        lists:dropwhile(fun
+          ({elixir,_,_,_}) -> false;
+          (_) -> true
+        end, Stacktrace),
+
+      %% Now we prune any shared code path from erl_eval
+      {current_stacktrace, Current} =
+        erlang:process_info(self(), current_stacktrace),
+
+      %% We need to make sure that we don't generate more
+      %% frames than supported. So we do our best to drop
+      %% from the Caller, but if the caller has no frames,
+      %% we need to drop from Pruned.
+      {DroppedCaller, ToDrop} =
+        case Caller of
+          [] -> {[], true};
+          _ -> {lists:droplast(Caller), false}
+        end,
+
+      Reversed = drop_common(lists:reverse(Current), lists:reverse(Pruned), ToDrop),
+
+      %% Add file+line information at the bottom
+      Bottom =
+        case erlang:get(?elixir_eval_env) of
+          #{file := File} ->
+            [{elixir_eval, '__FILE__', 1,
+             [{file, elixir_utils:characters_to_list(File)}, {line, erl_anno:line(Ann)}]}];
+
+          _ ->
+            []
+        end,
+
+      Custom = lists:reverse(Bottom ++ Reversed, DroppedCaller),
+      erlang:raise(Kind, Reason, Custom)
+  end.
 
 %% We need to check if we have dropped any frames.
 %% If we have not dropped frames, then we need to drop one
@@ -427,10 +443,6 @@ drop_common([_ | T1], T2, ToDrop) -> drop_common(T1, T2, ToDrop);
 drop_common([], [{?MODULE, _, _, _} | T2], _ToDrop) -> T2;
 drop_common([], [_ | T2], true) -> T2;
 drop_common([], T2, _) -> T2.
--else.
-eval_external_handler(_Env) ->
-  none.
--endif.
 
 %% Converts a quoted expression to Erlang abstract format
 
@@ -449,19 +461,20 @@ quoted_to_erl(Quoted, ErlS, ExS, Env) ->
 
 string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(StartLine), is_binary(File) ->
   case future_elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts) of
-    {ok, _Line, _Column, [], Tokens} ->
-      {ok, Tokens};
-    {ok, _Line, _Column, Warnings, Tokens} ->
-      (lists:keyfind(warnings, 1, Opts) /= {warnings, false}) andalso
-        [elixir_errors:erl_warn(L, File, M) || {L, M} <- lists:reverse(Warnings)],
-      {ok, Tokens};
-    {error, {Line, Column, {ErrorPrefix, ErrorSuffix}, Token}, _Rest, _Warnings, _SoFar} ->
-      Location = [{line, Line}, {column, Column}],
-      {error, {Location, {to_binary(ErrorPrefix), to_binary(ErrorSuffix)}, to_binary(Token)}};
-    {error, {Line, Column, Error, Token}, _Rest, _Warnings, _SoFar} ->
-      Location = [{line, Line}, {column, Column}],
-      {error, {Location, to_binary(Error), to_binary(Token)}}
+    {ok, _Line, _Column, [], Tokens, Terminators} ->
+      {ok, lists:reverse(Tokens, Terminators)};
+    {ok, _Line, _Column, Warnings, Tokens, Terminators} ->
+      (lists:keyfind(emit_warnings, 1, Opts) /= {emit_warnings, false}) andalso
+        [future_elixir_errors:erl_warn(L, File, M) || {L, M} <- lists:reverse(Warnings)],
+      {ok, lists:reverse(Tokens, Terminators)};
+    {error, Info, _Rest, _Warnings, _SoFar} ->
+      {error, format_token_error(Info)}
   end.
+
+format_token_error({Location, {ErrorPrefix, ErrorSuffix}, Token}) ->
+  {Location, {to_binary(ErrorPrefix), to_binary(ErrorSuffix)}, to_binary(Token)};
+format_token_error({Location, Error, Token}) ->
+  {Location, to_binary(Error), to_binary(Token)}.
 
 tokens_to_quoted(Tokens, WarningFile, Opts) ->
   handle_parsing_opts(WarningFile, Opts),
@@ -501,10 +514,10 @@ parser_location(Meta) ->
         {ok, Forms} ->
           Forms;
         {error, {Meta, Error, Token}} ->
-          elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
+          future_elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
       end;
     {error, {Meta, Error, Token}} ->
-      elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
+      future_elixir_errors:parse_error(Meta, File, Error, Token, {String, StartLine, StartColumn})
   end.
 
 to_binary(List) when is_list(List) -> elixir_utils:characters_to_binary(List);
@@ -512,8 +525,8 @@ to_binary(Atom) when is_atom(Atom) -> atom_to_binary(Atom).
 
 handle_parsing_opts(File, Opts) ->
   WarningFile =
-    case lists:keyfind(warnings, 1, Opts) of
-      {warnings, false} -> nil;
+    case lists:keyfind(emit_warnings, 1, Opts) of
+      {emit_warnings, false} -> nil;
       _ -> File
     end,
   LiteralEncoder =

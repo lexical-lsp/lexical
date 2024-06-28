@@ -1,6 +1,7 @@
 defmodule Lexical.Ast.Tokens do
   alias Lexical.Document
   alias Lexical.Document.Position
+  require Logger
 
   @doc """
   Returns a stream of tokens starting at the given position and working backwards through
@@ -67,10 +68,10 @@ defmodule Lexical.Ast.Tokens do
     current_context = line_charlist ++ context
 
     case :future_elixir_tokenizer.tokenize(current_context, line_number, 1, []) do
-      {:ok, _, _, _, tokens} ->
-        {:ok, Enum.reverse(tokens), ~c""}
+      {:ok, _, _, _, tokens, _} ->
+        {:ok, tokens, ~c""}
 
-      {:error, {_, _, ~c"unexpected token: ", _}, _, _, _} ->
+      {:error, {_, ~c"unexpected token: ", _}, _, _, _} ->
         {:ok, [], ~c"\n" ++ current_context}
 
       {:error, _, _, _, tokens} ->

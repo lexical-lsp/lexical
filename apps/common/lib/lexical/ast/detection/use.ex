@@ -8,6 +8,6 @@ defmodule Lexical.Ast.Detection.Use do
 
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
-    Directive.detected?(analysis, position, 'use')
+    Directive.detected?(analysis, position, ~c"use")
   end
 end

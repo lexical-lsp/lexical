@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Namespace.Transform.Erlang do
   end
 
   def term_to_string(term) do
-    '~p.~n'
+    ~c"~p.~n"
     |> :io_lib.format([term])
     |> :lists.flatten()
     |> List.to_string()

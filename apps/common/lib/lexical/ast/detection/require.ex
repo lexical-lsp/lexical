@@ -8,6 +8,6 @@ defmodule Lexical.Ast.Detection.Require do
 
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
-    Directive.detected?(analysis, position, 'require')
+    Directive.detected?(analysis, position, ~c"require")
   end
 end

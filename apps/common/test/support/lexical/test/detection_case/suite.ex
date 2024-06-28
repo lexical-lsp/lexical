@@ -102,7 +102,7 @@ defmodule Lexical.Test.DetectionCase.Suite do
       ],
       keyword: [
         single_line:
-          ~q(«string: "value", atom: :value2, int: 6 float: 2.0, list: [1, 2], tuple: {3, 4}»),
+          ~q(«string: "value", atom: :value2, int: 6, float: 2.0, list: [1, 2], tuple: {3, 4}»),
         multi_line: ~q(
           [«
            string: "value",

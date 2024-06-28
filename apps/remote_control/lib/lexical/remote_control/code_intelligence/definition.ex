@@ -1,4 +1,5 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
+  alias ElixirSense.Providers.Location, as: ElixirSenseLocation
   alias Future.Code
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
@@ -101,7 +102,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     |> parse_location(analysis.document)
   end
 
-  defp parse_location(%ElixirSense.Location{} = location, document) do
+  defp parse_location(%ElixirSenseLocation{} = location, document) do
     %{file: file, line: line, column: column, type: type} = location
     file_path = file || document.path
     uri = Document.Path.ensure_uri(file_path)
