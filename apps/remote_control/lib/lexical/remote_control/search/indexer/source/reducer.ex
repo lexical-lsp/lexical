@@ -26,7 +26,6 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
   ]
 
   def new(%Analysis{} = analysis, extractors \\ nil) do
-
     %__MODULE__{
       analysis: analysis,
       block_hierarchy: %{root: %{}},

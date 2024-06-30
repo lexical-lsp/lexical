@@ -1,7 +1,6 @@
 defmodule Lexical.Ast.Tokens do
   alias Lexical.Document
   alias Lexical.Document.Position
-  require Logger
 
   @doc """
   Returns a stream of tokens starting at the given position and working backwards through

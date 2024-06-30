@@ -7,7 +7,7 @@ defmodule Lexical.RemoteControl.Progress do
   @type message :: String.t()
 
   @type delta :: pos_integer()
-  @type on_complete_callback :: (() -> any())
+  @type on_complete_callback :: (-> any())
   @type report_progress_callback :: (delta(), message() -> any())
 
   defmacro __using__(_) do
@@ -16,7 +16,7 @@ defmodule Lexical.RemoteControl.Progress do
     end
   end
 
-  @spec with_progress(label(), (() -> any())) :: any()
+  @spec with_progress(label(), (-> any())) :: any()
   def with_progress(label, func) when is_function(func, 0) do
     on_complete = begin_progress(label)
 
