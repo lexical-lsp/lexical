@@ -18,11 +18,9 @@ defmodule Lexical.Ast.TokensTest do
 
       {position, document} = pop_cursor(text, as: :document)
 
-      tokens =
-        Tokens.prefix_stream(document, position)
-        |> Enum.to_list()
+      tokens = Tokens.prefix_stream(document, position)
 
-      assert tokens == [
+      assert Enum.to_list(tokens) == [
                {:eol, ~c"\n", []},
                {:operator, :do, {2, 11}},
                {:do_identifier, ~c"bar", {2, 7}},
@@ -45,11 +43,9 @@ defmodule Lexical.Ast.TokensTest do
 
       {position, document} = pop_cursor(text, as: :document)
 
-      tokens =
-        Tokens.prefix_stream(document, position)
-        |> Enum.to_list()
+      tokens = Tokens.prefix_stream(document, position)
 
-      assert tokens == []
+      assert Enum.to_list(tokens) == []
     end
   end
 end
