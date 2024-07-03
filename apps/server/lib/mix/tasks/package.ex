@@ -164,7 +164,7 @@ defmodule Mix.Tasks.Package do
     {:ok, _} =
       zip_path
       |> String.to_charlist()
-      |> :zip.create(file_list, uncompress: ['.beam'])
+      |> :zip.create(file_list, uncompress: [~c".beam"])
 
     :ok
   end

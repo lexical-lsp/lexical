@@ -1,4 +1,4 @@
-# Copied from https://github.com/elixir-lang/elixir/blob/d87aadf8bd280d4ac969a6825637fcbd1e412f81/lib/elixir/lib/code/typespec.ex
+# Copied from https://github.com/elixir-lang/elixir/blob/d7ea2fa2e4e5de1990297be19495fc93740b2e8b/lib/elixir/lib/code/typespec.ex
 defmodule Future.Code.Typespec do
   @moduledoc false
 
@@ -176,7 +176,8 @@ defmodule Future.Code.Typespec do
 
   defp get_module_and_beam(module) when is_atom(module) do
     with {^module, beam, _filename} <- :code.get_object_code(module),
-         {:ok, ^module} <- beam |> :beam_lib.info() |> Keyword.fetch(:module) do
+         info_pairs when is_list(info_pairs) <- :beam_lib.info(beam),
+         {:ok, ^module} <- Keyword.fetch(info_pairs, :module) do
       {module, beam}
     else
       _ -> :error
@@ -420,5 +421,13 @@ defmodule Future.Code.Typespec do
     :error
   end
 
-  defp meta(anno), do: [line: :erl_anno.line(anno)]
+  defp meta(anno) do
+    case :erl_anno.location(anno) do
+      {line, column} ->
+        [line: line, column: column]
+
+      line when is_integer(line) ->
+        [line: line]
+    end
+  end
 end

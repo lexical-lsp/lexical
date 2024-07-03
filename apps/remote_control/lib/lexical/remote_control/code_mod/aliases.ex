@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
   alias Lexical.Document.Edit
   alias Lexical.Document.Position
   alias Lexical.Document.Range
+  alias Lexical.RemoteControl
   alias Sourceror.Zipper
 
   @doc """
@@ -177,31 +178,35 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
         # we use the end position here because the start position is right after
         # the do for modules, which puts it well into the line. The end position
         # is before the end, which is equal to the indent of the scope.
+
         initial_position =
           scope_start
           |> put_in([:line], scope_start.line + 1)
-          |> put_in([:character], scope.range.end.character + 2)
+          |> put_in([:character], scope.range.end.character)
           |> constrain_to_range(scope.range)
 
-        case Ast.zipper_at(analysis.document, scope_start) do
-          {:ok, zipper} ->
-            {_, position} =
-              Zipper.traverse(zipper, initial_position, fn
-                %Zipper{node: {:@, _, [{:moduledoc, _, _}]}} = zipper, _acc ->
-                  # If we detect a moduledoc node, place the alias after it
-                  range = Sourceror.get_range(zipper.node)
+        position =
+          case Ast.zipper_at(analysis.document, scope_start) do
+            {:ok, zipper} ->
+              {_, position} =
+                Zipper.traverse(zipper, initial_position, fn
+                  %Zipper{node: {:@, _, [{:moduledoc, _, _}]}} = zipper, _acc ->
+                    # If we detect a moduledoc node, place the alias after it
+                    range = Sourceror.get_range(zipper.node)
 
-                  {zipper, after_node(analysis.document, scope.range, range)}
+                    {zipper, after_node(analysis.document, scope.range, range)}
 
-                zipper, acc ->
-                  {zipper, acc}
-              end)
+                  zipper, acc ->
+                    {zipper, acc}
+                end)
 
-            position
+              position
 
-          _ ->
-            initial_position
-        end
+            _ ->
+              initial_position
+          end
+
+        maybe_move_cursor_to_token_start(position, analysis)
     end
   end
 
@@ -218,12 +223,33 @@ defmodule Lexical.RemoteControl.CodeMod.Aliases do
     cond do
       position.line == scope_range.end.line ->
         character = min(scope_range.end.character, position.character)
-        {%Position{position | character: character}, "\n"}
+        %Position{position | character: character}
 
       position.line > scope_range.end.line ->
-        {%Position{scope_range.end | character: 1}, "\n"}
+        %Position{scope_range.end | character: 1}
 
       true ->
+        position
+    end
+  end
+
+  defp maybe_move_cursor_to_token_start(%Position{} = position, %Analysis{} = analysis) do
+    project = RemoteControl.get_project()
+
+    with {:ok, env} <- Ast.Env.new(project, analysis, position),
+         false <- String.last(env.prefix) in [" ", ""] do
+      # `  en|d` -> `2`
+      # `en|d` -> `2`
+      non_empty_characters_count = env.prefix |> String.trim_leading() |> String.length()
+
+      new_position = %Position{
+        position
+        | character: position.character - non_empty_characters_count
+      }
+
+      {new_position, "\n"}
+    else
+      _ ->
         {position, "\n"}
     end
   end

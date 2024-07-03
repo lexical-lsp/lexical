@@ -22,4 +22,8 @@ defmodule Elixir.Features do
   def span_in_diagnostic? do
     Version.match?(System.version(), ">= 1.16.0")
   end
+
+  def contains_set_theoretic_types? do
+    Version.match?(System.version(), ">= 1.17.0")
+  end
 end

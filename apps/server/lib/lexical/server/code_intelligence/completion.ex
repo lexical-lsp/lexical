@@ -102,7 +102,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
 
       {:local_or_var, name} ->
         local_length = length(name)
-        surround_begin = max(1, env.position.character - local_length - 1)
+        surround_begin = max(1, env.position.character - local_length)
 
         local_length > 1 or has_surround_context?(env.prefix, 1, surround_begin)
 

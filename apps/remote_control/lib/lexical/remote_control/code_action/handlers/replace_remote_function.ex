@@ -62,7 +62,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
       patches ->
         case RemoteControl.Analyzer.expand_alias(module_alias, analysis, position) do
           {:ok, ^module} ->
-            [patch] = Sourceror.Patch.rename_call(zipper.node, suggestion)
+            patch = Sourceror.Patch.rename_call(zipper.node, suggestion)
             {zipper, [patch | patches]}
 
           _ ->
@@ -72,7 +72,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
       %Zipper{node: {{:., _, [{:__block__, _, [^module]}, ^function_atom]}, _, _}} = zipper,
       patches ->
         # this is an erlang call :ets.insert(...)
-        [patch] = Sourceror.Patch.rename_call(zipper.node, suggestion)
+        patch = Sourceror.Patch.rename_call(zipper.node, suggestion)
 
         {zipper, [patch | patches]}
 

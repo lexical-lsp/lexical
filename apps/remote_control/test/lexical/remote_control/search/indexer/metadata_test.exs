@@ -54,7 +54,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
       def my_fn do
       end
       ]
-      assert "def my_fn «do\n»end" = decorate_location(code)
+      assert "def my_fn «do\nend»" = decorate_location(code)
     end
 
     test "are found in a private function with do/end and no body" do
@@ -62,7 +62,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
       defp my_fn do
       end
       ]
-      assert "defp my_fn «do\n»end" = decorate_location(code)
+      assert "defp my_fn «do\nend»" = decorate_location(code)
     end
 
     test "are found in a public function with do/end and  abody" do
@@ -153,12 +153,12 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
 
     test "are found in anonymous functions with no body" do
       code = "fn -> :ok end"
-      assert "«fn -> :ok »end" == decorate_location(code)
+      assert "«fn -> :ok end»" == decorate_location(code)
     end
 
     test "are found in single line anonymous functions" do
       code = "fn arg -> arg + 1  end"
-      assert "«fn arg -> arg + 1  »end" == decorate_location(code)
+      assert "«fn arg -> arg + 1  end»" == decorate_location(code)
     end
 
     test "are found in multiple line anonymous functions" do
@@ -167,15 +167,14 @@ defmodule Lexical.RemoteControl.Search.Indexer.MetadataTest do
           y = do_something_with(a)
           z = do_something_with(b)
           y + z
-        end
-      ]
+        end]
 
       expected = ~q[
         «fn a, b ->
           y = do_something_with(a)
           z = do_something_with(b)
           y + z
-        »end
+        end»
       ]t
 
       assert expected == decorate_location(code)

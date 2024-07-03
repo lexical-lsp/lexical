@@ -53,6 +53,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
 
   describe "in an existing module with no aliases" do
     test "aliases are added at the top of the module" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
       {:ok, added} =
         ~q[
         defmodule MyModule do
@@ -121,6 +123,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
     end
 
     test "when a full module name is given in a module function" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
       {:ok, added} =
         ~q[
         defmodule MyModule do
@@ -157,6 +161,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.AddAliasTest do
     end
 
     test "in a module with no aliases" do
+      patch(RemoteControl, :get_project, %Lexical.Project{})
+
       {:ok, added} =
         ~q[
         defmodule MyModule do

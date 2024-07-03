@@ -51,7 +51,7 @@ defmodule Lexical.Ast.EnvTest do
 
       assert interpolations == [
                {:literal, "hello", {{1, 1}, {1, 6}}},
-               {:interpolation, [{:identifier, {1, 9, 'a'}, :a}], {{1, 9}, {1, 10}}}
+               {:interpolation, [{:identifier, {1, 9, ~c"a"}, :a}], {{1, 9}, {1, 10}}}
              ]
     end
 

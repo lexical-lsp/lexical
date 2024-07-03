@@ -43,7 +43,7 @@ defmodule Lexical.RemoteControl.Build.Error.ParseTest do
       assert diagnostic.position == {1, 9}
     end
 
-    @feature_condition details_in_context?: true
+    @feature_condition details_in_context?: true, contains_set_theoretic_types?: false
     @tag execute_if(@feature_condition)
     test "handles token missing errors when #{inspect(@feature_condition)}" do
       document_text = ~s[%{foo: 3]
@@ -57,6 +57,25 @@ defmodule Lexical.RemoteControl.Build.Error.ParseTest do
                ~s[The `{` here is missing terminator `}`]
 
       assert decorate(document_text, start_diagnostic.position) == ~S[%«{»foo: 3]
+
+      assert end_diagnostic.message == ~s[missing terminator: }]
+      assert end_diagnostic.position == {1, 9}
+    end
+
+    @feature_condition contains_set_theoretic_types?: true
+    @tag execute_if(@feature_condition)
+    test "handles token missing errors when #{inspect(@feature_condition)}" do
+      document_text = ~s[%{foo: 3]
+
+      assert [start_diagnostic, end_diagnostic] =
+               document_text
+               |> compile()
+               |> diagnostics()
+
+      assert start_diagnostic.message ==
+               ~s[The `{` here is missing terminator `}`]
+
+      assert decorate(document_text, start_diagnostic.position) == ~S[«%»{foo: 3]
 
       assert end_diagnostic.message == ~s[missing terminator: }]
       assert end_diagnostic.position == {1, 9}

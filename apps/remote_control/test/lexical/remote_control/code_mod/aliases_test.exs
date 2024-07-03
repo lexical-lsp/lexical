@@ -1,9 +1,16 @@
 defmodule Lexical.RemoteControl.CodeMod.AliasesTest do
   alias Lexical.Ast
+  alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeMod.Aliases
 
-  use Lexical.Test.CodeMod.Case
   import Lexical.Test.CursorSupport
+  use Lexical.Test.CodeMod.Case
+  use Patch
+
+  setup do
+    patch(RemoteControl, :get_project, %Lexical.Project{})
+    :ok
+  end
 
   def insert_position(orig) do
     {cursor, document} = pop_cursor(orig, as: :document)
