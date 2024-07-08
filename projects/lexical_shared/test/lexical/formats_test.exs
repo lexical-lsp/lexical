@@ -16,6 +16,10 @@ defmodule Lexical.FormatsTest do
       assert ":ets" == Formats.module(:ets)
     end
 
+    test "it drops any `Elixir.` prefix" do
+      assert "Kernel.SpecialForms" == Formats.module(Elixir.Kernel.SpecialForms)
+    end
+
     test "it correctly handles an invalid elixir module" do
       assert "This.Is.Not.A.Module" == Formats.module(:"This.Is.Not.A.Module")
     end
