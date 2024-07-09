@@ -36,7 +36,7 @@ defmodule Common.MixProject do
       {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:snowflake, "~> 1.0"},
-      {:sourceror, "~> 1.0"},
+      {:sourceror, "~> 1.4"},
       {:stream_data, "~> 0.6", only: [:test], runtime: false},
       {:patch, "~> 0.12", only: [:test], optional: true, runtime: false}
     ]

@@ -50,7 +50,7 @@ defmodule Lexical.Server.MixProject do
       {:path_glob, "~> 0.2"},
       {:protocol, in_umbrella: true},
       {:remote_control, in_umbrella: true, runtime: false},
-      {:sourceror, "~> 1.0"}
+      {:sourceror, "~> 1.4"}
     ]
   end
 end
