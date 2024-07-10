@@ -130,7 +130,7 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%_{} = request, %State{} = state) do
-    with {:ok, handler} <- Handlers.for_request(request),
+    with {:ok, handler} <- fetch_handler(request),
          {:ok, req} <- Convert.to_native(request) do
       TaskQueue.add(request.id, {handler, :handle, [req, state.configuration.project]})
     else
@@ -155,6 +155,44 @@ defmodule Lexical.Server do
       {:ok, new_state} -> {:ok, new_state}
       :ok -> {:ok, state}
       error -> {error, state}
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp fetch_handler(%_{} = request) do
+    case request do
+      %Requests.FindReferences{} ->
+        {:ok, Handlers.FindReferences}
+
+      %Requests.Formatting{} ->
+        {:ok, Handlers.Formatting}
+
+      %Requests.CodeAction{} ->
+        {:ok, Handlers.CodeAction}
+
+      %Requests.CodeLens{} ->
+        {:ok, Handlers.CodeLens}
+
+      %Requests.Completion{} ->
+        {:ok, Handlers.Completion}
+
+      %Requests.GoToDefinition{} ->
+        {:ok, Handlers.GoToDefinition}
+
+      %Requests.Hover{} ->
+        {:ok, Handlers.Hover}
+
+      %Requests.ExecuteCommand{} ->
+        {:ok, Handlers.Commands}
+
+      %Requests.DocumentSymbols{} ->
+        {:ok, Handlers.DocumentSymbols}
+
+      %Requests.WorkspaceSymbol{} ->
+        {:ok, Handlers.WorkspaceSymbol}
+
+      %request_module{} ->
+        {:error, {:unhandled, request_module}}
     end
   end
 end

@@ -27,8 +27,8 @@ defmodule Lexical.Server.TaskQueueTest do
   def request(config, func) do
     id = System.unique_integer([:positive])
 
+    patch(Lexical.Server, :handler_for, fn _ -> {:ok, Handlers.Completion} end)
     patch(Handlers.Completion, :handle, fn request, ^config -> func.(request, config) end)
-    patch(Handlers, :for_request, fn _ -> {:ok, Handlers.Completion} end)
     patch(Requests.Completion, :to_elixir, fn req -> {:ok, req} end)
 
     request = Requests.Completion.new(id: id, text_document: nil, position: nil, context: nil)
