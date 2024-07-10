@@ -30,4 +30,4 @@ The only messages the [lexical server process](https://github.com/lexical-lsp/le
 
 All other messages are delegated to a _Provider Handler_. This delegation is accomplished by the server process adding the request to the [provider queue](https://github.com/lexical-lsp/lexical/blob/main/apps/server/lib/lexical/server/provider/queue.ex). The provider queue asks the `Lexical.Server.Provider.Handlers.for_request/1` function which handler is configured to handle the request, creates a task for the handler and starts it.
 
-A _Provider Handler_ is just a module that defines a function of arity 2 that takes the request to handle and a `Lexical.Server.Provider.Env`. These functions can reply to the request, ignore it, or do some other action.
+A _Provider Handler_ is just a module that defines a function of arity 2 that takes the request to handle and a `%Lexical.Server.Configuration{}`. These functions can reply to the request, ignore it, or do some other action.

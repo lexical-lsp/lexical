@@ -9,17 +9,17 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
   alias Lexical.Protocol.Types.Hover
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Docs
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Provider.Markdown
 
   require Logger
 
-  def handle(%Requests.Hover{} = request, %Env{} = env) do
+  def handle(%Requests.Hover{} = request, %Configuration{} = config) do
     maybe_hover =
       with {:ok, _document, %Ast.Analysis{} = analysis} <-
              Document.Store.fetch(request.document.uri, :analysis),
-           {:ok, entity, range} <- resolve_entity(env.project, analysis, request.position),
-           {:ok, markdown} <- hover_content(entity, env) do
+           {:ok, entity, range} <- resolve_entity(config.project, analysis, request.position),
+           {:ok, markdown} <- hover_content(entity, config.project) do
         content = Markdown.to_content(markdown)
         %Hover{contents: content, range: range}
       else
@@ -35,8 +35,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     RemoteControl.Api.resolve_entity(project, analysis, position)
   end
 
-  defp hover_content({kind, module}, env) when kind in [:module, :struct] do
-    case RemoteControl.Api.docs(env.project, module, exclude_hidden: false) do
+  defp hover_content({kind, module}, %Project{} = project) when kind in [:module, :struct] do
+    case RemoteControl.Api.docs(project, module, exclude_hidden: false) do
       {:ok, %Docs{} = module_docs} ->
         header = module_header(kind, module_docs)
         types = module_header_types(kind, module_docs)
@@ -58,8 +58,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
-  defp hover_content({:call, module, fun, arity}, env) do
-    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(env.project, module),
+  defp hover_content({:call, module, fun, arity}, %Project{} = project) do
+    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(project, module),
          {:ok, entries} <- Map.fetch(module_docs.functions_and_macros, fun) do
       sections =
         entries
@@ -71,8 +71,8 @@ defmodule Lexical.Server.Provider.Handlers.Hover do
     end
   end
 
-  defp hover_content({:type, module, type, arity}, env) do
-    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(env.project, module),
+  defp hover_content({:type, module, type, arity}, %Project{} = project) do
+    with {:ok, %Docs{} = module_docs} <- RemoteControl.Api.docs(project, module),
          {:ok, entries} <- Map.fetch(module_docs.types, type) do
       case Enum.find(entries, &(&1.arity == arity)) do
         %Docs.Entry{} = entry ->

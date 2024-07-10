@@ -6,13 +6,13 @@ defmodule Lexical.Server.Provider.Handlers.DocumentSymbols do
   alias Lexical.Protocol.Types.Symbol.Kind, as: SymbolKind
   alias Lexical.RemoteControl.Api
   alias Lexical.RemoteControl.CodeIntelligence.Symbols
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
 
   require SymbolKind
 
-  def handle(%DocumentSymbols{} = request, %Env{} = env) do
+  def handle(%DocumentSymbols{} = request, %Configuration{} = config) do
     symbols =
-      env.project
+      config.project
       |> Api.document_symbols(request.document)
       |> Enum.map(&to_response(&1, request.document))
 

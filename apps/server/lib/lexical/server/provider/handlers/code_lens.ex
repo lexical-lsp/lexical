@@ -7,15 +7,15 @@ defmodule Lexical.Server.Provider.Handlers.CodeLens do
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.CodeLens
   alias Lexical.RemoteControl
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Provider.Handlers
 
   import Document.Line
   require Logger
 
-  def handle(%Requests.CodeLens{} = request, %Env{} = env) do
+  def handle(%Requests.CodeLens{} = request, %Configuration{} = config) do
     lenses =
-      case reindex_lens(env.project, request.document) do
+      case reindex_lens(config.project, request.document) do
         nil -> []
         lens -> List.wrap(lens)
       end

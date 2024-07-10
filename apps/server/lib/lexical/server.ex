@@ -1,9 +1,10 @@
 defmodule Lexical.Server do
+  alias Lexical.Proto.Convert
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
-  alias Lexical.Protocol.Responses
-  alias Lexical.Server.Provider
+  alias Lexical.Server.Provider.Handlers
   alias Lexical.Server.State
+  alias Lexical.Server.TaskQueue
 
   require Logger
 
@@ -22,11 +23,6 @@ defmodule Lexical.Server do
   ]
 
   @dialyzer {:nowarn_function, apply_to_state: 2}
-
-  @spec response_complete(Requests.request(), Responses.response()) :: :ok
-  def response_complete(request, response) do
-    GenServer.call(__MODULE__, {:response_complete, request, response})
-  end
 
   @spec server_request(
           Requests.request(),
@@ -51,10 +47,6 @@ defmodule Lexical.Server do
 
   def init(_) do
     {:ok, State.new()}
-  end
-
-  def handle_call({:response_complete, _request, _response}, _from, %State{} = state) do
-    {:reply, :ok, state}
   end
 
   def handle_call({:server_request, request, on_response}, _from, %State{} = state) do
@@ -111,12 +103,12 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%Requests.Cancel{} = cancel_request, %State{} = state) do
-    Provider.Queue.cancel(cancel_request)
+    TaskQueue.cancel(cancel_request)
     {:ok, state}
   end
 
   def handle_message(%Notifications.Cancel{} = cancel_notification, %State{} = state) do
-    Provider.Queue.cancel(cancel_notification)
+    TaskQueue.cancel(cancel_notification)
     {:ok, state}
   end
 
@@ -138,13 +130,22 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%_{} = request, %State{} = state) do
-    Provider.Queue.add(request, state.configuration)
+    with {:ok, handler} <- fetch_handler(request),
+         {:ok, req} <- Convert.to_native(request) do
+      TaskQueue.add(request.id, {handler, :handle, [req, state.configuration.project]})
+    else
+      {:error, {:unhandled, _}} ->
+        Logger.info("Unhandled request: #{request.method}")
+
+      _ ->
+        :ok
+    end
 
     {:ok, state}
   end
 
-  def handle_message(%{} = request, %State{} = state) do
-    new_state = State.finish_request(state, request)
+  def handle_message(%{} = response, %State{} = state) do
+    new_state = State.finish_request(state, response)
 
     {:ok, new_state}
   end
@@ -154,6 +155,44 @@ defmodule Lexical.Server do
       {:ok, new_state} -> {:ok, new_state}
       :ok -> {:ok, state}
       error -> {error, state}
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp fetch_handler(%_{} = request) do
+    case request do
+      %Requests.FindReferences{} ->
+        {:ok, Handlers.FindReferences}
+
+      %Requests.Formatting{} ->
+        {:ok, Handlers.Formatting}
+
+      %Requests.CodeAction{} ->
+        {:ok, Handlers.CodeAction}
+
+      %Requests.CodeLens{} ->
+        {:ok, Handlers.CodeLens}
+
+      %Requests.Completion{} ->
+        {:ok, Handlers.Completion}
+
+      %Requests.GoToDefinition{} ->
+        {:ok, Handlers.GoToDefinition}
+
+      %Requests.Hover{} ->
+        {:ok, Handlers.Hover}
+
+      %Requests.ExecuteCommand{} ->
+        {:ok, Handlers.Commands}
+
+      %Requests.DocumentSymbols{} ->
+        {:ok, Handlers.DocumentSymbols}
+
+      %Requests.WorkspaceSymbol{} ->
+        {:ok, Handlers.WorkspaceSymbol}
+
+      %request_module{} ->
+        {:error, {:unhandled, request_module}}
     end
   end
 end

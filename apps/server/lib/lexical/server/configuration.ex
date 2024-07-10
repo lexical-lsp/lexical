@@ -40,9 +40,9 @@ defmodule Lexical.Server.Configuration do
     |> tap(&set/1)
   end
 
-  @spec new() :: t
-  def new do
-    %__MODULE__{support: Support.new()}
+  @spec new(keyword()) :: t
+  def new(attrs \\ []) do
+    struct!(__MODULE__, [support: Support.new()] ++ attrs)
   end
 
   defp set(%__MODULE__{} = config) do

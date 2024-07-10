@@ -5,7 +5,7 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
   alias Lexical.Protocol.Types
   alias Lexical.Protocol.Types.ErrorCodes
   alias Lexical.RemoteControl
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Window
 
   require ErrorCodes
@@ -26,12 +26,12 @@ defmodule Lexical.Server.Provider.Handlers.Commands do
     )
   end
 
-  def handle(%Requests.ExecuteCommand{} = request, %Env{} = env) do
+  def handle(%Requests.ExecuteCommand{} = request, %Configuration{} = config) do
     response =
       case request.command do
         @reindex_name ->
-          Logger.info("Reindex #{Project.name(env.project)}")
-          reindex(env.project, request.id)
+          Logger.info("Reindex #{Project.name(config.project)}")
+          reindex(config.project, request.id)
 
         invalid ->
           message = "#{invalid} is not a valid command"
