@@ -69,7 +69,7 @@ defmodule Lexical.RemoteControl.ProjectNode do
 
     def on_nodedown(%__MODULE__{} = state, node_name) do
       if node_name == Project.node_name(state.project) do
-        if state.stopped_by !== nil do
+        if is_tuple(state.stopped_by) do
           GenServer.reply(state.stopped_by, :ok)
         end
 
