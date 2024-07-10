@@ -6,7 +6,6 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   alias Lexical.Protocol.Types
   alias Lexical.RemoteControl
   alias Lexical.Server
-  alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
 
   import Lexical.Test.Protocol.Fixtures.LspProtocol
@@ -56,7 +55,8 @@ defmodule Lexical.Server.Provider.Handlers.CodeLensTest do
   end
 
   def handle(request, project) do
-    Handlers.CodeLens.handle(request, %Env{project: project})
+    config = Server.Configuration.new(project: project)
+    Handlers.CodeLens.handle(request, config)
   end
 
   describe "code lens for mix.exs" do

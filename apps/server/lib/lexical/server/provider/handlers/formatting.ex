@@ -3,14 +3,14 @@ defmodule Lexical.Server.Provider.Handlers.Formatting do
   alias Lexical.Protocol.Requests
   alias Lexical.Protocol.Responses
   alias Lexical.RemoteControl
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
 
   require Logger
 
-  def handle(%Requests.Formatting{} = request, %Env{} = env) do
+  def handle(%Requests.Formatting{} = request, %Configuration{} = config) do
     document = request.document
 
-    case RemoteControl.Api.format(env.project, document) do
+    case RemoteControl.Api.format(config.project, document) do
       {:ok, %Changes{} = document_edits} ->
         response = Responses.Formatting.new(request.id, document_edits)
         Logger.info("Response #{inspect(response)}")

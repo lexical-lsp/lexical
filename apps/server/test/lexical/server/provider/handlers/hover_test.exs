@@ -7,7 +7,6 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.Server
-  alias Lexical.Server.Provider.Env
   alias Lexical.Server.Provider.Handlers
   alias Lexical.Test.Fixtures
   alias Lexical.Test.Protocol.Fixtures.LspProtocol
@@ -725,7 +724,8 @@ defmodule Lexical.Server.Provider.Handlers.HoverTest do
     with {position, hovered} <- pop_cursor(hovered),
          {:ok, document} <- document_with_content(project, hovered),
          {:ok, request} <- hover_request(document.uri, position) do
-      Handlers.Hover.handle(request, %Env{project: project})
+      config = Server.Configuration.new(project: project)
+      Handlers.Hover.handle(request, config)
     end
   end
 
