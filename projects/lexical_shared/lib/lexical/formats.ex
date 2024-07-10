@@ -68,9 +68,10 @@ defmodule Lexical.Formats do
     string_name = Atom.to_string(module_name)
 
     if String.contains?(string_name, ".") do
-      module_name
-      |> Module.split()
-      |> Enum.join(".")
+      case string_name do
+        "Elixir." <> rest -> rest
+        other -> other
+      end
     else
       # erlang module_name
       ":#{string_name}"
