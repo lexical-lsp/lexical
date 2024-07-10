@@ -48,7 +48,7 @@ defmodule Mix.Tasks.Deps.SafeCompile do
 
   @impl true
   def run(args) do
-    if Version.match?(System.version(), ">= 1.15.0") do
+    if Elixir.Features.compile_keeps_current_directory?() do
       Mix.Tasks.Deps.Compile.run(args)
     else
       unless "--no-archives-check" in args do

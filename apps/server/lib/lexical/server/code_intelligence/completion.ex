@@ -8,14 +8,12 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
   alias Lexical.Protocol.Types.InsertTextFormat
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.Completion.Candidate
-  alias Lexical.RemoteControl.Modules.Predicate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.Configuration
   alias Lexical.Server.Project.Intelligence
   alias Mix.Tasks.Namespace
 
-  use Predicate.Syntax
   require InsertTextFormat
   require Logger
 
@@ -239,7 +237,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           RemoteControl.Api.modules_with_prefix(
             env.project,
             full_name,
-            predicate(&macro_exported?(&1, :__using__, 1))
+            {Kernel, :macro_exported?, [:__using__, 1]}
           )
 
         not Enum.empty?(with_prefix)
@@ -259,7 +257,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
           RemoteControl.Api.modules_with_prefix(
             env.project,
             full_name,
-            predicate(&function_exported?(&1, :behaviour_info, 1))
+            {Kernel, :function_exported?, [:behaviour_info, 1]}
           )
 
         not Enum.empty?(with_prefix)

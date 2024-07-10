@@ -92,14 +92,7 @@ defmodule Lexical.RemoteControl.Build.Project do
     end
 
     with_progress "mix deps.compile", fn ->
-      deps_compile =
-        if Features.compile_wont_change_directory?() do
-          "deps.compile"
-        else
-          "deps.safe_compile"
-        end
-
-      Mix.Task.run(deps_compile, ~w(--skip-umbrella-children))
+      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
     end
 
     with_progress "loading plugins", fn ->

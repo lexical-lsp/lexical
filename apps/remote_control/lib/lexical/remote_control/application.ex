@@ -1,6 +1,4 @@
 defmodule Lexical.RemoteControl.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
 
   alias Lexical.RemoteControl
@@ -14,7 +12,7 @@ defmodule Lexical.RemoteControl.Application do
       if RemoteControl.project_node?() do
         [
           RemoteControl.Api.Proxy,
-          {RemoteControl.Commands.Reindex, nil},
+          RemoteControl.Commands.Reindex,
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,
@@ -29,15 +27,10 @@ defmodule Lexical.RemoteControl.Application do
              &RemoteControl.Search.Indexer.update_index/2
            ]}
         ]
-        |> List.flatten()
-        |> Enum.reject(&is_nil/1)
       else
         []
       end
 
-    children = Enum.reject(children, &is_nil/1)
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Lexical.RemoteControl.Supervisor]
     Supervisor.start_link(children, opts)
   end
