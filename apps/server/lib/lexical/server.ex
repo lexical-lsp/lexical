@@ -1,8 +1,10 @@
 defmodule Lexical.Server do
+  alias Lexical.Proto.Convert
   alias Lexical.Protocol.Notifications
   alias Lexical.Protocol.Requests
-  alias Lexical.Server.Provider
+  alias Lexical.Server.Provider.Handlers
   alias Lexical.Server.State
+  alias Lexical.Server.TaskQueue
 
   require Logger
 
@@ -101,12 +103,12 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%Requests.Cancel{} = cancel_request, %State{} = state) do
-    Provider.Queue.cancel(cancel_request)
+    TaskQueue.cancel(cancel_request)
     {:ok, state}
   end
 
   def handle_message(%Notifications.Cancel{} = cancel_notification, %State{} = state) do
-    Provider.Queue.cancel(cancel_notification)
+    TaskQueue.cancel(cancel_notification)
     {:ok, state}
   end
 
@@ -128,13 +130,22 @@ defmodule Lexical.Server do
   end
 
   def handle_message(%_{} = request, %State{} = state) do
-    Provider.Queue.add(request, state.configuration)
+    with {:ok, handler} <- Handlers.for_request(request),
+         {:ok, req} <- Convert.to_native(request) do
+      TaskQueue.add(request.id, {handler, :handle, [req, state.configuration.project]})
+    else
+      {:error, {:unhandled, _}} ->
+        Logger.info("Unhandled request: #{request.method}")
+
+      _ ->
+        :ok
+    end
 
     {:ok, state}
   end
 
-  def handle_message(%{} = request, %State{} = state) do
-    new_state = State.finish_request(state, request)
+  def handle_message(%{} = response, %State{} = state) do
+    new_state = State.finish_request(state, response)
 
     {:ok, new_state}
   end

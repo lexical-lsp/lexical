@@ -5,7 +5,7 @@ defmodule Lexical.Server.Application do
 
   alias Lexical.Document
   alias Lexical.Server
-  alias Lexical.Server.Provider
+  alias Lexical.Server.TaskQueue
   alias Lexical.Server.Transport
 
   use Application
@@ -16,8 +16,8 @@ defmodule Lexical.Server.Application do
       document_store_child_spec(),
       Server,
       {DynamicSupervisor, Server.Project.Supervisor.options()},
-      {Task.Supervisor, name: Provider.Queue.task_supervisor_name()},
-      Provider.Queue,
+      {Task.Supervisor, name: TaskQueue.task_supervisor_name()},
+      TaskQueue,
       {Transport.StdIO, [:standard_io, &Server.protocol_message/1]}
     ]
 
