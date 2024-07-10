@@ -71,10 +71,9 @@ defmodule Lexical.RemoteControl.ProjectNode do
       if node_name == Project.node_name(state.project) do
         if state.stopped_by !== nil do
           GenServer.reply(state.stopped_by, :ok)
-          {:shutdown, %{state | status: :stopped}}
-        else
-          {:shutdown, %{state | status: :stopped}}
         end
+
+        {:shutdown, %{state | status: :stopped}}
       else
         :continue
       end
