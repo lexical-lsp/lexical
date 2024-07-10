@@ -67,13 +67,18 @@ defmodule Lexical.RemoteControl.ProjectNode do
       end
     end
 
-    def on_nodedown(%__MODULE__{} = state, node_name) do
+    def on_nodedown(%__MODULE__{stopped_by: stopped_by} = state, node_name)
+        when stopped_by !== nil do
       if node_name == Project.node_name(state.project) do
         GenServer.reply(state.stopped_by, :ok)
         {:shutdown, %{state | status: :stopped}}
       else
         :continue
       end
+    end
+
+    def on_nodedown(%__MODULE__{} = state, _) do
+      {:shutdown, %{state | status: :stopped}}
     end
 
     def on_monitored_dead(%__MODULE__{} = state) do
