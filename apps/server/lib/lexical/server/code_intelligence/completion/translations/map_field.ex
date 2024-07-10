@@ -1,7 +1,7 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MapField do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.Translatable
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.Translatable
 
   defimpl Translatable, for: Candidate.MapField do
     def translate(%Candidate.MapField{} = map_field, builder, %Env{} = env) do

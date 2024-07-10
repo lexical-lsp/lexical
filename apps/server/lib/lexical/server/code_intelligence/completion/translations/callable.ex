@@ -1,8 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
   alias Lexical.Ast.Env
-  alias Lexical.Completion.SortScope
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.Builder
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
 
   @callables [Candidate.Function, Candidate.Macro, Candidate.Callback, Candidate.Typespec]
 
