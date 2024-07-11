@@ -51,7 +51,7 @@ defmodule Lexical.Server do
 
   def handle_call({:server_request, request, on_response}, _from, %State{} = state) do
     new_state = State.add_request(state, request, on_response)
-    {:reply, :okk, new_state}
+    {:reply, :ok, new_state}
   end
 
   def handle_cast({:protocol_message, message}, %State{} = state) do
