@@ -51,7 +51,7 @@ defmodule Lexical.Server do
 
   def handle_call({:server_request, request, on_response}, _from, %State{} = state) do
     new_state = State.add_request(state, request, on_response)
-    {:reply, :okk, new_state}
+    {:reply, :ok, new_state}
   end
 
   def handle_cast({:protocol_message, message}, %State{} = state) do
@@ -132,7 +132,7 @@ defmodule Lexical.Server do
   def handle_message(%_{} = request, %State{} = state) do
     with {:ok, handler} <- fetch_handler(request),
          {:ok, req} <- Convert.to_native(request) do
-      TaskQueue.add(request.id, {handler, :handle, [req, state.configuration.project]})
+      TaskQueue.add(request.id, {handler, :handle, [req, state.configuration]})
     else
       {:error, {:unhandled, _}} ->
         Logger.info("Unhandled request: #{request.method}")
