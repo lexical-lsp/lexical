@@ -6,7 +6,7 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
   alias Lexical.RemoteControl
 
   alias Lexical.Server
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
   alias Lexical.Server.Provider.Handlers
 
   import Lexical.Test.Protocol.Fixtures.LspProtocol
@@ -42,7 +42,7 @@ defmodule Lexical.Server.Provider.Handlers.RenameTest do
   end
 
   def handle(request, project) do
-    Handlers.Rename.handle(request, %Env{project: project})
+    Handlers.Rename.handle(request, %Configuration{project: project})
   end
 
   describe "rename" do

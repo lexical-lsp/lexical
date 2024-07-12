@@ -8,13 +8,13 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
   alias Lexical.Protocol.Types.TextDocument
   alias Lexical.Protocol.Types.Workspace
   alias Lexical.RemoteControl.Api
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
   require Logger
 
-  def handle(%Rename{} = request, %Env{} = env) do
+  def handle(%Rename{} = request, %Configuration{} = config) do
     case Document.Store.fetch(request.document.uri, :analysis) do
       {:ok, _document, %Ast.Analysis{valid?: true} = analysis} ->
-        rename(request, env, analysis)
+        rename(request, config, analysis)
 
       _ ->
         {:reply,
@@ -22,9 +22,9 @@ defmodule Lexical.Server.Provider.Handlers.Rename do
     end
   end
 
-  defp rename(%Rename{} = request, %Env{} = env, analysis) do
+  defp rename(%Rename{} = request, %Configuration{} = config, analysis) do
     %Rename{id: id, position: position, new_name: new_name} = request
-    %Env{project: project, client_name: client_name} = env
+    %Configuration{project: project, client_name: client_name} = config
 
     case Api.rename(project, analysis, position, new_name, client_name) do
       {:ok, []} ->

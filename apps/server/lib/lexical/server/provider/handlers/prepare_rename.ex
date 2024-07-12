@@ -5,12 +5,12 @@ defmodule Lexical.Server.Provider.Handlers.PrepareRename do
   alias Lexical.Protocol.Responses
   alias Lexical.Protocol.Types.PrepareRenameResult.PrepareRenameResult
   alias Lexical.RemoteControl.Api
-  alias Lexical.Server.Provider.Env
+  alias Lexical.Server.Configuration
 
-  def handle(%PrepareRename{} = request, %Env{} = env) do
+  def handle(%PrepareRename{} = request, %Configuration{} = config) do
     case Document.Store.fetch(request.document.uri, :analysis) do
       {:ok, _document, %Ast.Analysis{valid?: true} = analysis} ->
-        prepare_rename(env.project, analysis, request.position, request.id)
+        prepare_rename(config.project, analysis, request.position, request.id)
 
       _ ->
         {:reply,
