@@ -15,10 +15,22 @@ defmodule Lexical.RemoteControl.Commands.RenameSupervisor do
     DynamicSupervisor.start_link(name: __MODULE__, strategy: :one_for_one)
   end
 
-  def start_renaming(uri_with_expected_operation, report_progress_func, complete_func) do
+  def start_renaming(
+        uri_with_expected_operation,
+        paths_to_remind,
+        paths_to_delete,
+        report_progress_func,
+        complete_func
+      ) do
     DynamicSupervisor.start_child(
       __MODULE__,
-      Rename.child_spec(uri_with_expected_operation, report_progress_func, complete_func)
+      Rename.child_spec(
+        uri_with_expected_operation,
+        paths_to_remind,
+        paths_to_delete,
+        report_progress_func,
+        complete_func
+      )
     )
   end
 

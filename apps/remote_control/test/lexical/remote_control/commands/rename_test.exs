@@ -2,6 +2,7 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
   alias Lexical.RemoteControl.Api.Proxy
   alias Lexical.RemoteControl.Commands.Rename
   alias Lexical.RemoteControl.Commands.RenameSupervisor
+  alias Lexical.RemoteControl.Search.Store
 
   import Lexical.RemoteControl.Api.Messages
   import Lexical.Test.EventualAssertions
@@ -30,10 +31,13 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
   } do
     uri = "file://file.ex"
     uri_with_expected_operation = %{uri => file_changed(uri: uri)}
+    file_to_remind = [uri]
 
     {:ok, _pid} =
       RenameSupervisor.start_renaming(
         uri_with_expected_operation,
+        file_to_remind,
+        [],
         on_report_progress,
         on_complete
       )
@@ -47,10 +51,13 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
          on_complete: on_complete
        } do
     uri = "file://file.ex"
+    file_to_remind = [uri]
 
     {:ok, _pid} =
       RenameSupervisor.start_renaming(
         %{uri => file_saved(uri: uri)},
+        file_to_remind,
+        [],
         on_report_progress,
         on_complete
       )
@@ -68,16 +75,22 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
     on_complete: on_complete
   } do
     uri1 = "file://file1.ex"
-    uri2 = "file://file2.ex"
+    old_uri = "file://file2.ex"
+    new_uri = "file://file3.ex"
 
     uri_with_expected_operation = %{
       uri1 => file_changed(uri: uri1),
-      uri2 => file_saved(uri: uri2)
+      new_uri => file_saved(uri: new_uri)
     }
+
+    file_to_remind = [uri1, new_uri]
+    file_to_delete = [old_uri]
 
     {:ok, _pid} =
       RenameSupervisor.start_renaming(
         uri_with_expected_operation,
+        file_to_remind,
+        file_to_delete,
         on_report_progress,
         on_complete
       )
@@ -85,6 +98,45 @@ defmodule Lexical.RemoteControl.Commands.RenameTest do
     Rename.update_progress(file_changed(uri: uri1))
     assert_receive {:update_progress, 1, ""}
     refute_receive :complete_progress
+  end
+
+  test "it should reindex the new file and delete the old file when all the files are modified.",
+       %{
+         on_report_progress: on_report_progress,
+         on_complete: on_complete
+       } do
+    patch(Store, :clear, :ok)
+    old_uri = "file://old_file.ex"
+    new_uri = "file://new_file.ex"
+    another_uri = "file://file.ex"
+
+    uri_with_expected_operation = %{
+      old_uri => file_changed(uri: old_uri),
+      new_uri => file_saved(uri: new_uri)
+    }
+
+    file_to_remind = [new_uri, another_uri]
+    file_to_delete = [old_uri]
+
+    {:ok, _pid} =
+      RenameSupervisor.start_renaming(
+        uri_with_expected_operation,
+        file_to_remind,
+        file_to_delete,
+        on_report_progress,
+        on_complete
+      )
+
+    Rename.update_progress(file_changed(uri: old_uri))
+    assert_receive {:update_progress, 1, ""}
+    refute_receive :complete_progress
+
+    Rename.update_progress(file_saved(uri: new_uri))
+    assert_receive {:update_progress, 1, ""}
+
+    assert_receive {:update_progress, 1, "reindexing"}
+    assert_receive {:update_progress, 1, "deleting old index"}
+    assert_receive :complete_progress
   end
 
   test "it should return :error when updating the progress if the process is not alive" do

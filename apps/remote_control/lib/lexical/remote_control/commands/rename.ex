@@ -6,6 +6,7 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
   alias Lexical.RemoteControl.Api.Messages
   alias Lexical.RemoteControl.Commands.Reindex
+  alias Lexical.RemoteControl.Search.Store
   require Logger
   import Messages
 
@@ -16,20 +17,29 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
     @type t :: %__MODULE__{
             uri_to_expected_operation: uri_to_expected_operation(),
-            raw_uri_to_expected_operation: uri_to_expected_operation(),
-            on_update_progess: fun(),
+            paths_to_remind: list(Lexical.path()),
+            paths_to_delete: list(Lexical.path()),
+            on_update_progress: fun(),
             on_complete: fun()
           }
     defstruct uri_to_expected_operation: %{},
-              raw_uri_to_expected_operation: %{},
-              on_update_progess: nil,
+              paths_to_remind: [],
+              paths_to_delete: [],
+              on_update_progress: nil,
               on_complete: nil
 
-    def new(uri_to_expected_operation, on_update_progess, on_complete) do
+    def new(
+          uri_to_expected_operation,
+          paths_to_remind,
+          paths_to_delete,
+          on_update_progress,
+          on_complete
+        ) do
       %__MODULE__{
         uri_to_expected_operation: uri_to_expected_operation,
-        raw_uri_to_expected_operation: uri_to_expected_operation,
-        on_update_progess: on_update_progess,
+        paths_to_remind: paths_to_remind,
+        paths_to_delete: paths_to_delete,
+        on_update_progress: on_update_progress,
         on_complete: on_complete
       }
     end
@@ -48,12 +58,12 @@ defmodule Lexical.RemoteControl.Commands.Rename do
           state.uri_to_expected_operation,
           uri,
           message,
-          state.on_update_progess
+          state.on_update_progress
         )
 
       if Enum.empty?(new_uri_with_expected_operation) do
+        reindex_all_modified_files(state)
         state.on_complete.()
-        reindex_all_renamed_files(state)
       end
 
       %__MODULE__{state | uri_to_expected_operation: new_uri_with_expected_operation}
@@ -63,10 +73,10 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       state.uri_to_expected_operation != %{}
     end
 
-    def maybe_pop_expected_operation(uri_to_operation, uri, message, on_update_progess) do
+    def maybe_pop_expected_operation(uri_to_operation, uri, message, on_update_progress) do
       case uri_to_operation do
         %{^uri => ^message} ->
-          on_update_progess.(1, "")
+          on_update_progress.(1, "")
           Map.delete(uri_to_operation, uri)
 
         _ ->
@@ -74,10 +84,18 @@ defmodule Lexical.RemoteControl.Commands.Rename do
       end
     end
 
-    defp reindex_all_renamed_files(%__MODULE__{} = state) do
-      state.raw_uri_to_expected_operation
-      |> Map.keys()
-      |> Enum.each(&Reindex.uri/1)
+    defp reindex_all_modified_files(%__MODULE__{} = state) do
+      Enum.each(state.paths_to_remind, fn
+        path ->
+          Reindex.uri(path)
+          state.on_update_progress.(1, "reindexing")
+      end)
+
+      Enum.each(state.paths_to_delete, fn
+        path ->
+          Store.clear(path)
+          state.on_update_progress.(1, "deleting old index")
+      end)
     end
   end
 
@@ -86,20 +104,49 @@ defmodule Lexical.RemoteControl.Commands.Rename do
 
   @spec child_spec(
           %{Lexical.uri() => Messages.file_changed() | Messages.file_saved()},
+          list(Lexical.path()),
+          list(Lexical.path()),
           fun(),
           fun()
         ) :: Supervisor.child_spec()
-  def child_spec(uri_to_expected_operation, on_update_progess, on_complete) do
+  def child_spec(
+        uri_to_expected_operation,
+        paths_to_remind,
+        paths_to_delete,
+        on_update_progress,
+        on_complete
+      ) do
     %{
       id: __MODULE__,
       start:
-        {__MODULE__, :start_link, [uri_to_expected_operation, on_update_progess, on_complete]},
+        {__MODULE__, :start_link,
+         [
+           uri_to_expected_operation,
+           paths_to_remind,
+           paths_to_delete,
+           on_update_progress,
+           on_complete
+         ]},
       restart: :transient
     }
   end
 
-  def start_link(uri_to_expected_operation, on_update_progess, on_complete) do
-    state = State.new(uri_to_expected_operation, on_update_progess, on_complete)
+  def start_link(
+        uri_to_expected_operation,
+        paths_to_remind,
+        paths_to_delete,
+        on_update_progress,
+        on_complete
+      ) do
+    state =
+      State.new(
+        uri_to_expected_operation,
+        paths_to_remind,
+        paths_to_delete,
+        on_update_progress,
+        on_complete
+      )
+
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 

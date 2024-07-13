@@ -30,11 +30,29 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     uri_with_expected_operation =
       uri_with_expected_operation(client_name, document_changes_list)
 
+    {paths_to_delete, paths_to_remind} =
+      for %Document.Changes{rename_file: rename_file, document: document} <- document_changes_list do
+        if rename_file do
+          {rename_file.old_uri, rename_file.new_uri}
+        else
+          {nil, document.uri}
+        end
+      end
+      |> Enum.unzip()
+
+    paths_to_delete = Enum.reject(paths_to_delete, &is_nil/1)
+    renaming_operation_count = Enum.count(uri_with_expected_operation)
+
+    total_operation_count =
+      renaming_operation_count + length(paths_to_delete) + length(paths_to_remind)
+
     {report_progress_func, complete_func} =
-      Progress.begin_percent("Renaming", Enum.count(uri_with_expected_operation))
+      Progress.begin_percent("Renaming", total_operation_count)
 
     Commands.RenameSupervisor.start_renaming(
       uri_with_expected_operation,
+      paths_to_remind,
+      paths_to_delete,
       report_progress_func,
       complete_func
     )
