@@ -5,8 +5,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence.Entity
+  alias Lexical.RemoteControl.CodeMod.Rename.Entry
   alias Lexical.RemoteControl.Search.Indexer
-  alias Lexical.RemoteControl.Search.Indexer.Entry
+  alias Lexical.RemoteControl.Search.Indexer.Entry, as: IndexerEntry
 
   @spec maybe_rename(Document.t(), Entry.t(), String.t()) :: Document.Changes.rename_file()
   def maybe_rename(%Document{} = document, %Entry{} = entry, new_suffix) do
@@ -15,7 +16,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     end
   end
 
-  defp root_module?(entry, document) do
+  defp root_module?(%Entry{} = entry, document) do
     entries =
       ProcessCache.trans("#{document.uri}-entries", 50, fn ->
         with {:ok, entries} <-
@@ -25,7 +26,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
       end)
 
     case Enum.filter(entries, &(&1.block_id == :root)) do
-      [root_module] ->
+      [%IndexerEntry{} = root_module] ->
         root_module.subject == entry.subject and root_module.block_range == entry.block_range
 
       _ ->
@@ -33,7 +34,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     end
   end
 
-  defp rename_file(document, entry, new_suffix) do
+  defp rename_file(document, %Entry{} = entry, new_suffix) do
     root_path = root_path()
     relative_path = Path.relative_to(entry.path, root_path)
 
@@ -61,13 +62,13 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.File do
     Project.root_path(RemoteControl.get_project())
   end
 
-  defp fetch_new_name(document, entry, new_suffix) do
-    text_edits = [Document.Edit.new(new_suffix, entry.range)]
+  defp fetch_new_name(document, %Entry{} = entry, new_suffix) do
+    text_edits = [Document.Edit.new(new_suffix, entry.edit_range)]
 
     with {:ok, edited_document} <-
            Document.apply_content_changes(document, document.version + 1, text_edits),
          {:ok, %{context: {:alias, alias}}} <-
-           Ast.surround_context(edited_document, entry.range.start) do
+           Ast.surround_context(edited_document, entry.edit_range.start) do
       {:ok, to_string(alias)}
     else
       _ -> :error

@@ -9,6 +9,8 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   alias Lexical.Formats
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeMod.Rename
+  alias Lexical.RemoteControl.CodeMod.Rename.Entry
+  alias Lexical.RemoteControl.CodeMod.Rename.Module
   alias Lexical.RemoteControl.Search.Store
   require Logger
 
@@ -41,11 +43,11 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
 
   @spec rename(Range.t(), String.t(), atom()) :: [Document.Changes.t()]
   def rename(%Range{} = old_range, new_name, module) do
-    {old_suffix, new_suffix} = old_range |> range_text() |> diff(new_name)
-    results = exacts(module, old_suffix) ++ descendants(module, old_suffix)
+    {to_be_renamed, replacement} = old_range |> range_text() |> Module.Diff.diff(new_name)
+    results = exacts(module, to_be_renamed) ++ descendants(module, to_be_renamed)
 
     for {uri, entries} <- Enum.group_by(results, &Document.Path.ensure_uri(&1.path)),
-        result = to_document_changes(uri, entries, new_suffix),
+        result = to_document_changes(uri, entries, replacement),
         match?({:ok, _}, result) do
       {:ok, document_changes} = result
       document_changes
@@ -90,40 +92,25 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     {module, range}
   end
 
-  defp diff(old_range_text, new_name) do
-    diff = String.myers_difference(old_range_text, new_name)
-
-    eq =
-      if match?([{:eq, _eq} | _], diff) do
-        diff |> hd() |> elem(1)
-      else
-        ""
-      end
-
-    old_suffix = String.replace(old_range_text, ~r"^#{eq}", "")
-    new_suffix = String.replace(new_name, ~r"^#{eq}", "")
-    {old_suffix, new_suffix}
-  end
-
-  defp exacts(module, old_suffix) do
+  defp exacts(module, to_be_renamed) do
     module
     |> query_for_exacts()
-    |> Enum.filter(&entry_matching?(&1, old_suffix))
-    |> adjust_range_for_exacts(old_suffix)
+    |> Enum.filter(&entry_matching?(&1, to_be_renamed))
+    |> adjust_range_for_exacts(to_be_renamed)
   end
 
-  defp descendants(module, old_suffix) do
+  defp descendants(module, to_be_renamed) do
     module
     |> query_for_descendants()
-    |> Enum.filter(&(entry_matching?(&1, old_suffix) and has_dots_in_range?(&1)))
-    |> adjust_range_for_descendants(module, old_suffix)
+    |> Enum.filter(&(entry_matching?(&1, to_be_renamed) and has_dots_in_range?(&1)))
+    |> adjust_range_for_descendants(module, to_be_renamed)
   end
 
   defp query_for_exacts(module) do
     module_string = Formats.module(module)
 
     case Store.exact(module_string, type: :module) do
-      {:ok, entries} -> entries
+      {:ok, entries} -> Enum.map(entries, &Entry.new/1)
       {:error, _} -> []
     end
   end
@@ -133,43 +120,43 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     prefix = "#{module_string}."
 
     case Store.prefix(prefix, type: :module) do
-      {:ok, entries} -> entries
+      {:ok, entries} -> Enum.map(entries, &Entry.new/1)
       {:error, _} -> []
     end
   end
 
-  defp maybe_rename_file(document, entries, new_suffix) do
+  defp maybe_rename_file(document, entries, replacement) do
     entries
-    |> Enum.map(&Rename.File.maybe_rename(document, &1, new_suffix))
+    |> Enum.map(&Rename.File.maybe_rename(document, &1, replacement))
     # every group should have only one `rename_file`
     |> Enum.find(&(not is_nil(&1)))
   end
 
-  defp entry_matching?(entry, old_suffix) do
-    entry.range |> range_text() |> String.contains?(old_suffix)
+  defp entry_matching?(entry, to_be_renamed) do
+    entry.range |> range_text() |> String.contains?(to_be_renamed)
   end
 
   defp has_dots_in_range?(entry) do
     entry.range |> range_text() |> String.contains?(".")
   end
 
-  defp adjust_range_for_exacts(entries, old_suffix) do
-    old_suffix_length = String.length(old_suffix)
+  defp adjust_range_for_exacts(entries, to_be_renamed) do
+    old_suffix_length = String.length(to_be_renamed)
 
-    for entry <- entries do
-      start_character = entry.range.end.character - old_suffix_length
-      put_in(entry.range.start.character, start_character)
+    for %Entry{} = entry <- entries do
+      start_character = entry.edit_range.end.character - old_suffix_length
+      put_in(entry.edit_range.start.character, start_character)
     end
   end
 
-  defp adjust_range_for_descendants(entries, module, old_suffix) do
-    for entry <- entries,
-        range_text = range_text(entry.range),
-        matches = matches(range_text, old_suffix),
+  defp adjust_range_for_descendants(entries, module, to_be_renamed) do
+    for %Entry{} = entry <- entries,
+        range_text = range_text(entry.edit_range),
+        matches = matches(range_text, to_be_renamed),
         result = resolve_module_range(entry, module, matches),
         match?({:ok, _}, result) do
       {_, range} = result
-      %{entry | range: range}
+      %{entry | edit_range: range}
     end
   end
 
@@ -183,9 +170,9 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   end
 
   defp resolve_module_range(entry, module, [[{start, length}]]) do
-    range = adjust_range_characters(entry.range, {start, length})
+    range = adjust_range_characters(entry.edit_range, {start, length})
 
-    with {:ok, {:module, ^module}, _} <- resolve(entry.path, range.start) do
+    with {:ok, {:module, ^module}, _} <- resolve(entry.path, range.end) do
       {:ok, range}
     end
   end
@@ -195,8 +182,8 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     # For example, if we have a module named `Foo.Bar.Foo.Bar` and we want to rename it to `Foo.Bar.Baz`
     # The `Foo.Bar` will be duplicated in the range text, so we need to resolve the correct range
     # and only rename the second occurrence of `Foo.Bar`
-    start_character = entry.range.start.character + start
-    position = %{entry.range.start | character: start_character}
+    start_character = entry.edit_range.start.character + start
+    position = %{entry.edit_range.start | character: start_character}
 
     with {:ok, {:module, result}, range} <- resolve(entry.path, position) do
       if result == module do
@@ -209,15 +196,15 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
   end
 
   defp matches(range_text, "") do
-    # When expanding a module, the old_suffix is an empty string,
+    # When expanding a module, the to_be_renamed is an empty string,
     # so we need to scan the module before the period
     for [{start, length}] <- Regex.scan(~r/\w+(?=\.)/, range_text, return: :index) do
       [{start + length, 0}]
     end
   end
 
-  defp matches(range_text, old_suffix) do
-    Regex.scan(~r/#{old_suffix}/, range_text, return: :index)
+  defp matches(range_text, to_be_renamed) do
+    Regex.scan(~r/#{to_be_renamed}/, range_text, return: :index)
   end
 
   defp adjust_range_characters(%Range{} = range, {start, length} = _matched_old_suffix) do
@@ -229,12 +216,29 @@ defmodule Lexical.RemoteControl.CodeMod.Rename.Module do
     |> put_in([:end, :character], end_character)
   end
 
-  defp to_document_changes(uri, entries, new_suffix) do
-    edits = Enum.map(entries, &Edit.new(new_suffix, &1.range))
-
+  defp to_document_changes(uri, entries, replacement) do
     with {:ok, document} <- Document.Store.open_temporary(uri) do
-      rename_file = maybe_rename_file(document, entries, new_suffix)
+      rename_file = maybe_rename_file(document, entries, replacement)
+
+      edits =
+        Enum.map(entries, fn entry ->
+          reference? = entry.subtype == :reference
+
+          if reference? and not ancestor_is_alias?(document, entry.edit_range.start) do
+            replacement = replacement |> String.split(".") |> Enum.at(-1)
+            Edit.new(replacement, entry.edit_range)
+          else
+            Edit.new(replacement, entry.edit_range)
+          end
+        end)
+
       {:ok, Document.Changes.new(document, edits, rename_file)}
     end
+  end
+
+  defp ancestor_is_alias?(%Document{} = document, %Position{} = position) do
+    document
+    |> Ast.cursor_path(position)
+    |> Enum.any?(&match?({:alias, _, _}, &1))
   end
 end
