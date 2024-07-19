@@ -104,7 +104,8 @@ defmodule Lexical.RemoteControl do
   end
 
   defp start_net_kernel(%Project{} = project) do
-    :net_kernel.start([manager_node_name(project)])
+    manager = manager_node_name(project)
+    :net_kernel.start(manager, %{name_domain: :longnames})
   end
 
   defp ensure_apps_started(node, app_names) do
