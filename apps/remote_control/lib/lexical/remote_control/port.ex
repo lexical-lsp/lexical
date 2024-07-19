@@ -4,7 +4,6 @@ defmodule Lexical.RemoteControl.Port do
   """
 
   alias Lexical.Project
-  alias Lexical.RemoteControl
 
   @type open_opt ::
           {:env, list()}
@@ -22,14 +21,9 @@ defmodule Lexical.RemoteControl.Port do
   """
   @spec open_elixir(Project.t(), open_opts()) :: port()
   def open_elixir(%Project{} = project, opts) do
-    {:ok, elixir_executable, environment_variables} = RemoteControl.elixir_executable(project)
+    opts = Keyword.put_new_lazy(opts, :cd, fn -> Project.root_path(project) end)
 
-    opts =
-      opts
-      |> Keyword.put_new_lazy(:cd, fn -> Project.root_path(project) end)
-      |> Keyword.put_new(:env, environment_variables)
-
-    open(project, elixir_executable, opts)
+    open(project, project.elixir_executable, opts)
   end
 
   @doc """

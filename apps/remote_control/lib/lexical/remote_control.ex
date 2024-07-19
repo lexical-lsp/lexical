@@ -125,25 +125,6 @@ defmodule Lexical.RemoteControl do
     end
   end
 
-  def elixir_executable(%Project{} = project) do
-    root_path = Project.root_path(project)
-
-    {path_result, env} =
-      with nil <- version_manager_path_and_env("asdf", root_path),
-           nil <- version_manager_path_and_env("mise", root_path),
-           nil <- version_manager_path_and_env("rtx", root_path) do
-        {File.cd!(root_path, fn -> System.find_executable("elixir") end), System.get_env()}
-      end
-
-    case path_result do
-      nil ->
-        {:error, :no_elixir}
-
-      executable when is_binary(executable) ->
-        {:ok, executable, env}
-    end
-  end
-
   defp app_globs do
     app_globs = Enum.map(@allowed_apps, fn app_name -> "/**/#{app_name}*/ebin" end)
     ["/**/priv" | app_globs]
@@ -157,72 +138,5 @@ defmodule Lexical.RemoteControl do
       _ ->
         {:error, :epmd_failed}
     end
-  end
-
-  defp version_manager_path_and_env(manager, root_path) do
-    with true <- is_binary(System.find_executable(manager)),
-         env = reset_env(manager, root_path),
-         {path, 0} <- System.cmd(manager, ~w(which elixir), cd: root_path, env: env) do
-      {String.trim(path), env}
-    else
-      _ ->
-        nil
-    end
-  end
-
-  # We launch lexical by asking the version managers to provide an environment,
-  # which contains path munging. This initial environment is present in the running
-  # VM, and needs to be undone so we can find the correct elixir executable in the project.
-  defp reset_env("asdf", _root_path) do
-    orig_path = System.get_env("PATH_SAVE", System.get_env("PATH"))
-
-    Enum.map(System.get_env(), fn
-      {"ASDF_ELIXIR_VERSION", _} -> {"ASDF_ELIXIR_VERSION", nil}
-      {"ASDF_ERLANG_VERSION", _} -> {"ASDF_ERLANG_VERSION", nil}
-      {"PATH", _} -> {"PATH", orig_path}
-      other -> other
-    end)
-  end
-
-  defp reset_env("rtx", root_path) do
-    {env, _} = System.cmd("rtx", ~w(env -s bash), cd: root_path)
-
-    env
-    |> String.trim()
-    |> String.split("\n")
-    |> Enum.map(fn
-      "export " <> key_and_value ->
-        [key, value] =
-          key_and_value
-          |> String.split("=", parts: 2)
-          |> Enum.map(&String.trim/1)
-
-        {key, value}
-
-      _ ->
-        nil
-    end)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp reset_env("mise", root_path) do
-    {env, _} = System.cmd("mise", ~w(env -s bash), cd: root_path)
-
-    env
-    |> String.trim()
-    |> String.split("\n")
-    |> Enum.map(fn
-      "export " <> key_and_value ->
-        [key, value] =
-          key_and_value
-          |> String.split("=", parts: 2)
-          |> Enum.map(&String.trim/1)
-
-        {key, value}
-
-      _ ->
-        nil
-    end)
-    |> Enum.reject(&is_nil/1)
   end
 end
