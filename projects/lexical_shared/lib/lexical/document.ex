@@ -48,7 +48,12 @@ defmodule Lexical.Document do
     uri = DocumentPath.ensure_uri(maybe_uri)
     path = DocumentPath.from_uri(uri)
 
-    language_id = language_id || language_id_from_path(path)
+    language_id =
+      if String.ends_with?(path, ".exs") do
+        "elixir-script"
+      else
+        language_id || language_id_from_path(path)
+      end
 
     %__MODULE__{
       uri: uri,
@@ -233,7 +238,7 @@ defmodule Lexical.Document do
         "elixir"
 
       ".exs" ->
-        "elixir"
+        "elixir-script"
 
       ".eex" ->
         "eex"

@@ -24,7 +24,7 @@ defmodule Lexical.BuildTest do
         project
         |> Project.root_path()
         |> Path.join(to_string(sequence))
-        |> Path.join("file.exs")
+        |> Path.join("file.ex")
         |> Document.Path.to_uri()
       end
 
