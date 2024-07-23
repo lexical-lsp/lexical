@@ -28,10 +28,12 @@ defmodule Elixir.Features do
   @doc """
   Whether the `:compressed` ETS table option can be safely used.
 
-  A bug in at least Erlang/OTP 27.0.0 and 27.0.1 can cause a segfault
-  when traversing the entire table with something like `:ets.foldl/3`
-  if the `:compressed` table option is used. When this is fixed, we can
-  change the version check to `"< 27.0.0 or >= 27.X"`.
+  A bug in Erlang/OTP 27.0.0 and 27.0.1 can cause a segfault when
+  traversing the entire table with something like `:ets.foldl/3` if the
+  `:compressed` table option is used. When this is fixed, we can change
+  the version check to `"< 27.0.0 or >= 27.X"`.
+
+  Issue to track: https://github.com/erlang/otp/issues/8682
   """
   def can_use_compressed_ets_table? do
     Version.match?(Versions.current().erlang, "< 27.0.0")
