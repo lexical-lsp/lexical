@@ -414,6 +414,66 @@ defmodule Lexical.Ast do
     {:ok, List.wrap(current_module)}
   end
 
+  @doc """
+  Walks a quoted expression with an accumulator, applying `fun` to each
+  var or pinned var.
+
+  Returns a tuple where the first element is the potentially modified
+  expression and the second is the accumulator.
+  """
+  # Adapted from `ExUnit.Assertions.collect_vars_from_pattern/1`,
+  # licensed under Apache License 2.0:
+  # https://github.com/elixir-lang/elixir/blob/1e914b04b46125b3b9b251b64ee04380e523afc4/lib/ex_unit/lib/ex_unit/assertions.ex#L657
+  @spec prewalk_vars(Macro.t(), acc, (Macro.t(), acc -> {Macro.t(), acc})) :: {Macro.t(), acc}
+        when acc: term()
+  def prewalk_vars(ast, acc, fun) do
+    {ast, {acc, _}} =
+      Macro.prewalk(ast, {acc, false}, fn
+        {:"::", meta, [left, right]}, {acc, _prev_pinned?} ->
+          {right, acc} = prewalk_vars_in_binary(right, acc, fun)
+          {{:"::", meta, [left, right]}, {acc, false}}
+
+        {skip, _, [_]} = node, {acc, _prev_pinned?} when skip in [:@, :quote] ->
+          {node, {acc, false}}
+
+        {:_, _, context} = node, {acc, _prev_pinned?} when is_atom(context) ->
+          {node, {acc, false}}
+
+        {:^, _, [{name, _, context}]} = pinned, {acc, _prev_pinned?}
+        when is_atom(name) and is_atom(context) ->
+          {pinned, acc} = fun.(pinned, acc)
+          {pinned, {acc, true}}
+
+        {name, _, context} = var, {acc, false} when is_atom(name) and is_atom(context) ->
+          {var, acc} = fun.(var, acc)
+          {var, {acc, false}}
+
+        node, {acc, _prev_pinned?} ->
+          {node, {acc, false}}
+      end)
+
+    {ast, acc}
+  end
+
+  defp prewalk_vars_in_binary(right, acc, fun) do
+    Macro.prewalk(right, acc, fn
+      {mode, mode_meta, [{name, _, context} = var]}, acc
+      when is_atom(mode) and is_atom(name) and is_atom(context) ->
+        {var, acc} = fun.(var, acc)
+        {{mode, mode_meta, [var]}, acc}
+
+      node, acc ->
+        {node, acc}
+    end)
+  end
+
+  @doc """
+  Returns whether a var with `name` and `context` is in `vars`.
+  """
+  def has_var?(vars, name, context) do
+    Enum.any?(vars, &match?({^name, _, ^context}, &1))
+  end
+
   # private
 
   defp do_string_to_quoted(string) when is_binary(string) do
