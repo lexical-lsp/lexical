@@ -54,7 +54,7 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunction do
   defp apply_transform(%Document{} = doc, line_number, module, function, suggestion) do
     {:ok, doc, analysis} = Document.Store.fetch(doc.uri, :analysis)
     function_atom = String.to_atom(function)
-    position = Document.Position.new(doc, line_number, 0)
+    position = Document.Position.new(doc, line_number, 1)
 
     doc
     |> Ast.traverse_line(line_number, [], fn

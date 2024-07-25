@@ -41,12 +41,12 @@ defmodule Lexical.Document.Position do
 
   @spec new(line_container(), line(), character()) :: t
   def new(%Document{} = document, line, character)
-      when is_number(line) and is_number(character) do
+      when is_number(line) and is_number(character) and line >= 1 and character >= 1 do
     new(document.lines, line, character)
   end
 
   def new(%Document.Lines{} = lines, line, character)
-      when is_number(line) and is_number(character) do
+      when is_number(line) and is_number(character) and line >= 1 and character >= 1 do
     line_count = Document.Lines.size(lines)
     starting_index = lines.starting_index
 
