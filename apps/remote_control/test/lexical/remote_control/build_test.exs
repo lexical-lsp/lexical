@@ -647,6 +647,30 @@ defmodule Lexical.BuildTest do
     end
   end
 
+  describe ".exs files" do
+    setup do
+      start_supervised!(RemoteControl.Dispatch)
+      start_supervised!(RemoteControl.ModuleMappings)
+      start_supervised!(Build.CaptureServer)
+      :ok
+    end
+
+    test "should not run top-level forms" do
+      source = ~S[
+        IO.puts("fail")
+      ]
+
+      doc = Document.new("file:///file.exs", source, 0)
+
+      captured =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Build.Document.compile(doc)
+        end)
+
+      refute captured =~ "fail"
+    end
+  end
+
   if Features.after_verify?() do
     describe "exceptions during compilation" do
       test "compiling a project with callback errors" do
