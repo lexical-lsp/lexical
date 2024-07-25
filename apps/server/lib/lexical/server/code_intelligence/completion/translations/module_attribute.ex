@@ -1,6 +1,10 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribute do
+  alias Lexical.Ast
   alias Lexical.Ast.Env
+  alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Completion.Candidate
+  alias Lexical.Server.CodeIntelligence.Completion.SortScope
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
   alias Lexical.Server.CodeIntelligence.Completion.Translations
 
@@ -70,6 +74,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
     end
   end
 
+  def translate(%Candidate.ModuleAttribute{name: "@spec"}, builder, env) do
+    case fetch_range(env) do
+      {:ok, range} ->
+        [
+          maybe_specialized_spec_snippet(builder, env, range),
+          basic_spec_snippet(builder, env, range)
+        ]
+
+      :error ->
+        :skip
+    end
+  end
+
   def translate(%Candidate.ModuleAttribute{} = attribute, builder, env) do
     case fetch_range(env) do
       {:ok, range} ->
@@ -105,5 +122,77 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
       _, acc ->
         {:cont, acc}
     end)
+  end
+
+  defp maybe_specialized_spec_snippet(builder, %Env{} = env, range) do
+    next_line = env.position.line + 1
+
+    with %Position{} = position <- next_non_whitespace_position(env.document, next_line),
+         {:ok, [{maybe_def, _, [call, _]} | _]} when maybe_def in [:def, :defp] <-
+           Ast.path_at(env.analysis, position),
+         {function_name, _, args} <- call do
+      specialized_spec_snippet(builder, env, range, function_name, args)
+    else
+      _ -> nil
+    end
+  end
+
+  defp next_non_whitespace_position(%Document{} = document, line) do
+    case Document.fetch_text_at(document, line) do
+      {:ok, text} ->
+        case String.split(text, ~r/\w+/, parts: 2) do
+          [whitespace, _] ->
+            character = String.length(whitespace) + 1
+            Position.new(document, line, character)
+
+          _ ->
+            next_non_whitespace_position(document, line + 1)
+        end
+
+      :error ->
+        nil
+    end
+  end
+
+  defp specialized_spec_snippet(builder, env, range, function_name, args) do
+    name = to_string(function_name)
+
+    args_snippet =
+      case args do
+        nil ->
+          ""
+
+        list ->
+          Enum.map_join(1..length(list), ", ", &"${#{&1}:term()}")
+      end
+
+    snippet = ~s"""
+    @spec #{name}(#{args_snippet}) :: ${0:term()}
+    """
+
+    env
+    |> builder.text_edit_snippet(snippet, range,
+      detail: "Typespec",
+      kind: :property,
+      label: "@spec #{name}"
+    )
+    |> builder.set_sort_scope(SortScope.local(false, 0))
+  end
+
+  defp basic_spec_snippet(builder, env, range) do
+    snippet = ~S"""
+    @spec ${1:function}(${2:term()}) :: ${3:term()}
+    def ${1:function}(${4:args}) do
+      $0
+    end
+    """
+
+    env
+    |> builder.text_edit_snippet(snippet, range,
+      detail: "Typespec",
+      kind: :property,
+      label: "@spec"
+    )
+    |> builder.set_sort_scope(SortScope.local(false, 1))
   end
 end
