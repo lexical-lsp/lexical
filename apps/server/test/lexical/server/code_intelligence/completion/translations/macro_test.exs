@@ -46,6 +46,63 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       assert apply_completion(completion) == "def ${1:name}($2) do\n  $0\nend"
     end
 
+    test "def preceeded by a @spec with args", %{project: project} do
+      source = ~q[
+        @spec my_function(term(), term()) :: term()
+        def|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion("def ")
+
+      assert apply_completion(completion) == ~q[
+        @spec my_function(term(), term()) :: term()
+        def my_function(${1:arg_1}, ${2:arg_2}) do
+          $0
+        end
+      ]
+    end
+
+    test "def preceeded by a @spec without args", %{project: project} do
+      source = ~q[
+        @spec my_function :: term()
+        def|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion("def ")
+
+      assert apply_completion(completion) == ~q[
+        @spec my_function :: term()
+        def my_function do
+          $0
+        end
+      ]
+    end
+
+    test "defp preceeded by a @spec with args", %{project: project} do
+      source = ~q[
+        @spec my_function(term(), term()) :: term()
+        def|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion("defp ")
+
+      assert apply_completion(completion) == ~q[
+        @spec my_function(term(), term()) :: term()
+        defp my_function(${1:arg_1}, ${2:arg_2}) do
+          $0
+        end
+      ]
+    end
+
     test "defp only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project

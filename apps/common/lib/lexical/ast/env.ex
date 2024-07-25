@@ -193,4 +193,37 @@ defmodule Lexical.Ast.Env do
   def empty?(string) when is_binary(string) do
     String.trim(string) == ""
   end
+
+  @doc """
+  Returns the position of the next non-whitespace token on a line after `env.position`.
+  """
+  @spec next_significant_position(t) :: Position.t() | nil
+  def next_significant_position(%__MODULE__{} = env) do
+    find_significant_position(env.document, env.position.line + 1, 1)
+  end
+
+  @doc """
+  Returns the position of the next non-whitespace token on a line before `env.position`.
+  """
+  @spec prev_significant_position(t) :: Position.t() | nil
+  def prev_significant_position(%__MODULE__{} = env) do
+    find_significant_position(env.document, env.position.line - 1, -1)
+  end
+
+  defp find_significant_position(%Document{} = document, line, inc_by) do
+    case Document.fetch_text_at(document, line) do
+      {:ok, text} ->
+        case Regex.run(~r/(^\s*)\S+/, text) do
+          [_, whitespace] ->
+            character = String.length(whitespace) + 1
+            Position.new(document, line, character)
+
+          _ ->
+            find_significant_position(document, line + inc_by, inc_by)
+        end
+
+      :error ->
+        nil
+    end
+  end
 end

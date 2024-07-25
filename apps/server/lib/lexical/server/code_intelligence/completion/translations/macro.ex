@@ -1,6 +1,8 @@
 defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
+  alias Lexical.Ast
   alias Lexical.Ast.Env
   alias Lexical.Document
+  alias Lexical.Document.Position
   alias Lexical.RemoteControl.Completion.Candidate
   alias Lexical.Server.CodeIntelligence.Completion.SortScope
   alias Lexical.Server.CodeIntelligence.Completion.Translatable
@@ -23,41 +25,11 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
   end
 
   def translate(%Candidate.Macro{name: "def", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (define a function)"
-
-    snippet = """
-    def ${1:name}($2) do
-      $0
-    end
-    """
-
-    env
-    |> builder.snippet(snippet,
-      detail: macro.spec,
-      kind: :class,
-      label: label,
-      filter_text: macro.name
-    )
-    |> builder.set_sort_scope(SortScope.global())
+    function_snippet("def", "define a function", macro, builder, env)
   end
 
   def translate(%Candidate.Macro{name: "defp", arity: 2} = macro, builder, env) do
-    label = "#{macro.name} (define a private function)"
-
-    snippet = """
-    defp ${1:name}($2) do
-      $0
-    end
-    """
-
-    env
-    |> builder.snippet(snippet,
-      detail: macro.spec,
-      kind: :class,
-      label: label,
-      filter_text: macro.name
-    )
-    |> builder.set_sort_scope(SortScope.global())
+    function_snippet("defp", "define a private function", macro, builder, env)
   end
 
   def translate(%Candidate.Macro{name: "defmodule"} = macro, builder, env) do
@@ -594,6 +566,57 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
   def translate(%Candidate.Macro{}, _builder, _env) do
     :skip
+  end
+
+  defp function_snippet(kind, label, %Candidate.Macro{} = macro, builder, env) do
+    label = "#{macro.name} (#{label})"
+
+    snippet =
+      with %Position{} = position <- Env.prev_significant_position(env),
+           {:ok, name, arity} <- extract_spec_name_arity(env, position) do
+        args_snippet =
+          if arity == 0 do
+            ""
+          else
+            "(" <> Enum.map_join(1..arity, ", ", &"${#{&1}:arg_#{&1}}") <> ")"
+          end
+
+        """
+        #{kind} #{name}#{args_snippet} do
+          $0
+        end
+        """
+      else
+        _ ->
+          """
+          #{kind} ${1:name}($2) do
+            $0
+          end
+          """
+      end
+
+    env
+    |> builder.snippet(snippet,
+      detail: macro.spec,
+      kind: :class,
+      label: label,
+      filter_text: macro.name
+    )
+    |> builder.set_sort_scope(SortScope.global())
+  end
+
+  defp extract_spec_name_arity(%Env{} = env, %Position{} = position) do
+    with {:ok, [maybe_spec | _]} <- Ast.path_at(env.analysis, position),
+         {:@, _, [{:spec, _, [typespec]}]} <- maybe_spec,
+         {:"::", _, [{name, _, args}, _return]} <- typespec do
+      if is_list(args) do
+        {:ok, name, length(args)}
+      else
+        {:ok, name, 0}
+      end
+    else
+      _ -> :error
+    end
   end
 
   def suggest_module_name(%Document{} = document) do
