@@ -35,5 +35,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.CallbackTest d
       assert apply_completion(completion) =~
                "@impl true\ndef handle_info(${1:msg}, ${2:state}) do"
     end
+
+    test "does not add second @impl if one is already present", %{project: project} do
+      source = ~q[
+        defmodule MyServer do
+          use GenServer
+          @impl true
+          def handle_inf|
+        end
+      ]
+
+      {:ok, completion} =
+        project
+        |> complete(source)
+        |> fetch_completion(kind: :interface)
+
+      assert apply_completion(completion) == """
+             defmodule MyServer do
+               use GenServer
+               @impl true
+               def handle_info(${1:msg}, ${2:state}) do
+               $0
+             end
+             end
+             """
+    end
   end
 end
