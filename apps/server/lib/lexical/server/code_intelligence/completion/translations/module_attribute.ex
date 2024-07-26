@@ -124,7 +124,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.ModuleAttribut
   end
 
   defp maybe_specialized_spec_snippet(builder, %Env{} = env, range) do
-    with %Position{} = position <- Env.next_significant_position(env),
+    with {:ok, %Position{} = position} <- Env.next_significant_position(env),
          {:ok, [{maybe_def, _, [call, _]} | _]} when maybe_def in [:def, :defp] <-
            Ast.path_at(env.analysis, position),
          {function_name, _, args} <- call do

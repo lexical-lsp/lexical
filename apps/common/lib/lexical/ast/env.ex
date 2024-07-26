@@ -197,7 +197,7 @@ defmodule Lexical.Ast.Env do
   @doc """
   Returns the position of the next non-whitespace token on a line after `env.position`.
   """
-  @spec next_significant_position(t) :: Position.t() | nil
+  @spec next_significant_position(t) :: {:ok, Position.t()} | :error
   def next_significant_position(%__MODULE__{} = env) do
     find_significant_position(env.document, env.position.line + 1, 1)
   end
@@ -205,7 +205,7 @@ defmodule Lexical.Ast.Env do
   @doc """
   Returns the position of the next non-whitespace token on a line before `env.position`.
   """
-  @spec prev_significant_position(t) :: Position.t() | nil
+  @spec prev_significant_position(t) :: {:ok, Position.t()} | :error
   def prev_significant_position(%__MODULE__{} = env) do
     find_significant_position(env.document, env.position.line - 1, -1)
   end
@@ -213,17 +213,26 @@ defmodule Lexical.Ast.Env do
   defp find_significant_position(%Document{} = document, line, inc_by) do
     case Document.fetch_text_at(document, line) do
       {:ok, text} ->
-        case Regex.run(~r/(^\s*)\S+/, text) do
-          [_, whitespace] ->
-            character = String.length(whitespace) + 1
-            Position.new(document, line, character)
+        case fetch_leading_whitespace_count(text) do
+          {:ok, count} ->
+            {:ok, Position.new(document, line, count + 1)}
 
-          _ ->
+          :error ->
             find_significant_position(document, line + inc_by, inc_by)
         end
 
       :error ->
-        nil
+        :error
     end
   end
+
+  defp fetch_leading_whitespace_count(string, count \\ 0)
+
+  defp fetch_leading_whitespace_count(<<" ", rest::binary>>, count) do
+    fetch_leading_whitespace_count(rest, count + 1)
+  end
+
+  defp fetch_leading_whitespace_count(<<>>, _count), do: :error
+  defp fetch_leading_whitespace_count(<<"\n" <> _::binary>>, _count), do: :error
+  defp fetch_leading_whitespace_count(<<_non_whitespace::binary>>, count), do: {:ok, count}
 end

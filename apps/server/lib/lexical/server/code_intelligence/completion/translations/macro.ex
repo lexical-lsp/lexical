@@ -572,7 +572,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     label = "#{macro.name} (#{label})"
 
     snippet =
-      with %Position{} = position <- Env.prev_significant_position(env),
+      with {:ok, %Position{} = position} <- Env.prev_significant_position(env),
            {:ok, name, arity} <- extract_spec_name_arity(env, position) do
         args_snippet =
           if arity == 0 do
