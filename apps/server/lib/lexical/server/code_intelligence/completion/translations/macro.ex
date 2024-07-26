@@ -573,12 +573,19 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
 
     snippet =
       with {:ok, %Position{} = position} <- Env.prev_significant_position(env),
-           {:ok, name, arity} <- extract_spec_name_arity(env, position) do
+           {:ok, name, args} <- extract_spec_name_and_args(env, position) do
         args_snippet =
-          if arity == 0 do
-            ""
-          else
-            "(" <> Enum.map_join(1..arity, ", ", &"${#{&1}:arg_#{&1}}") <> ")"
+          case suggest_arg_names(args) do
+            [] ->
+              ""
+
+            names ->
+              placeholders =
+                names
+                |> Enum.with_index(1)
+                |> Enum.map_join(", ", fn {name, i} -> "${#{i}:#{name}}" end)
+
+              "(" <> placeholders <> ")"
           end
 
         """
@@ -605,21 +612,28 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     |> builder.set_sort_scope(SortScope.global())
   end
 
-  defp extract_spec_name_arity(%Env{} = env, %Position{} = position) do
+  defp extract_spec_name_and_args(%Env{} = env, %Position{} = position) do
     with {:ok, [maybe_spec | _]} <- Ast.path_at(env.analysis, position),
          {:@, _, [{:spec, _, [typespec]}]} <- maybe_spec,
          {:"::", _, [{name, _, args}, _return]} <- typespec do
       if is_list(args) do
-        {:ok, name, length(args)}
+        {:ok, name, args}
       else
-        {:ok, name, 0}
+        {:ok, name, []}
       end
     else
       _ -> :error
     end
   end
 
-  def suggest_module_name(%Document{} = document) do
+  defp suggest_arg_names(args) do
+    Enum.with_index(args, fn
+      {:"::", _, [{name, _, nil}, _]}, _i when is_atom(name) -> name
+      _, i -> "arg_#{i + 1}"
+    end)
+  end
+
+  defp suggest_module_name(%Document{} = document) do
     result =
       document.path
       |> Path.split()

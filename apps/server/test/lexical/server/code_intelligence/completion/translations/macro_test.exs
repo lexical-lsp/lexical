@@ -65,6 +65,25 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
       ]
     end
 
+    test "def preceeded by a @spec with named args", %{project: project} do
+      source = ~q[
+        @spec my_function(x :: term(), y :: term(), term()) :: term()
+        def|
+      ]
+
+      assert {:ok, completion} =
+               project
+               |> complete(source)
+               |> fetch_completion("def ")
+
+      assert apply_completion(completion) == ~q[
+        @spec my_function(x :: term(), y :: term(), term()) :: term()
+        def my_function(${1:x}, ${2:y}, ${3:arg_3}) do
+          $0
+        end
+      ]
+    end
+
     test "def preceeded by a @spec without args", %{project: project} do
       source = ~q[
         @spec my_function :: term()
