@@ -79,7 +79,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
     document_changes_list
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
-        [{document.uri, file_saved(uri: document.uri)}]
+        [{rename_file.new_uri, file_saved(uri: rename_file.new_uri)}]
       else
         # Some editors do not directly save the file after renaming, such as *neovim*.
         # when the file is not renamed, we'll only received `DidChange` for the old file
