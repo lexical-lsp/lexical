@@ -59,7 +59,7 @@ defmodule Lexical.RemoteControl.CodeMod.Rename do
   end
 
   defp uri_with_expected_operation(client_name, document_changes_list)
-       when client_name in ["Visual Studio Code", "emacs"] do
+       when client_name in ["Visual Studio Code"] do
     document_changes_list
     |> Enum.flat_map(fn %Document.Changes{document: document, rename_file: rename_file} ->
       if rename_file do
