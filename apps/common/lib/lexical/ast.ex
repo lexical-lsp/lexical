@@ -429,25 +429,34 @@ defmodule Lexical.Ast do
   def prewalk_vars(ast, acc, fun) do
     {ast, {acc, _}} =
       Macro.prewalk(ast, {acc, false}, fn
+        # <<foo::binary, ...>>
+        #   ^^^^^^^^^^^
         {:"::", meta, [left, right]}, {acc, _prev_pinned?} ->
           {right, acc} = prewalk_vars_in_binary(right, acc, fun)
           {{:"::", meta, [left, right]}, {acc, false}}
 
+        # skip vars inside quote or @
         {skip, _, [_]} = node, {acc, _prev_pinned?} when skip in [:@, :quote] ->
           {node, {acc, false}}
 
+        # skip _
         {:_, _, context} = node, {acc, _prev_pinned?} when is_atom(context) ->
           {node, {acc, false}}
 
+        # ^pinned
+        # emit the pinned var and set prev_pinned? so the var isn't omitted
+        # immediately after
         {:^, _, [{name, _, context}]} = pinned, {acc, _prev_pinned?}
         when is_atom(name) and is_atom(context) ->
           {pinned, acc} = fun.(pinned, acc)
           {pinned, {acc, true}}
 
+        # var
         {name, _, context} = var, {acc, false} when is_atom(name) and is_atom(context) ->
           {var, acc} = fun.(var, acc)
           {var, {acc, false}}
 
+        # skip everything else
         node, {acc, _prev_pinned?} ->
           {node, {acc, false}}
       end)
