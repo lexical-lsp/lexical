@@ -11,8 +11,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Elixir do
   @behaviour Build.Document.Compiler
 
   @impl true
-  def recognizes?(%Document{language_id: "elixir"}), do: true
-  def recognizes?(_), do: false
+  def recognizes?(%Document{} = doc) do
+    doc.language_id in ["elixir", "elixir-script"]
+  end
 
   @impl true
   def enabled?, do: true

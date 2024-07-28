@@ -24,7 +24,7 @@ defmodule Lexical.BuildTest do
         project
         |> Project.root_path()
         |> Path.join(to_string(sequence))
-        |> Path.join("file.exs")
+        |> Path.join("file.ex")
         |> Document.Path.to_uri()
       end
 
@@ -644,6 +644,30 @@ defmodule Lexical.BuildTest do
       compile_document(project, source)
       assert_receive file_compiled(status: :success)
       assert loaded?(project, WithAType)
+    end
+  end
+
+  describe ".exs files" do
+    setup do
+      start_supervised!(RemoteControl.Dispatch)
+      start_supervised!(RemoteControl.ModuleMappings)
+      start_supervised!(Build.CaptureServer)
+      :ok
+    end
+
+    test "should not run top-level forms" do
+      source = ~S[
+        IO.puts("fail")
+      ]
+
+      doc = Document.new("file:///file.exs", source, 0)
+
+      captured =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Build.Document.compile(doc)
+        end)
+
+      refute captured =~ "fail"
     end
   end
 
