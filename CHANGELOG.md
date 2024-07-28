@@ -1,4 +1,23 @@
 ## Unreleased
+ No changes yet
+## v0.7
+We're releasing 0.7 so we can support Elixir 1.17 and Erlang 27. However, those users on Erlang 27 will experience large increases in the amount of memory Lexical takes up [due to this bug](https://github.com/erlang/otp/pull/8683).  When that bug is fixed, we'll push out another release that will detect the newer version of Erlang and things should go back to normal. 
+
+Other than supporting the newer versions of Erlang and Elixir, we've added the following features:
+
+### Features
+* Organize aliases code action. When invoked, will alphabetize and flatten all your existing aliases in a module. It will also put all aliases in the same place in a module.
+* Remove unused alias code action
+* Add alias code action: Type a module, invoke the code action and see a list of modules to alias, select one, and it's added to your module's other aliases.
+* Improved script handling: Now lexical won't execute scripts when editing them. Thanks, @zachallaun!
+* We now show typespecs for struct field completions. Thanks @kirillrogovoy 
+
+## What's Changed
+
+* Completion: Use existing specs to infer function signatures and vice-versa by @zachallaun https://github.com/lexical-lsp/lexical/pull/802
+* Don't evaluate top-level code in exs fils by @zachallaun https://github.com/lexical-lsp/lexical/pull/798
+* Completion: Don't insert impl attribute if it's already present by @zachallaun https://github.com/lexical-lsp/lexical/pull/801
+* Completion: Use existing specs to infer function signatures and vice-versa by @zachallaun https://github.com/lexical-lsp/lexical/pull/802
 * Organize Aliases by @scohen https://github.com/lexical-lsp/lexical/pull/725
 * Remove unused aliases by @scohen
 * Refactor: Pass env into completion in remote control by @scohen in https://github.com/lexical-lsp/lexical/pull/733
