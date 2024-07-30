@@ -19,7 +19,7 @@ defmodule Mix.Tasks.Compile.LibElixir do
 
     needs_compile =
       Enum.filter(lib_elixirs(), fn {module, ref} ->
-        get_in(manifest.libs[module]) != ref
+        manifest.libs[module] != ref
       end)
 
     if needs_compile == [] do
@@ -30,6 +30,9 @@ defmodule Mix.Tasks.Compile.LibElixir do
           clean_lib(module)
           Mix.shell().info("[lib_elixir] Compiling #{inspect(module)} (Elixir #{ref})")
           compile(module, ref)
+
+          :code.purge(module)
+
           put_in(manifest.libs[module], ref)
         end)
 
@@ -51,36 +54,30 @@ defmodule Mix.Tasks.Compile.LibElixir do
   end
 
   def compile(module, ref) do
-    ez_path = Artifact.ez_path(ref, module)
+    archive_path = Artifact.download_elixir_archive!(ref)
 
-    if Artifact.exists?(ez_path) do
+    with_tmp_dir(fn tmp_dir ->
+      Artifact.extract_archive!(archive_path, tmp_dir)
+
+      # The only top-level directory after extracting the archive
+      # is the Elixir source directory
+      [source_dir] = File.ls!(tmp_dir)
+      source_dir = Path.join(tmp_dir, source_dir)
+
+      ebin_path = compile_elixir_stdlib!(source_dir)
+      Namespace.apply!(ebin_path, module)
+
+      ez_path = Artifact.ez_path(ref, module)
+      container_name = ez_path |> Path.basename() |> Path.rootname()
+      container_path = Path.join(tmp_dir, container_name)
+      container_ebin = Path.join(container_path, "ebin")
+
+      File.mkdir_p!(container_ebin)
+      File.cp_r!(ebin_path, container_ebin)
+      Artifact.compress_ez!(ez_path, container_path)
+
       extract_ez(ez_path)
-    else
-      Logger.info("lib_elixir: Building #{inspect(module)} (Elixir #{ref})")
-      archive_path = Artifact.download_elixir_archive!(ref)
-
-      with_tmp_dir(fn tmp_dir ->
-        Artifact.extract_archive!(archive_path, tmp_dir)
-
-        # The only top-level directory after extracting the archive
-        # is the Elixir source directory
-        [source_dir] = File.ls!(tmp_dir)
-        source_dir = Path.join(tmp_dir, source_dir)
-
-        ebin_path = compile_elixir_stdlib!(source_dir)
-        Namespace.apply!(ebin_path, module)
-
-        container_name = ez_path |> Path.basename() |> Path.rootname()
-        container_path = Path.join(tmp_dir, container_name)
-        container_ebin = Path.join(container_path, "ebin")
-
-        File.mkdir_p!(container_ebin)
-        File.cp_r!(ebin_path, container_ebin)
-        Artifact.compress_ez!(ez_path, container_path)
-
-        extract_ez(ez_path)
-      end)
-    end
+    end)
 
     :ok
   end

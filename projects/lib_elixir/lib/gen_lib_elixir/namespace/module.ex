@@ -33,11 +33,7 @@ defmodule LibElixir.Namespace.Module do
     elixir_namespace = Namespace.elixir_namespace()
     erlang_namespace = Namespace.erlang_namespace()
 
-    case name do
-      ^elixir_namespace <> _ -> true
-      ^erlang_namespace <> _ -> true
-      _ -> false
-    end
+    String.starts_with?(name, elixir_namespace) or String.starts_with?(name, erlang_namespace)
   end
 
   defp apply_namespace("Elixir." <> rest) do

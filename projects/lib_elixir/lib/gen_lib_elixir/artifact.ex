@@ -11,7 +11,7 @@ defmodule LibElixir.Artifact do
   Returns user cache directory.
   """
   def cache_dir do
-    cache_dir = :filename.basedir(:user_cache, "gen_lib_elixir")
+    cache_dir = :filename.basedir(:user_cache, "lib_elixir")
     File.mkdir_p!(cache_dir)
     cache_dir
   end
@@ -72,9 +72,9 @@ defmodule LibElixir.Artifact do
     archive_path = elixir_archive_path(ref)
 
     if exists?(archive_path) do
-      Mix.shell().info("[lib_elixir] using cached Elixir archive: #{archive_path}")
+      Mix.shell().info("[lib_elixir] Using cached Elixir archive: #{archive_path}")
     else
-      Mix.shell().info("[lib_elixir] downloading Elixir archive to: #{archive_path}")
+      Mix.shell().info("[lib_elixir] Downloading Elixir archive to: #{archive_path}")
 
       archive_stream = File.stream!(archive_path, [:write])
       archive_name = Path.basename(archive_path)
