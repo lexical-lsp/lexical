@@ -3,6 +3,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Future.Code
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
+  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
@@ -49,20 +50,33 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
          %Position{} = position
        ) do
     mfa = Formats.mfa(module, function, arity)
+    definitions = query_search_index_exact(mfa, subtype: :definition)
 
     definitions =
-      mfa
-      |> query_search_index(subtype: :definition)
-      |> Stream.flat_map(fn entry ->
-        case entry do
-          %Entry{type: {:function, :delegate}} ->
-            mfa = get_in(entry, [:metadata, :original_mfa])
-            query_search_index(mfa, subtype: :definition) ++ [entry]
+      case definitions do
+        [_ | _] ->
+          definitions
 
-          _ ->
-            [entry]
-        end
-      end)
+        _ ->
+          # feat: search for next best definition when no exact match is present.
+          module_at_position =
+            analysis
+            |> Analysis.module_scope(position)
+            |> Scope.module_alias()
+
+          call_prefix = Formats.mf(module, function)
+          definitions = query_search_index_prefix(call_prefix, subtype: :definition)
+
+          if module == module_at_position do
+            definitions
+          else
+            Stream.reject(definitions, &(&1.type == {:function, :private}))
+          end
+      end
+
+    definitions =
+      definitions
+      |> Stream.flat_map(&resolve_defdelegate/1)
       |> Stream.uniq_by(& &1.subject)
 
     locations =
@@ -78,6 +92,15 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
   defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
     elixir_sense_definition(analysis, position)
+  end
+
+  def resolve_defdelegate(%Entry{type: {:function, :delegate}} = entry) do
+    mfa = get_in(entry, [:metadata, :original_mfa])
+    query_search_index_exact(mfa, subtype: :definition) ++ [entry]
+  end
+
+  def resolve_defdelegate(entry) do
+    [entry]
   end
 
   defp maybe_fallback_to_elixir_sense(resolved, locations, analysis, position) do
@@ -171,8 +194,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp query_search_index(subject, condition) do
-    case Store.exact(subject, condition) do
+  defp query_search_index_exact(subject, constraints) do
+    case Store.exact(subject, constraints) do
+      {:ok, entries} ->
+        entries
+
+      _ ->
+        []
+    end
+  end
+
+  defp query_search_index_prefix(subject, constraints) do
+    case Store.prefix(subject, constraints) do
       {:ok, entries} ->
         entries
 

@@ -116,6 +116,20 @@ defmodule Lexical.Ast.Analysis do
     end)
   end
 
+  def module_scope(%__MODULE__{} = analysis, %Position{} = pos) do
+    enclosing_scopes = scopes_at(analysis, pos)
+
+    first_scope = List.first(enclosing_scopes)
+
+    Enum.reduce_while(enclosing_scopes, first_scope, fn
+      %Scope{module: same} = current, %Scope{module: same} ->
+        {:cont, current}
+
+      _, current ->
+        {:halt, current}
+    end)
+  end
+
   defp enclosing_scopes(scopes, range) do
     Enum.filter(scopes, fn scope ->
       Range.contains?(scope.range, range.start)
