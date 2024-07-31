@@ -32,7 +32,7 @@ defmodule Lexical.RemoteControl.Search.Indexer.Source.Reducer do
       blocks: [Block.root()],
       entries: [],
       extractors: extractors || @extractors,
-      position: {0, 0}
+      position: {1, 1}
     }
   end
 
