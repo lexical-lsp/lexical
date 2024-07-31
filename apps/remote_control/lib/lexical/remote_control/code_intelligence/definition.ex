@@ -3,11 +3,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Future.Code
   alias Lexical.Ast
   alias Lexical.Ast.Analysis
-  alias Lexical.Ast.Analysis.Scope
   alias Lexical.Document
   alias Lexical.Document.Location
   alias Lexical.Document.Position
   alias Lexical.Formats
+  alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
@@ -59,10 +59,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
 
         _ ->
           # feat: search for next best definition when no exact match is present.
-          module_at_position =
-            analysis
-            |> Analysis.module_scope(position)
-            |> Scope.module_alias()
+          {:ok, module_at_position} = Analyzer.current_module(analysis, position)
 
           call_prefix = Formats.mf(module, function)
           definitions = query_search_index_prefix(call_prefix, subtype: :definition)

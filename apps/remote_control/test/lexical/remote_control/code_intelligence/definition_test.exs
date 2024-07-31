@@ -402,6 +402,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
       assert definition_line =~ ~S[«binary_to_atom»(Binary)]
     end
   end
+
   describe "definition/2 when making local call to a delegated function" do
     setup [:with_referenced_file]
 
@@ -435,21 +436,21 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
   describe "definition/2 when no exact is available" do
     setup [:with_referenced_file]
 
-    test "", %{project: project, uri: referenced_uri} do
+    test "find the definition of a remote function call", %{project: project, uri: referenced_uri} do
       subject_module = ~q[
         defmodule UsesRemoteFunction do
-          use MyDefinition
+          alias MyDefinition
 
           def uses_greet() do
-            gree|t("World", "Bad Arity")
+            MyDefinition.gree|t("World", "Bad", "Arity")
           end
         end
       ]
 
       assert {:ok, ^referenced_uri, definition_line} =
-        definition(project, subject_module, referenced_uri)
+               definition(project, subject_module, referenced_uri)
 
-      assert definition_line == ~S[  def «greet»(name) do]
+      assert definition_line == ~S[  def «greet(name)» do]
     end
   end
 

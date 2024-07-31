@@ -83,8 +83,4 @@ defmodule Lexical.Ast.Analysis.Scope do
   def end_line(%__MODULE__{} = scope, :end), do: scope.range.end.line
   def end_line(_, %Position{} = position), do: position.line
   def end_line(_, line) when is_integer(line), do: line
-
-  def module_alias(%__MODULE__{module: module}) do
-    Module.concat(module)
-  end
 end
