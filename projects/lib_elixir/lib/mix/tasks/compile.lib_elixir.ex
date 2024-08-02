@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Compile.LibElixir do
       {:ok, {module, ref}} ->
         info("Compiling #{inspect(module)} (Elixir #{ref})")
 
-        clean_lib(module)
+        # clean_lib(module)
         compile(module, ref)
 
         manifest
@@ -27,8 +27,8 @@ defmodule Mix.Tasks.Compile.LibElixir do
 
         :ok
 
-      error ->
-        info("Nothing to compile (#{inspect(error)})")
+      _ ->
+        info("Nothing to compile")
         :noop
     end
   end
@@ -75,16 +75,17 @@ defmodule Mix.Tasks.Compile.LibElixir do
 
   defp extract_ez(ez_path) do
     ez_name = Path.basename(ez_path)
+    target_dir = Path.join(Mix.Project.build_path(), "lib")
 
-    target_dir =
-      [Mix.Project.build_path(), "lib"]
-      |> Path.join()
-      |> Path.expand()
+    IO.inspect(target_dir, label: "target_dir")
 
     target_ez = Path.join(target_dir, ez_name)
 
     File.cp!(ez_path, target_ez)
     {:ok, _} = :zip.unzip(~c"#{target_ez}", cwd: ~c"#{target_dir}")
+
+    ez_root = Path.rootname(ez_name)
+    File.cp_r!(Path.join(target_dir, ez_root), Path.join(target_dir, "lib_elixir"))
 
     File.rm!(target_ez)
   end
@@ -134,16 +135,16 @@ defmodule Mix.Tasks.Compile.LibElixir do
     File.write!(manifest_path(), :erlang.term_to_binary(manifest))
   end
 
-  defp clean_lib(module) do
-    File.rm_rf(lib_path(module))
-    :ok
-  end
+  # defp clean_lib(module) do
+  #   File.rm_rf(lib_path(module))
+  #   :ok
+  # end
 
-  defp lib_path(module) do
-    app = Namespace.app_name(module)
+  # defp lib_path(module) do
+  #   app = Namespace.app_name(module)
 
-    Path.join([Mix.Project.build_path(), "lib", to_string(app)])
-  end
+  #   Path.join([Mix.Project.build_path(), "lib", to_string(app)])
+  # end
 
   defp required_lib_elixir(manifest) do
     with {:ok, [{module, ref}]} <- Keyword.fetch(parent_config(), :lib_elixir),
