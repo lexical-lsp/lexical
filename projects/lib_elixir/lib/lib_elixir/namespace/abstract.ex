@@ -303,9 +303,11 @@ defmodule LibElixir.Namespace.Abstract do
     Namespace.Module.apply(module)
   end
 
-  defp rewrite_file(file) when is_list(file) do
-    file = List.to_string(file)
-    [first, second] = String.split(file, "/", parts: 2)
-    String.to_charlist(first <> "/lib_" <> second)
-  end
+  # defp rewrite_file(file) when is_list(file) do
+  #   file = List.to_string(file)
+  #   [first, second] = String.split(file, "/", parts: 2)
+  #   String.to_charlist(first <> "/lib_" <> second)
+  # end
+
+  defp rewrite_file(file), do: file
 end

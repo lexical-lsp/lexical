@@ -86,6 +86,7 @@ defmodule Mix.Tasks.Compile.LibElixir do
 
     ez_root = Path.rootname(ez_name)
     File.cp_r!(Path.join(target_dir, ez_root), Path.join(target_dir, "lib_elixir"))
+    File.rm_rf!(Path.join(target_dir, ez_root))
 
     File.rm!(target_ez)
   end

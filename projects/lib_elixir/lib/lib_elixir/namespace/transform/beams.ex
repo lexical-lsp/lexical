@@ -3,7 +3,9 @@ defmodule LibElixir.Namespace.Transform.Beams do
   A transformer that finds and replaces any instance of a module in a .beam file
   """
 
+  alias LibElixir.Namespace
   alias LibElixir.Namespace.Abstract
+  alias LibElixir.Namespace.DebugInfo
 
   def apply_to_all(base_directory) do
     Mix.Shell.IO.info("Rewriting .beam files")
@@ -29,11 +31,12 @@ defmodule LibElixir.Namespace.Transform.Beams do
   def apply(path) do
     erlang_path = String.to_charlist(path)
 
-    with {:ok, forms} <- abstract_code(erlang_path),
+    with {:ok, forms, debug_data} <- abstract_code_and_debug_data(erlang_path),
          rewritten_forms = Abstract.rewrite(forms),
+         rewritten_debug_data = DebugInfo.rewrite(debug_data),
          true <- changed?(forms, rewritten_forms),
-         {:ok, module_name, binary} <- compile_forms(rewritten_forms),
-         :ok <- write_module_beam(path, module_name, binary) do
+         {:ok, module_name, binary} <- compile_forms(rewritten_forms, rewritten_debug_data),
+         :ok <- write_module_beam(path, module_name, binary, rewritten_debug_data) do
       :ok
     else
       error ->
@@ -41,11 +44,11 @@ defmodule LibElixir.Namespace.Transform.Beams do
     end
   end
 
-  def compile_forms(forms) do
+  def compile_forms(forms, debug_data) do
     :compile.forms(forms, [
       :return_errors,
-      :debug_info,
-      :no_lint
+      :no_spawn_compiler_process,
+      debug_info: {Namespace.Module.apply(:elixir_erl), debug_data}
     ])
   end
 
@@ -80,9 +83,14 @@ defmodule LibElixir.Namespace.Transform.Beams do
     |> Path.wildcard()
   end
 
-  defp write_module_beam(old_path, module_name, binary) do
+  defp write_module_beam(old_path, module_name, binary, debug_info) do
     ebin_path = Path.dirname(old_path)
     new_beam_path = Path.join(ebin_path, "#{module_name}.beam")
+
+    binary_debug_info = :erlang.term_to_binary(debug_info)
+    {:ok, _, chunks} = :beam_lib.all_chunks(binary)
+    new_chunks = List.keyreplace(chunks, ~c"Dbgi", 0, {~c"Dbgi", binary_debug_info})
+    {:ok, binary} = :beam_lib.build_module(new_chunks)
 
     with :ok <- File.write(new_beam_path, binary, [:binary, :raw]) do
       if old_path == new_beam_path do
@@ -95,10 +103,11 @@ defmodule LibElixir.Namespace.Transform.Beams do
     end
   end
 
-  defp abstract_code(path) do
-    with {:ok, {_orig_module, code_parts}} <- :beam_lib.chunks(path, [:abstract_code]),
-         {:ok, {:raw_abstract_v1, forms}} <- Keyword.fetch(code_parts, :abstract_code) do
-      {:ok, forms}
+  defp abstract_code_and_debug_data(path) do
+    with {:ok, {_orig_module, chunks}} <-
+           :beam_lib.chunks(path, [:abstract_code, :debug_info]),
+         {:raw_abstract_v1, forms} <- chunks[:abstract_code] do
+      {:ok, forms, chunks[:debug_info]}
     else
       _ ->
         {:error, :not_found}

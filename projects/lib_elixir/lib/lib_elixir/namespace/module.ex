@@ -38,15 +38,25 @@ defmodule LibElixir.Namespace.Module do
 
   defp apply_namespace("Elixir." <> rest) do
     Namespace.elixir_root_modules()
-    |> Enum.map(fn module -> module |> Module.split() |> List.first() end)
+    |> Enum.map(fn root_module -> root_module |> Module.split() |> List.first() end)
     |> Enum.reduce_while(rest, fn root_module, module ->
       if has_root_module?(root_module, module) do
         namespaced_module =
-          module
-          |> String.replace(root_module, namespace(root_module), global: false)
-          |> String.to_atom()
+          case split_on_protocol(module) do
+            {prefix, suffix} ->
+              "Elixir." <> namespaced_suffix =
+                Atom.to_string(apply("Elixir." <> suffix))
 
-        {:halt, namespaced_module}
+              namespaced_prefix =
+                String.replace(prefix, root_module, namespace(root_module), global: false)
+
+              namespaced_prefix <> namespaced_suffix
+
+            nil ->
+              String.replace(module, root_module, namespace(root_module), global: false)
+          end
+
+        {:halt, String.to_atom(namespaced_module)}
       else
         {:cont, module}
       end
@@ -73,14 +83,23 @@ defmodule LibElixir.Namespace.Module do
   defp has_root_module?(root_module, root_module), do: true
 
   defp has_root_module?(root_module, candidate) do
-    String.contains?(candidate, append_trailing_period(root_module))
+    String.starts_with?(candidate, root_module <> ".")
   end
 
   defp namespace(orig) do
     Namespace.elixir_namespace() <> orig
   end
 
-  defp append_trailing_period(str) do
-    str <> "."
+  defp split_on_protocol(module_name) do
+    Enum.find_value(builtin_protocols(), fn proto ->
+      if String.starts_with?(module_name, proto) do
+        [_, rest] = String.split(module_name, proto, parts: 2)
+        {proto, rest}
+      end
+    end)
+  end
+
+  defp builtin_protocols do
+    ["Enumerable.", "Collectable.", "Inspect.", "List.Chars.", "String.Chars."]
   end
 end

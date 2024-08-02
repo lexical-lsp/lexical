@@ -56,6 +56,9 @@ defmodule LibElixir.Namespace do
       |> Enum.uniq()
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
+    special_root_modules = [BitString]
+    root_modules = update_in(root_modules.elixir, &(special_root_modules ++ &1))
+
     :persistent_term.put(@root_modules_key, root_modules)
   end
 
