@@ -12,33 +12,24 @@ defmodule Mix.Tasks.Compile.LibElixir do
 
   @impl true
   def run(_args) do
-    app = Keyword.fetch!(Mix.Project.config(), :app)
-    :ok = Application.ensure_loaded(app)
-
     manifest = get_manifest()
 
-    needs_compile =
-      Enum.filter(lib_elixirs(), fn {module, ref} ->
-        manifest.libs[module] != ref
-      end)
+    case required_lib_elixir(manifest) do
+      {:ok, {module, ref}} ->
+        info("Compiling #{inspect(module)} (Elixir #{ref})")
 
-    if needs_compile == [] do
-      :noop
-    else
-      manifest =
-        Enum.reduce(needs_compile, manifest, fn {module, ref}, manifest ->
-          clean_lib(module)
-          Mix.shell().info("[lib_elixir] Compiling #{inspect(module)} (Elixir #{ref})")
-          compile(module, ref)
+        clean_lib(module)
+        compile(module, ref)
 
-          :code.purge(module)
+        manifest
+        |> put_in([:libs, module], ref)
+        |> write_manifest!()
 
-          put_in(manifest.libs[module], ref)
-        end)
+        :ok
 
-      write_manifest(manifest)
-
-      :ok
+      error ->
+        info("Nothing to compile (#{inspect(error)})")
+        :noop
     end
   end
 
@@ -139,7 +130,7 @@ defmodule Mix.Tasks.Compile.LibElixir do
     _ -> %{libs: %{}}
   end
 
-  defp write_manifest(manifest) do
+  defp write_manifest!(manifest) do
     File.write!(manifest_path(), :erlang.term_to_binary(manifest))
   end
 
@@ -154,20 +145,21 @@ defmodule Mix.Tasks.Compile.LibElixir do
     Path.join([Mix.Project.build_path(), "lib", to_string(app)])
   end
 
-  defp lib_elixirs do
-    app = Keyword.fetch!(Mix.Project.config(), :app)
-
-    case :application.get_key(app, :modules) do
-      {:ok, modules} ->
-        Enum.flat_map(modules, fn module ->
-          case LibElixir.fetch_ref(module) do
-            {:ok, ref} -> [{module, ref}]
-            :error -> []
-          end
-        end)
-
-      _ ->
-        []
+  defp required_lib_elixir(manifest) do
+    with {:ok, [{module, ref}]} <- Keyword.fetch(parent_config(), :lib_elixir),
+         false <- manifest.libs[module] == ref do
+      {:ok, {module, ref}}
+    else
+      _ -> :error
     end
+  end
+
+  defp info(message) do
+    Mix.shell().info("[lib_elixir] #{message}")
+  end
+
+  defp parent_config do
+    {_, %{config: parent_config}} = Mix.ProjectStack.top_and_bottom()
+    parent_config
   end
 end
