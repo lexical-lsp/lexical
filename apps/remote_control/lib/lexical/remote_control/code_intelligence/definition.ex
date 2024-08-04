@@ -23,72 +23,95 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp fetch_definition({type, entity} = resolved, %Analysis{} = analysis, %Position{} = position)
+  defp fetch_definition({type, _entity} = resolved, %Analysis{} = analysis, %Position{} = pos)
        when type in [:struct, :module] do
-    module = Formats.module(entity)
-
-    locations =
-      case Store.exact(module, type: type, subtype: :definition) do
-        {:ok, entries} ->
-          for entry <- entries,
-              result = to_location(entry),
-              match?({:ok, _}, result) do
-            {:ok, location} = result
-            location
-          end
-
-        _ ->
-          []
-      end
-
-    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+    with {:ok, nil} <- exact_module_definition(resolved) do
+      elixir_sense_definition(analysis, pos)
+    end
   end
 
-  defp fetch_definition(
-         {:call, module, function, arity} = resolved,
-         %Analysis{} = analysis,
-         %Position{} = position
-       ) do
-    mfa = Formats.mfa(module, function, arity)
-    definitions = query_search_index_exact(mfa, subtype: :definition)
-
-    definitions =
-      case definitions do
-        [_ | _] ->
-          definitions
-
-        _ ->
-          # feat: search for next best definition when no exact match is present.
-          {:ok, module_at_position} = Analyzer.current_module(analysis, position)
-
-          call_prefix = Formats.mf(module, function)
-          definitions = query_search_index_prefix(call_prefix, subtype: :definition)
-
-          if module == module_at_position do
-            definitions
-          else
-            Stream.reject(definitions, &(&1.type == {:function, :private}))
-          end
-      end
-
-    definitions =
-      definitions
-      |> Stream.flat_map(&resolve_defdelegate/1)
-      |> Stream.uniq_by(& &1.subject)
-
-    locations =
-      for entry <- definitions,
-          result = to_location(entry),
-          match?({:ok, _}, result) do
-        {:ok, location} = result
-        location
-      end
-
-    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+  defp fetch_definition({:call, _m, _f, _a} = resolved, %Analysis{} = nlss, %Position{} = pos) do
+    with {:ok, nil} <- exact_call_definition(resolved, nlss, pos),
+         {:ok, nil} <- elixir_sense_definition(nlss, pos) do
+      nearest_arity_call_definition(resolved, nlss, pos)
+    end
   end
 
   defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
     elixir_sense_definition(analysis, position)
+  end
+
+  defp exact_module_definition({type, entity} = resolved) do
+    module = Formats.module(entity)
+
+    locations =
+      module
+      |> query_search_index_exact(type: type, subtype: :definition)
+      |> entries_to_locations()
+
+    case locations do
+      [location] ->
+        {:ok, location}
+
+      [_ | _] ->
+        {:ok, locations}
+
+      [] ->
+        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
+  end
+
+  defp exact_call_definition({:call, module, function, arity} = resolved, analysis, position) do
+    mfa = Formats.mfa(module, function, arity)
+
+    locations =
+      mfa
+      |> query_search_index_exact(subtype: :definition)
+      |> Stream.flat_map(&resolve_defdelegate/1)
+      |> Stream.uniq_by(& &1.subject)
+      |> maybe_reject_private_defs(module, analysis, position)
+      |> entries_to_locations()
+
+    case locations do
+      [location] ->
+        {:ok, location}
+
+      [_ | _] ->
+        {:ok, locations}
+
+      [] ->
+        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
+  end
+
+  defp nearest_arity_call_definition({:call, m, f, _a} = resolved, nlss, pos) do
+    mf_prefix = Formats.mf(m, f)
+
+    locations =
+      mf_prefix
+      |> query_search_index_prefix(subtype: :definition)
+      |> Stream.flat_map(&resolve_defdelegate/1)
+      |> Stream.uniq_by(& &1.subject)
+      |> maybe_reject_private_defs(m, nlss, pos)
+      |> Enum.sort(fn %Entry{} = a, %Entry{} = b ->
+        String.last(a.subject) < String.last(b.subject)
+      end)
+      |> Enum.take(1)
+      |> entries_to_locations()
+
+    case locations do
+      [location] ->
+        {:ok, location}
+
+      [_ | _] ->
+        {:ok, locations}
+
+      [] ->
+        Logger.info("No nearest-arity definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
   end
 
   def resolve_defdelegate(%Entry{type: {:function, :delegate}} = entry) do
@@ -100,18 +123,26 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     [entry]
   end
 
-  defp maybe_fallback_to_elixir_sense(resolved, locations, analysis, position) do
-    case locations do
-      [] ->
-        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
+  defp maybe_reject_private_defs(entries, module, analysis, position) do
+    case Analyzer.current_module(analysis, position) do
+      {:ok, module_at_position} ->
+        if module != module_at_position do
+          Stream.reject(entries, &(&1.type == {:function, :private}))
+        else
+          entries
+        end
 
-        elixir_sense_definition(analysis, position)
+      :error ->
+        entries
+    end
+  end
 
-      [location] ->
-        {:ok, location}
-
-      _ ->
-        {:ok, locations}
+  defp entries_to_locations(entries) do
+    for entry <- entries,
+        result = to_location(entry),
+        match?({:ok, _}, result) do
+      {:ok, location} = result
+      location
     end
   end
 

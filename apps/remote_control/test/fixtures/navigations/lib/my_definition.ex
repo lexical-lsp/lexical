@@ -18,6 +18,10 @@ defmodule MyDefinition do
     "Hello, #{name}!"
   end
 
+  def greet(name, name2) do
+    "Hello, #{name} and #{name2}!"
+  end
+
   defmacro print_hello do
     quote do
       IO.puts("Hello, world!")
