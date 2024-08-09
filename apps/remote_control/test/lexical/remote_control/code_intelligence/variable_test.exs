@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
   alias Lexical.Ast
+  alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.CodeIntelligence.Variable
 
   use ExUnit.Case
@@ -11,9 +12,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
   def find_definition(code) do
     {position, document} = pop_cursor(code, as: :document)
     analysis = Ast.analyze(document)
-    {:ok, {:local_or_var, var_name}} = Ast.cursor_context(analysis, position)
+    {:ok, {:variable, var_name}, _} = Entity.resolve(analysis, position)
 
-    case Variable.definition(analysis, position, List.to_atom(var_name)) do
+    case Variable.definition(analysis, position, var_name) do
       {:ok, entry} -> {:ok, entry.range, document}
       error -> error
     end
@@ -22,11 +23,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
   def find_references(code, include_definition? \\ false) do
     {position, document} = pop_cursor(code, as: :document)
     analysis = Ast.analyze(document)
-    {:ok, {:local_or_var, var_name}} = Ast.cursor_context(analysis, position)
+    {:ok, {:variable, var_name}, _} = Entity.resolve(analysis, position)
 
     ranges =
       analysis
-      |> Variable.references(position, List.to_atom(var_name), include_definition?)
+      |> Variable.references(position, var_name, include_definition?)
       |> Enum.map(& &1.range)
 
     {:ok, ranges, document}
@@ -36,7 +37,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are returned if it is selected" do
       {:ok, range, doc} =
         ~q[
-          def foo(param|) do
+          def foo(|param) do
             param
           end
         ]
@@ -49,7 +50,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, range, doc} =
         ~q[
           def foo(param) do
-            param|
+            |param
           end
         ]
         |> find_definition()
@@ -61,7 +62,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, range, doc} =
         ~q[
           def foo(other_param, param) do
-            param|
+            |param
           end
         ]
         |> find_definition()
@@ -74,7 +75,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
         ~q[
           def foo(param) do
             param = param + 1
-            param|
+            |param
           end
         ]
         |> find_definition()
@@ -86,7 +87,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, range, doc} =
         ~q[
           def foo(param) do
-            param = param| + 1
+            param = |param + 1
           end
         ]
         |> find_definition()
@@ -97,9 +98,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "when there are multiple definitions on one line" do
       {:ok, range, doc} =
         ~q[
-            param = 3
-            foo = param = param + 1
-            param|
+          param = 3
+          foo = param = param + 1
+          |param
         ]
         |> find_definition()
 
@@ -110,7 +111,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, range, doc} =
         ~q[
           %{key: value} = map
-          value|
+          |value
         ]
         |> find_definition()
 
@@ -125,7 +126,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
           def my_fun do
             foo = 3
             if something do
-              foo|
+              |foo
             end
           end
         ]
@@ -140,7 +141,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
           defmodule Parent do
             x = 3
             def fun do
-              unquote(x|)
+              unquote(|x)
             end
           end
         ]
@@ -155,7 +156,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
           x = 3
           defmodule Parent do
             def fun do
-              unquote(x|)
+              unquote(|x)
             end
           end
         ]
@@ -169,7 +170,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "in a function parameter" do
       {:ok, [range], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             param
           end
         ]
@@ -181,7 +182,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "can include definitions" do
       {:ok, [definition, reference], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             param
           end
         ]
@@ -195,9 +196,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, [first, second, third], doc} =
         ~q[
           def something(param) do
-           y = param + 3
-           z = param + 4
-           param| + y + z
+            y = param + 3
+            z = param + 4
+            |param + y + z
           end
         ]
         |> find_references()
@@ -210,7 +211,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found in a function body" do
       {:ok, [first, second, third, fourth, fifth], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             x = param + param + 3
             y = param + x
             z = 10 + param
@@ -229,7 +230,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are constrained to their definition function" do
       {:ok, [range], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             param
           end
 
@@ -245,7 +246,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are visible across blocks" do
       {:ok, [first, second], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             if something() do
               param + 1
             else
@@ -265,7 +266,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
           def something(param) do
 
             if something() do
-              param| = 3
+              |param = 3
               param + 1
             end
             param + 1
@@ -279,7 +280,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found in the head of a case statement" do
       {:ok, [range], doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
             case param do
              _ -> :ok
             end
@@ -295,7 +296,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
         ~q[
           def something(param) do
             case param do
-             param| when is_number(param) -> param + 1
+             |param when is_number(param) -> param + 1
              param -> 0
             end
           end
@@ -309,11 +310,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found in a module body" do
       {:ok, [range], doc} =
         ~q[
-        defmodule Outer do
-          something| = 3
-          def foo(unquote(something)) do
+          defmodule Outer do
+            |something = 3
+            def foo(unquote(something)) do
+            end
           end
-        end
         ]
         |> find_references()
 
@@ -323,13 +324,13 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found in anonymous function parameters" do
       {:ok, [first, second], doc} =
         ~q[
-        def outer do
-          fn param| ->
-            y = param + 1
-            x = param + 2
-            x + y
+          def outer do
+            fn |param ->
+              y = param + 1
+              x = param + 2
+              x + y
+            end
           end
-        end
         ]
         |> find_references()
 
@@ -340,11 +341,11 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found in a pin operator" do
       {:ok, [ref], doc} =
         ~q[
-        def outer(param|) do
-          fn ^param ->
-            nil
+          def outer(|param) do
+            fn ^param ->
+              nil
+            end
           end
-        end
         ]
         |> find_references()
 
@@ -354,7 +355,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "are found inside of string interpolation" do
       {:ok, [ref], doc} =
         ~S[
-          name| = "Stinky"
+          |name = "Stinky"
           "#{name} Stinkman"
         ]
         |> find_references()
@@ -367,7 +368,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "works for variables defined outside of an if while being shadowed" do
       {:ok, [first, second], doc} =
         ~q{
-          entries| = [1, 2, 3]
+          |entries = [1, 2, 3]
           entries =
             if something() do
               [4 | entries]
@@ -386,14 +387,14 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
         ~q"
           shadowed? = false
           fn
-          {:foo, entries|} ->
-            if shadowed? do
-              [1, entries]
-            else
+            {:foo, |entries} ->
+              if shadowed? do
+                [1, entries]
+              else
+                entries
+              end
+            {:bar, entries} ->
               entries
-            end
-          {:bar, entries} ->
-            entries
           end
         "
         |> find_references()
@@ -408,27 +409,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, [], _doc} =
         ~q[
           def something(param) do
-            other = other = other| = param
+            other = other = |other = param
           end
-      ]
+        ]
         |> find_references()
     end
 
     test "in a function body" do
       {:ok, [], _doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
            param = 3
            param
           end
-      ]
+        ]
         |> find_references()
     end
 
     test "in anonymous function arguments" do
       {:ok, [], _doc} =
         ~q[
-          def something(param|) do
+          def something(|param) do
            fn param ->
              param + 1
            end
@@ -442,7 +443,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, [range], doc} =
         ~q[
           def something do
-           shadow| = 4
+           |shadow = 4
            if true do
              shadow = shadow + 1
              shadow
@@ -458,7 +459,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
       {:ok, [range], doc} =
         ~q[
           def something do
-           shadow| = 4
+           |shadow = 4
            if true do
              shadow = :ok
              shadow
@@ -474,7 +475,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.VariableTest do
     test "exiting nested blocks" do
       {:ok, [range], doc} =
         ~q[
-          def something(param| = arg) do
+          def something(|param = arg) do
             case arg do
               param when is_number(n) ->
                 param + 4
