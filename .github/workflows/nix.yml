@@ -3,6 +3,7 @@ name: Nix derivation checks
 on:
   pull_request:
     paths: ["mix.lock"]
+  workflow_dispatch:
 
 jobs:
   auto-update-nix-hash:
