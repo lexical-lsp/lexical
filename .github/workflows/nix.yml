@@ -14,8 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: |
-          nix run .#update-hash | tee nix/hash
-          git config user.email ""
-          git config user.name "GitHub Action Bot"
-          git commit -m 'Update Nix hash of Mix deps' nix/hash && git push || true
+      - run: nix run .#update-hash | tee nix/hash
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'Update Nix hash of Mix deps'
