@@ -1,8 +1,7 @@
 name: Nix derivation checks
 
 on:
-  push:
-    branches: ["main"]
+  pull_request:
     paths: ["mix.lock"]
 
 jobs:
