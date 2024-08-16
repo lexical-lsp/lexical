@@ -36,6 +36,9 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Macro do
     label = "defmodule (define a module)"
     suggestion = suggest_module_name(env.document)
 
+    suggestion =
+      Lexical.RemoteControl.Api.adjust_module_name_capitalization(env.project, suggestion)
+
     snippet = """
     defmodule ${1:#{suggestion}} do
       $0

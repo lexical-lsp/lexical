@@ -12,3 +12,6 @@ defmodule Project.Baz do
   def baz do
   end
 end
+
+defmodule Project.HTTP.Server do
+end
