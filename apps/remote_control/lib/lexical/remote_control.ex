@@ -1,7 +1,7 @@
 defmodule Lexical.RemoteControl do
   @moduledoc """
-  The remote control boots another elixir application in a separate VM, injects
-  the remote control application into it and allows the language server to execute tasks in the
+  Boots another Elixir application in a separate VM, injects the remote control
+  application into it, and allows the language server to execute tasks in the
   context of the remote VM.
   """
 
