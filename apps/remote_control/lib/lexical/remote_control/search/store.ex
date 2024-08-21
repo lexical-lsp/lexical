@@ -1,6 +1,36 @@
 defmodule Lexical.RemoteControl.Search.Store do
   @moduledoc """
-  A persistent store for search entries
+  A persistent store for search entries such as definitions and references.
+  Underpins features such as jumping to definitions and performing symbol search.
+  There are a few basic data types and concepts necessary to understand to use
+  the search store:
+
+  ### Entries
+  All definitions and references are represented homogenously as
+  [`Entry`](`Lexical.RemoteControl.Search.Indexer.Entry`) structs.
+
+  ## Subjects
+  Strings used to represent and query definitions, following general Elixir
+  convention. For example, the subject for `exact/2` would be
+  `"Lexical.RemoteControl.Search.Store.exact/2"`.
+
+  ## Constraints
+  Constraints are used in the query functions to specify some property of the
+  entity the caller wishes to retrieve. For example, a constraint of
+  `{:type, {:protocol, :implementation}}` would limit query results to protocol definitions.
+
+  ## Queries
+  The following functions can be used to retrieve entries from the store:
+  * `exact/2` - Used to find exact definitions.
+  * `fuzzy/2` - Ideal for search operations such as symbol search.
+  * `parent/1` - Locates the parent entry from the subject's block.
+  * `prefix/2` - Matches all subjects with the given prefix.
+  * `siblings/1` - Returns adjacent definitions.
+
+  ## Updates
+  * `clear/1`
+  * `replace/1`
+  * `update/2`
   """
 
   alias Lexical.Project
@@ -16,14 +46,14 @@ defmodule Lexical.RemoteControl.Search.Store do
   @type updated_entries :: [Entry.t()]
   @type paths_to_delete :: [Path.t()]
   @typedoc """
-  A function that creates indexes when none is detected
+  A function that creates indexes when none is detected.
   """
   @type create_index ::
           (project :: Project.t() ->
              {:ok, new_entries} | {:error, term()})
 
   @typedoc """
-  A function that takes existing entries and refreshes them if necessary
+  A function that takes existing entries and refreshes them if necessary.
   """
   @type refresh_index ::
           (project :: Project.t(), entries :: existing_entries ->

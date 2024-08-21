@@ -3,6 +3,9 @@ defmodule Lexical.Ast.Detection.Directive do
   alias Lexical.Ast.Tokens
   alias Lexical.Document.Position
 
+  @doc """
+  Recognizes a directive (`alias`/`require`/`import`/`use`) at the current position.
+  """
   def detected?(%Analysis{} = analysis, %Position{} = position, directive_type) do
     analysis.document
     |> Tokens.prefix_stream(position)

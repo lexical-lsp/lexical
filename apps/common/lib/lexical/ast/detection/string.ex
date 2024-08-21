@@ -13,6 +13,9 @@ defmodule Lexical.Ast.Detection.String do
     :sigil_S
   ]
 
+  @doc """
+  Recognizes a string at the current position.
+  """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
     case Ast.path_at(analysis, position) do

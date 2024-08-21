@@ -6,6 +6,9 @@ defmodule Lexical.Ast.Detection.Pipe do
 
   use Detection
 
+  @doc """
+  Recognizes a pipe operator at the current position.
+  """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
     analysis.document

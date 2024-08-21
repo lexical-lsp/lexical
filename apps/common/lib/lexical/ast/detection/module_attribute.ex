@@ -5,6 +5,9 @@ defmodule Lexical.Ast.Detection.ModuleAttribute do
 
   use Detection
 
+  @doc """
+  Recognizes a module attribute at the current position.
+  """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
     ancestor_is_attribute?(analysis, position)

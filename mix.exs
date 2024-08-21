@@ -34,7 +34,11 @@ defmodule Lexical.LanguageServer.MixProject do
         pages/installation.md
         pages/architecture.md
         pages/glossary.md
+        pages/contributors_guide.md
       ),
+      assets: [
+        "pages/assets"
+      ],
       filter_modules: fn mod_name, _ ->
         case Module.split(mod_name) do
           ["Lexical", "Protocol", "Requests" | _] -> true
@@ -45,12 +49,46 @@ defmodule Lexical.LanguageServer.MixProject do
         end
       end,
       groups_for_modules: [
-        Core: ~r/Lexical.^(RemoteControl|Protocol|Server)/,
-        "Remote Control": ~r/Lexical.RemoteControl/,
+        Ast: ~r/Lexical.Ast/,
+        Server: ~r/Lexical.Server/,
+        Protocol: ~r/Lexical.Protocol/,
         "Protocol Requests": ~r/Lexical.Protocol.Requests/,
-        "Protocol Notifications": ~r/Lexical.Protocol.Notifications/,
         "Protocol Responses": ~r/Lexical.Protocol.Responses/,
-        Server: ~r/Lexical.Server/
+        "Protocol Notifications": ~r/Lexical.Protocol.Notifications/,
+        Proto: ~r/(^Proto$|Lexical.Proto)/,
+        RemoteControl: ~r/Lexical.RemoteControl/,
+        Future: ~r/Future/
+      ],
+      nest_modules_by_prefix: [
+        "Future",
+        "Lexical.Server",
+        "Lexical.Server.Project",
+        "Lexical.Server.Provider",
+        "Lexical.Server.CodeIntelligence",
+        "Lexical.Server.CodeIntelligence.Completion",
+        "Lexical.RemoteControl",
+        "Lexical.RemoteControl.Analyzer",
+        "Lexical.RemoteControl.Api",
+        "Lexical.RemoteControl.Build",
+        "Lexical.RemoteControl.Build.Document",
+        "Lexical.RemoteControl.CodeAction",
+        "Lexical.RemoteControl.CodeIntelligence",
+        "Lexical.RemoteControl.Completion",
+        "Lexical.RemoteControl.Search",
+        "Lexical.RemoteControl.Search.CodeIntelligence",
+        "Lexical.RemoteControl.Search.Indexer",
+        "Lexical.RemoteControl.Search.Store",
+        "Lexical.RemoteControl.Backend",
+        "Lexical.Ast",
+        "Lexical.Ast.Analysis",
+        "Lexical.Ast.Detection",
+        "Lexical.Protocol",
+        "Lexical.Protocol.Requests",
+        "Lexical.Protocol.Responses",
+        "Lexical.Protocol.Notifications",
+        "Lexical.Proto",
+        "Lexical.Proto.LspTypes",
+        "Lexical.Proto.Macros"
       ]
     ]
   end

@@ -7,6 +7,9 @@ defmodule Lexical.Ast.Detection.Bitstring do
 
   use Detection
 
+  @doc """
+  Recognizes a bitstring at the current position.
+  """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
     document = analysis.document

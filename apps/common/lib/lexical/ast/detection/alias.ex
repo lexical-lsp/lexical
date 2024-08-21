@@ -7,7 +7,7 @@ defmodule Lexical.Ast.Detection.Alias do
   use Detection
 
   @doc """
-  Recognizes an alias at the current position
+  Recognizes an alias at the current position.
 
   Aliases are complicated, especially if we're trying to find out if we're in
   them from the current cursor position moving backwards.

@@ -6,6 +6,9 @@ defmodule Lexical.Ast.Detection.FunctionCapture do
 
   use Detection
 
+  @doc """
+  Recognizes a function capture (`&(...)`) at the current position.
+  """
   @impl Detection
   def detected?(%Analysis{} = analysis, %Position{} = position) do
     analysis.document
