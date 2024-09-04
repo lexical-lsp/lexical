@@ -1,7 +1,6 @@
 defmodule Lexical.RemoteControl.Mix do
   alias Lexical.Project
   alias Lexical.RemoteControl
-  alias Lexical.RemoteControl.Build
 
   def in_project(fun) do
     if RemoteControl.project_node?() do
@@ -17,7 +16,7 @@ defmodule Lexical.RemoteControl.Mix do
 
     old_cwd = File.cwd!()
 
-    Build.with_lock(fn ->
+    with_lock(fn ->
       try do
         Mix.ProjectStack.post_config(prune_code_paths: false)
 
@@ -47,5 +46,9 @@ defmodule Lexical.RemoteControl.Mix do
         File.cd!(old_cwd)
       end
     end)
+  end
+
+  defp with_lock(fun) do
+    RemoteControl.with_lock(__MODULE__, fun)
   end
 end
