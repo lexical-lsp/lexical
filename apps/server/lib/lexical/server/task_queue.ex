@@ -119,11 +119,7 @@ defmodule Lexical.Server.TaskQueue do
     end
 
     defp write_error(id, message, code \\ :internal_error) do
-      error =
-        ResponseError.new(
-          code: code,
-          message: message
-        )
+      error = ResponseError.new(code: code, message: message)
 
       Transport.write(%{id: id, error: error})
     end
@@ -133,7 +129,8 @@ defmodule Lexical.Server.TaskQueue do
     end
 
     defp cancel_task(%Task{} = task) do
-      Task.Supervisor.terminate_child(task_supervisor_name(), task.pid)
+      Process.exit(task.pid, :canceled)
+      :ok
     end
   end
 
