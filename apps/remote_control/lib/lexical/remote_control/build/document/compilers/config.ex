@@ -6,6 +6,9 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
   alias Lexical.Document
   alias Lexical.Plugin.V1.Diagnostic
   alias Lexical.RemoteControl.Build
+  alias Lexical.RemoteControl.Build.Error.Location
+
+  @elixir_source "Elixir"
 
   @behaviour Build.Document.Compiler
   require Logger
@@ -49,7 +52,7 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
       {:ok, []}
     rescue
       e ->
-        {:error, [to_result(document, e)]}
+        {:error, [to_result(document, e, __STACKTRACE__)]}
     end
   end
 
@@ -73,33 +76,41 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.Config do
     end
   end
 
-  defp to_result(%Document{} = document, %CompileError{} = error) do
-    Diagnostic.Result.new(document.uri, error.line, Exception.message(error), :error, "Elixir")
+  defp to_result(document, error, stack \\ [])
+
+  defp to_result(%Document{} = document, %CompileError{} = error, _stack) do
+    Diagnostic.Result.new(
+      document.uri,
+      error.line,
+      Exception.message(error),
+      :error,
+      @elixir_source
+    )
   end
 
-  defp to_result(%Document{} = document, %error_type{} = error)
+  defp to_result(%Document{} = document, %error_type{} = error, _stack)
        when error_type in [SyntaxError, TokenMissingError] do
     Diagnostic.Result.new(
       document.uri,
       {error.line, error.column},
       Exception.message(error),
       :error,
-      "Elixir"
+      @elixir_source
     )
   end
 
-  defp to_result(%Document{} = document, %{
-         position: position,
-         message: message,
-         severity: severity
-       }) do
-    Diagnostic.Result.new(
-      document.path,
-      position,
-      message,
-      severity,
-      "Elixir"
-    )
+  defp to_result(
+         %Document{} = document,
+         %{position: position, message: message, severity: severity},
+         _stack
+       ) do
+    Diagnostic.Result.new(document.path, position, message, severity, @elixir_source)
+  end
+
+  defp to_result(%Document{} = document, %{__exception__: true} = exception, stack) do
+    message = Exception.message(exception)
+    position = Location.stack_to_position(stack)
+    Diagnostic.Result.new(document.path, position, message, :error, @elixir_source)
   end
 
   defp reject_logged_messages(results) do
