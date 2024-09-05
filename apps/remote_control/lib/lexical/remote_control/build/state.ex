@@ -14,33 +14,54 @@ defmodule Lexical.RemoteControl.Build.State do
 
   use RemoteControl.Progress
 
-  defstruct project: nil, build_number: 0, uri_to_source_and_edit_time: %{}
+  defstruct project: nil,
+            build_number: 0,
+            uri_to_document: %{},
+            project_compile: :none
 
   def new(%Project{} = project) do
     %__MODULE__{project: project}
   end
 
-  def on_tick(%__MODULE__{} = state) do
-    {new_state, compiled_uris} =
-      Enum.reduce(state.uri_to_source_and_edit_time, {state, []}, fn
-        {uri, {document, edit_time}}, {state, compiled_uris} ->
-          if should_compile?(edit_time) do
-            new_state = increment_build_number(state)
-            compile_file(new_state, document)
-            {new_state, [uri | compiled_uris]}
-          else
-            {state, compiled_uris}
-          end
-      end)
+  def on_timeout(%__MODULE__{} = state) do
+    case state.project_compile do
+      :none -> :ok
+      :force -> compile_project(state, true)
+      :normal -> compile_project(state, false)
+    end
 
+    new_state =
+      state.uri_to_document
+      |> Map.values()
+      |> Enum.reduce(
+        state,
+        fn document, state ->
+          new_state = increment_build_number(state)
+          compile_file(new_state, document)
+          new_state
+        end
+      )
+
+    %__MODULE__{new_state | uri_to_document: %{}, project_compile: :none}
+  end
+
+  def on_file_compile(%__MODULE__{} = state, %Document{} = document) do
     %__MODULE__{
-      new_state
-      | uri_to_source_and_edit_time: Map.drop(state.uri_to_source_and_edit_time, compiled_uris)
+      state
+      | uri_to_document: Map.put(state.uri_to_document, document.uri, document)
     }
   end
 
+  def on_project_compile(%__MODULE__{} = state, force?) do
+    if force? do
+      %__MODULE__{state | project_compile: :force}
+    else
+      %__MODULE__{state | project_compile: :normal}
+    end
+  end
+
   def compile_scheduled?(%__MODULE__{} = state, uri) do
-    Map.has_key?(state.uri_to_source_and_edit_time, uri)
+    Map.has_key?(state.uri_to_document, uri)
   end
 
   def ensure_build_directory(%__MODULE__{} = state) do
@@ -65,7 +86,7 @@ defmodule Lexical.RemoteControl.Build.State do
     end
   end
 
-  def compile_project(%__MODULE__{} = state, initial?) do
+  defp compile_project(%__MODULE__{} = state, initial?) do
     state = increment_build_number(state)
     project = state.project
 
@@ -106,14 +127,6 @@ defmodule Lexical.RemoteControl.Build.State do
       RemoteControl.broadcast(diagnostics_message)
       Plugin.diagnose(project, state.build_number)
     end)
-  end
-
-  def on_file_compile(%__MODULE__{} = state, %Document{} = document) do
-    %__MODULE__{
-      state
-      | uri_to_source_and_edit_time:
-          Map.put(state.uri_to_source_and_edit_time, document.uri, {document, now()})
-    }
   end
 
   def compile_file(%__MODULE__{} = state, %Document{} = document) do
@@ -201,25 +214,12 @@ defmodule Lexical.RemoteControl.Build.State do
     "Building #{Project.display_name(project)}"
   end
 
-  defp now do
-    System.system_time(:millisecond)
-  end
-
-  defp should_compile?(last_edit_time) do
-    millis_since_last_edit = now() - last_edit_time
-    millis_since_last_edit >= edit_window_millis()
-  end
-
   defp to_ms(microseconds) do
     microseconds / 1000
   end
 
   defp parser_options do
     [columns: true, token_metadata: true]
-  end
-
-  defp edit_window_millis do
-    Application.get_env(:remote_control, :edit_window_millis, 250)
   end
 
   defp increment_build_number(%__MODULE__{} = state) do
