@@ -6,7 +6,6 @@ defmodule Lexical.RemoteControl.Build.StateTest do
   alias Lexical.RemoteControl.Build.State
   alias Lexical.RemoteControl.Plugin
 
-  import Lexical.Test.EventualAssertions
   import Lexical.Test.Fixtures
 
   use ExUnit.Case, async: false
@@ -67,22 +66,88 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     {:ok, document: document}
   end
 
-  describe "throttled compilation" do
-    setup [:with_metadata_project, :with_a_valid_document]
+  def with_patched_compilation(_) do
+    patch(Build.Document, :compile, :ok)
+    patch(Build.Project, :compile, :ok)
+    :ok
+  end
+
+  describe "throttled document compilation" do
+    setup [:with_metadata_project, :with_a_valid_document, :with_patched_compilation]
 
     test "it doesn't compile immediately", %{state: state, document: document} do
-      new_state =
-        state
-        |> State.on_file_compile(document)
-        |> State.on_tick()
+      State.on_file_compile(state, document)
 
-      assert State.compile_scheduled?(new_state, document.uri)
+      refute_called(Build.Document.compile(document))
+      refute_called(Build.Project.compile(_, _))
     end
 
-    test "it compiles after a timeout", %{state: state, document: document} do
-      state = State.on_file_compile(state, document)
+    test "it compiles files when on_timeout is called", %{state: state, document: document} do
+      state
+      |> State.on_file_compile(document)
+      |> State.on_timeout()
 
-      refute_eventually(State.compile_scheduled?(State.on_tick(state), document.uri), 500)
+      assert_called(Build.Document.compile(document))
+      refute_called(Build.Project.compile(_, _))
+    end
+  end
+
+  describe "throttled project compilation" do
+    setup [:with_metadata_project, :with_a_valid_document, :with_patched_compilation]
+
+    test "doesn't compile immediately if forced", %{state: state} do
+      State.on_project_compile(state, true)
+      refute_called(Build.Project.compile(_, _))
+    end
+
+    test "doesn't compile immediately", %{state: state} do
+      State.on_project_compile(state, false)
+      refute_called(Build.Project.compile(_, _))
+    end
+
+    test "compiles if force is true after on_timeout is called", %{state: state} do
+      state
+      |> State.on_project_compile(true)
+      |> State.on_timeout()
+
+      assert_called(Build.Project.compile(_, true))
+    end
+
+    test "compiles after on_timeout is called", %{state: state} do
+      state
+      |> State.on_project_compile(false)
+      |> State.on_timeout()
+
+      assert_called(Build.Project.compile(_, false))
+    end
+  end
+
+  describe "mixed compilation" do
+    setup [:with_metadata_project, :with_a_valid_document, :with_patched_compilation]
+
+    test "doesn't compile if both documents and projects are added", %{
+      state: state,
+      document: document
+    } do
+      state
+      |> State.on_project_compile(false)
+      |> State.on_file_compile(document)
+
+      refute_called(Build.Document.compile(_))
+      refute_called(Build.Project.compile(_, _))
+    end
+
+    test "compiles when on_timeout is called if both documents and projects are added", %{
+      state: state,
+      document: document
+    } do
+      state
+      |> State.on_project_compile(false)
+      |> State.on_file_compile(document)
+      |> State.on_timeout()
+
+      assert_called(Build.Document.compile(_))
+      assert_called(Build.Project.compile(_, _))
     end
   end
 end
