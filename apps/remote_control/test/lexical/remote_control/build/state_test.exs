@@ -76,9 +76,8 @@ defmodule Lexical.RemoteControl.Build.StateTest do
     setup [:with_metadata_project, :with_a_valid_document, :with_patched_compilation]
 
     test "it doesn't compile immediately", %{state: state, document: document} do
-      new_state = State.on_file_compile(state, document)
+      State.on_file_compile(state, document)
 
-      assert State.compile_scheduled?(new_state, document.uri)
       refute_called(Build.Document.compile(document))
       refute_called(Build.Project.compile(_, _))
     end

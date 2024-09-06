@@ -24,23 +24,20 @@ defmodule Lexical.RemoteControl.Build.State do
   end
 
   def on_timeout(%__MODULE__{} = state) do
-    case state.project_compile do
-      :none -> :ok
-      :force -> compile_project(state, true)
-      :normal -> compile_project(state, false)
-    end
-
     new_state =
-      state.uri_to_document
-      |> Map.values()
-      |> Enum.reduce(
-        state,
-        fn document, state ->
-          new_state = increment_build_number(state)
-          compile_file(new_state, document)
-          new_state
-        end
-      )
+      case state.project_compile do
+        :none -> state
+        :force -> compile_project(state, true)
+        :normal -> compile_project(state, false)
+      end
+
+    # We need to compile the individual documents even after the project is
+    # compiled because they might have unsaved changes, and we want that state
+    # to be the latest state of the project.
+    new_state =
+      Enum.reduce(new_state.uri_to_document, state, fn {_uri, document}, state ->
+        compile_file(state, document)
+      end)
 
     %__MODULE__{new_state | uri_to_document: %{}, project_compile: :none}
   end
@@ -58,10 +55,6 @@ defmodule Lexical.RemoteControl.Build.State do
     else
       %__MODULE__{state | project_compile: :normal}
     end
-  end
-
-  def compile_scheduled?(%__MODULE__{} = state, uri) do
-    Map.has_key?(state.uri_to_document, uri)
   end
 
   def ensure_build_directory(%__MODULE__{} = state) do
@@ -127,9 +120,12 @@ defmodule Lexical.RemoteControl.Build.State do
       RemoteControl.broadcast(diagnostics_message)
       Plugin.diagnose(project, state.build_number)
     end)
+
+    state
   end
 
   def compile_file(%__MODULE__{} = state, %Document{} = document) do
+    state = increment_build_number(state)
     project = state.project
 
     Build.with_lock(fn ->
@@ -182,6 +178,8 @@ defmodule Lexical.RemoteControl.Build.State do
       RemoteControl.broadcast(diagnostics)
       Plugin.diagnose(project, state.build_number, document)
     end)
+
+    state
   end
 
   def set_compiler_options do
