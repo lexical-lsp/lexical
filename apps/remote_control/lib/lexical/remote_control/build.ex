@@ -9,7 +9,7 @@ defmodule Lexical.RemoteControl.Build do
   require Logger
   use GenServer
 
-  @tick_interval_millis 50
+  @timeout_interval_millis 50
 
   # Public interface
 
@@ -67,32 +67,30 @@ defmodule Lexical.RemoteControl.Build do
   @impl GenServer
   def handle_continue(:ensure_build_directory, %State{} = state) do
     State.ensure_build_directory(state)
-    schedule_tick()
     {:noreply, state}
   end
 
   @impl GenServer
   def handle_call({:force_compile_file, %Document{} = document}, _from, %State{} = state) do
     State.compile_file(state, document)
-    {:reply, :ok, state}
+    {:reply, :ok, state, @timeout_interval_millis}
   end
 
   @impl GenServer
   def handle_cast({:compile, force?}, %State{} = state) do
-    State.compile_project(state, force?)
-    {:noreply, state}
+    new_state = State.on_project_compile(state, force?)
+    {:noreply, new_state, @timeout_interval_millis}
   end
 
   @impl GenServer
   def handle_cast({:compile_file, %Document{} = document}, %State{} = state) do
     new_state = State.on_file_compile(state, document)
-    {:noreply, new_state}
+    {:noreply, new_state, @timeout_interval_millis}
   end
 
   @impl GenServer
-  def handle_info(:tick, %State{} = state) do
-    new_state = State.on_tick(state)
-    schedule_tick()
+  def handle_info(:timeout, %State{} = state) do
+    new_state = State.on_timeout(state)
     {:noreply, new_state}
   end
 
@@ -100,9 +98,5 @@ defmodule Lexical.RemoteControl.Build do
   def handle_info(msg, %Project{} = project) do
     Logger.warning("Undefined message: #{inspect(msg)}")
     {:noreply, project}
-  end
-
-  defp schedule_tick do
-    Process.send_after(self(), :tick, @tick_interval_millis)
   end
 end

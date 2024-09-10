@@ -68,7 +68,11 @@ defmodule Lexical.RemoteControl.Search.Store.Backends.Ets.Schemas.V3 do
   end
 
   def table_options do
-    [:named_table, :ordered_set, :compressed]
+    if Features.can_use_compressed_ets_table?() do
+      [:named_table, :ordered_set, :compressed]
+    else
+      [:named_table, :ordered_set]
+    end
   end
 
   def to_subject(charlist) when is_list(charlist), do: charlist
