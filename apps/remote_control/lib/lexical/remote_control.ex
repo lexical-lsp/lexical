@@ -50,6 +50,10 @@ defmodule Lexical.RemoteControl do
 
   defdelegate modules_with_prefix(prefix, predicate), to: RemoteControl.Modules, as: :with_prefix
 
+  defdelegate adjust_module_name_capitalization(name),
+    to: RemoteControl.Modules,
+    as: :adjust_name_capitalization
+
   defdelegate docs(module, opts \\ []), to: CodeIntelligence.Docs, as: :for_module
 
   defdelegate register_listener(listener_pid, message_types), to: RemoteControl.Dispatch
