@@ -618,7 +618,7 @@ defmodule Lexical.Ast do
 
   defp one_line_range(%Document{} = document, line_number) do
     start_pos = Position.new(document, line_number, 1)
-    end_pos = Position.new(document, line_number + 1, 0)
+    end_pos = Position.new(document, line_number + 1, 1)
     Range.new(start_pos, end_pos)
   end
 
