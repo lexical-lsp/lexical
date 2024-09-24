@@ -53,6 +53,22 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     )
   end
 
+  @spec phoenix_controller_module?(module()) :: boolean()
+  def phoenix_controller_module?(module) do
+    function_exists?(module, :call, 2) and function_exists?(module, :action, 2)
+  end
+
+  @spec phoenix_liveview_module?(module()) :: boolean()
+  def phoenix_liveview_module?(module) do
+    function_exists?(module, :mount, 3) and function_exists?(module, :render, 1)
+  end
+
+  @spec phoenix_component_module?(module()) :: boolean()
+  def phoenix_component_module?(module) do
+    function_exists?(module, :__components__, 0) and
+      function_exists?(module, :__phoenix_component_verify__, 1)
+  end
+
   defp check_commented(%Analysis{} = analysis, %Position{} = position) do
     if Analysis.commented?(analysis, position) do
       :error
@@ -292,14 +308,6 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Entity do
     else
       :error
     end
-  end
-
-  defp phoenix_controller_module?(module) do
-    function_exists?(module, :call, 2) and function_exists?(module, :action, 2)
-  end
-
-  defp phoenix_liveview_module?(module) do
-    function_exists?(module, :mount, 3) and function_exists?(module, :render, 1)
   end
 
   # Take only the segments at and before the cursor, e.g.
