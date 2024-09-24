@@ -176,30 +176,15 @@ of whether you are using mason or others, you can use this
 configuration below as a reference:
 
 ```lua
-    local lspconfig = require("lspconfig")
-    local configs = require("lspconfig.configs")
-
-    local lexical_config = {
-      filetypes = { "elixir", "eelixir", "heex" },
-      cmd = { "/my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh" },
-      settings = {},
-    }
-
-    if not configs.lexical then
-      configs.lexical = {
-        default_config = {
-          filetypes = lexical_config.filetypes,
-          cmd = lexical_config.cmd,
-          root_dir = function(fname)
-            return lspconfig.util.root_pattern("mix.exs", ".git")(fname) or vim.loop.os_homedir()
-          end,
-          -- optional settings
-          settings = lexical_config.settings,
-        },
-      }
-    end
-
-    lspconfig.lexical.setup({})
+require('lspconfig').lexical.setup {
+  cmd = { "my/home/projects/_build/dev/package/lexical/bin/start_lexical.sh" },
+  root_dir = function(fname)
+    return util.root_pattern("mix.exs", ".git")(fname) or vim.loop.cwd()
+  end,
+  filetypes = { "elixir", "eelixir", "heex" },
+  -- optional settings
+  settings = {}
+}
 ```
 
 If the configuration above doesn't work for you, please try this minimal [neovim configuration](https://github.com/scottming/nvim-mini-for-lexical), It can eliminate other plugin factors.
