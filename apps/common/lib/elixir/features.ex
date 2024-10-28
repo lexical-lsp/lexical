@@ -37,6 +37,6 @@ defmodule Elixir.Features do
   def can_use_compressed_ets_table? do
     %{erlang: erlang_version} = Versions.to_versions(Versions.current())
 
-    Version.match?(erlang_version, "< 27.0.0 or >= 27.1")
+    Version.match?(erlang_version, "< 27.0.0 or >= 27.1.0")
   end
 end
