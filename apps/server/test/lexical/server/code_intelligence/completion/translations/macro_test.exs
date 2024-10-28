@@ -299,6 +299,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
              """
     end
 
+    test "defmodule requiring capitalization adjustment", %{project: project} do
+      assert {:ok, completion} =
+               project
+               |> complete("defmodule|", path: "/lib/project/http/server/helper.ex")
+               |> fetch_completion("defmodule ")
+
+      assert completion.detail
+      assert completion.label == "defmodule (define a module)"
+      assert completion.insert_text_format == :snippet
+
+      assert apply_completion(completion) == """
+             defmodule ${1:Project.HTTP.Server.Helper} do
+               $0
+             end\
+             """
+    end
+
     test "defprotocol only has a single completion", %{project: project} do
       assert {:ok, completion} =
                project
