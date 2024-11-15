@@ -268,7 +268,7 @@ defmodule Lexical.Document.Store do
 
   @spec open_temporary(Lexical.uri() | Path.t(), timeout()) ::
           {:ok, Document.t()} | {:error, term()}
-  def open_temporary(uri, timeout \\ 5000) do
+  def open_temporary(uri, timeout \\ 5000) when is_binary(uri) do
     ProcessCache.trans(uri, 50, fn ->
       GenServer.call(name(), {:open_temporarily, uri, timeout})
     end)

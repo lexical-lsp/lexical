@@ -146,7 +146,7 @@ defmodule Lexical.RemoteControl.Build.Error do
         mfa = {module, function, arity}
         mfa_to_position(mfa, quoted_ast)
       else
-        stack_to_position(stack)
+        Location.stack_to_position(stack)
       end
 
     Result.new(source.uri, position, message, :error, @elixir_source)
@@ -182,7 +182,7 @@ defmodule Lexical.RemoteControl.Build.Error do
       if pipe_or_struct? or expanding? do
         Location.context_to_position(context)
       else
-        stack_to_position(stack)
+        Location.stack_to_position(stack)
       end
 
     Result.new(source.uri, position, message, :error, @elixir_source)
@@ -195,7 +195,7 @@ defmodule Lexical.RemoteControl.Build.Error do
              ExUnit.DuplicateDescribeError
            ] do
     message = Exception.message(exception)
-    position = stack_to_position(stack)
+    position = Location.stack_to_position(stack)
     Result.new(source.uri, position, message, :error, @elixir_source)
   end
 
@@ -279,20 +279,6 @@ defmodule Lexical.RemoteControl.Build.Error do
       {:elixir, segments} -> segments
       {:erlang, [erlang_module]} -> erlang_module
     end
-  end
-
-  defp stack_to_position([{_, target, _, _} | rest])
-       when target not in [:__FILE__, :__MODULE__] do
-    stack_to_position(rest)
-  end
-
-  defp stack_to_position([{_, target, _, context} | _rest])
-       when target in [:__FILE__, :__MODULE__] do
-    Location.context_to_position(context)
-  end
-
-  defp stack_to_position([]) do
-    nil
   end
 
   defp do_message_to_diagnostic(_, "") do

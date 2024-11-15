@@ -6,6 +6,20 @@ defmodule Lexical.RemoteControl.Build.Error.Location do
 
   require Logger
 
+  def stack_to_position([{_, target, _, _} | rest])
+      when target not in [:__FILE__, :__MODULE__] do
+    stack_to_position(rest)
+  end
+
+  def stack_to_position([{_, target, _, context} | _rest])
+      when target in [:__FILE__, :__MODULE__] do
+    context_to_position(context)
+  end
+
+  def stack_to_position([]) do
+    nil
+  end
+
   def context_to_position(context) do
     case {context[:line], context[:column]} do
       {nil, nil} ->

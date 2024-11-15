@@ -3,7 +3,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
   alias Lexical.Formats
   alias Lexical.RemoteControl.Search.Indexer.Entry
 
-  defstruct [:name, :type, :range, :detail_range, :detail, children: []]
+  defstruct [:name, :type, :range, :detail_range, :detail, :original_type, :subject, children: []]
 
   def from(%Document{} = document, %Entry{} = entry, children \\ []) do
     case name_and_type(entry.type, entry, document) do
@@ -16,7 +16,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
            type: type,
            range: range,
            detail_range: entry.range,
-           children: children
+           children: children,
+           original_type: entry.type,
+           subject: entry.subject
          }}
 
       _ ->
@@ -28,7 +30,10 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
 
   defp name_and_type({:function, type}, %Entry{} = entry, %Document{} = document)
        when type in [:public, :private, :delegate] do
-    fragment = Document.fragment(document, entry.range.start, entry.range.end)
+    fragment =
+      document
+      |> Document.fragment(entry.range.start, entry.range.end)
+      |> remove_line_breaks_and_multiple_spaces()
 
     prefix =
       case type do
@@ -86,5 +91,9 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols.Document do
 
   defp name_and_type(type, %Entry{} = entry, _document) do
     {to_string(entry.subject), type}
+  end
+
+  defp remove_line_breaks_and_multiple_spaces(string) do
+    string |> String.split(~r/\s/) |> Enum.reject(&match?("", &1)) |> Enum.join(" ")
   end
 end

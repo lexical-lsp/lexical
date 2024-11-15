@@ -41,10 +41,14 @@ defimpl Lexical.Convertible, for: Lexical.Plugin.V1.Diagnostic.Result do
     Conversions.to_lsp(range)
   end
 
-  defp lsp_range(%Diagnostic.Result{} = diagnostic) do
-    with {:ok, document} <- Document.Store.open_temporary(diagnostic.uri) do
+  defp lsp_range(%Diagnostic.Result{uri: uri} = diagnostic) when is_binary(uri) do
+    with {:ok, document} <- Document.Store.open_temporary(uri) do
       position_to_range(document, diagnostic.position)
     end
+  end
+
+  defp lsp_range(%Diagnostic.Result{}) do
+    {:error, :no_uri}
   end
 
   defp position_to_range(%Document{} = document, {start_line, start_column, end_line, end_column}) do

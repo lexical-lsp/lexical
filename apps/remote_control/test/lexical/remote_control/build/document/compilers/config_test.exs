@@ -121,6 +121,25 @@ defmodule Lexical.RemoteControl.Build.Document.Compilers.ConfigTest do
       assert result.source == "Elixir"
     end
 
+    test "it produces diagnostics for arbitrary exceptions" do
+      assert {:error, [result]} =
+               ~q[
+                 import Config
+
+                 System.fetch_env!("_LEXICAL_NON_EXISTING_ENV_VAR_")
+               ]
+               |> document()
+               |> compile()
+
+      assert result.message =~ "could not fetch environment variable"
+      assert result.severity == :error
+      assert result.source == "Elixir"
+
+      if Features.with_diagnostics?() do
+        assert result.position == 3
+      end
+    end
+
     test "it produces no diagnostics on success" do
       assert {:ok, []} =
                ~q[
