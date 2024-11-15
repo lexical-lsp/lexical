@@ -95,6 +95,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
       |> Stream.flat_map(&resolve_defdelegate/1)
       |> Stream.uniq_by(& &1.subject)
       |> maybe_reject_private_defs(m, nlss, pos)
+      # sort by arity and take the lowest.
       |> Enum.sort(fn %Entry{} = a, %Entry{} = b ->
         String.last(a.subject) < String.last(b.subject)
       end)
