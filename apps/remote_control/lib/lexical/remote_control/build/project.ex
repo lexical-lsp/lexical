@@ -91,8 +91,10 @@ defmodule Lexical.RemoteControl.Build.Project do
       Mix.Task.run(:loadconfig)
     end
 
-    with_progress "mix deps.compile", fn ->
-      Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
+    unless Elixir.Features.compile_keeps_current_directory?() do
+      with_progress "mix deps.compile", fn ->
+        Mix.Task.run("deps.safe_compile", ~w(--skip-umbrella-children))
+      end
     end
 
     with_progress "loading plugins", fn ->
