@@ -164,28 +164,22 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
     {formatter_function, opts} =
       if RemoteControl.project_node?() do
-        case RemoteControl.Mix.in_project(project, fetch_formatter) do
-          {:ok, result} ->
-            result
+        formatter_opts =
+          case find_formatter_exs(project, file_path) do
+            {:ok, opts} ->
+              opts
 
-          _error ->
-            formatter_opts =
-              case find_formatter_exs(project, file_path) do
-                {:ok, opts} ->
-                  opts
+            :error ->
+              Logger.warning("Could not find formatter options for file #{file_path}")
+              []
+          end
 
-                :error ->
-                  Logger.warning("Could not find formatter options for file #{file_path}")
-                  []
-              end
-
-            formatter = fn source ->
-              formatted_source = Code.format_string!(source, formatter_opts)
-              IO.iodata_to_binary([formatted_source, ?\n])
-            end
-
-            {formatter, formatter_opts}
+        formatter = fn source ->
+          formatted_source = Code.format_string!(source, formatter_opts)
+          IO.iodata_to_binary([formatted_source, ?\n])
         end
+
+        {formatter, formatter_opts}
       else
         fetch_formatter.(nil)
       end
@@ -211,13 +205,19 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   end
 
   defp do_find_formatter_exs(root_path, current_path) do
-    with :error <- formatter_exs_contents(current_path) do
-      parent =
-        current_path
-        |> Path.join("..")
-        |> Path.expand()
+    if File.exists?(current_path) do
+      with :error <- formatter_exs_contents(current_path) do
+        parent =
+          current_path
+          |> Path.join("..")
+          |> Path.expand()
 
-      do_find_formatter_exs(root_path, parent)
+        do_find_formatter_exs(root_path, parent)
+      end
+    else
+      # the current path doesn't exist, it doesn't make sense to keep looking
+      # for the .formatter.exs in its parents. Look for one in the root directory
+      do_find_formatter_exs(root_path, Path.join(root_path, ".formatter.exs"))
     end
   end
 
