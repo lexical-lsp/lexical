@@ -21,7 +21,8 @@ defmodule Lexical.Ast.Env do
     :suffix,
     :position,
     :position_module,
-    :zero_based_character
+    :zero_based_character,
+    :detected_contexts
   ]
 
   @type t :: %__MODULE__{
@@ -33,7 +34,8 @@ defmodule Lexical.Ast.Env do
           suffix: String.t(),
           position: Position.t(),
           position_module: String.t(),
-          zero_based_character: non_neg_integer()
+          zero_based_character: non_neg_integer(),
+          detected_contexts: %{atom() => boolean()}
         }
 
   @type token_value :: String.t() | charlist() | atom()
@@ -87,6 +89,8 @@ defmodule Lexical.Ast.Env do
           zero_based_character: zero_based_character
         }
 
+        env = detect_contexts(env)
+
         {:ok, env}
 
       _ ->
@@ -107,6 +111,43 @@ defmodule Lexical.Ast.Env do
     end
   end
 
+  @detectors %{
+    :alias => Detection.Alias,
+    :behaviour => {Detection.ModuleAttribute, [:behaviour]},
+    :bitstring => Detection.Bitstring,
+    :callback => {Detection.ModuleAttribute, [:callback]},
+    :comment => Detection.Comment,
+    :doc => {Detection.ModuleAttribute, [:doc]},
+    :function_capture => Detection.FunctionCapture,
+    :impl => {Detection.ModuleAttribute, [:impl]},
+    :import => Detection.Import,
+    :macrocallback => {Detection.ModuleAttribute, [:macrocallback]},
+    :moduledoc => {Detection.ModuleAttribute, [:moduledoc]},
+    :pipe => Detection.Pipe,
+    :require => Detection.Require,
+    :spec => Detection.Spec,
+    :string => Detection.String,
+    :struct_field_key => Detection.StructFieldKey,
+    :struct_field_value => Detection.StructFieldValue,
+    :struct_fields => Detection.StructFields,
+    :struct_reference => Detection.StructReference,
+    :type => Detection.Type,
+    :use => Detection.Use
+  }
+
+  def detect_contexts(%__MODULE__{} = env) do
+    detected_contexts =
+      Map.new(@detectors, fn
+        {context_name, {detector, extra_args}} ->
+          {context_name, apply(detector, :detected?, [env.analysis, env.position | extra_args])}
+
+        {context_name, detector} ->
+          {context_name, detector.detected?(env.analysis, env.position)}
+      end)
+
+    %__MODULE__{env | detected_contexts: detected_contexts}
+  end
+
   @spec in_context?(t, context_type) :: boolean()
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def in_context?(%__MODULE__{} = env, context_type) do
@@ -114,74 +155,11 @@ defmodule Lexical.Ast.Env do
     position = env.position
 
     case context_type do
-      :alias ->
-        Detection.Alias.detected?(analysis, position)
-
-      :behaviour ->
-        Detection.ModuleAttribute.detected?(analysis, position, :behaviour)
-
-      :bitstring ->
-        Detection.Bitstring.detected?(analysis, position)
-
-      :callback ->
-        Detection.ModuleAttribute.detected?(analysis, position, :callback)
-
-      :comment ->
-        Detection.Comment.detected?(analysis, position)
-
-      :doc ->
-        Detection.ModuleAttribute.detected?(analysis, position, :doc)
-
-      :function_capture ->
-        Detection.FunctionCapture.detected?(analysis, position)
-
-      :impl ->
-        Detection.ModuleAttribute.detected?(analysis, position, :impl)
-
-      :import ->
-        Detection.Import.detected?(analysis, position)
-
-      :module_attribute ->
-        Detection.ModuleAttribute.detected?(analysis, position)
-
       {:module_attribute, name} ->
         Detection.ModuleAttribute.detected?(analysis, position, name)
 
-      :macrocallback ->
-        Detection.ModuleAttribute.detected?(analysis, position, :macrocallback)
-
-      :moduledoc ->
-        Detection.ModuleAttribute.detected?(analysis, position, :moduledoc)
-
-      :pipe ->
-        Detection.Pipe.detected?(analysis, position)
-
-      :require ->
-        Detection.Require.detected?(analysis, position)
-
-      :spec ->
-        Detection.Spec.detected?(analysis, position)
-
-      :string ->
-        Detection.String.detected?(analysis, position)
-
-      :struct_fields ->
-        Detection.StructFields.detected?(analysis, position)
-
-      :struct_field_key ->
-        Detection.StructFieldKey.detected?(analysis, position)
-
-      :struct_field_value ->
-        Detection.StructFieldValue.detected?(analysis, position)
-
-      :struct_reference ->
-        Detection.StructReference.detected?(analysis, position)
-
-      :type ->
-        Detection.Type.detected?(analysis, position)
-
-      :use ->
-        Detection.Use.detected?(analysis, position)
+      context_type ->
+        Map.get(env.detected_contexts, context_type)
     end
   end
 
