@@ -8,6 +8,7 @@ defmodule Lexical.RemoteControl.Completion do
   alias Lexical.RemoteControl.Completion.Candidate
 
   import Document.Line
+  import Lexical.Debug
 
   def elixir_sense_expand(%Env{} = env) do
     {doc_string, position} = strip_struct_operator(env)
@@ -19,11 +20,22 @@ defmodule Lexical.RemoteControl.Completion do
     if String.trim(hint) == "" do
       []
     else
-      {_formatter, opts} = Format.formatter_for_file(env.project, env.document.path)
+      {_formatter, opts} =
+        log_timed("formatter for file", fn ->
+          Format.formatter_for_file(env.project, env.document.path)
+        end)
+
+
       locals_without_parens = Keyword.fetch!(opts, :locals_without_parens)
 
-      for suggestion <- ElixirSense.suggestions(doc_string, line, character),
-          candidate = from_elixir_sense(suggestion, locals_without_parens),
+      for suggestion <-
+            log_timed("ES suggestions", fn ->
+              ElixirSense.suggestions(doc_string, line, character)
+            end),
+          candidate =
+            log_timed("from_elixir_sense", fn ->
+              from_elixir_sense(suggestion, locals_without_parens)
+            end),
           candidate != nil do
         candidate
       end

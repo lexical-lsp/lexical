@@ -36,13 +36,26 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
     case Env.new(project, analysis, position) do
       {:ok, env} ->
         completions = completions(project, env, context)
-        Logger.info("Emitting completions: #{inspect(completions)}")
+        log_candidates(completions)
         maybe_to_completion_list(completions)
 
       {:error, _} = error ->
         Logger.error("Failed to build completion env #{inspect(error)}")
         maybe_to_completion_list()
     end
+  end
+
+  defp log_candidates(candidates) do
+    log_iolist =
+      Enum.reduce(candidates, ["Emitting Completions: ["], fn %Completion.Item{} = completion,
+                                                              acc ->
+        name = Map.get(completion, :name) || Map.get(completion, :label)
+        kind = completion |> Map.get(:kind, :unknown) |> to_string()
+
+        [acc, [kind, ":", name], " "]
+      end)
+
+    Logger.info([log_iolist, "]"])
   end
 
   defp completions(%Project{} = project, %Env{} = env, %Completion.Context{} = context) do
@@ -152,7 +165,7 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
          %Env{} = env,
          %Completion.Context{} = context
        ) do
-    Logger.info("Local completions are #{inspect(local_completions)}")
+    debug_local_completions(local_completions)
 
     for result <- local_completions,
         displayable?(project, result),
@@ -161,6 +174,30 @@ defmodule Lexical.Server.CodeIntelligence.Completion do
         %Completion.Item{} = item <- to_completion_item(result, env) do
       item
     end
+  end
+
+  defp debug_local_completions(completions) do
+    completions_by_type =
+      Enum.group_by(completions, fn %candidate_module{} ->
+        candidate_module
+        |> Atom.to_string()
+        |> String.split(".")
+        |> List.last()
+        |> String.downcase()
+      end)
+
+    log_iodata =
+      Enum.reduce(completions_by_type, ["Local completions are: ["], fn {type, completions},
+                                                                        acc ->
+        names =
+          Enum.map_join(completions, ", ", fn candidate ->
+            Map.get(candidate, :name) || Map.get(candidate, :detail)
+          end)
+
+        [acc, [type, ": (", names], ")   "]
+      end)
+
+    Logger.info([log_iodata, "]"])
   end
 
   defp to_completion_item(candidate, env) do
