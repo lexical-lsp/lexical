@@ -906,14 +906,23 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.MacroTest do
              inside_exunit_context("describe \"${1:message}\" do\n  $0\nend")
   end
 
-  test "syntax macros", %{project: project} do
-    assert [] = complete(project, "a =|")
-    assert [] = complete(project, "a ==|")
-    assert [] = complete(project, "a ..|")
-    assert [] = complete(project, "a !|")
-    assert [] = complete(project, "a !=|")
-    assert [] = complete(project, "a !==|")
-    assert [] = complete(project, "a &&|")
+  describe "syntax macros" do
+    test "completions are skipped for syntax macros", %{project: project} do
+      assert [] = complete(project, "a =|")
+      assert [] = complete(project, "a ==|")
+      assert [] = complete(project, "a ..|")
+      assert [] = complete(project, "a !|")
+      assert [] = complete(project, "a !=|")
+      assert [] = complete(project, "a !==|")
+      assert [] = complete(project, "a &&|")
+    end
+
+    test "completions are shown for syntax macros when `Kernel.|` is prefixed.", %{
+      project: project
+    } do
+      completions = complete(project, ":some_expression && Kernel.|")
+      assert length(completions) > 0
+    end
   end
 
   defp inside_exunit_context(text) do

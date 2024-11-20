@@ -8,9 +8,13 @@ defmodule Lexical.Server.CodeIntelligence.Completion.Translations.Callable do
 
   @syntax_macros ~w(= == == === =~ .. ..// ! != !== &&)
 
-  def completion(%_callable_module{name: name}, _env)
+  def completion(%_callable_module{name: name} = callable, %Env{} = env)
       when name in @syntax_macros do
-    :skip
+    if String.ends_with?(env.prefix, "Kernel.") do
+      do_completion(callable, env)
+    else
+      :skip
+    end
   end
 
   def completion(%callable_module{arity: 0} = callable, %Env{} = env)
