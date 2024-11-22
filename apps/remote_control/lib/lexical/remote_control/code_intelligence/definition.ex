@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
   alias Lexical.Document.Location
   alias Lexical.Document.Position
   alias Lexical.Formats
+  alias Lexical.RemoteControl.Analyzer
   alias Lexical.RemoteControl.CodeIntelligence.Entity
   alias Lexical.RemoteControl.Search.Indexer.Entry
   alias Lexical.RemoteControl.Search.Store
@@ -22,76 +23,127 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp fetch_definition({type, entity} = resolved, %Analysis{} = analysis, %Position{} = position)
+  defp fetch_definition({type, _entity} = resolved, %Analysis{} = analysis, %Position{} = pos)
        when type in [:struct, :module] do
-    module = Formats.module(entity)
-
-    locations =
-      case Store.exact(module, type: type, subtype: :definition) do
-        {:ok, entries} ->
-          for entry <- entries,
-              result = to_location(entry),
-              match?({:ok, _}, result) do
-            {:ok, location} = result
-            location
-          end
-
-        _ ->
-          []
-      end
-
-    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+    with {:ok, nil} <- exact_module_definition(resolved) do
+      elixir_sense_definition(analysis, pos)
+    end
   end
 
-  defp fetch_definition(
-         {:call, module, function, arity} = resolved,
-         %Analysis{} = analysis,
-         %Position{} = position
-       ) do
-    mfa = Formats.mfa(module, function, arity)
-
-    definitions =
-      mfa
-      |> query_search_index(subtype: :definition)
-      |> Stream.flat_map(fn entry ->
-        case entry do
-          %Entry{type: {:function, :delegate}} ->
-            mfa = get_in(entry, [:metadata, :original_mfa])
-            query_search_index(mfa, subtype: :definition) ++ [entry]
-
-          _ ->
-            [entry]
-        end
-      end)
-      |> Stream.uniq_by(& &1.subject)
-
-    locations =
-      for entry <- definitions,
-          result = to_location(entry),
-          match?({:ok, _}, result) do
-        {:ok, location} = result
-        location
-      end
-
-    maybe_fallback_to_elixir_sense(resolved, locations, analysis, position)
+  defp fetch_definition({:call, _m, _f, _a} = resolved, %Analysis{} = nlss, %Position{} = pos) do
+    with {:ok, nil} <- exact_call_definition(resolved, nlss, pos),
+         {:ok, nil} <- elixir_sense_definition(nlss, pos) do
+      nearest_arity_call_definition(resolved, nlss, pos)
+    end
   end
 
   defp fetch_definition(_, %Analysis{} = analysis, %Position{} = position) do
     elixir_sense_definition(analysis, position)
   end
 
-  defp maybe_fallback_to_elixir_sense(resolved, locations, analysis, position) do
+  defp exact_module_definition({type, entity} = resolved) do
+    module = Formats.module(entity)
+
+    locations =
+      module
+      |> query_search_index_exact(type: type, subtype: :definition)
+      |> entries_to_locations()
+
     case locations do
-      [] ->
-        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
-
-        elixir_sense_definition(analysis, position)
-
       [location] ->
         {:ok, location}
 
-      _ ->
+      [_ | _] ->
         {:ok, locations}
+
+      [] ->
+        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
+  end
+
+  defp exact_call_definition({:call, module, function, arity} = resolved, analysis, position) do
+    mfa = Formats.mfa(module, function, arity)
+
+    locations =
+      mfa
+      |> query_search_index_exact(subtype: :definition)
+      |> Stream.flat_map(&resolve_defdelegate/1)
+      |> Stream.uniq_by(& &1.subject)
+      |> maybe_reject_private_defs(module, analysis, position)
+      |> entries_to_locations()
+
+    case locations do
+      [location] ->
+        {:ok, location}
+
+      [_ | _] ->
+        {:ok, locations}
+
+      [] ->
+        Logger.info("No definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
+  end
+
+  defp nearest_arity_call_definition({:call, m, f, _a} = resolved, nlss, pos) do
+    mf_prefix = Formats.mf(m, f)
+
+    locations =
+      mf_prefix
+      |> query_search_index_prefix(subtype: :definition)
+      |> Stream.flat_map(&resolve_defdelegate/1)
+      |> Stream.uniq_by(& &1.subject)
+      |> maybe_reject_private_defs(m, nlss, pos)
+      # sort by arity and take the lowest.
+      |> Enum.sort(fn %Entry{} = a, %Entry{} = b ->
+        String.last(a.subject) < String.last(b.subject)
+      end)
+      |> Enum.take(1)
+      |> entries_to_locations()
+
+    case locations do
+      [location] ->
+        {:ok, location}
+
+      [_ | _] ->
+        {:ok, locations}
+
+      [] ->
+        Logger.info("No nearest-arity definition found for #{inspect(resolved)} with Indexer.")
+        {:ok, nil}
+    end
+  end
+
+  def resolve_defdelegate(%Entry{type: {:function, :delegate}} = entry) do
+    mfa = get_in(entry, [:metadata, :original_mfa])
+    query_search_index_exact(mfa, subtype: :definition) ++ [entry]
+  end
+
+  def resolve_defdelegate(entry) do
+    [entry]
+  end
+
+  defp maybe_reject_private_defs(entries, module, analysis, position) do
+    case Analyzer.current_module(analysis, position) do
+      {:ok, module_at_position} ->
+        if module != module_at_position do
+          Stream.reject(entries, &(&1.type == {:function, :private}))
+        else
+          entries
+        end
+
+      :error ->
+        entries
+    end
+  end
+
+  defp entries_to_locations(entries) do
+    for entry <- entries,
+        result = to_location(entry),
+        match?({:ok, _}, result) do
+      {:ok, location} = result
+      location
     end
   end
 
@@ -171,8 +223,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Definition do
     end
   end
 
-  defp query_search_index(subject, condition) do
-    case Store.exact(subject, condition) do
+  defp query_search_index_exact(subject, constraints) do
+    case Store.exact(subject, constraints) do
+      {:ok, entries} ->
+        entries
+
+      _ ->
+        []
+    end
+  end
+
+  defp query_search_index_prefix(subject, constraints) do
+    case Store.prefix(subject, constraints) do
       {:ok, entries} ->
         entries
 
