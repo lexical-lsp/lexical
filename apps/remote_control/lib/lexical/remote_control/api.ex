@@ -93,6 +93,10 @@ defmodule Lexical.RemoteControl.Api do
     RemoteControl.call(project, RemoteControl, :modules_with_prefix, [prefix, predicate])
   end
 
+  def adjust_module_name_capitalization(%Project{} = project, name) when is_binary(name) do
+    RemoteControl.call(project, RemoteControl, :adjust_module_name_capitalization, [name])
+  end
+
   @spec docs(Project.t(), module()) :: {:ok, CodeIntelligence.Docs.t()} | {:error, any()}
   def docs(%Project{} = project, module, opts \\ []) when is_atom(module) do
     RemoteControl.call(project, RemoteControl, :docs, [module, opts])
