@@ -75,6 +75,23 @@ defmodule Lexical.RemoteControl do
     end
   end
 
+  def deps_paths do
+    case :persistent_term.get({__MODULE__, :deps_paths}, :error) do
+      :error ->
+        {:ok, deps_paths} =
+          RemoteControl.Mix.in_project(fn _ ->
+            Mix.Task.run("loadpaths")
+            Mix.Project.deps_paths()
+          end)
+
+        :persistent_term.put({__MODULE__, :deps_paths}, deps_paths)
+        deps_paths
+
+      deps_paths ->
+        deps_paths
+    end
+  end
+
   def with_lock(lock_type, func) do
     :global.trans({lock_type, self()}, func, [Node.self()])
   end
