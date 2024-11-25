@@ -20,7 +20,7 @@ end)
   |> Code.append_path()
 end)
 
-LXical.Server.Boot.start()
+LXical.Server.Boot.start(System.argv())
 
 if System.get_env("LX_HALT_AFTER_BOOT") do
   require Logger

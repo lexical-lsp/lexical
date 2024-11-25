@@ -34,7 +34,8 @@ defmodule Lexical.Server.Configuration do
   @spec new(Lexical.uri(), map(), String.t() | nil) :: t
   def new(root_uri, %ClientCapabilities{} = client_capabilities, client_name) do
     support = Support.new(client_capabilities)
-    project = Project.new(root_uri)
+    elixir_executable = Application.get_env(:server, :elixir_executable)
+    project = Project.new(root_uri, elixir_executable: elixir_executable)
 
     %__MODULE__{support: support, project: project, client_name: client_name}
     |> tap(&set/1)
