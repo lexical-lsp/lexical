@@ -3,6 +3,7 @@
   fetchMixDeps,
   elixir,
   writeScript,
+  fodHash ? (builtins.readFile ./hash),
 }:
 mixRelease rec {
   pname = "lexical";
@@ -16,7 +17,7 @@ mixRelease rec {
 
     src = ./..;
 
-    sha256 = builtins.readFile ./hash;
+    sha256 = fodHash;
   };
 
   installPhase = ''
@@ -29,7 +30,7 @@ mixRelease rec {
 
   preFixup = let
     activate_version_manager = writeScript "activate_version_manager.sh" ''
-    true
+      true
     '';
   in ''
     substituteInPlace "$out/bin/start_lexical.sh" --replace 'elixir_command=' 'elixir_command="${elixir}/bin/"'

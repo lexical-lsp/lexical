@@ -34,7 +34,7 @@
           script = pkgs.writeShellApplication {
             name = "update-hash";
 
-            runtimeInputs = [ pkgs.nixFlakes pkgs.gawk ];
+            runtimeInputs = [pkgs.nixFlakes pkgs.gawk];
 
             text = ''
               nix --extra-experimental-features 'nix-command flakes' \
