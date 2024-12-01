@@ -164,11 +164,11 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
 
     {formatter_function, opts} =
       if RemoteControl.project_node?() do
-        case RemoteControl.Mix.in_project(project, fetch_formatter) do
+        case mix_formatter_from_task(project, file_path) do
           {:ok, result} ->
             result
 
-          _error ->
+          :error ->
             formatter_opts =
               case find_formatter_exs(project, file_path) do
                 {:ok, opts} ->
@@ -211,13 +211,19 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
   end
 
   defp do_find_formatter_exs(root_path, current_path) do
-    with :error <- formatter_exs_contents(current_path) do
-      parent =
-        current_path
-        |> Path.join("..")
-        |> Path.expand()
+    if File.exists?(current_path) do
+      with :error <- formatter_exs_contents(current_path) do
+        parent =
+          current_path
+          |> Path.join("..")
+          |> Path.expand()
 
-      do_find_formatter_exs(root_path, parent)
+        do_find_formatter_exs(root_path, parent)
+      end
+    else
+      # the current path doesn't exist, it doesn't make sense to keep looking
+      # for the .formatter.exs in its parents. Look for one in the root directory
+      do_find_formatter_exs(root_path, Path.join(root_path, ".formatter.exs"))
     end
   end
 
@@ -232,6 +238,25 @@ defmodule Lexical.RemoteControl.CodeMod.Format do
       err ->
         Logger.info("No formatter found in #{current_path} error was #{inspect(err)}")
 
+        :error
+    end
+  end
+
+  defp mix_formatter_from_task(%Project{} = project, file_path) do
+    try do
+      root_path = Project.root_path(project)
+      deps_paths = RemoteControl.deps_paths()
+
+      formatter_and_opts =
+        Mix.Tasks.Future.Format.formatter_for_file(file_path,
+          root: root_path,
+          deps_paths: deps_paths,
+          plugin_loader: fn plugins -> Enum.filter(plugins, &Code.ensure_loaded?/1) end
+        )
+
+      {:ok, formatter_and_opts}
+    rescue
+      _ ->
         :error
     end
   end
