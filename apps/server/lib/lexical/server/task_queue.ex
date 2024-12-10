@@ -3,7 +3,7 @@ defmodule Lexical.Server.TaskQueue do
     alias Lexical.Proto.Convert
     alias Lexical.Proto.LspTypes.ResponseError
     alias Lexical.Server.Transport
-    import Lexical.Debug
+    import Lexical.Logging
     require Logger
 
     defstruct ids_to_tasks: %{}, pids_to_ids: %{}
@@ -99,7 +99,7 @@ defmodule Lexical.Server.TaskQueue do
     end
 
     defp write_reply(response) do
-      case log_timed("convert", fn -> Convert.to_lsp(response) end) do
+      case timed_log("convert", fn -> Convert.to_lsp(response) end) do
         {:ok, lsp_response} ->
           Transport.write(lsp_response)
 
