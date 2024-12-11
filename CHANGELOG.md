@@ -1,7 +1,33 @@
 ## Unreleased
- No changes yet
+No changes yet
+
+## v0.7.2
+We've identified several long-standing performance bottlenecks in Lexical. Among them:
+
+1. A bottleneck that affects Lexical when it receives a large number of document updates. The bottleneck would cause the server process's Task Queue (the thing that delegates incoming LS requests to the process that handles them) to crash, and the server would become unusable after.  Additionally, Lexical would build your code while the document updates were occurring, which would further slow things down. Both issues are now fixed, and Lexical waits until you stop making changes before it tries to compile your project.
+2. We calculated the completion context once per completion item returned, which would be slow when a large number of completions were returned (like when you type `Enum.`). Since the context is static to your cursor, we only need to calculate it once.
+3. Only call `mix deps.compile` for older versions of elixir that change the directory when compiling.
+4. Incorporated Jose's new mix format task that doesn't require us to be inside of the given mix project. This means that formatting no longer uses the build lock. Formatting times have gone down from 400ms in the worst case to 10ms.
+
+In addition, we've improved diagnostic reporting in config files.
+
+## What's Changed
+* Update the Nix hash on PR, not on the main branch by @akirak in https://github.com/lexical-lsp/lexical/pull/817
+* Convert all exceptions in config files into diagnostics by @zachallaun in https://github.com/lexical-lsp/lexical/pull/824
+* Server bottlenecks by @scohen in https://github.com/lexical-lsp/lexical/pull/825
+* Update the Nix hash by @akirak in https://github.com/lexical-lsp/lexical/pull/818
+* Improve performance under batch operations by @scohen in https://github.com/lexical-lsp/lexical/pull/826
+* simplify default config by @filipmnowak in https://github.com/lexical-lsp/lexical/pull/814
+* add Mix.ensure_application!(:observer) to .iex.exs by @lukad in https://github.com/lexical-lsp/lexical/pull/829
+* updated dialyxir by @scohen in https://github.com/lexical-lsp/lexical/pull/835
+* [chore] Allow compression for erlang >= 27.1 by @scohen in https://github.com/lexical-lsp/lexical/pull/836
+* [feat] Loosen find_references by @scohen in https://github.com/lexical-lsp/lexical/pull/831
+* [feat] Group functions by name + type + arity in document symbols by @scohen in https://github.com/lexical-lsp/lexical/pull/833
+* Show syntax macro completions when `Kernel.` is prefixed to the cursor. by @Moosieus in https://github.com/lexical-lsp/lexical/pull/840
+* Performance oriented fixes. by @scohen in https://github.com/lexical-lsp/lexical/pull/841
+
 ## v0.7
-We're releasing 0.7 so we can support Elixir 1.17 and Erlang 27. However, those users on Erlang 27 will experience large increases in the amount of memory Lexical takes up [due to this bug](https://github.com/erlang/otp/pull/8683).  When that bug is fixed, we'll push out another release that will detect the newer version of Erlang and things should go back to normal. 
+We're releasing 0.7 so we can support Elixir 1.17 and Erlang 27. However, those users on Erlang 27 will experience large increases in the amount of memory Lexical takes up [due to this bug](https://github.com/erlang/otp/pull/8683).  When that bug is fixed, we'll push out another release that will detect the newer version of Erlang and things should go back to normal.
 
 Other than supporting the newer versions of Erlang and Elixir, we've added the following features:
 
@@ -10,7 +36,7 @@ Other than supporting the newer versions of Erlang and Elixir, we've added the f
 * Remove unused alias code action
 * Add alias code action: Type a module, invoke the code action and see a list of modules to alias, select one, and it's added to your module's other aliases.
 * Improved script handling: Now lexical won't execute scripts when editing them. Thanks, @zachallaun!
-* We now show typespecs for struct field completions. Thanks @kirillrogovoy 
+* We now show typespecs for struct field completions. Thanks @kirillrogovoy
 
 ## What's Changed
 
