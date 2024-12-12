@@ -13,6 +13,7 @@ defmodule Lexical.RemoteControl.Application do
         [
           RemoteControl.Api.Proxy,
           RemoteControl.Commands.Reindex,
+          RemoteControl.Commands.RenameSupervisor,
           RemoteControl.Module.Loader,
           {RemoteControl.Dispatch, progress: true},
           RemoteControl.ModuleMappings,

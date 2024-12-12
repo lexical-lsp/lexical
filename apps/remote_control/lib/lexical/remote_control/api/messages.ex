@@ -25,6 +25,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
     diagnostics: [],
     elapsed_ms: 0
 
+  defrecord :file_saved, uri: nil
+
   defrecord :file_deleted, project: nil, uri: nil
 
   defrecord :module_updated, file: nil, name: nil, functions: [], macros: [], struct: nil
@@ -94,6 +96,8 @@ defmodule Lexical.RemoteControl.Api.Messages do
             status: compile_status,
             elapsed_ms: non_neg_integer
           )
+
+  @type file_saved :: record(:file_saved, uri: Lexical.uri())
 
   @type module_updated ::
           record(:module_updated,
