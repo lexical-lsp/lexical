@@ -197,6 +197,41 @@ defmodule Lexical.RemoteControl.Modules do
     with_prefix("Elixir." <> prefix, mfa)
   end
 
+  @doc """
+  Adjusts module name capitalization to existing modules' names in the project.
+
+  For example, when passed `Project.Http.Server`, it returns:
+  - `Project.HTTP.Server`, if there's any module named `Project.HTTP` or `Project.HTTP.*`
+  - `Project.Http.Server` otherwise
+  """
+  @spec adjust_name_capitalization(String.t()) :: String.t()
+  def adjust_name_capitalization(name) do
+    name_downcase = String.downcase(name)
+    name_split = String.split(name, ".")
+    project_modules = all_modules()
+
+    closest_name_split =
+      project_modules
+      |> Enum.map(fn {module_string, _already_loaded?} ->
+        with "Elixir." <> ms <- module_string, do: ms
+      end)
+      |> Enum.max_by(fn module_string ->
+        :binary.longest_common_prefix([String.downcase(module_string), name_downcase])
+      end)
+      |> String.split(".")
+
+    prefix =
+      closest_name_split
+      |> Enum.zip(name_split)
+      |> Enum.take_while(fn {closest_name, name} ->
+        String.downcase(closest_name) == String.downcase(name)
+      end)
+      |> Enum.map(fn {closest_name, _name} -> closest_name end)
+
+    suffix = Enum.drop(name_split, length(prefix))
+    Enum.join(prefix ++ suffix, ".")
+  end
+
   defp apply_predicate(module_arg, {invoked_module, function, args}) do
     apply(invoked_module, function, [module_arg | args])
   end
