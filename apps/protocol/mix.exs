@@ -4,7 +4,7 @@ defmodule Lexical.Protocol.MixProject do
   def project do
     [
       app: :protocol,
-      version: "0.5.0",
+      version: "0.7.2",
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       deps_path: "../../deps",

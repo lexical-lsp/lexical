@@ -9,6 +9,8 @@ Lexical is a next-generation language server for the Elixir programming language
 
 <br><br><br>
 
+### Note: Development on Lexical will slow while we transition to the new combined effort, Expert.
+
 ## Features
 
   * Context aware code completion
@@ -105,7 +107,7 @@ After this, you're ready to put together a pull request for Lexical!
 
 #### Benchmarks
 
-The `remote_control` project has a set of benchmarks that measure the speed of various internal functions and data structures. In order to use them, you first need to install [git large file storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), and then run `git pull`. Benchmarks are stored in the `benchmarks` subdirectory, and can be run via 
+The `remote_control` project has a set of benchmarks that measure the speed of various internal functions and data structures. In order to use them, you first need to install [git large file storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage), and then run `git pull`. Benchmarks are stored in the `benchmarks` subdirectory, and can be run via
 
 ```
 mix benchmark /benchmarks/<benchmark_file>.exs
