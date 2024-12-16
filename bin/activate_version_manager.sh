@@ -76,7 +76,7 @@ _try_activating_asdf() {
 }
 
 _try_activating_rtx() {
-    if which rtx >/dev/null; then
+    if which rtx >/dev/null 2>&1; then
         echo >&2 "Found rtx. Activating..."
         eval "$(rtx activate bash)"
         eval "$(rtx env)"
@@ -87,7 +87,7 @@ _try_activating_rtx() {
 }
 
 _try_activating_mise() {
-    if which mise >/dev/null; then
+    if which mise >/dev/null 2>&1; then
         echo >&2 "Found mise. Activating..."
         eval "$(mise activate bash)"
         eval "$(mise env)"
