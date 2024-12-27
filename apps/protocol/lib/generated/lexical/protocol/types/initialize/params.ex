@@ -19,7 +19,12 @@ defmodule Lexical.Protocol.Types.Initialize.Params do
           root_uri: one_of([string(), nil]),
           trace:
             optional(
-              one_of([literal("off"), literal("messages"), literal("compact"), literal("verbose")])
+              one_of([
+                literal("off"),
+                literal("messages"),
+                literal("compact"),
+                literal("verbose")
+              ])
             ),
           work_done_token: optional(Types.Progress.Token),
           workspace_folders: optional(one_of([list_of(Types.Workspace.Folder), nil]))

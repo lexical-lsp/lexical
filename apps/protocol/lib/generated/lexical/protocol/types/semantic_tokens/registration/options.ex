@@ -18,7 +18,10 @@ defmodule Lexical.Protocol.Types.SemanticTokens.Registration.Options do
   deftype document_selector: one_of([Types.Document.Selector, nil]),
           full:
             optional(
-              one_of([boolean(), Lexical.Protocol.Types.SemanticTokens.Registration.Options.Full1])
+              one_of([
+                boolean(),
+                Lexical.Protocol.Types.SemanticTokens.Registration.Options.Full1
+              ])
             ),
           id: optional(string()),
           legend: Types.SemanticTokens.Legend,

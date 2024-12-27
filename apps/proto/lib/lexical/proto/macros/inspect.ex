@@ -12,7 +12,11 @@ defmodule Lexical.Proto.Macros.Inspect do
             |> Map.from_struct()
             |> Enum.reject(fn {k, v} -> is_nil(v) end)
 
-          concat(["##{unquote(trimmed_name)}<", Inspect.List.inspect(proto_key_values, opts), ">"])
+          concat([
+            "##{unquote(trimmed_name)}<",
+            Inspect.List.inspect(proto_key_values, opts),
+            ">"
+          ])
         end
       end
     end

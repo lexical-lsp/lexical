@@ -22,7 +22,10 @@ defmodule Lexical.Protocol.Types.SemanticTokens.ClientCapabilities do
               ),
             range:
               optional(
-                one_of([boolean(), Lexical.Protocol.Types.SemanticTokens.ClientCapabilities.Range])
+                one_of([
+                  boolean(),
+                  Lexical.Protocol.Types.SemanticTokens.ClientCapabilities.Range
+                ])
               )
   end
 
