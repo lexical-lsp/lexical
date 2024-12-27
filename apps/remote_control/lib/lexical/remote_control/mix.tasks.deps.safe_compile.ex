@@ -1,4 +1,4 @@
-if not Elixir.Features.compile_keeps_current_directory?() do
+unless Elixir.Features.compile_keeps_current_directory?() do
   defmodule Mix.Tasks.Deps.SafeCompile do
     use Mix.Task
 
