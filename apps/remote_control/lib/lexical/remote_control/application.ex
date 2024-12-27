@@ -11,6 +11,7 @@ defmodule Lexical.RemoteControl.Application do
     children =
       if RemoteControl.project_node?() do
         [
+          RemoteControl.ManagerNodeMonitor,
           RemoteControl.Api.Proxy,
           RemoteControl.Commands.Reindex,
           RemoteControl.Module.Loader,
