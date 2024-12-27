@@ -6,7 +6,7 @@ defmodule Lexical.Server.TaskQueue do
     import Lexical.Logging
     require Logger
 
-    defstruct ids_to_tasks: %{}, pids_to_ids: %{}
+    defstruct ids_to_tasks: %{}, pids_to_ids: %{}, pids_started_at: %{}
 
     @type t :: %__MODULE__{}
 
@@ -25,20 +25,22 @@ defmodule Lexical.Server.TaskQueue do
       %__MODULE__{
         state
         | ids_to_tasks: Map.put(state.ids_to_tasks, request_id, task),
-          pids_to_ids: Map.put(state.pids_to_ids, task.pid, request_id)
+          pids_to_ids: Map.put(state.pids_to_ids, task.pid, request_id),
+          pids_started_at: Map.put(state.pids_started_at, task.pid, System.monotonic_time(:microsecond))
       }
     end
 
     @spec cancel(t, request_id :: term()) :: t
     def cancel(%__MODULE__{} = state, request_id) do
       with {:ok, %Task{} = task} <- Map.fetch(state.ids_to_tasks, request_id),
-           :ok <- cancel_task(task) do
+           :ok <- cancel_task(task, state.pids_started_at[task.pid]) do
         write_error(request_id, "Request cancelled", :request_cancelled)
 
         %__MODULE__{
           state
           | ids_to_tasks: Map.delete(state.ids_to_tasks, request_id),
-            pids_to_ids: Map.delete(state.pids_to_ids, task.pid)
+            pids_to_ids: Map.delete(state.pids_to_ids, task.pid),
+            pids_started_at: Map.delete(state.pids_started_at, task.pid)
         }
       else
         _ ->
@@ -56,7 +58,8 @@ defmodule Lexical.Server.TaskQueue do
           state
 
         {request_id, new_pids_to_ids} ->
-          log_task_run_time(state.ids_to_tasks[request_id], :success)
+          task = %Task{} = state.ids_to_tasks[request_id]
+          log_task_run_time(task, :success, state.pids_started_at[task.pid])
           maybe_log_task(reason, request_id)
 
           %__MODULE__{
@@ -129,19 +132,19 @@ defmodule Lexical.Server.TaskQueue do
     defp run_task(fun, mfa) when is_function(fun) do
       task_supervisor_name()
       |> Task.Supervisor.async_nolink(fun)
-      |> Map.merge(%{started_at: System.system_time(:microsecond), mfa: mfa})
+      |> Map.merge(%{mfa: mfa})
     end
 
-    defp cancel_task(%Task{} = task) do
-      log_task_run_time(task, :canceled)
+    defp cancel_task(%Task{} = task, started_at) do
+      log_task_run_time(task, :canceled, started_at)
       Process.exit(task.pid, :canceled)
       :ok
     end
 
-    defp log_task_run_time(%Task{} = task, result) do
+    defp log_task_run_time(%Task{} = task, result, started_at) do
       case task do
-        %{started_at: ts, mfa: {m, f, a}} ->
-          elapsed = System.system_time(:microsecond) - ts
+        %Task{mfa: {m, f, a}} ->
+          elapsed = System.monotonic_time(:microseconds) - started_at
 
           Logger.warning(
             "Task #{m}.#{f}/#{length(a)} ran for  #{Lexical.Formats.time(elapsed)}. Result #{inspect(result)}"
