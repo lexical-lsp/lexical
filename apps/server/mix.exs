@@ -4,7 +4,7 @@ defmodule Lexical.Server.MixProject do
   def project do
     [
       app: :server,
-      version: "0.5.0",
+      version: "0.7.2",
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       deps_path: "../../deps",
@@ -43,7 +43,8 @@ defmodule Lexical.Server.MixProject do
       {:lexical_shared, path: "../../projects/lexical_shared", override: true},
       {:lexical_test, path: "../../projects/lexical_test", only: [:dev, :test]},
       {:common, in_umbrella: true},
-      {:elixir_sense, github: "elixir-lsp/elixir_sense"},
+      {:elixir_sense,
+       github: "elixir-lsp/elixir_sense", ref: "0c98e656cf60d4b693376a2013a312039560b95d"},
       {:jason, "~> 1.4"},
       {:logger_file_backend, "~> 0.0.13", only: [:dev, :prod]},
       {:patch, "~> 0.12", runtime: false, only: [:dev, :test]},
