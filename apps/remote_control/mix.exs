@@ -53,7 +53,7 @@ defmodule Lexical.RemoteControl.MixProject do
       {:path_glob, "~> 0.2", optional: true},
       {:phoenix_live_view, "~> 1.0", only: [:test], optional: true, runtime: false},
       {:snowflake, "~> 1.0"},
-      {:sourceror, "~> 1.4"}
+      {:sourceror, "~> 1.7"}
     ]
   end
 

@@ -46,12 +46,12 @@ defmodule Lexical.Server.MixProject do
       {:elixir_sense,
        github: "elixir-lsp/elixir_sense", ref: "0c98e656cf60d4b693376a2013a312039560b95d"},
       {:jason, "~> 1.4"},
-      {:logger_file_backend, "~> 0.0.13", only: [:dev, :prod]},
+      {:logger_file_backend, "~> 0.0", only: [:dev, :prod]},
       {:patch, "~> 0.15", runtime: false, only: [:dev, :test]},
       {:path_glob, "~> 0.2"},
       {:protocol, in_umbrella: true},
       {:remote_control, in_umbrella: true, runtime: false},
-      {:sourceror, "~> 1.4"}
+      {:sourceror, "~> 1.7"}
     ]
   end
 end
