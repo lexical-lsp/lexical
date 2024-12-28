@@ -49,4 +49,15 @@ defmodule Lexical.RemoteControl.ModulesTest do
                Modules.with_prefix("GenEvent", {Kernel, :macro_exported?, [:__using__, 1]})
     end
   end
+
+  describe "case adjustment" do
+    test "doesn't change name if no prefix exists" do
+      name = "NonExistent.Module.Foo"
+      assert name == Modules.adjust_name_capitalization(name)
+    end
+
+    test "changes name if the prefix exists" do
+      assert "GenEvent.Foo.Bar" == Modules.adjust_name_capitalization("Genevent.Foo.Bar")
+    end
+  end
 end
