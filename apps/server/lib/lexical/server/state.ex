@@ -161,8 +161,9 @@ defmodule Lexical.Server.State do
             to_version: updated_source.version
           )
 
+        Api.compile_document(project, updated_source)
         Api.broadcast(project, updated_message)
-        Api.compile_document(state.configuration.project, updated_source)
+        Api.maybe_update_rename_progress(project, updated_message)
         {:ok, state}
 
       error ->
@@ -180,7 +181,6 @@ defmodule Lexical.Server.State do
 
     case Document.Store.open(uri, text, version, language_id) do
       :ok ->
-        Logger.info("opened #{uri}")
         {:ok, state}
 
       error ->
@@ -206,11 +206,14 @@ defmodule Lexical.Server.State do
   end
 
   def apply(%__MODULE__{} = state, %DidSave{lsp: event}) do
+    project = state.configuration.project
     uri = event.text_document.uri
 
     case Document.Store.save(uri) do
       :ok ->
-        Api.schedule_compile(state.configuration.project, false)
+        Api.schedule_compile(project, false)
+        Api.maybe_update_rename_progress(project, file_saved(uri: uri))
+
         {:ok, state}
 
       error ->
@@ -293,8 +296,10 @@ defmodule Lexical.Server.State do
         execute_command_provider: command_options,
         hover_provider: true,
         references_provider: true,
+        rename_provider: Types.Rename.Options.new(prepare_provider: true),
         text_document_sync: sync_options,
-        workspace_symbol_provider: true
+        workspace_symbol_provider: true,
+        text_document_sync: sync_options
       )
 
     result =
