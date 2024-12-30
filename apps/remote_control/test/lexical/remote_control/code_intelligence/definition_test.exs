@@ -433,6 +433,27 @@ defmodule Lexical.RemoteControl.CodeIntelligence.DefinitionTest do
     end
   end
 
+  describe "definition/2 when no exact is available" do
+    setup [:with_referenced_file]
+
+    test "find the definition of a remote function call", %{project: project, uri: referenced_uri} do
+      subject_module = ~q[
+        defmodule UsesRemoteFunction do
+          alias MyDefinition
+
+          def uses_greet() do
+            MyDefinition.gree|t("World", "Bad", "Arity")
+          end
+        end
+      ]
+
+      assert {:ok, ^referenced_uri, definition_line} =
+               definition(project, subject_module, referenced_uri)
+
+      assert definition_line == ~S[  def «greet(name)» do]
+    end
+  end
+
   describe "edge cases" do
     setup [:with_referenced_file]
 

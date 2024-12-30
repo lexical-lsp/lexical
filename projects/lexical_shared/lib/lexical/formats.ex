@@ -90,6 +90,7 @@ defmodule Lexical.Formats do
     millis
   end
 
+  @spec plural(integer(), String.t(), String.t()) :: String.t()
   def plural(count, singular, plural) do
     case count do
       0 -> templatize(count, plural)
@@ -98,8 +99,36 @@ defmodule Lexical.Formats do
     end
   end
 
+  @doc """
+  Formats a module, function, and arity into a string.
+
+  ## Examples
+
+      iex> alias LXical.Formats
+      LXical.Formats
+      iex> mfa(Formats, :mfa, 3)
+      "LXical.Formats.mfa/3"
+      iex> mfa("Formats", "mfa", 3)
+      "LXical.Formats.mfa/3"
+
+  """
+  @spec mfa(atom() | binary(), any(), any()) :: String.t()
   def mfa(module, function, arity) do
     "#{module(module)}.#{function}/#{arity}"
+  end
+
+  @doc """
+  Formats a module and function without arity.
+
+  ## Examples
+
+      iex> mf(LXical.Formats, mf)
+      "LXical.Formats.mf/"
+
+  """
+  @spec mf(atom() | binary(), any()) :: String.t()
+  def mf(module, function) do
+    "#{module(module)}.#{function}/"
   end
 
   defp templatize(count, template) do
