@@ -35,8 +35,8 @@ defmodule Lexical.RemoteControl.CodeAction.Handlers.ReplaceRemoteFunctionTest do
 
     range =
       Document.Range.new(
-        Document.Position.new(document, line_number, 0),
-        Document.Position.new(document, line_number + 1, 0)
+        Document.Position.new(document, line_number, 1),
+        Document.Position.new(document, line_number + 1, 1)
       )
 
     diagnostic = Diagnostic.new(range, message, nil)
