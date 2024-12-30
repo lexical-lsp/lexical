@@ -15,12 +15,20 @@ defmodule Lexical.Server.Boot do
   @target Mix.target()
   @dep_apps Enum.map(Mix.Dep.cached(), & &1.app)
 
-  def start do
+  def start(argv) do
     {:ok, _} = Application.ensure_all_started(:mix)
 
     Application.stop(:logger)
     load_config()
     Application.ensure_all_started(:logger)
+
+    case fetch_elixir_executable(argv) do
+      {:ok, exe} ->
+        Application.put_env(:server, :elixir_executable, exe)
+
+      :error ->
+        halt("FATAL: Lexical must be passed an Elixir executable path on boot")
+    end
 
     Enum.each(@dep_apps, &load_app_modules/1)
 
@@ -41,6 +49,16 @@ defmodule Lexical.Server.Boot do
   def detect_errors do
     versioning_errors()
   end
+
+  defp fetch_elixir_executable(argv) do
+    case get_elixir_executable(argv) do
+      nil -> :error
+      exe -> {:ok, exe}
+    end
+  end
+
+  defp get_elixir_executable([maybe_exe | _]), do: System.find_executable(maybe_exe)
+  defp get_elixir_executable([]), do: nil
 
   defp load_config do
     config = read_config("config.exs")

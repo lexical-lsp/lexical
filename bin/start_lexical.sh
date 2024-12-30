@@ -20,4 +20,5 @@ esac
 $elixir_command \
     --cookie "lexical" \
     --no-halt \
-    "$script_dir/boot.exs"
+    "$script_dir/boot.exs" \
+    "$(which $elixir_command)"

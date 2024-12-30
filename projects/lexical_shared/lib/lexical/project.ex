@@ -14,7 +14,8 @@ defmodule Lexical.Project do
             mix_target: nil,
             env_variables: %{},
             project_module: nil,
-            entropy: 1
+            entropy: 1,
+            elixir_executable: nil
 
   @type message :: String.t()
   @type restart_notification :: {:restart, Logger.level(), String.t()}
@@ -30,14 +31,15 @@ defmodule Lexical.Project do
 
   @workspace_directory_name ".lexical"
 
-  # Public
-  @spec new(Lexical.uri()) :: t
-  def new(root_uri) do
+  @spec new(Lexical.uri(), attrs :: keyword()) :: t
+  def new(root_uri, attrs \\ []) do
     entropy = :rand.uniform(65_536)
 
-    %__MODULE__{entropy: entropy}
+    __MODULE__
+    |> struct!([entropy: entropy] ++ attrs)
     |> maybe_set_root_uri(root_uri)
     |> maybe_set_mix_exs_uri()
+    |> maybe_set_elixir_executable()
   end
 
   @spec set_project_module(t(), module() | nil) :: t()
@@ -237,8 +239,7 @@ defmodule Lexical.Project do
     end
   end
 
-  defp maybe_set_root_uri(%__MODULE__{} = project, nil),
-    do: %__MODULE__{project | root_uri: nil}
+  defp maybe_set_root_uri(%__MODULE__{} = project, nil), do: project
 
   defp maybe_set_root_uri(%__MODULE__{} = project, "file://" <> _ = root_uri) do
     root_path =
@@ -270,6 +271,12 @@ defmodule Lexical.Project do
       project
     end
   end
+
+  defp maybe_set_elixir_executable(%__MODULE__{elixir_executable: nil} = project) do
+    %__MODULE__{project | elixir_executable: System.find_executable("elixir")}
+  end
+
+  defp maybe_set_elixir_executable(%__MODULE__{} = project), do: project
 
   # Project Path
 
