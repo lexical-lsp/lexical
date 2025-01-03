@@ -146,15 +146,22 @@ defimpl Enumerable, for: Lexical.Document.Lines do
   end
 
   def slice(%Lines{} = document) do
-    {:ok, Lines.size(document), fn start, len -> do_slice(document, start, len) end}
+    slicing_function =
+      if Version.match?(System.version(), ">= 1.14.0") do
+        fn start, len, step -> do_slice(document, start, len, step) end
+      else
+        fn start, len -> do_slice(document, start, len, 1) end
+      end
+
+    {:ok, Lines.size(document), slicing_function}
   end
 
-  defp do_slice(%Lines{} = document, start, 1) do
+  defp do_slice(%Lines{} = document, start, 1, _) do
     [elem(document.lines, start)]
   end
 
-  defp do_slice(%Lines{} = document, start, length) do
-    Enum.map(start..(start + length - 1), &elem(document.lines, &1))
+  defp do_slice(%Lines{} = document, start, length, step) do
+    Enum.map(start..(start + length - 1)//step, &elem(document.lines, &1))
   end
 
   defp tuple_reduce(_, {:halt, acc}, _fun) do

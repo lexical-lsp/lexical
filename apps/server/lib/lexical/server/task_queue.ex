@@ -138,19 +138,15 @@ defmodule Lexical.Server.TaskQueue do
       :ok
     end
 
-    defp log_task_run_time(%Task{} = task, result) do
-      case task do
-        %{started_at: ts, mfa: {m, f, a}} ->
-          elapsed = System.system_time(:microsecond) - ts
+    defp log_task_run_time(%{started_at: ts, mfa: {m, f, a}}, result) do
+      elapsed = System.system_time(:microsecond) - ts
 
-          Logger.warning(
-            "Task #{m}.#{f}/#{length(a)} ran for  #{Lexical.Formats.time(elapsed)}. Result #{inspect(result)}"
-          )
-
-        _ ->
-          :ok
-      end
+      Logger.warning(
+        "Task #{m}.#{f}/#{length(a)} ran for  #{Lexical.Formats.time(elapsed)}. Result #{inspect(result)}"
+      )
     end
+
+    defp log_task_run_time(_, _), do: :ok
   end
 
   use GenServer

@@ -34,7 +34,7 @@ defmodule Lexical.Protocol.MixProject do
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
       {:common, in_umbrella: true},
       {:jason, "~> 1.4", optional: true},
-      {:patch, "~> 0.12", only: [:test]},
+      {:patch, "~> 0.15", only: [:test]},
       {:proto, in_umbrella: true}
     ]
   end
