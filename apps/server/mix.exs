@@ -44,7 +44,7 @@ defmodule Lexical.Server.MixProject do
       {:lexical_test, path: "../../projects/lexical_test", only: [:dev, :test]},
       {:common, in_umbrella: true},
       {:elixir_sense,
-       github: "elixir-lsp/elixir_sense", ref: "0c98e656cf60d4b693376a2013a312039560b95d"},
+       github: "elixir-lsp/elixir_sense", ref: "73ce7e0d239342fb9527d7ba567203e77dbb9b25"},
       {:jason, "~> 1.4"},
       {:logger_file_backend, "~> 0.0", only: [:dev, :prod]},
       {:patch, "~> 0.15", runtime: false, only: [:dev, :test]},

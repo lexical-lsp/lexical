@@ -45,7 +45,7 @@ defmodule Lexical.RemoteControl.MixProject do
       {:benchee, "~> 1.3", only: :test},
       {:common, in_umbrella: true},
       {:elixir_sense,
-       github: "elixir-lsp/elixir_sense", ref: "0c98e656cf60d4b693376a2013a312039560b95d"},
+       github: "elixir-lsp/elixir_sense", ref: "73ce7e0d239342fb9527d7ba567203e77dbb9b25"},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
       {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
