@@ -3,6 +3,7 @@ defmodule Lexical.Server.TaskQueue do
     alias Lexical.Proto.Convert
     alias Lexical.Proto.LspTypes.ResponseError
     alias Lexical.Server.Transport
+    import Lexical.Logging
     require Logger
 
     defstruct ids_to_tasks: %{}, pids_to_ids: %{}
@@ -55,6 +56,7 @@ defmodule Lexical.Server.TaskQueue do
           state
 
         {request_id, new_pids_to_ids} ->
+          log_task_run_time(state.ids_to_tasks[request_id], :success)
           maybe_log_task(reason, request_id)
 
           %__MODULE__{
@@ -93,11 +95,11 @@ defmodule Lexical.Server.TaskQueue do
         end
       end
 
-      run_task(handler)
+      run_task(handler, {m, f, a})
     end
 
     defp write_reply(response) do
-      case Convert.to_lsp(response) do
+      case timed_log("convert", fn -> Convert.to_lsp(response) end) do
         {:ok, lsp_response} ->
           Transport.write(lsp_response)
 
@@ -124,13 +126,30 @@ defmodule Lexical.Server.TaskQueue do
       Transport.write(%{id: id, error: error})
     end
 
-    defp run_task(fun) when is_function(fun) do
-      Task.Supervisor.async_nolink(task_supervisor_name(), fun)
+    defp run_task(fun, mfa) when is_function(fun) do
+      task_supervisor_name()
+      |> Task.Supervisor.async_nolink(fun)
+      |> Map.merge(%{started_at: System.system_time(:microsecond), mfa: mfa})
     end
 
     defp cancel_task(%Task{} = task) do
+      log_task_run_time(task, :canceled)
       Process.exit(task.pid, :canceled)
       :ok
+    end
+
+    defp log_task_run_time(%Task{} = task, result) do
+      case task do
+        %{started_at: ts, mfa: {m, f, a}} ->
+          elapsed = System.system_time(:microsecond) - ts
+
+          Logger.warning(
+            "Task #{m}.#{f}/#{length(a)} ran for  #{Lexical.Formats.time(elapsed)}. Result #{inspect(result)}"
+          )
+
+        _ ->
+          :ok
+      end
     end
   end
 

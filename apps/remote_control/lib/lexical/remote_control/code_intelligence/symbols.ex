@@ -1,5 +1,6 @@
 defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
   alias Lexical.Document
+  alias Lexical.Document.Range
   alias Lexical.RemoteControl.CodeIntelligence.Symbols
   alias Lexical.RemoteControl.Search
   alias Lexical.RemoteControl.Search.Indexer
@@ -71,10 +72,8 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
         children =
           entries_by_block_id
           |> rebuild_structure(document, entry.id)
-          |> Enum.sort_by(fn %Symbols.Document{} = symbol ->
-            start = symbol.range.start
-            {start.line, start.character}
-          end)
+          |> Enum.sort_by(&sort_by_start/1)
+          |> group_functions()
 
         Symbols.Document.from(document, entry, children)
       else
@@ -85,5 +84,42 @@ defmodule Lexical.RemoteControl.CodeIntelligence.Symbols do
       {:ok, symbol} -> [symbol]
       _ -> []
     end
+  end
+
+  defp group_functions(children) do
+    {functions, other} = Enum.split_with(children, &match?({:function, _}, &1.original_type))
+
+    grouped_functions =
+      functions
+      |> Enum.group_by(fn symbol ->
+        symbol.subject |> String.split(".") |> List.last() |> String.trim()
+      end)
+      |> Enum.map(fn
+        {_name_and_arity, [definition]} ->
+          definition
+
+        {name_and_arity, [first | _] = defs} ->
+          last = List.last(defs)
+          [type, _] = String.split(first.name, " ", parts: 2)
+          name = "#{type} #{name_and_arity}"
+
+          children =
+            Enum.map(defs, fn child ->
+              [_, rest] = String.split(child.name, " ", parts: 2)
+              %Symbols.Document{child | name: rest}
+            end)
+
+          range = Range.new(first.range.start, last.range.end)
+          %Symbols.Document{first | name: name, range: range, children: children}
+      end)
+
+    grouped_functions
+    |> Enum.concat(other)
+    |> Enum.sort_by(&sort_by_start/1)
+  end
+
+  defp sort_by_start(%Symbols.Document{} = symbol) do
+    start = symbol.range.start
+    {start.line, start.character}
   end
 end

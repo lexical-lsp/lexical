@@ -220,6 +220,151 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert function.name == "defp my_fn"
     end
 
+    test "multiple arity functions are grouped" do
+      {[module], doc} =
+        ~q[
+        defmodule Module do
+          def function_arity(:foo), do: :ok
+          def function_arity(:bar), do: :ok
+          def function_arity(:baz), do: :ok
+        end
+        ]
+        |> document_symbols()
+
+      assert [parent] = module.children
+      assert parent.name == "def function_arity/1"
+
+      expected_range =
+        """
+          «def function_arity(:foo), do: :ok
+          def function_arity(:bar), do: :ok
+          def function_arity(:baz), do: :ok»
+        """
+        |> String.trim_trailing()
+
+      assert decorate(doc, parent.range) =~ expected_range
+      assert [first, second, third] = parent.children
+
+      assert first.name == "function_arity(:foo)"
+      assert decorate(doc, first.range) =~ "«def function_arity(:foo), do: :ok»"
+      assert decorate(doc, first.detail_range) =~ "def «function_arity(:foo)», do: :ok"
+
+      assert second.name == "function_arity(:bar)"
+      assert decorate(doc, second.range) =~ "«def function_arity(:bar), do: :ok»"
+      assert decorate(doc, second.detail_range) =~ "def «function_arity(:bar)», do: :ok"
+
+      assert third.name == "function_arity(:baz)"
+      assert decorate(doc, third.range) =~ "«def function_arity(:baz), do: :ok»"
+      assert decorate(doc, third.detail_range) =~ "def «function_arity(:baz)», do: :ok"
+    end
+
+    test "multiple arity private functions are grouped" do
+      {[module], doc} =
+        ~q[
+        defmodule Module do
+          defp function_arity(:foo), do: :ok
+          defp function_arity(:bar), do: :ok
+          defp function_arity(:baz), do: :ok
+        end
+        ]
+        |> document_symbols()
+
+      assert [parent] = module.children
+      assert parent.name == "defp function_arity/1"
+
+      expected_range =
+        """
+          «defp function_arity(:foo), do: :ok
+          defp function_arity(:bar), do: :ok
+          defp function_arity(:baz), do: :ok»
+        """
+        |> String.trim_trailing()
+
+      assert decorate(doc, parent.range) =~ expected_range
+      assert [first, second, third] = parent.children
+
+      assert first.name == "function_arity(:foo)"
+      assert decorate(doc, first.range) =~ "«defp function_arity(:foo), do: :ok»"
+      assert decorate(doc, first.detail_range) =~ "defp «function_arity(:foo)», do: :ok"
+
+      assert second.name == "function_arity(:bar)"
+      assert decorate(doc, second.range) =~ "«defp function_arity(:bar), do: :ok»"
+      assert decorate(doc, second.detail_range) =~ "defp «function_arity(:bar)», do: :ok"
+
+      assert third.name == "function_arity(:baz)"
+      assert decorate(doc, third.range) =~ "«defp function_arity(:baz), do: :ok»"
+      assert decorate(doc, third.detail_range) =~ "defp «function_arity(:baz)», do: :ok"
+    end
+
+    test "groups public and private functions separately" do
+      {[module], _doc} =
+        ~q[
+        defmodule Module do
+          def fun_one(:foo), do: :ok
+          def fun_one(:bar), do: :ok
+
+          defp fun_one(:foo, :bar), do: :ok
+          defp fun_one(:bar, :baz), do: :ok
+        end
+        ]
+        |> document_symbols()
+
+      assert [first, second] = module.children
+      assert first.name == "def fun_one/1"
+      assert second.name == "defp fun_one/2"
+    end
+
+    test "line breaks are stripped" do
+      {[module], _doc} =
+        ~q[
+        defmodule Module do
+          def long_function(
+               arg_1,
+               arg_2,
+               arg_3) do
+          end
+        end
+        ]
+        |> document_symbols()
+
+      assert [function] = module.children
+      assert function.name == "def long_function( arg_1, arg_2, arg_3)"
+    end
+
+    test "line breaks are stripped for grouped functions" do
+      {[module], _doc} =
+        ~q[
+        defmodule Module do
+          def long_function(
+               :foo,
+               arg_2,
+               arg_3) do
+          end
+
+          def long_function(
+               :bar,
+               arg_2,
+               arg_3) do
+          end
+          def long_function(
+               :baz,
+               arg_2,
+               arg_3) do
+          end
+
+        end
+        ]
+        |> document_symbols()
+
+      assert [function] = module.children
+      assert function.name == "def long_function/3"
+
+      assert [first, second, third] = function.children
+      assert first.name == "long_function( :foo, arg_2, arg_3)"
+      assert second.name == "long_function( :bar, arg_2, arg_3)"
+      assert third.name == "long_function( :baz, arg_2, arg_3)"
+    end
+
     test "struct definitions are found" do
       {[module], doc} =
         ~q{

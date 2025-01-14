@@ -35,15 +35,18 @@ defmodule Lexical.RemoteControl.CodeIntelligence.References do
   end
 
   defp find_references(
-         {:call, module, function_name, arity},
+         {:call, module, function_name, _arity},
          _analysis,
          _position,
          include_definitions?
        ) do
-    subject = Subject.mfa(module, function_name, arity)
+    subject = Subject.mfa(module, function_name, "")
     subtype = subtype(include_definitions?)
 
-    query(subject, type: {:function, :_}, subtype: subtype)
+    case Store.prefix(subject, type: {:function, :_}, subtype: subtype) do
+      {:ok, entries} -> Enum.map(entries, &to_location/1)
+      _ -> []
+    end
   end
 
   defp find_references(

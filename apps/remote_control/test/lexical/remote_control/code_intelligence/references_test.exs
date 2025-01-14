@@ -107,6 +107,23 @@ defmodule Lexical.RemoteControl.CodeIntelligence.ReferencesTest do
       assert [%Location{} = location] = references(project, "Functions.do_map|(a, b)", code)
       assert decorate(code, location.range) =~ "def func(x), do: «do_map(x, & &1 + 1)»"
     end
+
+    test "are found in function definitions with optional arguments", %{project: project} do
+      referenced = ~q/
+      defmodule Functions do
+        def do_map|(a, b, c \\ 3), do: {a, b, c}
+        def func(x), do: do_map(x, 3, 5)
+        def func2(x), do: do_map(x, 3)
+      end
+      /
+
+      {_, code} = pop_cursor(referenced)
+
+      references = references(project, referenced, code)
+      assert [first, second] = Enum.sort_by(references, & &1.range.start.line)
+      assert decorate(code, first.range) =~ "  def func(x), do: «do_map(x, 3, 5)»"
+      assert decorate(code, second.range) =~ "  def func2(x), do: «do_map(x, 3)»"
+    end
   end
 
   describe "module references" do
