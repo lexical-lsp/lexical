@@ -29,6 +29,6 @@ defmodule Lexical.Logging do
   @debug_enabled? not is_nil(System.get_env("TIMINGS_ENABLED"))
 
   defp enabled? do
-    @debug_enabled?
+    true
   end
 end
