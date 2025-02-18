@@ -35,5 +35,4 @@ export MISE_VERBOSE=1
 export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac --without-termcap --without-wx"
 
 ./mise use --global "erlang@$ERLANG_VERSION"
-./mise plugins install -y elixir
 ./mise use --global "elixir@$ELIXIR_VERSION"
