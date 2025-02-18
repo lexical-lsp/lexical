@@ -9,8 +9,6 @@ git clone https://github.com/asdf-vm/asdf.git .
 # shellcheck disable=SC1091
 ASDF_DIR=$asdf_dir . asdf.sh
 
-asdf update
-
 export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac --without-termcap --without-wx"
 asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
 asdf install erlang "$ERLANG_VERSION"

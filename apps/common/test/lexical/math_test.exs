@@ -28,10 +28,8 @@ defmodule Lexical.MathTest do
   end
 
   property "clamp works with all integers" do
-    check all(
-            ints <- uniq_list_of(integer(-100_000..100_000), min_length: 5, max_length: 20),
-            [low, mid, high] = low_mid_high(ints)
-          ) do
+    check all(ints <- uniq_list_of(integer(-100_000..100_000), min_length: 5, max_length: 20)) do
+      [low, mid, high] = low_mid_high(ints)
       assert Math.clamp(mid, low, high) == mid
       assert Math.clamp(low, mid, high) == mid
       assert Math.clamp(high, low, mid) == mid

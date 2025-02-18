@@ -16,6 +16,16 @@ defmodule Lexical.VM.Versions do
   @type t :: %{elixir: version_string(), erlang: version_string()}
   @type versioned_t :: %{elixir: Version.t(), erlang: Version.t()}
 
+  defmacrop cache_in_persistent_term(key, do: materializer) do
+    quote do
+      with :not_found <- :persistent_term.get(unquote(key), :not_found) do
+        result = unquote(materializer)
+        :persistent_term.put(unquote(key), result)
+        result
+      end
+    end
+  end
+
   @doc """
   Returns the versions of elixir and erlang in the currently running VM
   """
@@ -25,6 +35,15 @@ defmodule Lexical.VM.Versions do
       elixir: elixir_version(),
       erlang: erlang_version()
     }
+  end
+
+  @doc """
+  Returns true if the current version of elixir matches the requirement
+  """
+  def current_elixir_matches?(requirement) do
+    cache_in_persistent_term {:current_elixir_matches?, requirement} do
+      Version.match?(elixir_version(), requirement)
+    end
   end
 
   @doc """
@@ -138,32 +157,26 @@ defmodule Lexical.VM.Versions do
   end
 
   defp elixir_version do
-    System.version()
+    cache_in_persistent_term {__MODULE__, :current_elixir} do
+      System.version()
+    end
   end
 
   defp erlang_version do
-    case :persistent_term.get({__MODULE__, :current_erlang}, :not_found) do
-      :not_found ->
-        major = :otp_release |> :erlang.system_info() |> List.to_string()
-        version_file = Path.join([:code.root_dir(), "releases", major, "OTP_VERSION"])
+    cache_in_persistent_term {__MODULE__, :current_erlang} do
+      major = :otp_release |> :erlang.system_info() |> List.to_string()
+      version_file = Path.join([:code.root_dir(), "releases", major, "OTP_VERSION"])
 
-        erlang_version =
-          try do
-            {:ok, contents} = read_file(version_file)
-            String.split(contents, "\n", trim: true)
-          else
-            [full] -> full
-            _ -> major
-          catch
-            :error ->
-              major
-          end
-
-        :persistent_term.put({__MODULE__, :current_erlang}, erlang_version)
-        erlang_version()
-
-      erlang_version ->
-        erlang_version
+      try do
+        {:ok, contents} = read_file(version_file)
+        String.split(contents, "\n", trim: true)
+      else
+        [full] -> full
+        _ -> major
+      catch
+        :error ->
+          major
+      end
     end
   end
 
