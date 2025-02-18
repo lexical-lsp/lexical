@@ -191,6 +191,12 @@ defmodule Lexical.Server do
       %Requests.WorkspaceSymbol{} ->
         {:ok, Handlers.WorkspaceSymbol}
 
+      %Requests.PrepareRename{} ->
+        {:ok, Handlers.PrepareRename}
+
+      %Requests.Rename{} ->
+        {:ok, Handlers.Rename}
+
       %request_module{} ->
         {:error, {:unhandled, request_module}}
     end

@@ -7,6 +7,7 @@ defmodule Lexical.RemoteControl.Api do
   alias Lexical.Project
   alias Lexical.RemoteControl
   alias Lexical.RemoteControl.CodeIntelligence
+  alias Lexical.RemoteControl.CodeMod
 
   require Logger
 
@@ -52,6 +53,33 @@ defmodule Lexical.RemoteControl.Api do
       diagnostics,
       kinds
     ])
+  end
+
+  def prepare_rename(
+        %Project{} = project,
+        %Analysis{} = analysis,
+        %Position{} = position
+      ) do
+    RemoteControl.call(project, CodeMod.Rename, :prepare, [analysis, position])
+  end
+
+  def rename(
+        %Project{} = project,
+        %Analysis{} = analysis,
+        %Position{} = position,
+        new_name,
+        client_name
+      ) do
+    RemoteControl.call(project, CodeMod.Rename, :rename, [
+      analysis,
+      position,
+      new_name,
+      client_name
+    ])
+  end
+
+  def maybe_update_rename_progress(project, updated_message) do
+    RemoteControl.call(project, RemoteControl, :maybe_update_rename_progress, [updated_message])
   end
 
   def complete(%Project{} = project, %Env{} = env) do
