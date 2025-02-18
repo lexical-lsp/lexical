@@ -21,7 +21,7 @@ case $arch in
         ;;
 esac
 
-curl "https://mise.jdx.dev/mise-latest-linux-$architecture" >"$(pwd)/mise"
+curl "https://github.com/jdx/mise/releases/download/v2025.2.6/mise-v2025.2.6-linux-${architecture}.tar.gz"
 chmod +x ./mise
 
 eval "$(./mise activate bash)"
