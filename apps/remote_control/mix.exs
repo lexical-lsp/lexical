@@ -42,18 +42,18 @@ defmodule Lexical.RemoteControl.MixProject do
 
   defp deps do
     [
-      {:benchee, "~> 1.1", only: :test},
+      {:benchee, "~> 1.3", only: :test},
       {:common, in_umbrella: true},
       {:elixir_sense,
-       github: "elixir-lsp/elixir_sense", ref: "0c98e656cf60d4b693376a2013a312039560b95d"},
+       github: "elixir-lsp/elixir_sense", ref: "73ce7e0d239342fb9527d7ba567203e77dbb9b25"},
       {:lexical_plugin, path: "../../projects/lexical_plugin"},
       {:lexical_shared, path: "../../projects/lexical_shared"},
       {:lexical_test, path: "../../projects/lexical_test", only: :test},
-      {:patch, "~> 0.12", only: [:dev, :test], optional: true, runtime: false},
+      {:patch, "~> 0.15", only: [:dev, :test], optional: true, runtime: false},
       {:path_glob, "~> 0.2", optional: true},
-      {:phoenix_live_view, "~> 0.19.5", only: [:test], optional: true, runtime: false},
+      {:phoenix_live_view, "~> 1.0", only: [:test], optional: true, runtime: false},
       {:snowflake, "~> 1.0"},
-      {:sourceror, "~> 1.4"}
+      {:sourceror, "~> 1.7"}
     ]
   end
 

@@ -33,7 +33,7 @@ defmodule LexicalCredo.MixProject do
       ),
       {:credo, "> 0.0.0", optional: true},
       {:jason, "> 0.0.0", optional: true},
-      {:ex_doc, "~> 0.29", optional: true, only: [:dev, :hex]}
+      {:ex_doc, "~> 0.34", optional: true, only: [:dev, :hex]}
     ]
   end
 

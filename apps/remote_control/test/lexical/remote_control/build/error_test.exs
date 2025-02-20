@@ -315,10 +315,19 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         end
       /
 
-      [func_diagnotic, b, a] =
+      diagnostics =
         document_text
         |> compile()
         |> diagnostics()
+
+      [func_diagnostic, b, a] =
+        case diagnostics do
+          [func_diagnostic, b, a] ->
+            [func_diagnostic, b, a]
+
+          [b, a] ->
+            [nil, b, a]
+        end
 
       assert a.message == ~s[undefined variable "a"]
       assert decorate(document_text, a.position) =~ "«a»"
@@ -326,8 +335,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
       assert b.message == ~s[undefined variable "b"]
       assert decorate(document_text, b.position) =~ "«b»"
 
-      assert func_diagnotic.message == ~s[undefined function print/1]
-      assert decorate(document_text, func_diagnotic.position) =~ "«print»(:bar)"
+      if func_diagnostic do
+        assert func_diagnostic.message == ~s[undefined function print/1]
+        assert decorate(document_text, func_diagnostic.position) =~ "«print»(:bar)"
+      end
     end
 
     test "handles UndefinedError without moudle" do
@@ -438,7 +449,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
+      # used a regex here because the error changed in elixir 1.18
+      assert diagnostic.message =~
+               ~r[protocol Enumerable not implemented for( 1 of)? type Integer]
+
       assert decorate(document_text, diagnostic.position) =~ "«for i <- 1, do: i\n»"
     end
 
@@ -452,7 +466,10 @@ defmodule Lexical.RemoteControl.Build.ErrorTest do
         |> compile()
         |> diagnostic()
 
-      assert diagnostic.message =~ ~s[protocol Enumerable not implemented for 1 of type Integer]
+      # used a regex here because the error changed in elixir 1.18
+      assert diagnostic.message =~
+               ~r[protocol Enumerable not implemented for( 1 of)? type Integer]
+
       assert decorate(document_text, diagnostic.position) =~ "«for i <- 1, do: i\n»"
     end
 

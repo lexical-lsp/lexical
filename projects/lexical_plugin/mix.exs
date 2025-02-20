@@ -24,8 +24,8 @@ defmodule Lexical.Plugin.MixProject do
         else: {:lexical_shared, path: "../lexical_shared"}
       ),
       env_dep(
-        hex: {:ex_doc, "~> 0.29", only: :hex, runtime: false},
-        else: {:ex_doc, "~> 0.29", only: :dev, runtime: false}
+        hex: {:ex_doc, "~> 0.34", only: :hex, runtime: false},
+        else: {:ex_doc, "~> 0.34", only: :dev, runtime: false}
       ),
       dialyzer_dep()
     ]
